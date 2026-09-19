@@ -1,0 +1,36 @@
+# Android / Gradle
+.gradle/
+build/
+*/build/
+local.properties
+*.iml
+.idea/
+
+# Signing and local secrets
+.env.local
+.env.*.local
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+secrets.properties
+
+# Java / Kotlin generated files
+*.class
+out/
+
+# Node / Expo
+node_modules/
+.expo/
+.expo-shared/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

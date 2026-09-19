@@ -1,0 +1,858 @@
+package com.tbtechs.focusflow.ui.settings
+
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material.icons.outlined.RocketLaunch
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Smartphone
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.ui.AppBootViewModel
+import com.tbtechs.focusflow.ui.FocusSessionViewModel
+import com.tbtechs.focusflow.ui.SettingsViewModel
+import com.tbtechs.focusflow.ui.TaskViewModel
+import com.tbtechs.focusflow.ui.common.PinType
+import com.tbtechs.focusflow.ui.common.PinVerifyModal
+import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
+import com.tbtechs.focusflow.ui.launcher.AllowedAppsModal
+import com.tbtechs.focusflow.ui.support.ReportIssueModal
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.DarkBackground
+import com.tbtechs.focusflow.ui.theme.DarkBorder
+import com.tbtechs.focusflow.ui.theme.DarkCard
+import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
+import com.tbtechs.focusflow.ui.theme.DarkTextMuted
+import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
+import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import org.json.JSONObject
+
+/**
+ * Complete redesign of the Settings tab matching Screenshots 8a, 8b, and 8c.
+ * Preserves all underlying business logic, actions, and dialogs.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    settingsViewModel: SettingsViewModel = viewModel(),
+    taskViewModel: TaskViewModel = viewModel(),
+    focusSessionViewModel: FocusSessionViewModel = viewModel(),
+    appBootViewModel: AppBootViewModel = viewModel(),
+    onOpenActiveBlocks: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
+    onOpenPermissions: () -> Unit = {},
+    onExportBackup: (() -> Unit)? = null,
+    onImportBackup: ((replaceTasks: Boolean) -> Unit)? = null,
+    onReportIssue: (() -> Unit)? = null,
+    onOpenStats: () -> Unit = {},
+    onOpenChangelog: () -> Unit = {},
+    onOpenPrivacyTerms: () -> Unit = {},
+) {
+    val settings by settingsViewModel.settings.collectAsState()
+    val tasks by taskViewModel.tasks.collectAsState()
+    val focusSession by focusSessionViewModel.focusSession.collectAsState()
+    val isLoading by appBootViewModel.isLoading.collectAsState()
+    val isDbReady by appBootViewModel.isDbReady.collectAsState()
+    val context = LocalContext.current
+
+    var overlayAppearanceVisible by remember { mutableStateOf(false) }
+    var clearAllConfirmationVisible by remember { mutableStateOf(false) }
+    var importChoiceVisible by remember { mutableStateOf(false) }
+    var reportIssueVisible by remember { mutableStateOf(false) }
+    var allowedAppsVisible by remember { mutableStateOf(false) }
+    var focusPinVisible by remember { mutableStateOf(false) }
+    var pendingClearAll by remember { mutableStateOf(false) }
+    var notice by remember { mutableStateOf<SettingsNotice?>(null) }
+    val installedAppsRepository = remember { InstalledAppsRepository(context) }
+    val profile = runCatching {
+        settingsViewModel.getUserProfileJson()?.let(::JSONObject)
+    }.getOrNull()
+
+    val requestNotifications = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        notice = SettingsNotice(
+            title = if (granted) "Notifications enabled" else "Permission denied",
+            body = if (granted) {
+                "You can now receive task reminders."
+            } else {
+                "Enable notifications in your device Settings to receive task reminders."
+            },
+        )
+    }
+
+    fun unavailable(feature: String, detail: String) {
+        notice = SettingsNotice(feature, detail)
+    }
+
+    fun contactSupport() {
+        val emailIntent = Intent(
+            Intent.ACTION_SENDTO,
+            Uri.parse("mailto:tbtechsdev@gmail.com?subject=FocusFlow%20Support"),
+        )
+        if (emailIntent.resolveActivity(context.packageManager) == null) {
+            unavailable("Email unavailable", "No email app is available to contact FocusFlow support.")
+        } else {
+            context.startActivity(emailIntent)
+        }
+    }
+
+    if (isLoading || !isDbReady) {
+        Scaffold(
+            containerColor = DarkBackground,
+            topBar = {
+                TopAppBar(
+                    title = { Text("Settings", color = DarkTextPrimary, fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+                )
+            },
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = BrandPrimary)
+            }
+        }
+        return
+    }
+
+    Scaffold(
+        containerColor = DarkBackground,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Settings",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkTextPrimary,
+                    )
+                },
+                actions = {
+                    ActiveStatusIndicator(
+                        focusSession = focusSession,
+                        settings = settings,
+                        onOpenActiveBlocks = onOpenActiveBlocks,
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // 1. PROFILE
+            item {
+                SettingsSectionHeader("PROFILE")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.AccountCircle,
+                        title = profile?.optString("name").orEmpty().ifBlank { "Set up your profile" },
+                        description = profile?.let {
+                            listOf(
+                                it.optString("occupation").takeIf(String::isNotBlank),
+                                it.optInt("dailyGoalHours", 0)
+                                    .takeIf { hours -> hours > 0 }
+                                    ?.let { hours -> "${hours}h daily goal" },
+                                it.optString("wakeUpTime").takeIf(String::isNotBlank)
+                                    ?.let { time -> "Wakes at $time" },
+                            ).filterNotNull().joinToString(" · ")
+                                .ifBlank { "Tap to personalise your experience" }
+                        } ?: "Name, occupation, daily goal and more",
+                        onClick = onOpenProfile,
+                    )
+                }
+            }
+
+            // 2. APPEARANCE
+            item {
+                SettingsSectionHeader("APPEARANCE")
+                SettingsCard {
+                    SettingsToggleRow(
+                        title = "Dark Mode",
+                        description = "Use a darker color palette throughout FocusFlow",
+                    ) {
+                        DarkModeToggle(
+                            isDark = settings.darkModeEnabled,
+                            onToggle = {
+                                settingsViewModel.updateSettings(
+                                    settings.copy(darkModeEnabled = !settings.darkModeEnabled),
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+
+            // 3. NOTIFICATIONS
+            item {
+                SettingsSectionHeader("NOTIFICATIONS")
+                SettingsCard {
+                    SettingsToggleRow(
+                        title = "Enable Reminders",
+                        description = "Get alerts before and during tasks",
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.taskRemindersEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(settings.copy(taskRemindersEnabled = enabled))
+                            },
+                        )
+                    }
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Notifications,
+                        title = "Request Notification Permission",
+                        onClick = { requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                    )
+                }
+            }
+
+            // 4. SCHEDULING
+            item {
+                SettingsSectionHeader("SCHEDULING")
+                SettingsCard {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Default Task Duration",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = DarkTextPrimary,
+                            )
+                            val durationLabel = when (settings.defaultDurationMinutes) {
+                                60 -> "1h"
+                                90 -> "1h 30m"
+                                120 -> "2h"
+                                else -> "${settings.defaultDurationMinutes}m"
+                            }
+                            Text(
+                                durationLabel,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandPrimary,
+                            )
+                        }
+                        val options = listOf(
+                            30 to "30m",
+                            45 to "45m",
+                            60 to "1h",
+                            90 to "1h 30m",
+                            120 to "2h",
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            options.forEach { (minutes, label) ->
+                                val isSelected = settings.defaultDurationMinutes == minutes
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) BrandPrimary else DarkSurfaceVariant)
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) BrandPrimary else DarkBorder,
+                                            RoundedCornerShape(8.dp),
+                                        )
+                                        .clickable {
+                                            settingsViewModel.updateSettings(
+                                                settings.copy(defaultDurationMinutes = minutes),
+                                            )
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        label,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color.White else DarkTextSecondary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5. FOCUS MODE
+            item {
+                SettingsSectionHeader("FOCUS MODE")
+                SettingsCard {
+                    SettingsToggleRow(
+                        title = "Auto-enable Focus Mode",
+                        description = "Activate when a focus task starts",
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.autoFocusEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(settings.copy(autoFocusEnabled = enabled))
+                            },
+                        )
+                    }
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    val allowedSummary = if (settings.allowedFocusPackages.isEmpty()) {
+                        "All apps will be blocked during Focus Mode"
+                    } else {
+                        "${settings.allowedFocusPackages.size} apps allowed during Focus Mode"
+                    }
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Apps,
+                        title = "Manage Allowed Apps",
+                        description = allowedSummary,
+                        onClick = { allowedAppsVisible = true },
+                    )
+                }
+            }
+
+            // 6. BLOCK OVERLAY
+            item {
+                SettingsSectionHeader("BLOCK OVERLAY")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Smartphone,
+                        title = "Overlay Appearance",
+                        description = "Customise background image and quotes shown on the block screen",
+                        onClick = { overlayAppearanceVisible = true },
+                    )
+                }
+            }
+
+            // 7. POMODORO MODE
+            item {
+                SettingsSectionHeader("POMODORO MODE")
+                SettingsCard {
+                    SettingsToggleRow(
+                        title = "Enable Pomodoro",
+                        description = "Auto-cycle work and break sessions",
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.pomodoroEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(settings.copy(pomodoroEnabled = enabled))
+                            },
+                        )
+                    }
+                    if (settings.pomodoroEnabled) {
+                        HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Work Duration", fontSize = 14.sp, color = DarkTextSecondary)
+                            Text("${settings.pomodoroWorkMinutes}m", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Break Duration", fontSize = 14.sp, color = DarkTextSecondary)
+                            Text("${settings.pomodoroBreakMinutes}m", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                        }
+                    }
+                }
+            }
+
+            // 8. BACKUP & DATA
+            item {
+                SettingsSectionHeader("BACKUP & DATA")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.CloudUpload,
+                        title = "Export Backup",
+                        description = "Save a .focusflow file — share to Drive, Files, or email",
+                        onClick = {
+                            if (onExportBackup == null) {
+                                unavailable(
+                                    "Backup export unavailable",
+                                    "Backup export is unavailable in this app session.",
+                                )
+                            } else {
+                                onExportBackup()
+                            }
+                        },
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.CloudDownload,
+                        title = "Import Backup",
+                        description = "Restore from a .focusflow backup file",
+                        onClick = { importChoiceVisible = true },
+                    )
+                }
+            }
+
+            // 9. PERMISSIONS
+            item {
+                SettingsSectionHeader("PERMISSIONS")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Shield,
+                        title = "Manage Permissions",
+                        description = "Accessibility, Usage Access, Battery, Notifications",
+                        onClick = onOpenPermissions,
+                    )
+                }
+            }
+
+            // 10. DIAGNOSTICS
+            item {
+                SettingsSectionHeader("DIAGNOSTICS")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.BugReport,
+                        title = "Report an Issue",
+                        description = "Review and email a bug report, feedback, or app review",
+                        onClick = {
+                            if (onReportIssue == null) {
+                                reportIssueVisible = true
+                            } else {
+                                onReportIssue()
+                            }
+                        },
+                    )
+                }
+            }
+
+            // 11. DATA
+            item {
+                SettingsSectionHeader("DATA")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Delete,
+                        title = "Clear All Tasks",
+                        description = "Permanently delete all scheduled tasks",
+                        destructive = true,
+                        onClick = { clearAllConfirmationVisible = true },
+                    )
+                }
+            }
+
+            // 12. ABOUT
+            item {
+                SettingsSectionHeader("ABOUT")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.BarChart,
+                        title = "Stats",
+                        description = "Yesterday's digest, focus time, completed tasks, blocked apps, streak",
+                        onClick = onOpenStats,
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.RocketLaunch,
+                        title = "What's New",
+                        description = "Changelog — features, fixes, and improvements",
+                        onClick = onOpenChangelog,
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Policy,
+                        title = "Privacy & Terms",
+                        description = "How FocusFlow handles your data and the rules of use",
+                        onClick = onOpenPrivacyTerms,
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Email,
+                        title = "Contact Support",
+                        description = "Email us at tbtechsdev@gmail.com",
+                        onClick = ::contactSupport,
+                    )
+                }
+            }
+
+            // Footer version
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "FocusFlow v1.4.0 (build 15)",
+                        fontSize = 12.5.sp,
+                        color = DarkTextMuted,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        "All data stored locally on device",
+                        fontSize = 12.sp,
+                        color = DarkTextMuted,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+
+    OverlayAppearanceModal(
+        visible = overlayAppearanceVisible,
+        onClose = { overlayAppearanceVisible = false },
+    )
+    ReportIssueModal(
+        visible = reportIssueVisible,
+        onClose = { reportIssueVisible = false },
+    )
+
+    AllowedAppsModal(
+        visible = allowedAppsVisible,
+        initialSelected = settings.allowedFocusPackages,
+        presets = settings.launcherPresets,
+        installedAppsRepository = installedAppsRepository,
+        onSave = { packages ->
+            settingsViewModel.updateSettings(settings.copy(allowedFocusPackages = packages))
+            allowedAppsVisible = false
+        },
+        onSavePreset = { preset ->
+            settingsViewModel.updateSettings(settings.copy(launcherPresets = settings.launcherPresets + preset))
+        },
+        onDeletePreset = { presetId ->
+            settingsViewModel.updateSettings(
+                settings.copy(launcherPresets = settings.launcherPresets.filterNot { it.id == presetId }),
+            )
+        },
+        onClose = { allowedAppsVisible = false },
+    )
+
+    if (importChoiceVisible) {
+        AlertDialog(
+            onDismissRequest = { importChoiceVisible = false },
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text("Restore from backup", fontWeight = FontWeight.Bold) },
+            text = { Text("Pick how to merge the backup into this device.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        importChoiceVisible = false
+                        if (onImportBackup == null) {
+                            unavailable("Backup import unavailable", "Backup import is unavailable in this app session.")
+                        } else {
+                            onImportBackup(false)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    shape = RoundedCornerShape(8.dp),
+                ) { Text("Add tasks") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { importChoiceVisible = false }) {
+                        Text("Cancel", color = DarkTextSecondary)
+                    }
+                    TextButton(onClick = {
+                        importChoiceVisible = false
+                        if (onImportBackup == null) {
+                            unavailable("Backup import unavailable", "Backup import is unavailable in this app session.")
+                        } else {
+                            onImportBackup(true)
+                        }
+                    }) {
+                        Text("Replace everything", color = Color(0xFFEF4444))
+                    }
+                }
+            },
+        )
+    }
+
+    if (clearAllConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = { clearAllConfirmationVisible = false },
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text("Clear All Tasks", fontWeight = FontWeight.Bold) },
+            text = { Text("This will delete all ${tasks.size} scheduled task${if (tasks.size == 1) "" else "s"}. Are you sure?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        clearAllConfirmationVisible = false
+                        if (focusSession?.isActive == true && settingsViewModel.isFocusPinSet()) {
+                            pendingClearAll = true
+                            focusPinVisible = true
+                        } else {
+                            taskViewModel.clearAllTasks()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(8.dp),
+                ) { Text("Clear all") }
+            },
+            dismissButton = {
+                TextButton(onClick = { clearAllConfirmationVisible = false }) {
+                    Text("Cancel", color = DarkTextSecondary)
+                }
+            },
+        )
+    }
+
+    PinVerifyModal(
+        visible = focusPinVisible,
+        pinType = PinType.FOCUS,
+        title = "Focus Session Password Required",
+        description = "Enter your focus session password before clearing tasks and ending the active focus session.",
+        verify = settingsViewModel::verifyFocusPin,
+        onVerified = { hash ->
+            focusPinVisible = false
+            if (pendingClearAll) {
+                pendingClearAll = false
+                taskViewModel.clearAllTasks(hash)
+            }
+        },
+        onCancel = {
+            pendingClearAll = false
+            focusPinVisible = false
+            if (focusSession?.isActive == true) {
+                focusSession?.let { activeSession ->
+                    taskViewModel.clearAllTasksExcept(activeSession.taskId)
+                }
+            } else {
+                taskViewModel.clearAllTasks()
+            }
+        },
+    )
+
+    notice?.let { activeNotice ->
+        AlertDialog(
+            onDismissRequest = { notice = null },
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text(activeNotice.title, fontWeight = FontWeight.Bold) },
+            text = { Text(activeNotice.body) },
+            confirmButton = {
+                Button(
+                    onClick = { notice = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    shape = RoundedCornerShape(8.dp),
+                ) { Text("OK") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        color = DarkTextMuted,
+        letterSpacing = 0.8.sp,
+        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+    )
+}
+
+@Composable
+private fun SettingsCard(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(DarkCard)
+            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp)),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    icon: ImageVector,
+    title: String,
+    description: String? = null,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    if (destructive) Color(0xFFEF4444).copy(alpha = 0.12f)
+                    else BrandPrimary.copy(alpha = 0.12f),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (destructive) Color(0xFFEF4444) else BrandPrimary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (destructive) Color(0xFFEF4444) else DarkTextPrimary,
+            )
+            if (description != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    description,
+                    fontSize = 12.5.sp,
+                    color = DarkTextSecondary,
+                    lineHeight = 17.sp,
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = if (destructive) Color(0xFFEF4444).copy(alpha = 0.6f) else DarkTextMuted,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun SettingsToggleRow(
+    title: String,
+    description: String? = null,
+    control: @Composable () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = DarkTextPrimary,
+            )
+            if (description != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    description,
+                    fontSize = 12.5.sp,
+                    color = DarkTextSecondary,
+                    lineHeight = 17.sp,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        control()
+    }
+}
+
+@Composable
+private fun FocusFlowSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = BrandPrimary,
+            uncheckedThumbColor = DarkTextSecondary,
+            uncheckedTrackColor = DarkSurfaceVariant,
+            uncheckedBorderColor = DarkBorder,
+        ),
+    )
+}
+
+private data class SettingsNotice(val title: String, val body: String)
