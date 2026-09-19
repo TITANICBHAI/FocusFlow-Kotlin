@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "bash", "web"]
+modules = ["nodejs-20", "bash", "web", "python-base-3.13"]
 
 [nix]
 channel = "stable-25_05"
@@ -16,22 +16,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Build APK"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Push to GitHub"
-
-[[workflows.workflow]]
-name = "Build APK"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "bash scripts/build-apk.sh"
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [[workflows.workflow]]
 name = "Push to GitHub"
