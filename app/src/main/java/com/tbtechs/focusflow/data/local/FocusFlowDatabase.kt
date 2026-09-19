@@ -329,8 +329,8 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                 if (prefs.contains("_settings_blob_migrated")) return
 
                 // Query settings table if it exists
-                val tableCheck = db.openHelper.readableDatabase.rawQuery(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='settings'", null
+                val tableCheck = db.openHelper.readableDatabase.query(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='settings'",
                 )
                 val hasSettingsTable = tableCheck.use { it.moveToFirst() }
                 if (!hasSettingsTable) {
@@ -338,8 +338,8 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                     return
                 }
 
-                val cursor = db.openHelper.readableDatabase.rawQuery(
-                    "SELECT value FROM settings WHERE key = 'appSettings' LIMIT 1", null,
+                val cursor = db.openHelper.readableDatabase.query(
+                    "SELECT value FROM settings WHERE key = 'appSettings' LIMIT 1",
                 )
                 val json = cursor.use {
                     if (it.moveToFirst()) it.getString(0) else null
@@ -399,8 +399,8 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                 val prefs = context.getSharedPreferences("FocusFlowPrefs", Context.MODE_PRIVATE)
                 if (prefs.contains("_report_notes_migrated")) return
 
-                val tableCheck = db.openHelper.readableDatabase.rawQuery(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='report_notes'", null
+                val tableCheck = db.openHelper.readableDatabase.query(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='report_notes'",
                 )
                 val hasTable = tableCheck.use { it.moveToFirst() }
                 if (!hasTable) {
@@ -408,8 +408,8 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                     return
                 }
 
-                val cursor = db.openHelper.readableDatabase.rawQuery(
-                    "SELECT ref_date, note FROM report_notes WHERE type = 'daily'", null,
+                val cursor = db.openHelper.readableDatabase.query(
+                    "SELECT ref_date, note FROM report_notes WHERE type = 'daily'",
                 )
                 val editor = prefs.edit()
                 cursor.use {

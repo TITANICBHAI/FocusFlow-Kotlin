@@ -58,6 +58,14 @@ class TaskViewModel(
             initialValue   = emptyList(),
         )
 
+    /**
+     * Loads tasks whose local-calendar dates fall within the inclusive range.
+     * The repository converts the ISO timestamps to the device's local dates
+     * before querying Room.
+     */
+    suspend fun getTasksInDateRange(startISO: String, endISO: String): List<Task> =
+        taskRepository.getTasksInDateRange(startISO, endISO)
+
     // ─── Mutating methods ─────────────────────────────────────────────────────
     //
     // Room serializes individual writes, but that is not enough to protect the
@@ -139,7 +147,7 @@ class TaskViewModel(
                     alarmRepository.cancelAlarm(it.id)
                     alarmRepository.dismissAlarm(it.id)
                 }
-                taskRepository.clearAllTasks()
+                taskRepository.deleteAllTasks()
             }
         }
     }
@@ -157,7 +165,7 @@ class TaskViewModel(
                     alarmRepository.cancelAlarm(it.id)
                     alarmRepository.dismissAlarm(it.id)
                 }
-                taskRepository.clearAllTasksExcept(excludedTaskId)
+                taskRepository.deleteAllTasksExcept(excludedTaskId)
             }
         }
     }
