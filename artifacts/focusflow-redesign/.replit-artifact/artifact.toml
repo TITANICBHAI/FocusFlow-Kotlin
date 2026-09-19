@@ -1,0 +1,19 @@
+kind = "design"
+previewPath = "/__mockup/"
+title = "FocusFlow UI Redesign"
+description = "Compose-compatible screen prototypes for the FocusFlow Android app."
+version = "1.0.0"
+id = "artifacts/focusflow-redesign"
+router = "path"
+
+[[services]]
+name = "Component Preview Server"
+paths = [ "/__mockup/" ]
+localPort = 22876
+
+[services.development]
+run = "npm run dev"
+
+[services.env]
+PORT = "22876"
+BASE_PATH = "/__mockup/"
