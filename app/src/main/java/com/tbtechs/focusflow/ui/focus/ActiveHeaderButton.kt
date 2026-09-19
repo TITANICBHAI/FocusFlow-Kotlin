@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -32,14 +31,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.FocusSession
 import com.tbtechs.focusflow.data.repository.NetworkBlockStatus
 import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.data.repository.VpnRepository
-import com.tbtechs.focusflow.ui.FocusSessionViewModel
-import com.tbtechs.focusflow.ui.SettingsViewModel
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 
@@ -154,11 +150,12 @@ fun ActiveStatusIndicator(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val settingsVm: SettingsViewModel = viewModel()
-    val focusSessionVm: FocusSessionViewModel = viewModel()
-
-    val resolvedSettings = settings ?: settingsVm.settings.collectAsState().value
-    val resolvedSession = focusSession ?: focusSessionVm.focusSession.collectAsState().value
+    // The host screen owns the configured ViewModels and passes their current
+    // values here. Do not call the default Compose viewModel() factory: the
+    // native ViewModels require constructor dependencies and have no
+    // no-argument constructor.
+    val resolvedSettings = settings ?: AppSettings()
+    val resolvedSession = focusSession
 
     val vpnRepo = remember { VpnRepository(context) }
     val usageRepo = remember { UsageStatsRepository(context) }
