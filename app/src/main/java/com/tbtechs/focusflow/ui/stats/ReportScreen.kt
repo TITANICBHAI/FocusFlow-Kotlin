@@ -71,12 +71,18 @@ fun ReportScreen(
         loading = true
         loadError = null
         runCatching {
-            val current = taskViewModel.getTasksInDateRange(range.first, range.second)
+            val current = taskViewModel.getTasksInDateRange(
+                range.first.atStartOfDay(ZoneId.systemDefault()).toInstant().toString(),
+                range.second.atStartOfDay(ZoneId.systemDefault()).toInstant().toString(),
+            )
             val baselineStart = range.first.minusDays(if (reportType == ReportType.Week) 7 else 30)
             val baselineEnd = range.first.minusDays(1)
             Triple(
                 current,
-                taskViewModel.getTasksInDateRange(baselineStart, baselineEnd),
+                taskViewModel.getTasksInDateRange(
+                    baselineStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toString(),
+                    baselineEnd.atStartOfDay(ZoneId.systemDefault()).toInstant().toString(),
+                ),
                 settingsRepository?.getReportNotes(range.first, range.second).orEmpty(),
             )
         }.onSuccess { (current, previous, notes) ->
