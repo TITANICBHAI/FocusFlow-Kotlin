@@ -1,0 +1,1 @@
+- [Shared preference compatibility](shared-preference-compatibility.md) — user data can retain a key under an older Android preference type.
