@@ -5,7 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Analytics
@@ -20,6 +22,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,9 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.LauncherController
 import com.tbtechs.focusflow.data.repository.VpnRepository
@@ -278,8 +283,40 @@ fun FocusFlowNavGraph(
             composable(Routes.HOW_TO_USE) {
                 ScreenBoundary(Routes.HOW_TO_USE) {
                     HowToUseScreen(
+                        isOnboarding = false,
                         onBack = ::back,
                         onGetStarted = { navigate(Routes.FOCUS) },
+                    )
+                }
+            }
+            composable(
+                route = "${Routes.HOW_TO_USE}?onboarding={onboarding}",
+                arguments = listOf(
+                    navArgument("onboarding") {
+                        type = NavType.StringType
+                        defaultValue = "true"
+                    },
+                ),
+            ) { backStackEntry ->
+                val onboardingParam = backStackEntry.arguments?.getString("onboarding")
+                val isOnboarding = onboardingParam == "true" || onboardingParam == "1"
+                ScreenBoundary(Routes.HOW_TO_USE) {
+                    HowToUseScreen(
+                        isOnboarding = isOnboarding,
+                        onBack = {
+                            if (isOnboarding) {
+                                navController.navigate(Routes.FOCUS) {
+                                    popUpTo(Routes.HOME) { inclusive = false }
+                                }
+                            } else {
+                                back()
+                            }
+                        },
+                        onGetStarted = {
+                            navController.navigate(Routes.FOCUS) {
+                                popUpTo(Routes.HOME) { inclusive = false }
+                            }
+                        },
                     )
                 }
             }
@@ -296,7 +333,7 @@ fun FocusFlowNavGraph(
                     OnboardingScreen(
                         settingsViewModel = settingsViewModel,
                         onFinished = {
-                            navController.navigate(Routes.HOME) {
+                            navController.navigate("${Routes.HOW_TO_USE}?onboarding=true") {
                                 popUpTo(Routes.ONBOARDING) { inclusive = true }
                             }
                         },
@@ -323,12 +360,42 @@ fun FocusFlowNavGraph(
                 }
             }
             composable(Routes.PRIVACY_POLICY) {
+                val privacyAccepted by settingsViewModel.privacyAccepted.collectAsState()
                 ScreenBoundary(Routes.PRIVACY_POLICY) {
                     PrivacyPolicyScreen(
                         settingsRepository = AppModule.settingsRepository,
-                        isRevisit = true,
+                        isRevisit = privacyAccepted,
                         onBack = ::back,
-                        onAccepted = ::back,
+                        onAccepted = {
+                            navController.navigate(Routes.ONBOARDING) {
+                                popUpTo(Routes.PRIVACY_POLICY) { inclusive = true }
+                            }
+                        },
+                        onDeclineExit = { (context as? Activity)?.finishAndRemoveTask() },
+                    )
+                }
+            }
+            composable(
+                route = "${Routes.PRIVACY_POLICY}?revisit={revisit}",
+                arguments = listOf(
+                    navArgument("revisit") {
+                        type = NavType.StringType
+                        defaultValue = "false"
+                    },
+                ),
+            ) { backStackEntry ->
+                val revisitParam = backStackEntry.arguments?.getString("revisit")
+                val isRevisit = revisitParam == "true" || revisitParam == "1"
+                ScreenBoundary(Routes.PRIVACY_POLICY) {
+                    PrivacyPolicyScreen(
+                        settingsRepository = AppModule.settingsRepository,
+                        isRevisit = isRevisit,
+                        onBack = ::back,
+                        onAccepted = {
+                            navController.navigate(Routes.ONBOARDING) {
+                                popUpTo(Routes.PRIVACY_POLICY) { inclusive = true }
+                            }
+                        },
                         onDeclineExit = { (context as? Activity)?.finishAndRemoveTask() },
                     )
                 }
@@ -413,9 +480,12 @@ fun MainScaffold(
         Triple(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
     )
     Scaffold(
+        containerColor = com.tbtechs.focusflow.ui.theme.DarkBackground,
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             NavigationBar(
                 containerColor = com.tbtechs.focusflow.ui.theme.DarkBackground,
+                windowInsets = WindowInsets.navigationBars,
                 tonalElevation = 0.dp,
                 modifier = Modifier.border(
                     width = 1.dp,

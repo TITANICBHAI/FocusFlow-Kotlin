@@ -67,6 +67,7 @@ object Routes {
         val normalized = path
             ?.trim()
             ?.removePrefix("/")
+            ?.substringBefore("?")
             ?.substringBefore("/")
             .orEmpty()
         val route = when (normalized) {

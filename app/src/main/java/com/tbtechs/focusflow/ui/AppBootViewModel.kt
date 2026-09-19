@@ -140,11 +140,12 @@ class AppBootViewModel(
     }
 
     /**
-     * Retries the boot sequence after a transient failure.
-     * No-op if the DB is already ready or has been marked unrecoverable.
+     * Retries the boot sequence after a failure.
+     * No-op if the DB is already ready.
      */
     fun retry() {
-        if (_isDbReady.value || _isDbUnrecoverable.value) return
+        if (_isDbReady.value) return
+        _isDbUnrecoverable.value = false
         _isLoading.value = true
         runBootSequence()
     }

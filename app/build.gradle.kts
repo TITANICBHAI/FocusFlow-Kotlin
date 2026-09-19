@@ -11,7 +11,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.tbtechs.focusflow.ckfrkl"
+        applicationId = "com.tbtechs.focusflow.cijubo"
         minSdk = 26
         targetSdk = 35
         versionCode = 13

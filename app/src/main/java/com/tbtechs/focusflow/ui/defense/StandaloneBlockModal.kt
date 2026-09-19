@@ -11,12 +11,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,15 +47,17 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -109,7 +115,7 @@ fun StandaloneBlockModal(
 ) {
     if (!visible) return
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showStrongerBlockHint by remember { mutableStateOf(true) }
 
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var selected by remember(visible, blockedPackages) {
@@ -215,102 +221,178 @@ fun StandaloneBlockModal(
         }
     }
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onClose,
-        sheetState = sheetState,
-        containerColor = DarkBackground,
-        dragHandle = null,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = DarkBackground,
         ) {
-            // Header Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onClose) {
-                    Text("Cancel", color = DarkTextSecondary, fontSize = 15.sp)
-                }
-                Text(
-                    text = if (locked) "🔒 Block Active" else "Block Schedule",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextPrimary,
-                )
-                Button(
-                    onClick = ::save,
-                    enabled = selected.isNotEmpty() && until > System.currentTimeMillis(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = BrandPrimary,
-                        contentColor = Color.White,
-                        disabledContainerColor = DarkSurfaceVariant,
-                        disabledContentColor = DarkTextMuted,
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                ) {
-                    Text("Save", fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            HorizontalDivider(color = DarkBorder)
-
-            // Locked Warning Banner
-            if (locked) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                        .padding(14.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Lock,
-                            contentDescription = null,
-                            tint = Color(0xFFFBBF24),
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = "The expiry and existing blocked apps are locked. You can still add apps and extend the block.",
-                            fontSize = 13.sp,
-                            color = Color(0xFFFDE68A),
-                            lineHeight = 18.sp,
-                        )
+            Scaffold(
+                containerColor = DarkBackground,
+                contentWindowInsets = WindowInsets.statusBars,
+                topBar = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            TextButton(onClick = onClose) {
+                                Text("Cancel", color = DarkTextSecondary, fontSize = 15.sp)
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                if (locked) {
+                                    Icon(
+                                        Icons.Outlined.Lock,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFBBF24),
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                                Text(
+                                    text = if (locked) "Block Active" else "Standalone Blocking",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkTextPrimary,
+                                )
+                            }
+                            Button(
+                                onClick = ::save,
+                                enabled = selected.isNotEmpty() && until > System.currentTimeMillis(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = BrandPrimary,
+                                    contentColor = Color.White,
+                                    disabledContainerColor = DarkSurfaceVariant,
+                                    disabledContentColor = DarkTextMuted,
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text("Save", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        HorizontalDivider(color = DarkBorder)
                     }
-                }
-            }
-
-            errorMessage?.let { msg ->
-                Box(
+                },
+            ) { padding ->
+                LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFEF4444).copy(alpha = 0.15f))
-                        .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                        .padding(12.dp),
+                        .fillMaxSize()
+                        .padding(padding),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
-                    Text(msg, color = Color(0xFFFCA5A5), fontSize = 13.sp)
-                }
-            }
+                    // Locked Warning Banner
+                    if (locked) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
+                                    .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                    .padding(14.dp),
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Lock,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFBBF24),
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Text(
+                                        text = "The expiry and existing blocked apps are locked. You can still add apps and extend the block.",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFFDE68A),
+                                        lineHeight = 18.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
+                    errorMessage?.let { msg ->
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFEF4444).copy(alpha = 0.15f))
+                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                    .padding(12.dp),
+                            ) {
+                                Text(msg, color = Color(0xFFFCA5A5), fontSize = 13.sp)
+                            }
+                        }
+                    }
+
+                    if (showStrongerBlockHint) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(BrandPrimary.copy(alpha = 0.10f))
+                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                    .padding(14.dp),
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Shield,
+                                        contentDescription = null,
+                                        tint = BrandPrimary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Text(
+                                            text = "Want a stronger block?",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkTextPrimary,
+                                        )
+                                        Text(
+                                            text = "1. Select Settings in this app list.\n2. In the Defense tab, turn on Protect system controls.",
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp,
+                                            color = DarkTextSecondary,
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { showStrongerBlockHint = false },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = "Dismiss",
+                                            tint = DarkTextMuted,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 // Expiry & Quick Extension Controls
                 item {
                     Column(
@@ -726,6 +808,7 @@ fun StandaloneBlockModal(
             }
         }
     }
+}
 
     if (confirmClear) {
         AlertDialog(

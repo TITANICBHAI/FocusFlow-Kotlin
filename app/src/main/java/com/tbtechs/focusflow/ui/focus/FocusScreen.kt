@@ -297,6 +297,7 @@ fun FocusScreen(
 
     Scaffold(
         containerColor = DarkBackground,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = {
@@ -800,7 +801,7 @@ private fun ReadyToFocusPanel(
                             color = DarkTextPrimary,
                         )
                         Text(
-                            "Start a standalone block or recurring schedule",
+                            "Start standalone blocking independent of a schedule",
                             fontSize = 12.sp,
                             color = DarkTextSecondary,
                         )

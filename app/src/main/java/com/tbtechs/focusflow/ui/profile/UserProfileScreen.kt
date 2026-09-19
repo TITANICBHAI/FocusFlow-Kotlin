@@ -628,7 +628,7 @@ fun UserProfileScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(40.dp))
         }
     }
 

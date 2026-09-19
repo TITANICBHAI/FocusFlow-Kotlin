@@ -1,10 +1,13 @@
 package com.tbtechs.focusflow.ui.stats
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -16,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -29,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.ui.TaskViewModel
@@ -122,15 +127,19 @@ fun ReportScreen(
     }
     val title = if (reportType == ReportType.Week) "${range.first.format(DateTimeFormatter.ofPattern("MMM d"))} – ${range.second.format(DateTimeFormatter.ofPattern("MMM d, uuuu"))}" else referenceDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, uuuu"))
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Column { Text(if (reportType == ReportType.Week) "WEEKLY REPORT" else "DAILY REPORT", style = MaterialTheme.typography.labelLarge); Text(title) } },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Go back") } },
-        )
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Column { Text(if (reportType == ReportType.Week) "WEEKLY REPORT" else "DAILY REPORT", style = MaterialTheme.typography.labelLarge); Text(title) } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Go back") } },
+            )
+        },
+    ) { padding ->
         when {
             loading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
@@ -138,7 +147,7 @@ fun ReportScreen(
             }
             loadError != null -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -150,7 +159,11 @@ fun ReportScreen(
                 }
             }
             else -> {
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     item {
                         Card {
                             Text("THE TAKEAWAY", style = MaterialTheme.typography.labelLarge)

@@ -176,6 +176,7 @@ fun DefenseScreen(
 
     Scaffold(
         containerColor = DarkBackground,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = {

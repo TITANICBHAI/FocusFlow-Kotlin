@@ -1,8 +1,10 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Analytics
@@ -73,7 +75,10 @@ fun StatsInsightsExperience(
             StatsLoadState.Unavailable -> UnavailableGate()
             is StatsLoadState.Error -> ErrorStats(onRetry = statsViewModel::reload)
             StatsLoadState.Ready -> snapshot?.let { loaded ->
-                LazyColumn(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = androidx.compose.ui.Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                ) {
                     item {
                         if (window == ANALYTICS_WEEK) {
                             weeklyStandout?.let { InsightCardView(it) }

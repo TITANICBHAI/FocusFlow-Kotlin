@@ -13,6 +13,7 @@ import com.tbtechs.focusflow.data.model.StandaloneBlockConfig
 import com.tbtechs.focusflow.data.repository.AllowanceUsage
 import com.tbtechs.focusflow.data.repository.AllowanceSnapshot
 import com.tbtechs.focusflow.data.repository.SettingsRepository
+import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.FocusPinManager
 import com.tbtechs.focusflow.domain.PinReuseTracker
@@ -72,18 +73,18 @@ class SettingsViewModel(
      * privacy and onboarding screens. They are exposed separately from
      * AppSettings because these flags control routing rather than enforcement.
      */
-    val privacyAccepted: StateFlow<Boolean> = persistedFlag("privacy_accepted")
-    val onboardingComplete: StateFlow<Boolean> = persistedFlag("onboarding_complete")
+    val privacyAccepted: StateFlow<Boolean> = persistedFlag(SetupPersistenceManager.KEY_PRIVACY_ACCEPTED)
+    val onboardingComplete: StateFlow<Boolean> = persistedFlag(SetupPersistenceManager.KEY_ONBOARDING_COMPLETE)
 
     private fun persistedFlag(key: String): StateFlow<Boolean> = flow {
         while (true) {
-            emit(prefs.getString(key, null) == "true")
+            emit(settingsRepository.setupPersistence.readDurableFlag(key))
             delay(250)
         }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
-        initialValue = false,
+        initialValue = settingsRepository.setupPersistence.readDurableFlag(key),
     )
 
     /**

@@ -156,6 +156,8 @@ class SettingsRepository(context: Context) {
             Context.MODE_PRIVATE,
         )
 
+    val setupPersistence = SetupPersistenceManager(context)
+
     /**
      * Small typed escape hatch for metadata that is not enforcement state.
      *
@@ -163,11 +165,25 @@ class SettingsRepository(context: Context) {
      * directly so a legacy value stored under the key with another type does
      * not crash the app. The next putString call replaces that legacy value.
      */
-    fun getString(key: String): String? = prefs.all[key] as? String
+    fun getString(key: String): String? {
+        return when (key) {
+            SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> if (setupPersistence.isPrivacyAccepted()) "true" else "false"
+            SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> if (setupPersistence.isOnboardingComplete()) "true" else "false"
+            SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> if (setupPersistence.isUserConsentedBackgroundService()) "true" else "false"
+            SetupPersistenceManager.KEY_PROTECTION_MODE -> setupPersistence.getProtectionMode()
+            else -> prefs.all[key] as? String
+        }
+    }
 
     fun putString(key: String, value: String) {
         if (!prefs.edit().putString(key, value).commit()) {
             throw IllegalStateException("WRITE_FAILED: settings string commit() returned false")
+        }
+        when (key) {
+            SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> setupPersistence.setPrivacyAccepted(value == "true")
+            SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> setupPersistence.setOnboardingComplete(value == "true")
+            SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> setupPersistence.setUserConsentedBackgroundService(value == "true")
+            SetupPersistenceManager.KEY_PROTECTION_MODE -> setupPersistence.setProtectionMode(value)
         }
     }
 

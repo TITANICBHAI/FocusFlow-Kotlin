@@ -63,6 +63,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.model.AppSettings
+import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.permissions.AccessibilityRestrictedRecovery
@@ -530,13 +531,9 @@ fun OnboardingScreen(
                             step = OnboardingStep.OPTIONAL
                         } else {
                             settingsViewModel.updateSettings(settings.copy(pinProtectionEnabled = pinChoice))
-                            context.getSharedPreferences(
-                                AppBlockerAccessibilityService.PREFS_NAME,
-                                0,
-                            ).edit()
-                                .putString("user_consented_background_service", "true")
-                                .putString("onboarding_complete", "true")
-                                .apply()
+                            val setupPersistence = SetupPersistenceManager(context)
+                            setupPersistence.setUserConsentedBackgroundService(true)
+                            setupPersistence.setOnboardingComplete(true)
                             onFinished()
                         }
                     },

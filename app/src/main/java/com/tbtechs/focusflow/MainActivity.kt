@@ -47,6 +47,7 @@ import com.tbtechs.focusflow.ui.stats.StatsViewModel
 import com.tbtechs.focusflow.ui.support.DiagnosticLogEntry
 import com.tbtechs.focusflow.ui.support.DiagnosticLogLevel
 import com.tbtechs.focusflow.ui.support.DiagnosticsModal
+import com.tbtechs.focusflow.ui.splash.FocusFlowSplashOverlay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedRoute = routeFromIntent(intent)
+        setTheme(R.style.Theme_FocusFlow)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             FocusFlowRoot(
@@ -191,6 +193,9 @@ private fun FocusFlowRoot(
 
     LaunchedEffect(requestedRoute, isDbReady, privacyAccepted, onboardingComplete) {
         if (!isDbReady) return@LaunchedEffect
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        val isCurrentlyInHowToUse = currentRoute?.contains(Routes.HOW_TO_USE) == true
+
         val guardedRoute = when {
             !privacyAccepted && requestedRoute != Routes.PRIVACY_POLICY -> Routes.PRIVACY_POLICY
             privacyAccepted && !onboardingComplete &&
@@ -198,8 +203,15 @@ private fun FocusFlowRoot(
                 requestedRoute != Routes.ONBOARDING -> Routes.ONBOARDING
             else -> requestedRoute
         }
+
+        // When user just completed onboarding and is viewing the How-To-Use onboarding tour,
+        // do not yank them away to HOME.
+        if (isCurrentlyInHowToUse && onboardingComplete) {
+            return@LaunchedEffect
+        }
+
         if (guardedRoute != Routes.HOME &&
-            navController.currentBackStackEntry?.destination?.route != guardedRoute
+            currentRoute != guardedRoute
         ) {
             navController.navigate(guardedRoute) {
                 launchSingleTop = true
@@ -276,9 +288,10 @@ private fun FocusFlowRoot(
                     },
                 )
             }
-            if (isLoading && !isDbReady) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
+            FocusFlowSplashOverlay(
+                visible = isLoading || !isDbReady,
+                modifier = Modifier.fillMaxSize(),
+            )
 
             networkSettings?.let { policy ->
                 VpnPermissionLostBanner(
