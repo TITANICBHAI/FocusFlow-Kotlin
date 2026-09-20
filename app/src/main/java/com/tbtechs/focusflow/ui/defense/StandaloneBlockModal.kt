@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -37,6 +36,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -59,7 +59,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
@@ -154,7 +153,9 @@ fun StandaloneBlockModal(
     var clearPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var loadingApps by remember { mutableStateOf(false) }
-    var configuringAllowanceApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
+    var expandedAllowancePackage by remember(visible, dailyAllowanceEntries) {
+        mutableStateOf(dailyAllowanceEntries.firstOrNull()?.packageName)
+    }
 
     LaunchedEffect(visible) {
         if (!visible) return@LaunchedEffect
@@ -235,6 +236,18 @@ fun StandaloneBlockModal(
             }
             else -> commitSave(null)
         }
+    }
+
+    fun createAllowance(packageName: String) {
+        allowances = allowances + (
+            packageName to DailyAllowanceEntry(
+                packageName = packageName,
+                dailyAllowanceMs = 30L * 60_000L,
+                mode = "time_budget",
+                budgetMinutes = 30,
+            )
+        )
+        expandedAllowancePackage = packageName
     }
 
     Dialog(
@@ -549,7 +562,31 @@ fun StandaloneBlockModal(
                             letterSpacing = 0.8.sp,
                         )
 
-                        if (presets.isNotEmpty()) {
+                        if (presets.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(DarkCard)
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                                    .padding(14.dp),
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        "No presets saved yet",
+                                        color = DarkTextPrimary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        "Select apps below, then save the current selection as a preset.",
+                                        color = DarkTextSecondary,
+                                        fontSize = 12.sp,
+                                        lineHeight = 17.sp,
+                                    )
+                                }
+                            }
+                        } else {
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -668,8 +705,8 @@ fun StandaloneBlockModal(
                             onClick = { advanced = !advanced },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .defaultMinSize(minHeight = 44.dp),
-                            shape = RoundedCornerShape(14.dp),
+                                .height(56.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = DarkCard,
                                 contentColor = DarkTextPrimary,
@@ -769,7 +806,11 @@ fun StandaloneBlockModal(
                             ),
                         )
                         Text(
-                            text = "${selected.size} app${if (selected.size == 1) "" else "s"} will be blocked — tap to toggle",
+                            text = if (selected.isEmpty()) {
+                                "Tap apps below to block them"
+                            } else {
+                                "${selected.size} app${if (selected.size == 1) "" else "s"} selected — tap to toggle"
+                            },
                             fontSize = 13.sp,
                             color = DarkTextSecondary,
                             fontWeight = FontWeight.Medium,
@@ -852,7 +893,7 @@ fun StandaloneBlockModal(
                                 .background(DarkCard)
                                 .border(
                                     1.dp,
-                                    if (isBlocked) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
+                                    if (isBlocked) BrandPrimary.copy(alpha = 0.45f) else DarkBorder,
                                     RoundedCornerShape(16.dp),
                                 ),
                         ) {
@@ -879,29 +920,10 @@ fun StandaloneBlockModal(
                                         color = DarkTextMuted,
                                     )
                                 }
-                                if (isBlocked) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFFEF4444)),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Block,
-                                            contentDescription = "Blocked",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(15.dp),
-                                        )
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(22.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .border(1.5.dp, DarkTextMuted, RoundedCornerShape(6.dp)),
-                                    )
-                                }
+                                AppSelectionIndicator(
+                                    selected = isBlocked,
+                                    locked = locked && isBlocked,
+                                )
                             }
                         }
                     }
@@ -922,7 +944,7 @@ fun StandaloneBlockModal(
                                 .background(DarkCard)
                                 .border(
                                     1.dp,
-                                    if (isBlocked) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
+                                    if (isBlocked) BrandPrimary.copy(alpha = 0.45f) else DarkBorder,
                                     RoundedCornerShape(16.dp),
                                 ),
                         ) {
@@ -960,29 +982,10 @@ fun StandaloneBlockModal(
                                     }
                                 }
                                 Spacer(Modifier.width(8.dp))
-                                if (isBlocked) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFFEF4444)),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Block,
-                                            contentDescription = "Blocked",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(15.dp),
-                                        )
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(22.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .border(1.5.dp, DarkTextMuted, RoundedCornerShape(6.dp)),
-                                    )
-                                }
+                                AppSelectionIndicator(
+                                    selected = isBlocked,
+                                    locked = locked && isBlocked,
+                                )
                             }
 
                             HorizontalDivider(
@@ -991,35 +994,47 @@ fun StandaloneBlockModal(
                                 modifier = Modifier.padding(horizontal = 14.dp),
                             )
 
-                            // Sub-row 1: Daily allowance
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { configuringAllowanceApp = app }
-                                    .padding(horizontal = 14.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    Icons.Outlined.WbSunny,
-                                    contentDescription = null,
-                                    tint = if (allowance != null) Color(0xFFF59E0B) else DarkTextMuted,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                                Text(
-                                    text = if (allowance == null) {
-                                        "Add daily allowance"
-                                    } else {
-                                        when (allowance.mode) {
-                                            "count" -> "${allowance.countPerDay} launches / day"
-                                            "interval" -> "Every ${allowance.intervalMinutes}m"
-                                            else -> "${allowance.budgetMinutes}m daily allowance"
-                                        }
+                            // Daily allowance is an inline editor, matching the picker reference.
+                            if (allowance != null && expandedAllowancePackage == app.packageName) {
+                                InlineAllowanceEditor(
+                                    entry = allowance,
+                                    onUpdate = { updated ->
+                                        allowances = allowances + (app.packageName to updated)
                                     },
-                                    fontSize = 11.5.sp,
-                                    color = if (allowance != null) Color(0xFFFBBF24) else DarkTextSecondary,
-                                    modifier = Modifier.weight(1f),
+                                    onRemove = {
+                                        allowances = allowances - app.packageName
+                                        expandedAllowancePackage = null
+                                    },
                                 )
+                            } else {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(DarkSurfaceVariant.copy(alpha = 0.9f))
+                                        .clickable {
+                                            if (allowance == null) {
+                                                createAllowance(app.packageName)
+                                            } else {
+                                                expandedAllowancePackage = app.packageName
+                                            }
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.WbSunny,
+                                        contentDescription = null,
+                                        tint = if (allowance != null) Color(0xFFF59E0B) else DarkTextMuted,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Text(
+                                        text = if (allowance == null) "Add daily allowance" else allowanceSummary(allowance),
+                                        fontSize = 11.5.sp,
+                                        color = if (allowance != null) Color(0xFFFBBF24) else DarkTextSecondary,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
                             }
 
                             HorizontalDivider(
@@ -1032,10 +1047,11 @@ fun StandaloneBlockModal(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .background(DarkSurfaceVariant.copy(alpha = 0.9f))
                                     .clickable(enabled = !locked) {
                                         vpn = vpn.toggle(app.packageName, locked)
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 5.dp),
+                                    .padding(horizontal = 14.dp, vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -1177,21 +1193,39 @@ fun StandaloneBlockModal(
         )
     }
 
-    configuringAllowanceApp?.let { app ->
-        StandaloneAllowanceDialog(
-            app = app,
-            currentEntry = allowances[app.packageName],
-            locked = locked,
-            onConfirm = { entry ->
-                allowances = allowances + (app.packageName to entry)
-                configuringAllowanceApp = null
-            },
-            onRemove = {
-                allowances = allowances - app.packageName
-                configuringAllowanceApp = null
-            },
-            onDismiss = { configuringAllowanceApp = null },
-        )
+}
+
+@Composable
+private fun AppSelectionIndicator(
+    selected: Boolean,
+    locked: Boolean,
+) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(
+                when {
+                    selected && locked -> DarkTextMuted
+                    selected -> BrandPrimary
+                    else -> Color(0xFFF4F4F5)
+                },
+            )
+            .border(
+                width = if (selected) 0.dp else 1.dp,
+                color = if (selected) Color.Transparent else Color(0xFFD1D5DB),
+                shape = RoundedCornerShape(6.dp),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Icon(
+                Icons.Outlined.Check,
+                contentDescription = "Selected",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -1225,6 +1259,228 @@ private fun ExpiryLockedChip(
                 maxLines = 1,
             )
         }
+    }
+}
+
+private fun allowanceSummary(entry: DailyAllowanceEntry): String =
+    when (entry.mode) {
+        "count" -> "${entry.countPerDay}×/day"
+        "interval" -> "${entry.intervalMinutes} min every ${entry.intervalHours} hr"
+        else -> "${entry.budgetMinutes} min/day"
+    }
+
+@Composable
+private fun InlineAllowanceEditor(
+    entry: DailyAllowanceEntry,
+    onUpdate: (DailyAllowanceEntry) -> Unit,
+    onRemove: () -> Unit,
+) {
+    fun update(
+        mode: String = entry.mode,
+        count: Int = entry.countPerDay,
+        budgetMinutes: Int = entry.budgetMinutes,
+        intervalMinutes: Int = entry.intervalMinutes,
+        intervalHours: Int = entry.intervalHours,
+    ) {
+        val dailyAllowanceMs = when (mode) {
+            "count" -> 0L
+            "interval" -> intervalMinutes.coerceAtLeast(1).toLong() * 60_000L
+            else -> budgetMinutes.coerceAtLeast(1).toLong() * 60_000L
+        }
+        onUpdate(
+            entry.copy(
+                mode = mode,
+                countPerDay = count.coerceAtLeast(1),
+                budgetMinutes = budgetMinutes.coerceAtLeast(1),
+                intervalMinutes = intervalMinutes.coerceAtLeast(1),
+                intervalHours = intervalHours.coerceAtLeast(1),
+                dailyAllowanceMs = dailyAllowanceMs,
+            ),
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF272727))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.WbSunny,
+                    contentDescription = null,
+                    tint = Color(0xFFF59E0B),
+                    modifier = Modifier.size(15.dp),
+                )
+                Text(
+                    "Daily allowance:",
+                    color = Color(0xFFF59E0B),
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                allowanceSummary(entry),
+                color = Color(0xFFFBBF24),
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(26.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Remove daily allowance",
+                    tint = DarkTextMuted,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AllowanceModeButton(
+                label = "Count",
+                selected = entry.mode == "count",
+                onClick = { update(mode = "count") },
+                modifier = Modifier.weight(1f),
+            )
+            AllowanceModeButton(
+                label = "Time",
+                selected = entry.mode == "time_budget",
+                onClick = { update(mode = "time_budget") },
+                modifier = Modifier.weight(1f),
+            )
+            AllowanceModeButton(
+                label = "Interval",
+                selected = entry.mode == "interval",
+                onClick = { update(mode = "interval") },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        when (entry.mode) {
+            "count" -> AllowanceStepperRow(
+                label = "Opens per day",
+                value = "${entry.countPerDay}",
+                onDecrease = { update(count = entry.countPerDay - 1) },
+                onIncrease = { update(count = entry.countPerDay + 1) },
+            )
+            "interval" -> {
+                AllowanceStepperRow(
+                    label = "Minutes per window",
+                    value = "${entry.intervalMinutes} min",
+                    onDecrease = { update(intervalMinutes = entry.intervalMinutes - 1) },
+                    onIncrease = { update(intervalMinutes = entry.intervalMinutes + 1) },
+                )
+                AllowanceStepperRow(
+                    label = "Window size",
+                    value = "${entry.intervalHours} hr",
+                    onDecrease = { update(intervalHours = entry.intervalHours - 1) },
+                    onIncrease = { update(intervalHours = entry.intervalHours + 1) },
+                )
+            }
+            else -> AllowanceStepperRow(
+                label = "Minutes per day",
+                value = "${entry.budgetMinutes} min",
+                onDecrease = { update(budgetMinutes = entry.budgetMinutes - 1) },
+                onIncrease = { update(budgetMinutes = entry.budgetMinutes + 1) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AllowanceModeButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(38.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) Color(0xFF30271D) else Color(0xFFF4F4F5))
+            .border(
+                width = 1.dp,
+                color = if (selected) Color(0xFFF59E0B) else Color.Transparent,
+                shape = RoundedCornerShape(9.dp),
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = if (selected) Color(0xFFF59E0B) else Color(0xFF8B929C),
+            fontSize = 11.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun AllowanceStepperRow(
+    label: String,
+    value: String,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            color = DarkTextSecondary,
+            fontSize = 12.5.sp,
+        )
+        StepperButton(icon = Icons.Outlined.Remove, contentDescription = "Decrease", onClick = onDecrease)
+        Text(
+            value,
+            modifier = Modifier.width(64.dp),
+            color = Color(0xFFFBBF24),
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        StepperButton(icon = Icons.Outlined.Add, contentDescription = "Increase", onClick = onIncrease)
+    }
+}
+
+@Composable
+private fun StepperButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.7f), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = Color(0xFFF59E0B),
+            modifier = Modifier.size(14.dp),
+        )
     }
 }
 

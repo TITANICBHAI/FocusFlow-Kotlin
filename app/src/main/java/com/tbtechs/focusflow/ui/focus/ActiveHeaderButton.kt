@@ -214,8 +214,10 @@ fun ActiveStatusIndicator(
 }
 
 /**
- * Realistic ECG heart pulse monitor that renders a medical electrocardiogram
- * waveform with a sweeping glowing pulse line and cardiac beat, replacing any static dot.
+ * Small, quiet protection-status mark used in the top app bars.
+ *
+ * The status remains tappable, but the indicator itself stays visually simple
+ * so it reads as a navigation/status icon rather than a second control.
  */
 @Composable
 private fun EcgHeartPulseMonitor(
@@ -223,180 +225,39 @@ private fun EcgHeartPulseMonitor(
     activeCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "ecgSweep")
-
-    // ECG sweep cycle duration depends on status:
-    // Active = brisk cardiac rhythm (1100ms)
-    // Warning = rapid alert rhythm (850ms)
-    // Inactive = slow calm resting rhythm (1600ms)
-    val sweepDuration = when (level) {
-        ActiveStatusLevel.ACTIVE -> 1100
-        ActiveStatusLevel.WARNING -> 850
-        ActiveStatusLevel.INACTIVE -> 1600
+    val traceColor = when (level) {
+        ActiveStatusLevel.WARNING -> Color(0xFFFBBF24)
+        ActiveStatusLevel.ACTIVE,
+        ActiveStatusLevel.INACTIVE,
+        -> Color(0xFFD7DBE5)
     }
 
-    val sweepProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = sweepDuration, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "sweepProgress",
-    )
-
-    // Pulse peak bounce for cardiac contraction
-    val pulseBounce by infiniteTransition.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = sweepDuration / 2, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulseBounce",
-    )
-
-    val (traceColor, glowColor, screenBg, borderColor) = when (level) {
-        ActiveStatusLevel.ACTIVE -> Quadruple(
-            Color(0xFF10B981), // Emerald green
-            Color(0xFF34D399),
-            Color(0xFF021B14),
-            Color(0xFF059669).copy(alpha = 0.45f),
-        )
-        ActiveStatusLevel.WARNING -> Quadruple(
-            Color(0xFFF59E0B), // Electric amber
-            Color(0xFFFBBF24),
-            Color(0xFF1F1203),
-            Color(0xFFD97706).copy(alpha = 0.5f),
-        )
-        ActiveStatusLevel.INACTIVE -> Quadruple(
-            Color(0xFF64748B), // Slate resting trace
-            Color(0xFF94A3B8),
-            Color(0xFF0B111A),
-            Color(0xFF334155).copy(alpha = 0.4f),
-        )
-    }
-
-    Box(
-        modifier = modifier
-            .height(28.dp)
-            .width(52.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(screenBg)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        contentAlignment = Alignment.Center,
+    androidx.compose.foundation.Canvas(
+        modifier = modifier.size(width = 36.dp, height = 28.dp),
     ) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            val midY = height * 0.52f
-
-            // Baseline & ECG Heart Pulse Waveform definition:
-            // P-wave, PR-segment, Q-dip, R-tall peak, S-dip, ST-segment, T-wave
-            val rHeight = when (level) {
-                ActiveStatusLevel.ACTIVE -> height * 0.44f * pulseBounce
-                ActiveStatusLevel.WARNING -> height * 0.40f * pulseBounce
-                ActiveStatusLevel.INACTIVE -> height * 0.30f
-            }
-            val pHeight = height * 0.12f
-            val qDip = height * 0.10f
-            val sDip = height * 0.20f
-            val tHeight = height * 0.16f
-
-            // Sample points along the ECG normalized X [0f .. 1f]
-            val points = listOf(
-                0.00f to midY,
-                0.15f to midY,
-                0.22f to (midY - pHeight), // P-wave peak
-                0.30f to midY,             // PR segment
-                0.38f to midY,
-                0.42f to (midY + qDip),    // Q-dip
-                0.48f to (midY - rHeight), // R-spike (sharp tall peak)
-                0.54f to (midY + sDip),    // S-dip
-                0.60f to midY,             // ST segment
-                0.70f to (midY - tHeight), // T-wave peak
-                0.80f to midY,             // Return to isoelectric line
-                1.00f to midY,             // Trailing baseline
-            )
-
-            // Build complete ECG path
-            val ecgPath = androidx.compose.ui.graphics.Path().apply {
-                moveTo(points[0].first * width, points[0].second)
-                for (i in 1 until points.size) {
-                    val prev = points[i - 1]
-                    val curr = points[i]
-                    // Smooth curve into peaks, sharp linear into Q-R-S
-                    if (i in 5..7) {
-                        lineTo(curr.first * width, curr.second)
-                    } else {
-                        val midX = (prev.first + curr.first) * 0.5f * width
-                        val midYVal = (prev.second + curr.second) * 0.5f
-                        quadraticBezierTo(prev.first * width, prev.second, midX, midYVal)
-                        lineTo(curr.first * width, curr.second)
-                    }
-                }
-            }
-
-            // 1. Draw ambient background trace (resting ECG trace line)
-            drawPath(
-                path = ecgPath,
-                color = traceColor.copy(alpha = if (level == ActiveStatusLevel.INACTIVE) 0.35f else 0.25f),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 1.5.dp.toPx(),
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
-                ),
-            )
-
-            // 2. Calculate the sweeping pulse coordinate (X, Y)
-            val sweepX = sweepProgress * width
-            // Interpolate Y from points
-            var sweepY = midY
-            for (i in 0 until points.size - 1) {
-                val p1 = points[i]
-                val p2 = points[i + 1]
-                val x1 = p1.first * width
-                val x2 = p2.first * width
-                if (sweepX in x1..x2 && x2 > x1) {
-                    val t = (sweepX - x1) / (x2 - x1)
-                    sweepY = p1.second + t * (p2.second - p1.second)
-                    break
-                }
-            }
-
-            // 3. Draw active lit portion trailing the sweep beam
-            val trailLength = width * 0.45f
-            val trailStart = (sweepX - trailLength).coerceAtLeast(0f)
-
-            // Draw glowing pulse dot at the leading head of the ECG wave
-            if (level != ActiveStatusLevel.INACTIVE || sweepProgress < 0.95f) {
-                // Outer phosphor glow aura
-                drawCircle(
-                    color = glowColor.copy(alpha = 0.40f),
-                    radius = 3.5.dp.toPx(),
-                    center = androidx.compose.ui.geometry.Offset(sweepX, sweepY),
-                )
-                // Bright intense core
-                drawCircle(
-                    color = Color.White,
-                    radius = 1.5.dp.toPx(),
-                    center = androidx.compose.ui.geometry.Offset(sweepX, sweepY),
-                )
-            }
-
-            // Draw a subtle vertical CRT scan sweep bar
-            drawLine(
-                color = glowColor.copy(alpha = 0.20f),
-                start = androidx.compose.ui.geometry.Offset(sweepX, 0f),
-                end = androidx.compose.ui.geometry.Offset(sweepX, height),
-                strokeWidth = 1.dp.toPx(),
-            )
+        val width = size.width
+        val height = size.height
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(1.dp.toPx(), height * 0.58f)
+            lineTo(width * 0.22f, height * 0.58f)
+            lineTo(width * 0.34f, height * 0.58f)
+            lineTo(width * 0.42f, height * 0.28f)
+            lineTo(width * 0.51f, height * 0.82f)
+            lineTo(width * 0.62f, height * 0.12f)
+            lineTo(width * 0.72f, height * 0.58f)
+            lineTo(width * 0.99f, height * 0.58f)
         }
+        drawPath(
+            path = path,
+            color = traceColor,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = 2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                join = androidx.compose.ui.graphics.StrokeJoin.Round,
+            ),
+        )
     }
 }
-
-private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 /** Backward-compatible alias for existing call sites. */
 @Composable

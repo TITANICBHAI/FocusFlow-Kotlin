@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,8 +51,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -220,7 +219,7 @@ fun DefenseScreen(
                         onOpenActiveBlocks = onOpenActiveBlocks,
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkCard),
             )
         },
     ) { padding ->
@@ -877,15 +876,33 @@ private fun SettingSwitch(
                 color = DarkTextSecondary,
             )
         }
-        Switch(
+        CompactToggle(
             checked = checked,
             onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = BrandPrimary,
-                uncheckedThumbColor = DarkTextMuted,
-                uncheckedTrackColor = DarkSurfaceVariant,
-            ),
+        )
+    }
+}
+
+@Composable
+private fun CompactToggle(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(width = 42.dp, height = 24.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (checked) BrandPrimary else DarkSurfaceVariant)
+            .clickable { onCheckedChange(!checked) }
+            .padding(2.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .offset(x = if (checked) 18.dp else 0.dp)
+                .clip(CircleShape)
+                .background(Color.White),
         )
     }
 }
