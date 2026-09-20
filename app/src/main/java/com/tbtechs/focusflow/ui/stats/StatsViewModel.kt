@@ -10,6 +10,8 @@ import com.tbtechs.focusflow.analytics.AnalyticsProcessor
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 import com.tbtechs.focusflow.analytics.AnalyticsWindow
 import com.tbtechs.focusflow.analytics.ANALYTICS_THREE_MONTHS
+import com.tbtechs.focusflow.analytics.ANALYTICS_ALL_TIME
+import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.InsightCard
 import com.tbtechs.focusflow.analytics.InsightEngine
@@ -58,7 +60,7 @@ class StatsViewModel(
     }
 
     fun setWindow(window: AnalyticsWindow) {
-        if (window !in setOf("yesterday", ANALYTICS_WEEK, ANALYTICS_THREE_MONTHS)) return
+        if (window !in setOf("yesterday", ANALYTICS_TODAY, ANALYTICS_WEEK, ANALYTICS_THREE_MONTHS, ANALYTICS_ALL_TIME)) return
         _activeWindow.value = window
         reload()
     }

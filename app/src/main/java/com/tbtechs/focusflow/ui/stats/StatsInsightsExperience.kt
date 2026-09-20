@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -14,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
@@ -23,9 +24,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.analytics.ANALYTICS_THREE_MONTHS
+import com.tbtechs.focusflow.analytics.ANALYTICS_ALL_TIME
+import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
 import com.tbtechs.focusflow.analytics.AnalyticsWindow
@@ -38,11 +42,13 @@ fun StatsInsightsExperience(
     statsViewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory),
     onOpenUsageAccessSettings: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
+    onOpenQuickBlock: (String?) -> Unit = {},
 ) {
     val snapshot by statsViewModel.analyticsSnapshot.collectAsState()
     val insights by statsViewModel.insightCards.collectAsState()
     val weeklyStandout by statsViewModel.weeklyStandout.collectAsState()
     val achievements by statsViewModel.achievementState.collectAsState()
+    val lifetime by statsViewModel.lifetimeStats.collectAsState()
     val state by statsViewModel.loadState.collectAsState()
     val window by statsViewModel.activeWindow.collectAsState()
     val settingsRepository = remember { AppModule.settingsRepository }
@@ -87,20 +93,37 @@ fun StatsInsightsExperience(
                         if (loaded.tasks.total == 0 && loaded.sessions.total == 0 && loaded.blocking.totalAttempts == 0 && window != ANALYTICS_THREE_MONTHS) {
                             EmptyStatsState(window)
                         }
+                        FocusTimeHero(loaded)
                         insights
                             .filter { it.id != weeklyStandout?.id }
                             .forEach { InsightCardView(it) }
                         when (window) {
+                            ANALYTICS_TODAY -> {
+                                TaskSummary(loaded)
+                                TaskResultList(loaded, title = "TODAY'S TASKS")
+                                ProductivityHeatmap(loaded)
+                            }
+                            ANALYTICS_ALL_TIME -> {
+                                AllTimeStats(
+                                    snapshot = loaded,
+                                    lifetime = lifetime,
+                                    earnedAchievementCount = achievements?.earnedIds?.size ?: 0,
+                                )
+                                TaskSummary(loaded)
+                                ProductivityHeatmap(loaded)
+                            }
                             ANALYTICS_WEEK -> {
                                 PresenceStrip(loaded)
+                                ProductivityHeatmap(loaded)
                                 TaskSummary(loaded)
                             }
                             ANALYTICS_YESTERDAY -> TaskResultList(loaded)
                             ANALYTICS_THREE_MONTHS -> {
-                                PhoneUsageSummary(loaded)
+                                PhoneUsageSummary(loaded, onQuickBlock)
                                 TrendChart(loaded)
                             }
                         }
+                        TemptationStats(loaded, onQuickBlock)
                         if (window != ANALYTICS_THREE_MONTHS) {
                             achievements?.let { AchievementRow(it) }
                         }
@@ -112,16 +135,29 @@ fun StatsInsightsExperience(
 }
 
 @Composable
-private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (AnalyticsWindow) -> Unit) =
-    SingleChoiceSegmentedButtonRow(modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
-        listOf(ANALYTICS_YESTERDAY to "Yesterday", ANALYTICS_WEEK to "This Week", ANALYTICS_THREE_MONTHS to "3 Months").forEachIndexed { index, (window, label) ->
+private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (AnalyticsWindow) -> Unit) {
+    val windows = listOf(
+        ANALYTICS_YESTERDAY to "Yesterday",
+        ANALYTICS_TODAY to "Today",
+        ANALYTICS_WEEK to "Week",
+        ANALYTICS_THREE_MONTHS to "3 Months",
+        ANALYTICS_ALL_TIME to "All Time",
+    )
+    Row(
+        modifier = androidx.compose.ui.Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+    ) {
+        windows.forEachIndexed { index, (window, label) ->
             SegmentedButton(
                 selected = activeWindow == window,
                 onClick = { onSelect(window) },
-                shape = SegmentedButtonDefaults.itemShape(index, 3),
+                modifier = androidx.compose.ui.Modifier.width(112.dp),
+                shape = SegmentedButtonDefaults.itemShape(index, windows.size),
             ) { Text(label) }
         }
     }
+}
 
 @Composable
 private fun LoadingStats() = Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
@@ -138,6 +174,8 @@ private fun ErrorStats(onRetry: () -> Unit) = Column(modifier = androidx.compose
 
 private fun windowSubtitle(window: AnalyticsWindow): String = when (window) {
     ANALYTICS_YESTERDAY -> "The day that just ended"
-    ANALYTICS_THREE_MONTHS -> "What your routine has held over time"
+    ANALYTICS_TODAY -> "Your focus so far today"
+    ANALYTICS_ALL_TIME -> "The record you are building"
+    ANALYTICS_THREE_MONTHS -> "What your device use has held over time"
     else -> "The pattern forming this week"
 }

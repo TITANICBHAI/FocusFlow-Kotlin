@@ -8,9 +8,12 @@ import androidx.compose.runtime.Composable
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 
 @Composable
-fun TaskResultList(snapshot: AnalyticsSnapshot) = Card {
+fun TaskResultList(
+    snapshot: AnalyticsSnapshot,
+    title: String = "YESTERDAY'S TASKS",
+) = Card {
     Column {
-        Text("YESTERDAY'S TASKS", style = MaterialTheme.typography.labelLarge)
+        Text(title, style = MaterialTheme.typography.labelLarge)
         val rows = snapshot.tasks.resultRows.orEmpty()
         if (rows.isEmpty()) Text("No tasks were recorded yesterday.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         rows.forEach { row ->
