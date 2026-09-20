@@ -63,6 +63,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.tbtechs.focusflow.data.model.AllowedAppPreset
@@ -734,7 +735,7 @@ private fun AppPickerRow(
 }
 
 @Composable
-internal fun AppIcon(drawable: Drawable?) {
+internal fun AppIcon(drawable: Drawable?, size: Dp = 36.dp) {
     val bitmap = remember(drawable) {
         runCatching { drawable?.toBitmap()?.asImageBitmap() }.getOrNull()
     }
@@ -742,13 +743,13 @@ internal fun AppIcon(drawable: Drawable?) {
         Image(
             bitmap = bitmap,
             contentDescription = null,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(size),
             contentScale = ContentScale.Fit,
         )
     } else {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(size)
                 .clip(RoundedCornerShape(8.dp))
                 .background(DarkSurfaceVariant),
             contentAlignment = Alignment.Center,

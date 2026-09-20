@@ -1,0 +1,111 @@
+Implement the FocusFlow branded splash animation in the CURRENT Kotlin Android app.
+
+IMPORTANT PROJECT BOUNDARY:
+- The folder `ARCHIVED_DO_NOT_INSPECT` exists alongside the current app/project.
+- DO NOT inspect, read, search, index, copy from, or modify anything inside `ARCHIVED_DO_NOT_INSPECT`.
+- Treat that folder as completely off-limits.
+- Work only with the active Kotlin Android app and its existing resources/code.
+- Do not restructure unrelated parts of the application.
+
+GOAL:
+Recreate the splash sequence shown in the reference:
+
+1. Full-screen purple background.
+2. A circular, slightly lighter/translucent purple area appears in the center.
+3. Inside it, show a white shield-with-checkmark icon.
+4. The shield/logo appears FIRST.
+5. After the shield has appeared, animate in:
+   - `FocusFlow`
+   - `Your discipline operating system`
+6. The text should enter with a subtle upward movement + fade-in.
+7. The entire sequence should feel like a polished branded app splash, not a static screen.
+8. After the animation completes, transition cleanly into the normal app.
+
+VISUAL DETAILS:
+- Background: approximately `#6366F1` / the existing FocusFlow primary purple if the project already defines one.
+- Center logo circle: a lighter/translucent version of the primary purple.
+- Shield: white.
+- Main title: `FocusFlow`
+- Tagline: `Your discipline operating system`
+- Title should be large, bold, and centered.
+- Tagline should be smaller, centered, and have reduced opacity compared with the title.
+- Maintain the visual hierarchy and spacing shown in the reference.
+
+ANIMATION BEHAVIOR:
+The important sequencing is:
+
+    purple background
+          ↓
+    shield/logo fades/scales in
+          ↓
+    shield reaches its final position/scale
+          ↓
+    FocusFlow + tagline fade in while translating upward slightly
+          ↓
+    splash remains briefly visible
+          ↓
+    transition to the actual app
+
+Use Android-native/Kotlin animation APIs appropriate for the project's existing UI framework.
+
+If this project uses Jetpack Compose:
+- Prefer Compose animation APIs such as `AnimatedVisibility`, `fadeIn`, `slideInVertically`, `scaleIn`, or equivalent.
+- Keep the animation state-driven and lifecycle-safe.
+
+If this project uses XML Views:
+- Use Android animation APIs / `AnimatorSet`, `ObjectAnimator`, or the project's existing animation mechanism.
+- Do not introduce unnecessary dependencies.
+
+TIMING:
+Aim for approximately:
+- Logo scale/fade entrance: ~400 ms
+- Text fade + upward movement: ~350 ms
+- Text begins AFTER the logo entrance.
+- Overall branded splash should be roughly 1–2 seconds, depending on the existing app startup time.
+
+LOGO:
+Do NOT use the launcher/app icon unless it visually matches the reference.
+
+The reference logo is specifically:
+- white shield
+- checkmark inside the shield
+
+If the project already has an appropriate shield/checkmark vector drawable or Material/Compose icon available, reuse it.
+Otherwise create a small local vector drawable / Compose vector representation for the shield-checkmark.
+
+Do not download external assets unnecessarily.
+
+IMPORTANT:
+The native Android 12+ system splash and the in-app branded splash are conceptually separate.
+
+Preserve the Android system splash configuration for startup compatibility, but implement the animated branded screen as the app's own first screen/overlay so that the sequence can actually show:
+
+    shield first
+    → title/tagline second
+    → app
+
+Do not try to force the entire animation into the static Android system splash configuration.
+
+BEHAVIOR:
+- Show the branded splash only during the intended app startup flow.
+- Do not create an infinite animation.
+- Do not restart the animation unnecessarily on ordinary recompositions/configuration changes.
+- Ensure the normal app becomes interactive after the splash.
+- Avoid blocking initialization longer than necessary.
+- If the app has existing initialization/database loading logic, integrate with it rather than creating a fake delay solely for visual purposes.
+- The splash should not flash white/black between the system splash and the branded splash.
+
+QUALITY:
+Before changing code:
+1. Identify whether the active app uses Compose or XML Views.
+2. Identify the current startup Activity/Composable/navigation entry point.
+3. Identify existing theme colors and splash configuration.
+4. Implement the smallest clean change that achieves the behavior.
+5. Do not inspect `ARCHIVED_DO_NOT_INSPECT`.
+
+After implementation:
+- Build the app.
+- Fix any compilation/resource errors caused by the change.
+- Verify that the startup sequence is:
+  purple → shield → FocusFlow/tagline → normal app.
+- Verify that the animation does not interfere with normal navigation or app initialization.

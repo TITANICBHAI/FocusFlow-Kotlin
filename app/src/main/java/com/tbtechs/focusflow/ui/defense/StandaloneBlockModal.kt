@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -554,88 +555,89 @@ fun StandaloneBlockModal(
                             .padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            text = "PRESETS",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextMuted,
-                            letterSpacing = 0.8.sp,
-                        )
-
-                        if (presets.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(DarkCard)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                                    .padding(14.dp),
-                            ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(DarkCard)
+                                .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                                .padding(14.dp),
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
                                     Text(
-                                        "No presets saved yet",
-                                        color = DarkTextPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
+                                        text = "PRESETS",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DarkTextMuted,
+                                        letterSpacing = 0.8.sp,
                                     )
                                     Text(
-                                        "Select apps below, then save the current selection as a preset.",
+                                        text = "+ Save current selection",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (selected.isNotEmpty()) BrandPrimary else DarkTextMuted,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable(enabled = selected.isNotEmpty()) {
+                                                showPresetForm = true
+                                            }
+                                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                                    )
+                                }
+
+                                if (presets.isEmpty()) {
+                                    Text(
+                                        "Select apps below, then tap “+ Save current selection” to create your first preset.",
                                         color = DarkTextSecondary,
                                         fontSize = 12.sp,
                                         lineHeight = 17.sp,
                                     )
-                                }
-                            }
-                        } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                presets.forEach { preset ->
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(DarkCard)
-                                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-                                            .clickable {
-                                                val safePackages = preset.packages.filterNot {
-                                                    isNeverBlockPackage(it, context.packageName)
-                                                }
-                                                selected = if (locked) selected + safePackages else safePackages.toSet()
-                                            }
-                                            .padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                                } else {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                "${preset.name} (${preset.packages.size})",
-                                                fontSize = 13.sp,
-                                                color = DarkTextPrimary,
-                                            )
-                                            IconButton(
-                                                onClick = { onDeletePreset?.invoke(preset.id) },
-                                                modifier = Modifier.size(28.dp),
+                                        presets.forEach { preset ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(DarkSurfaceVariant)
+                                                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                                                    .clickable {
+                                                        val safePackages = preset.packages.filterNot {
+                                                            isNeverBlockPackage(it, context.packageName)
+                                                        }
+                                                        selected = if (locked) selected + safePackages else safePackages.toSet()
+                                                    }
+                                                    .padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                                             ) {
-                                                Icon(
-                                                    Icons.Outlined.Delete,
-                                                    contentDescription = "Delete preset",
-                                                    tint = DarkTextMuted,
-                                                    modifier = Modifier.size(16.dp),
-                                                )
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        "${preset.name} (${preset.packages.size})",
+                                                        fontSize = 13.sp,
+                                                        color = DarkTextPrimary,
+                                                    )
+                                                    IconButton(
+                                                        onClick = { onDeletePreset?.invoke(preset.id) },
+                                                        modifier = Modifier.size(28.dp),
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Outlined.Delete,
+                                                            contentDescription = "Delete preset",
+                                                            tint = DarkTextMuted,
+                                                            modifier = Modifier.size(16.dp),
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        }
-
-                        if (selected.isNotEmpty() && !showPresetForm) {
-                            TextButton(
-                                onClick = { showPresetForm = true },
-                                modifier = Modifier.padding(top = 2.dp),
-                            ) {
-                                Icon(Icons.Outlined.Add, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("+ Save current selection as preset", color = BrandPrimary, fontSize = 14.sp)
                             }
                         }
 
@@ -964,18 +966,18 @@ fun StandaloneBlockModal(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    AppIcon(app.icon)
+                                    AppIcon(app.icon, size = 52.dp)
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = app.appName,
-                                            fontSize = 14.5.sp,
+                                            fontSize = 17.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkTextPrimary,
                                             maxLines = 1,
                                         )
                                         Text(
                                             text = app.packageName,
-                                            fontSize = 11.5.sp,
+                                            fontSize = 13.sp,
                                             color = DarkTextMuted,
                                             maxLines = 1,
                                         )
@@ -1202,28 +1204,28 @@ private fun AppSelectionIndicator(
 ) {
     Box(
         modifier = Modifier
-            .size(24.dp)
+            .size(28.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(
                 when {
                     selected && locked -> DarkTextMuted
-                    selected -> BrandPrimary
+                    selected -> Color(0xFFEF4444)
                     else -> Color(0xFFF4F4F5)
                 },
             )
             .border(
-                width = if (selected) 0.dp else 1.dp,
-                color = if (selected) Color.Transparent else Color(0xFFD1D5DB),
+                width = if (selected) 0.dp else 1.5.dp,
+                color = if (selected) Color.Transparent else Color(0xFFCBD5E1),
                 shape = RoundedCornerShape(6.dp),
             ),
         contentAlignment = Alignment.Center,
     ) {
         if (selected) {
             Icon(
-                Icons.Outlined.Check,
-                contentDescription = "Selected",
+                Icons.Outlined.Block,
+                contentDescription = "Blocked",
                 tint = Color.White,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
     }

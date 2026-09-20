@@ -20,9 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -51,6 +49,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -86,7 +86,6 @@ import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkCard
-import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
@@ -888,23 +887,21 @@ private fun CompactToggle(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Box(
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
         modifier = Modifier
-            .size(width = 42.dp, height = 24.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (checked) BrandPrimary else DarkSurfaceVariant)
-            .clickable { onCheckedChange(!checked) }
-            .padding(2.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .offset(x = if (checked) 18.dp else 0.dp)
-                .clip(CircleShape)
-                .background(Color.White),
-        )
-    }
+            .height(32.dp)
+            .width(52.dp),
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Color.White,
+            checkedTrackColor = BrandPrimary,
+            checkedBorderColor = BrandPrimary,
+            uncheckedThumbColor = Color(0xFFCBD5E1),
+            uncheckedTrackColor = Color(0xFF3B465A),
+            uncheckedBorderColor = Color(0xFF526078),
+        ),
+    )
 }
 
 @Composable

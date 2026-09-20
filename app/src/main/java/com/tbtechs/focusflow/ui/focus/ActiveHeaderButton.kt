@@ -1,24 +1,13 @@
 package com.tbtechs.focusflow.ui.focus
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MonitorHeart
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -225,38 +214,22 @@ private fun EcgHeartPulseMonitor(
     activeCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val traceColor = when (level) {
+    val iconColor = when (level) {
         ActiveStatusLevel.WARNING -> Color(0xFFFBBF24)
-        ActiveStatusLevel.ACTIVE,
-        ActiveStatusLevel.INACTIVE,
-        -> Color(0xFFD7DBE5)
+        ActiveStatusLevel.ACTIVE -> Color(0xFFA5B4FC)
+        ActiveStatusLevel.INACTIVE -> Color(0xFFCBD5E1)
     }
 
-    androidx.compose.foundation.Canvas(
-        modifier = modifier.size(width = 36.dp, height = 28.dp),
-    ) {
-        val width = size.width
-        val height = size.height
-        val path = androidx.compose.ui.graphics.Path().apply {
-            moveTo(1.dp.toPx(), height * 0.58f)
-            lineTo(width * 0.22f, height * 0.58f)
-            lineTo(width * 0.34f, height * 0.58f)
-            lineTo(width * 0.42f, height * 0.28f)
-            lineTo(width * 0.51f, height * 0.82f)
-            lineTo(width * 0.62f, height * 0.12f)
-            lineTo(width * 0.72f, height * 0.58f)
-            lineTo(width * 0.99f, height * 0.58f)
-        }
-        drawPath(
-            path = path,
-            color = traceColor,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = 2.dp.toPx(),
-                cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                join = androidx.compose.ui.graphics.StrokeJoin.Round,
-            ),
-        )
-    }
+    Icon(
+        imageVector = Icons.Outlined.MonitorHeart,
+        contentDescription = if (activeCount > 0) {
+            "$activeCount active protection layers"
+        } else {
+            "Protection status"
+        },
+        tint = iconColor,
+        modifier = modifier.size(30.dp),
+    )
 }
 
 /** Backward-compatible alias for existing call sites. */
