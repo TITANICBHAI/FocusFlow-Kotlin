@@ -119,7 +119,8 @@ object AppModule {
     /**
      * Builds every singleton. Called once from [FocusFlowApp.onCreate],
      * after [FocusFlowDatabase.prepareLegacyDatabase] has run. The complete
-     * migration chain, including the achievement ledger, is registered here.
+     * migration chain, including report notes and the active-session hardening,
+     * is registered here.
      *
      * **Do not call this more than once.** Calling it a second time will throw
      * because the `lateinit` properties are already set.
@@ -142,7 +143,7 @@ object AppModule {
                 FocusFlowDatabase.MIGRATION_4_5,
             )
             .addCallback(object : RoomDatabase.Callback() {
-                override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                     db.execSQL(
                         "CREATE UNIQUE INDEX IF NOT EXISTS `idx_focus_sessions_one_active` " +
                             "ON `focus_sessions` (`is_active`) WHERE `is_active` = 1",

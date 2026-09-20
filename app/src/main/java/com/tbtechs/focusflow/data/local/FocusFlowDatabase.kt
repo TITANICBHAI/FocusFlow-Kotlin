@@ -267,9 +267,22 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                     }.any { it == "updated_at" }
                 }
                 if (!hasUpdatedAt) {
-                    db.execSQL(
-                        "ALTER TABLE `report_notes` ADD COLUMN `updated_at` TEXT NOT NULL DEFAULT ''",
-                    )
+                    db.execSQL("ALTER TABLE `report_notes` RENAME TO `report_notes_legacy`")
+                    db.execSQL("""
+                        CREATE TABLE `report_notes` (
+                            `ref_date` TEXT NOT NULL,
+                            `type` TEXT NOT NULL,
+                            `note` TEXT NOT NULL,
+                            `updated_at` TEXT NOT NULL,
+                            PRIMARY KEY(`ref_date`, `type`)
+                        )
+                    """.trimIndent())
+                    db.execSQL("""
+                        INSERT INTO `report_notes` (`ref_date`, `type`, `note`, `updated_at`)
+                        SELECT `ref_date`, `type`, `note`, ''
+                        FROM `report_notes_legacy`
+                    """.trimIndent())
+                    db.execSQL("DROP TABLE `report_notes_legacy`")
                 }
 
                 // Preserve the newest active session if an older database has
@@ -286,16 +299,15 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                     }
                 }
                 idsToDeactivate.forEach { id ->
-                    db.execSQL("UPDATE `focus_sessions` SET is_active = 0 WHERE id = ?", arrayOf(id))
+                    db.execSQL(
+                        "UPDATE `focus_sessions` SET is_active = 0 WHERE id = ?",
+                        arrayOf<Any?>(id),
+                    )
                 }
 
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `idx_focus_sessions_active` " +
-                        "ON `focus_sessions` (`is_active`, `id` DESC)",
-                )
-                db.execSQL(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS `idx_focus_sessions_one_active` " +
-                        "ON `focus_sessions` (`is_active`) WHERE `is_active` = 1",
+                        "ON `focus_sessions` (`is_active`, `id`)",
                 )
             }
         }
@@ -455,9 +467,5 @@ abstract class FocusFlowDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * Migrates legacy daily report notes stored in the TS app's `report_notes` table
-         * into SharedPreferences under `report_note_day_{date}` keys.
-         */
     }
 }

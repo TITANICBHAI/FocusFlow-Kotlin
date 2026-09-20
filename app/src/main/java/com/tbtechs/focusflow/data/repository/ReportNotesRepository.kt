@@ -60,6 +60,10 @@ class ReportNotesRepository(
                 ),
             )
         }
+        // Remove only the obsolete compatibility copy. New note data never
+        // goes to SharedPreferences.
+        val legacyKey = "report_note_${normalizedType}_${refDate.toString()}"
+        legacyStores.forEach { it.edit().remove(legacyKey).apply() }
     }
 
     private fun legacyDailyNotes(start: LocalDate, end: LocalDate): Map<String, String> {

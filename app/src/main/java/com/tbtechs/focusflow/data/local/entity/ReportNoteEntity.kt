@@ -23,6 +23,6 @@ data class ReportNoteEntity(
     @ColumnInfo(name = "note")
     val note: String,
 
-    @ColumnInfo(name = "updated_at", defaultValue = "''")
+    @ColumnInfo(name = "updated_at")
     val updatedAt: String,
 )
