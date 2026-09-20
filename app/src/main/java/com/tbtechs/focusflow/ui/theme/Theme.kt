@@ -113,6 +113,7 @@ val StatusMissingText = Color(0xFFF87171)
 val StatusOptional = Color(0xFF8B5CF6)
 val StatusOptionalBg = Color(0xFFE7EAF1)
 val StatusOptionalText = Color(0xFF687386)
+val SunAmber = Color(0xFFFBBF24)
 
 // Info Banner Lavender Colors
 val LavenderBg = Color(0xFFEEF2FF)

@@ -364,8 +364,9 @@ private fun WeekCompletionBars(snapshot: AnalyticsSnapshot) {
     ) {
         days.forEachIndexed { index, day ->
             val bucket = snapshot.tasks.byDayOfWeek[index]
-            val rate = if ((bucket?.total ?: 0) == 0) 0f
-            else ((bucket?.completed ?: 0).toFloat() / bucket.total).coerceIn(0f, 1f)
+            val total = bucket?.total ?: 0
+            val rate = if (total == 0) 0f
+            else ((bucket?.completed ?: 0).toFloat() / total).coerceIn(0f, 1f)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     Modifier
