@@ -4,3 +4,4 @@
 - [Daily allowance visual states](daily-allowance-visual-states.md) — keep allowance apps as a flat list with inline Count, Time Budget, and Interval panels.
 - [Profile usage sheet](profile-usage-sheet.md) — present profile fields as compact icon rows in a full-height dark bottom sheet.
 - [React sizing reference](react-sizing-reference.md) — use the React design tokens as the dimensional baseline for Kotlin UI.
+- [Android build environment](android-build-environment.md) — this workspace may have a JDK but no Android SDK platform, so Gradle can stop before source compilation.
