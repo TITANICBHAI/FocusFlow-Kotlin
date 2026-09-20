@@ -245,7 +245,7 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsToggleRow(
                         title = "Dark Mode",
-                        description = "Use a darker color palette throughout FocusFlow",
+                        description = "Use a dark theme",
                     ) {
                         DarkModeToggle(
                             isDark = settings.darkModeEnabled,
@@ -265,7 +265,7 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsToggleRow(
                         title = "Enable Reminders",
-                        description = "Get alerts before and during tasks",
+                        description = "Alerts for tasks",
                     ) {
                         FocusFlowSwitch(
                             checked = settings.taskRemindersEnabled,
@@ -362,7 +362,7 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsToggleRow(
                         title = "Auto-enable Focus Mode",
-                        description = "Activate when a focus task starts",
+                        description = "Start with focus tasks",
                     ) {
                         FocusFlowSwitch(
                             checked = settings.autoFocusEnabled,
@@ -393,7 +393,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         icon = Icons.Outlined.Smartphone,
                         title = "Overlay Appearance",
-                        description = "Customise background image and quotes shown on the block screen",
+                        description = "Customize the block screen",
                         onClick = { overlayAppearanceVisible = true },
                     )
                 }
@@ -405,7 +405,7 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsToggleRow(
                         title = "Enable Pomodoro",
-                        description = "Auto-cycle work and break sessions",
+                        description = "Cycle work and breaks",
                     ) {
                         FocusFlowSwitch(
                             checked = settings.pomodoroEnabled,
@@ -759,13 +759,13 @@ private fun SettingsActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(32.dp)
+                .clip(RoundedCornerShape(9.dp))
                 .background(
                     if (destructive) Color(0xFFEF4444).copy(alpha = 0.12f)
                     else BrandPrimary.copy(alpha = 0.12f),
@@ -776,24 +776,24 @@ private fun SettingsActionRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (destructive) Color(0xFFEF4444) else BrandPrimary,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                fontSize = 15.sp,
+                fontSize = 14.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (destructive) Color(0xFFEF4444) else DarkTextPrimary,
             )
             if (description != null) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(1.dp))
                 Text(
                     description,
-                    fontSize = 12.5.sp,
+                    fontSize = 12.sp,
                     color = DarkTextSecondary,
-                    lineHeight = 17.sp,
+                    lineHeight = 16.sp,
                 )
             }
         }
@@ -816,27 +816,27 @@ private fun SettingsToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                fontSize = 15.sp,
+                fontSize = 14.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = DarkTextPrimary,
             )
             if (description != null) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(1.dp))
                 Text(
                     description,
-                    fontSize = 12.5.sp,
+                    fontSize = 12.sp,
                     color = DarkTextSecondary,
-                    lineHeight = 17.sp,
+                    lineHeight = 16.sp,
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         control()
     }
 }

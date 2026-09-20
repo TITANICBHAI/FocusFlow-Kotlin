@@ -31,13 +31,13 @@ data class FocusFlowDimensions(
 
 val LocalFocusFlowDimensions = staticCompositionLocalOf {
     FocusFlowDimensions(
-        screenPadding = 16.dp,
-        sectionSpacing = 16.dp,
-        cardPadding = 16.dp,
-        modalPadding = 20.dp,
+        screenPadding = 14.dp,
+        sectionSpacing = 12.dp,
+        cardPadding = 12.dp,
+        modalPadding = 16.dp,
         contentMaxWidth = 720.dp,
         drawerMaxWidth = 360.dp,
-        bottomContentPadding = 96.dp,
+        bottomContentPadding = 88.dp,
     )
 }
 
@@ -81,30 +81,30 @@ fun FocusFlowCard(
 internal fun focusFlowDimensionsForWidth(widthDp: Int): FocusFlowDimensions = when {
     widthDp < 360 -> FocusFlowDimensions(
         screenPadding = 12.dp,
+        sectionSpacing = 10.dp,
+        cardPadding = 10.dp,
+        modalPadding = 14.dp,
+        contentMaxWidth = 680.dp,
+        drawerMaxWidth = 320.dp,
+        bottomContentPadding = 80.dp,
+    )
+    widthDp >= 600 -> FocusFlowDimensions(
+        screenPadding = 20.dp,
+        sectionSpacing = 16.dp,
+        cardPadding = 16.dp,
+        modalPadding = 24.dp,
+        contentMaxWidth = 760.dp,
+        drawerMaxWidth = 400.dp,
+        bottomContentPadding = 104.dp,
+    )
+    else -> FocusFlowDimensions(
+        screenPadding = 14.dp,
         sectionSpacing = 12.dp,
         cardPadding = 12.dp,
         modalPadding = 16.dp,
-        contentMaxWidth = 680.dp,
-        drawerMaxWidth = 320.dp,
-        bottomContentPadding = 88.dp,
-    )
-    widthDp >= 600 -> FocusFlowDimensions(
-        screenPadding = 24.dp,
-        sectionSpacing = 20.dp,
-        cardPadding = 20.dp,
-        modalPadding = 28.dp,
-        contentMaxWidth = 760.dp,
-        drawerMaxWidth = 400.dp,
-        bottomContentPadding = 112.dp,
-    )
-    else -> FocusFlowDimensions(
-        screenPadding = 16.dp,
-        sectionSpacing = 16.dp,
-        cardPadding = 16.dp,
-        modalPadding = 20.dp,
         contentMaxWidth = 720.dp,
         drawerMaxWidth = 360.dp,
-        bottomContentPadding = 96.dp,
+        bottomContentPadding = 88.dp,
     )
 }
 

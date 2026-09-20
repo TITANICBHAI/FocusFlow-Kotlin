@@ -323,8 +323,8 @@ fun StandaloneBlockModal(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    contentPadding = PaddingValues(bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
                 ) {
                     // Locked Warning Banner
                     if (locked) {
@@ -332,11 +332,11 @@ fun StandaloneBlockModal(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
-                                    .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(16.dp))
-                                    .padding(14.dp),
+                                    .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                    .padding(10.dp),
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.Top,
@@ -364,10 +364,10 @@ fun StandaloneBlockModal(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFEF4444).copy(alpha = 0.15f))
-                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                     .padding(12.dp),
                             ) {
                                 Text(msg, color = Color(0xFFFCA5A5), fontSize = 13.sp)
@@ -380,11 +380,11 @@ fun StandaloneBlockModal(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(BrandPrimary.copy(alpha = 0.10f))
-                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
-                                    .padding(14.dp),
+                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                    .padding(10.dp),
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.Top,
@@ -436,7 +436,7 @@ fun StandaloneBlockModal(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(
@@ -552,7 +552,7 @@ fun StandaloneBlockModal(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Box(
@@ -700,7 +700,7 @@ fun StandaloneBlockModal(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         OutlinedButton(
@@ -905,7 +905,7 @@ fun StandaloneBlockModal(
                                     .clickable(enabled = !(locked && isBlocked)) {
                                         selected = selected.toggle(pkg, locked)
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
@@ -941,13 +941,13 @@ fun StandaloneBlockModal(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .padding(horizontal = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(DarkCard)
                                 .border(
                                     1.dp,
                                     if (isBlocked) BrandPrimary.copy(alpha = 0.45f) else DarkBorder,
-                                    RoundedCornerShape(16.dp),
+                                    RoundedCornerShape(12.dp),
                                 ),
                         ) {
                             // Top Row: App info + Red block icon / rounded checkbox
@@ -957,27 +957,27 @@ fun StandaloneBlockModal(
                                     .clickable(enabled = !(locked && isBlocked)) {
                                         selected = selected.toggle(app.packageName, locked)
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Row(
                                     modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    AppIcon(app.icon, size = 52.dp)
+                                    AppIcon(app.icon, size = 40.dp)
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = app.appName,
-                                            fontSize = 17.sp,
+                                            fontSize = 15.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkTextPrimary,
                                             maxLines = 1,
                                         )
                                         Text(
                                             text = app.packageName,
-                                            fontSize = 13.sp,
+                                            fontSize = 11.5.sp,
                                             color = DarkTextMuted,
                                             maxLines = 1,
                                         )
@@ -993,7 +993,7 @@ fun StandaloneBlockModal(
                             HorizontalDivider(
                                 color = DarkBorder,
                                 thickness = 0.8.dp,
-                                modifier = Modifier.padding(horizontal = 14.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp),
                             )
 
                             // Daily allowance is an inline editor, matching the picker reference.
@@ -1020,7 +1020,7 @@ fun StandaloneBlockModal(
                                                 expandedAllowancePackage = app.packageName
                                             }
                                         }
-                                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                                        .padding(horizontal = 12.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
@@ -1042,7 +1042,7 @@ fun StandaloneBlockModal(
                             HorizontalDivider(
                                 color = DarkBorder.copy(alpha = 0.5f),
                                 thickness = 0.8.dp,
-                                modifier = Modifier.padding(horizontal = 14.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp),
                             )
 
                             // Sub-row 2: Network block (VPN)
@@ -1053,7 +1053,7 @@ fun StandaloneBlockModal(
                                     .clickable(enabled = !locked) {
                                         vpn = vpn.toggle(app.packageName, locked)
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                                    .padding(horizontal = 12.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {

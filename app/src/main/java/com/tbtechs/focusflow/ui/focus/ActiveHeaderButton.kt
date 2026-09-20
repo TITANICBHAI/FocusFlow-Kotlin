@@ -228,7 +228,7 @@ private fun EcgHeartPulseMonitor(
             "Protection status"
         },
         tint = iconColor,
-        modifier = modifier.size(30.dp),
+        modifier = modifier.size(24.dp),
     )
 }
 

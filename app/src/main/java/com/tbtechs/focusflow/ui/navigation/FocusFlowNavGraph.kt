@@ -521,6 +521,7 @@ fun MainScaffold(
                                 icon,
                                 contentDescription = label,
                                 tint = if (isSelected) com.tbtechs.focusflow.ui.theme.BrandPrimary else com.tbtechs.focusflow.ui.theme.DarkTextMuted,
+                                modifier = Modifier.size(20.dp),
                             )
                         },
                         label = {
@@ -536,7 +537,7 @@ fun MainScaffold(
                             selectedTextColor = com.tbtechs.focusflow.ui.theme.BrandPrimary,
                             unselectedIconColor = com.tbtechs.focusflow.ui.theme.DarkTextMuted,
                             unselectedTextColor = com.tbtechs.focusflow.ui.theme.DarkTextSecondary,
-                            indicatorColor = Color.Transparent,
+                            indicatorColor = com.tbtechs.focusflow.ui.theme.BrandPrimary.copy(alpha = 0.14f),
                         ),
                     )
                 }

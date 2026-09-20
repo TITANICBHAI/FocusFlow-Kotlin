@@ -277,10 +277,10 @@ fun StandaloneBlockSetupScreen(
                         }
                     } else {
                         Text(
-                            text = "Choose apps, an expiry time, and optional daily allowances. This block runs independently of scheduled focus tasks and prevents distracting app launches.",
-                            fontSize = 14.sp,
+                            text = "Block selected apps until a time you choose.",
+                            fontSize = 13.sp,
                             color = DarkTextSecondary,
-                            lineHeight = 20.sp,
+                            lineHeight = 18.sp,
                         )
 
                         // Feature Highlights
@@ -292,9 +292,9 @@ fun StandaloneBlockSetupScreen(
                                 .background(DarkSurfaceVariant.copy(alpha = 0.5f))
                                 .padding(12.dp),
                         ) {
-                            Text("• Strict Enforcement: Cannot be disabled early once active", fontSize = 12.sp, color = DarkTextSecondary)
-                            Text("• Daily Allowances: Configure launch or time limits per app", fontSize = 12.sp, color = DarkTextSecondary)
-                            Text("• Network Block: Optional VPN-level connection cut", fontSize = 12.sp, color = DarkTextSecondary)
+                            Text("• Cannot end early once active", fontSize = 12.sp, color = DarkTextSecondary)
+                            Text("• Optional daily limits per app", fontSize = 12.sp, color = DarkTextSecondary)
+                            Text("• Optional network blocking", fontSize = 12.sp, color = DarkTextSecondary)
                         }
                     }
                 }

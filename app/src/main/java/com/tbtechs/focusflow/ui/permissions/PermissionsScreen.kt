@@ -203,7 +203,7 @@ fun PermissionsScreen(
                             color = DarkTextSecondary,
                         )
                         Text(
-                            "Changing permissions during an active block could bypass app blocking — stop the block first.",
+                            "Stop the block first to change permissions.",
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
                             color = DarkTextMuted,
@@ -234,12 +234,12 @@ fun PermissionsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(InfoSurface)
-                    .border(1.dp, InfoBorder.copy(alpha = 0.8f), RoundedCornerShape(22.dp))
-                            .padding(16.dp),
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(InfoSurface)
+                            .border(1.dp, InfoBorder.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                            .padding(12.dp),
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -248,19 +248,19 @@ fun PermissionsScreen(
                                     Icons.Outlined.Shield,
                                     contentDescription = null,
                                     tint = BrandPrimary,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(18.dp),
                                 )
                                 Text(
                                     text = "Why these permissions?",
-                                    fontSize = 15.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = InfoText,
                                 )
                             }
                             Text(
-                                text = "FocusFlow enforces focus at the system level, not just with reminders. Android requires special access for reliable blocking.",
-                                 fontSize = 13.sp,
-                                 lineHeight = 20.sp,
+                                text = "These permissions let FocusFlow block apps reliably.",
+                                 fontSize = 12.sp,
+                                 lineHeight = 17.sp,
                                  color = InfoBodyText,
                             )
                         }
@@ -269,7 +269,7 @@ fun PermissionsScreen(
                 val required = permissionDefinitions.count { !it.optional }
                 val granted = permissionDefinitions.count { !it.optional && statuses[it.id] == PermissionStatus.GRANTED }
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -277,13 +277,13 @@ fun PermissionsScreen(
                         ) {
                             Text(
                                 text = "Required permissions granted",
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = DarkTextSecondary,
                             )
                             Text(
                                 text = "$granted / $required",
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandPrimary,
                             )
@@ -292,14 +292,14 @@ fun PermissionsScreen(
                             progress = { if (required > 0) granted.toFloat() / required.toFloat() else 0f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(3.dp)),
                             color = BrandPrimary,
                             trackColor = DarkSurfaceVariant,
                         )
                         if (granted == required) {
                              Text(
-                                text = "All required permissions granted — blocking is fully active.",
+                                text = "All required permissions are ready.",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = com.tbtechs.focusflow.ui.theme.StatusReadyText,
@@ -327,7 +327,7 @@ fun PermissionsScreen(
                 }
                 item {
                     Text(
-                        text = "Tap a card to expand details. Statuses refresh when you return to this screen.",
+                        text = "Tap a card for details. Status refreshes when you return.",
                         fontSize = 12.sp,
                         color = DarkTextMuted,
                         modifier = Modifier.padding(bottom = 24.dp),

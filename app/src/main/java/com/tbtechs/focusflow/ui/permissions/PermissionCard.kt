@@ -157,20 +157,20 @@ fun PermissionCard(
             .border(1.dp, DarkBorder.copy(alpha = 0.58f), MaterialTheme.shapes.large)
             .padding(dimensions.cardPadding),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // Main Top Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Colored Icon Badge
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(iconBg),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -178,14 +178,14 @@ fun PermissionCard(
                         imageVector = icon,
                         contentDescription = null,
                         tint = iconTint,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(19.dp),
                     )
                 }
 
                 // Title, status pills, and description
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         text = permission.title,
@@ -202,7 +202,7 @@ fun PermissionCard(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(StatusOptionalBg)
-                                    .padding(horizontal = 9.dp, vertical = 4.dp),
+                                    .padding(horizontal = 7.dp, vertical = 2.dp),
                             ) {
                                 Text(
                                     text = "Optional",
@@ -216,7 +216,7 @@ fun PermissionCard(
                             modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                 .background(statusBg)
-                                    .padding(horizontal = 9.dp, vertical = 4.dp),
+                                    .padding(horizontal = 7.dp, vertical = 2.dp),
                         ) {
                             Text(
                                 text = statusText,
@@ -228,8 +228,8 @@ fun PermissionCard(
 
                     Text(
                         text = permission.description,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -239,7 +239,7 @@ fun PermissionCard(
                     imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (expanded) "Collapse" else "Expand",
                     tint = DarkTextMuted,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
 
@@ -248,14 +248,14 @@ fun PermissionCard(
                 Button(
                     onClick = onGrant,
                     enabled = !busy,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BrandPrimary,
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .defaultMinSize(minHeight = 44.dp),
+                        .defaultMinSize(minHeight = 40.dp),
                 ) {
                     if (busy) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
@@ -285,13 +285,13 @@ fun PermissionCard(
             if (expanded) {
                 HorizontalDivider(color = DarkBorder.copy(alpha = 0.55f))
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(DarkSurfaceVariant.copy(alpha = 0.5f))
-                            .padding(12.dp),
+                            .padding(10.dp),
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
@@ -313,10 +313,10 @@ fun PermissionCard(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(12.dp))
                                 .background(StatusMissingBg.copy(alpha = 0.35f))
                                 .border(1.dp, StatusMissing.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
-                                .padding(12.dp),
+                                .padding(10.dp),
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
