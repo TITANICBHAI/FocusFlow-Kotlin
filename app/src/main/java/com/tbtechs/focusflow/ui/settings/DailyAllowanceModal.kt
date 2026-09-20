@@ -25,11 +25,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Clear
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -79,11 +83,11 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.InfoBodyText
+import com.tbtechs.focusflow.ui.theme.InfoSurface
 import org.json.JSONArray
-import java.time.LocalDate
 
 private val SunAmber = Color(0xFFF59E0B)
-private val SunAmberBg = Color(0xFF451A03)
 
 /**
  * Per-app daily allowance editor.
@@ -127,6 +131,7 @@ fun DailyAllowanceModal(
     var expandedPackage by remember { mutableStateOf<String?>(null) }
     var search by remember { mutableStateOf("") }
     var packageDraft by remember { mutableStateOf("") }
+    var manualPackageDialogVisible by remember { mutableStateOf(false) }
     var pickerVisible by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<AllowanceMessage?>(null) }
     var pendingRemoval by remember { mutableStateOf<PendingAllowanceRemoval?>(null) }
@@ -178,21 +183,24 @@ fun DailyAllowanceModal(
         }
     }
 
-    fun addPackage() {
+    fun addPackage(): Boolean {
         val packageName = packageDraft.trim()
-        when {
-            packageName.isEmpty() -> Unit
+        return when {
+            packageName.isEmpty() -> false
             !PACKAGE_NAME.matches(packageName) -> {
                 message = AllowanceMessage("Enter a package name", "Use an Android package name such as com.example.app.")
+                false
             }
             drafts.any { it.packageName == packageName } -> {
                 expandedPackage = packageName
                 packageDraft = ""
+                true
             }
             else -> {
                 drafts = drafts + DailyAllowanceDraft(packageName = packageName)
                 expandedPackage = packageName
                 packageDraft = ""
+                true
             }
         }
     }
@@ -293,151 +301,105 @@ fun DailyAllowanceModal(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             item {
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
-            if (locked) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(SunAmberBg)
-                            .border(1.dp, SunAmber.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                            .padding(14.dp),
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Icon(Icons.Outlined.Lock, contentDescription = null, tint = SunAmber, modifier = Modifier.size(18.dp))
-                            Text(
-                                "Block is active — existing allowances are locked. You can add apps, but cannot remove allowances until the block expires.",
-                                color = SunAmber,
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Explanatory Info Card matching 3e_4
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
-                        .padding(14.dp),
+                        .background(InfoSurface)
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(SunAmber.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = SunAmber, modifier = Modifier.size(20.dp))
-                        }
+                        Icon(Icons.Outlined.Security, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Allowances give you controlled access to select apps every day without turning off entire blocks.",
+                                "Removing apps from the allowance list requires your defense password.",
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp,
-                                color = DarkTextPrimary,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                "Tap an app to enable its allowance. Tap again to configure mode and limits.",
-                                fontSize = 12.sp,
-                                color = DarkTextSecondary,
+                                color = InfoBodyText,
                             )
                         }
                     }
                 }
             }
 
-            // Search Box
             item {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text("Search installed apps…", color = DarkTextMuted, fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(20.dp))
-                    },
-                    trailingIcon = {
-                        if (search.isNotBlank()) {
-                            IconButton(onClick = { search = "" }) {
-                                Icon(Icons.Outlined.Clear, contentDescription = "Clear", tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = DarkCard,
-                        unfocusedContainerColor = DarkCard,
-                        focusedBorderColor = BrandPrimary,
-                        unfocusedBorderColor = DarkBorder,
-                        focusedTextColor = DarkTextPrimary,
-                        unfocusedTextColor = DarkTextPrimary,
-                    ),
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF5DF))
+                        .padding(horizontal = 20.dp, vertical = 9.dp),
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(Icons.Outlined.Info, contentDescription = null, tint = SunAmber, modifier = Modifier.size(18.dp))
+                        Text(
+                            "Tap an app to enable its allowance. Tap again to expand its mode settings. Long-press to remove.",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = SunAmber,
+                        )
+                    }
+                }
             }
 
-            // Add manual package row
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = packageDraft,
-                            onValueChange = { packageDraft = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Add by package (e.g. com.app)", color = DarkTextMuted, fontSize = 13.sp) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = DarkCard,
-                                unfocusedContainerColor = DarkCard,
-                                focusedBorderColor = BrandPrimary,
-                                unfocusedBorderColor = DarkBorder,
-                                focusedTextColor = DarkTextPrimary,
-                                unfocusedTextColor = DarkTextPrimary,
-                            ),
-                        )
-                        Button(
-                            onClick = ::addPackage,
-                            enabled = packageDraft.trim().isNotEmpty(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        ) {
-                            Text("Add", color = Color.White)
-                        }
-                    }
-
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                ) {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(72.dp),
+                        singleLine = true,
+                        placeholder = { Text("Search apps...", color = DarkTextMuted, fontSize = 16.sp) },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(24.dp))
+                        },
+                        trailingIcon = {
+                            if (search.isNotBlank()) {
+                                IconButton(onClick = { search = "" }) {
+                                    Icon(Icons.Outlined.Clear, contentDescription = "Clear", tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
+                                }
+                            } else {
+                                IconButton(onClick = { pickerVisible = true }) {
+                                    Icon(Icons.Outlined.Add, contentDescription = "Choose apps", tint = BrandPrimary, modifier = Modifier.size(22.dp))
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(18.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = DarkCard,
+                            unfocusedContainerColor = DarkCard,
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = DarkTextPrimary,
+                            unfocusedTextColor = DarkTextPrimary,
+                        ),
+                    )
                 }
             }
 
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 0.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -448,6 +410,9 @@ fun DailyAllowanceModal(
                         fontWeight = FontWeight.Medium,
                         color = DarkTextSecondary,
                     )
+                    TextButton(onClick = { packageDraft = ""; manualPackageDialogVisible = true }) {
+                        Text("Add package", color = BrandPrimary, fontSize = 12.sp)
+                    }
                 }
             }
 
@@ -488,13 +453,7 @@ fun DailyAllowanceModal(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkCard)
-                        .border(
-                            1.dp,
-                            if (isActive) SunAmber.copy(alpha = 0.4f) else DarkBorder,
-                            RoundedCornerShape(14.dp),
-                        ),
                 ) {
                     Row(
                         modifier = Modifier
@@ -513,11 +472,20 @@ fun DailyAllowanceModal(
                                 },
                                 onLongClick = { if (isActive) requestRemoval(app.packageName) },
                             )
-                            .padding(14.dp),
+                            .height(88.dp)
+                            .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        AppIcon(app.icon)
+                        if (isActive) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(4.dp)
+                                    .background(SunAmber),
+                            )
+                        }
+                        AppIcon(app.icon, size = 48.dp)
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = app.appName,
@@ -564,53 +532,39 @@ fun DailyAllowanceModal(
                                     tint = DarkTextSecondary,
                                 )
                             }
-                            if (!isEntryLocked) {
-                                IconButton(onClick = { requestRemoval(app.packageName) }) {
-                                    Icon(
-                                        Icons.Outlined.Clear,
-                                        contentDescription = "Remove",
-                                        tint = Color(0xFFEF4444),
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-                        } else {
-                            Button(
-                                onClick = {
-                                    drafts = drafts + DailyAllowanceDraft(
-                                        packageName = app.packageName,
-                                        mode = AllowanceMode.Count,
-                                    )
-                                    expandedPackage = app.packageName
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            ) {
-                                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Add", fontSize = 12.sp, color = Color.White)
-                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isActive) SunAmber.copy(alpha = 0.14f) else DarkSurfaceVariant.copy(alpha = 0.55f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.WbSunny,
+                                contentDescription = if (isActive) "Allowance enabled" else "Enable allowance",
+                                tint = if (isActive) SunAmber else DarkTextMuted,
+                                modifier = Modifier.size(21.dp),
+                            )
                         }
                     }
 
-                    // Expanded Settings Area matching screenshot 3e_5
                     if (isExpanded && draft != null) {
-                        HorizontalDivider(color = DarkBorder)
+                        HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(DarkSurfaceVariant.copy(alpha = 0.5f))
-                                .padding(16.dp),
+                                .background(DarkSurfaceVariant)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                         ) {
                             AllowanceConfiguration(
                                 draft = draft,
                                 locked = isEntryLocked,
-                                usage = usageByPackage[draft.packageName],
                                 onUpdate = { updated -> updateDraft(draft.packageName) { updated } },
                             )
                         }
                     }
+                    HorizontalDivider(color = DarkBorder.copy(alpha = 0.45f))
                 }
             }
 
@@ -636,6 +590,50 @@ fun DailyAllowanceModal(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    if (manualPackageDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { manualPackageDialogVisible = false; packageDraft = "" },
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text("Add package manually") },
+            text = {
+                OutlinedTextField(
+                    value = packageDraft,
+                    onValueChange = { packageDraft = it },
+                    placeholder = { Text("com.example.app") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = DarkSurfaceVariant,
+                        unfocusedContainerColor = DarkSurfaceVariant,
+                        focusedBorderColor = BrandPrimary,
+                        unfocusedBorderColor = DarkBorder,
+                        focusedTextColor = DarkTextPrimary,
+                        unfocusedTextColor = DarkTextPrimary,
+                    ),
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (addPackage()) {
+                            manualPackageDialogVisible = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                ) {
+                    Text("Add", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { manualPackageDialogVisible = false; packageDraft = "" }) {
+                    Text("Cancel", color = DarkTextSecondary)
+                }
+            },
+        )
     }
 
     pendingRemoval?.let { pending ->
@@ -751,12 +749,11 @@ fun DailyAllowanceModal(
 private fun AllowanceConfiguration(
     draft: DailyAllowanceDraft,
     locked: Boolean,
-    usage: AllowanceUsage?,
     onUpdate: (DailyAllowanceDraft) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (locked) {
             Text(
@@ -765,48 +762,61 @@ private fun AllowanceConfiguration(
                 color = SunAmber,
             )
         }
-        Text(
-            allowanceUsageLabel(draft, usage),
-            fontSize = 12.sp,
-            color = DarkTextSecondary,
-        )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "Allowance mode",
+                "ALLOWANCE MODE",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = DarkTextPrimary,
+                color = DarkTextMuted,
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 AllowanceMode.values().forEach { mode ->
                     val isSelected = draft.mode == mode
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(if (isSelected) BrandPrimary else Color.Transparent)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) SunAmber else DarkBorder.copy(alpha = 0.75f),
+                                shape = RoundedCornerShape(12.dp),
+                            )
                             .combinedClickable(
                                 enabled = !locked,
                                 onClick = { onUpdate(draft.copy(mode = mode)) },
                             )
-                            .padding(vertical = 8.dp),
+                            .padding(horizontal = 6.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = mode.label,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) Color.White else DarkTextSecondary,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = when (mode) {
+                                    AllowanceMode.Count -> Icons.Outlined.Fingerprint
+                                    AllowanceMode.TimeBudget -> Icons.Outlined.HourglassEmpty
+                                    AllowanceMode.Interval -> Icons.Outlined.Schedule
+                                },
+                                contentDescription = null,
+                                tint = if (isSelected) SunAmber else DarkTextSecondary,
+                                modifier = Modifier.size(17.dp),
+                            )
+                            Text(
+                                text = mode.label,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) SunAmber else DarkTextSecondary,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
             }
@@ -856,40 +866,6 @@ private fun AllowanceConfiguration(
     }
 }
 
-private fun allowanceUsageLabel(
-    draft: DailyAllowanceDraft,
-    usage: AllowanceUsage?,
-): String {
-    if (usage == null) return "No usage recorded in the current allowance window."
-
-    val today = LocalDate.now().toString()
-    return when (draft.mode) {
-        AllowanceMode.Count -> {
-            val count = if (usage.date == today) usage.count else 0
-            "Used today: $count of ${draft.countPerDay} opens"
-        }
-        AllowanceMode.TimeBudget -> {
-            val usedMs = if (usage.date == today) usage.usedMs else 0L
-            "Used today: ${formatAllowanceMinutes(usedMs)} of ${draft.budgetMinutes} min"
-        }
-        AllowanceMode.Interval -> {
-            val windowEnd = usage.windowStartMs +
-                draft.intervalHours.coerceAtLeast(1).toLong() * 60L * MINUTE_MS
-            val usedMs = if (usage.windowStartMs > 0L && System.currentTimeMillis() < windowEnd) {
-                usage.usedMs
-            } else {
-                0L
-            }
-            "Used in current window: ${formatAllowanceMinutes(usedMs)} of ${draft.intervalMinutes} min"
-        }
-    }
-}
-
-private fun formatAllowanceMinutes(usedMs: Long): String {
-    val minutes = (usedMs / MINUTE_MS).toInt()
-    return if (minutes == 0 && usedMs > 0L) "<1 min" else "$minutes min"
-}
-
 @Composable
 private fun StepperRow(
     label: String,
@@ -901,50 +877,48 @@ private fun StepperRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(DarkCard)
-            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            fontSize = 13.sp,
-            color = DarkTextPrimary,
+            fontSize = 14.sp,
+            color = DarkTextSecondary,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(DarkCard)
+                    .border(1.dp, DarkBorder.copy(alpha = 0.45f), RoundedCornerShape(9.dp))
                     .combinedClickable(enabled = !locked, onClick = onDecrease),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Remove, contentDescription = "Decrease", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(16.dp))
+                Icon(Icons.Outlined.Remove, contentDescription = "Decrease", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(17.dp))
             }
             Text(
                 text = value,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
-                modifier = Modifier.padding(horizontal = 4.dp),
+                modifier = Modifier.width(56.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(DarkCard)
+                    .border(1.dp, DarkBorder.copy(alpha = 0.45f), RoundedCornerShape(9.dp))
                     .combinedClickable(enabled = !locked, onClick = onIncrease),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Increase", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(16.dp))
+                Icon(Icons.Outlined.Add, contentDescription = "Increase", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(17.dp))
             }
         }
     }
