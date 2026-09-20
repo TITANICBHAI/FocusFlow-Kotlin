@@ -11,12 +11,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,11 +40,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.tbtechs.focusflow.data.repository.NetworkBlockStatus
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalCard
+import com.tbtechs.focusflow.ui.home.RefRed
+import com.tbtechs.focusflow.ui.home.RefSecondary
+import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -147,39 +158,64 @@ fun VpnPermissionLostBanner(
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
         ) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FocusFlowInternalCard(
+                modifier = Modifier.fillMaxWidth(),
+                radius = 16.dp,
+                contentPadding = 12.dp,
+            ) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         Icons.Outlined.Shield,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = RefRed,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(RefRed.copy(alpha = 0.14f))
+                            .padding(8.dp),
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             statusTitle(status),
-                            style = MaterialTheme.typography.titleSmall,
+                            fontSize = 13.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = RefText,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             statusMessage(status),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            color = RefSecondary,
                         )
                     }
-                    Button(
-                        onClick = ::handleRegrant,
-                        enabled = !regranting,
+                    Box(
+                        modifier = Modifier
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(BrandPrimary)
+                            .clickable(enabled = !regranting, onClick = ::handleRegrant)
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        if (regranting) {
-                            CircularProgressIndicator()
-                        } else {
-                            Icon(Icons.Outlined.Refresh, contentDescription = null)
-                            Text("Restore VPN")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            if (regranting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                            }
+                            Text("Restore VPN", color = Color.White, fontSize = 12.sp)
                         }
                     }
                 }

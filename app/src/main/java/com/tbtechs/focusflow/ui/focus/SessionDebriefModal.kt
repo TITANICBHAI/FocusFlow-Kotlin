@@ -2,21 +2,31 @@ package com.tbtechs.focusflow.ui.focus
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.local.dao.RecentSessionSummaryRow
+import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
+import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
+import com.tbtechs.focusflow.ui.home.RefAmber
+import com.tbtechs.focusflow.ui.home.RefGreen
+import com.tbtechs.focusflow.ui.home.RefSecondary
+import com.tbtechs.focusflow.ui.home.RefText
 import java.time.Duration
 import java.time.Instant
 
@@ -53,43 +63,63 @@ fun SessionDebriefModal(
         } during this session.$timing"
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = if (clean) Icons.Outlined.Security else Icons.Outlined.Warning,
-                contentDescription = null,
-                tint = if (clean) {
-                    MaterialTheme.colorScheme.secondary
-                } else {
-                    MaterialTheme.colorScheme.tertiary
-                },
-            )
-        },
-        title = {
-            Row {
-                Text(title, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Dismiss session debrief")
-                }
-            }
-        },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        FocusFlowModalCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            radius = 20.dp,
+            contentPadding = 24.dp,
+        ) {
             Column {
-                Text("SESSION DEBRIEF", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = if (clean) Icons.Outlined.Security else Icons.Outlined.Warning,
+                        contentDescription = null,
+                        tint = if (clean) RefGreen else RefAmber,
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .size(40.dp),
+                    )
+                    Text(title, modifier = Modifier.weight(1f), color = RefText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Dismiss session debrief", tint = RefSecondary)
+                    }
+                }
+                Text(
+                    "SESSION DEBRIEF",
+                    color = RefSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
                 Text(
                     session.taskTitle ?: "Focus session",
-                    style = MaterialTheme.typography.titleSmall,
+                    color = RefText,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 Text(
                     insight,
+                    color = RefSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
                     modifier = Modifier.padding(top = 8.dp),
                 )
+                FocusFlowPrimaryButton(
+                    text = "Done",
+                    onClick = onDismiss,
+                    modifier = Modifier.padding(top = 20.dp),
+                )
             }
-        },
-        confirmButton = {
-            Button(onClick = onDismiss) { Text("Done") }
-        },
-    )
+        }
+    }
 }

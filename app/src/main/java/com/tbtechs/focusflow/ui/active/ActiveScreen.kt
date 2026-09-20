@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AllInclusive
 import androidx.compose.material.icons.outlined.Block
@@ -41,16 +41,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -83,6 +79,7 @@ import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -91,7 +88,6 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import java.time.Instant
@@ -117,7 +113,6 @@ fun ActiveScreen(
     onOpenKeywordBlocker: () -> Unit = {},
     onOpenVpnBlockList: () -> Unit = {},
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val installedAppsRepository = remember { InstalledAppsRepository(context) }
     val resolvedVpnRepo = remember(vpnRepository) { vpnRepository ?: VpnRepository(context) }
@@ -191,32 +186,11 @@ fun ActiveScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "Active",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextPrimary,
-                        )
-                        Text(
-                            "Live status of your protections",
-                            fontSize = 12.5.sp,
-                            color = DarkTextSecondary,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkTextPrimary,
-                        )
-                    }
-                },
-                actions = {
+            FocusFlowInternalHeader(
+                title = "Active",
+                subtitle = "Live status of your protections",
+                onBack = onBack,
+                trailing = {
                     ActiveStatusIndicator(
                         focusSession = session,
                         settings = settings,
@@ -224,7 +198,6 @@ fun ActiveScreen(
                         onOpenActiveBlocks = {},
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
             )
         },
     ) { padding ->
@@ -232,8 +205,8 @@ fun ActiveScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = dimensions.screenPadding, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Top Status Summary Banner
             item {
@@ -645,7 +618,7 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            .clip(RoundedCornerShape(10.dp))
             .background(
                 if (nothingActive) DarkCard
                 else BrandPrimary.copy(alpha = 0.12f),
@@ -653,14 +626,14 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
             .border(
                 1.dp,
                 if (nothingActive) DarkBorder else BrandPrimary.copy(alpha = 0.35f),
-                MaterialTheme.shapes.medium,
+                RoundedCornerShape(10.dp),
             )
-            .padding(16.dp),
+            .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(30.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         if (nothingActive) DarkSurfaceVariant
@@ -675,7 +648,7 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
                     modifier = Modifier.size(22.dp),
                 )
             }
-            Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(10.dp))
             Column {
                 Text(
                     if (nothingActive) "Nothing blocking right now" else "Protection is active",
@@ -686,7 +659,7 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
                 Text(
                     if (nothingActive) "Start Focus or configure a protection layer in Defense."
                     else "This page updates automatically while it is open.",
-                    fontSize = 12.5.sp,
+                    fontSize = 11.sp,
                     color = DarkTextSecondary,
                 )
             }
@@ -709,25 +682,25 @@ private fun ActiveSectionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            .clip(RoundedCornerShape(10.dp))
             .background(DarkCard)
             .border(
                 1.dp,
                 if (warning) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
-                MaterialTheme.shapes.medium,
+                RoundedCornerShape(10.dp),
             )
             .then(if (expandable) Modifier.clickable(onClick = onToggle) else Modifier)
-            .padding(16.dp),
+            .padding(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(MaterialTheme.shapes.small)
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(DarkSurfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -735,7 +708,7 @@ private fun ActiveSectionCard(
                         imageVector = icon,
                         contentDescription = null,
                         tint = BrandPrimary,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(17.dp),
                     )
                 }
                 Spacer(Modifier.width(12.dp))
@@ -756,13 +729,13 @@ private fun ActiveSectionCard(
                 }
                 Box(
                     modifier = Modifier
-                        .clip(MaterialTheme.shapes.extraSmall)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(statusColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
                 ) {
                     Text(
                         status,
-                        fontSize = 11.5.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = statusColor,
                     )
@@ -785,12 +758,12 @@ private fun ActiveSectionCard(
 @Composable
 private fun KeyValueRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, fontSize = 13.sp, color = DarkTextSecondary)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = DarkTextPrimary)
+        Text(label, fontSize = 11.sp, color = DarkTextSecondary)
+        Text(value, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = DarkTextPrimary)
     }
 }
 
@@ -802,8 +775,9 @@ private fun ManageButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(6.dp),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = BrandPrimary,
         ),
@@ -813,7 +787,7 @@ private fun ManageButton(
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = BrandPrimary)
         Spacer(Modifier.width(8.dp))
-        Text(label, fontSize = 13.5.sp, fontWeight = FontWeight.Medium, color = BrandPrimary)
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = BrandPrimary)
     }
 }
 
@@ -822,15 +796,15 @@ private fun PackageList(packages: List<String>, appNames: Map<String, String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(DarkSurfaceVariant)
-            .padding(10.dp),
+            .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         packages.forEach { pkg ->
             Text(
                 appNames[pkg] ?: pkg.substringAfterLast('.'),
-                fontSize = 12.5.sp,
+                fontSize = 11.sp,
                 color = DarkTextPrimary,
             )
         }
@@ -856,13 +830,13 @@ private fun AllowanceRow(
     ) {
         Text(
             appName ?: packageName.substringAfterLast('.'),
-            fontSize = 13.sp,
+        fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             color = DarkTextPrimary,
         )
         Text(
             "$usageLabel${if (isActiveSession) " · in use" else ""}",
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             color = if (isActiveSession) Color(0xFF10B981) else DarkTextSecondary,
         )
     }
@@ -889,10 +863,10 @@ private fun ActiveTodayFooter(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(DarkCard)
             .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
-            .padding(16.dp),
+            .padding(12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(

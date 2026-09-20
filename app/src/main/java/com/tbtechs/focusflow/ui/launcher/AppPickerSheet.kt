@@ -37,16 +37,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,6 +61,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.tbtechs.focusflow.data.model.AllowedAppPreset
 import com.tbtechs.focusflow.data.model.BLOCK_ALL_SENTINEL
@@ -79,6 +77,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.home.ReferencePill
 import kotlinx.coroutines.launch
 
 private data class SensitiveApp(
@@ -123,7 +122,6 @@ fun AppPickerSheet(
 
     val dimensions = LocalFocusFlowDimensions.current
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var search by remember { mutableStateOf("") }
@@ -175,18 +173,19 @@ fun AppPickerSheet(
         }
     }
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onClose,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkCard,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
                 .navigationBarsPadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header (Screenshot 10)
@@ -198,7 +197,7 @@ fun AppPickerSheet(
                 Column {
                     Text(
                         text = title,
-                        fontSize = 18.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -228,9 +227,9 @@ fun AppPickerSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(DarkSurfaceVariant)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -277,7 +276,7 @@ fun AppPickerSheet(
                         }
                     }
                 },
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = DarkSurfaceVariant,
                     unfocusedContainerColor = DarkSurfaceVariant,
@@ -297,52 +296,20 @@ fun AppPickerSheet(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     item {
-                        FilterChip(
+                        ReferencePill(
+                            text = "All (${apps.size})",
                             selected = categoryFilter == null,
+                            fontSize = 11.sp,
                             onClick = { categoryFilter = null },
-                            shape = RoundedCornerShape(12.dp),
-                            label = {
-                                Text(
-                                    "All (${apps.size})",
-                                    fontSize = 11.5.sp,
-                                    color = if (categoryFilter == null) Color.White else DarkTextSecondary,
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                containerColor = DarkSurfaceVariant,
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = categoryFilter == null,
-                                borderColor = DarkBorder,
-                                selectedBorderColor = BrandPrimary,
-                            ),
                         )
                     }
                     items(categoryOptions) { category ->
                         val count = apps.count { sensitiveApps[it.packageName]?.category == category }
-                        FilterChip(
+                        ReferencePill(
+                            text = "$category ($count)",
                             selected = categoryFilter == category,
+                            fontSize = 11.sp,
                             onClick = { categoryFilter = category },
-                            shape = RoundedCornerShape(12.dp),
-                            label = {
-                                Text(
-                                    "$category ($count)",
-                                    fontSize = 11.5.sp,
-                                    color = if (categoryFilter == category) Color.White else DarkTextSecondary,
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                containerColor = DarkSurfaceVariant,
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = categoryFilter == category,
-                                borderColor = DarkBorder,
-                                selectedBorderColor = BrandPrimary,
-                            ),
                         )
                     }
                 }
@@ -359,7 +326,7 @@ fun AppPickerSheet(
                     colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
                     modifier = Modifier
                         .weight(1f)
-                        .defaultMinSize(minHeight = 44.dp),
+                        .defaultMinSize(minHeight = 36.dp),
                 ) {
                     Text("Select All", fontSize = 12.sp, color = DarkTextPrimary)
                 }
@@ -375,7 +342,7 @@ fun AppPickerSheet(
                     colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
                     modifier = Modifier
                         .weight(1f)
-                        .defaultMinSize(minHeight = 44.dp),
+                        .defaultMinSize(minHeight = 36.dp),
                 ) {
                     Text("Deselect All", fontSize = 12.sp, color = DarkTextPrimary)
                 }
@@ -417,9 +384,9 @@ fun AppPickerSheet(
                     items(presets, key = { it.id }) { preset ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
                                 .combinedClickable(
                                     onClick = {
                                         selected = when {
@@ -435,7 +402,7 @@ fun AppPickerSheet(
                                     },
                                     onLongClick = { deletePreset = preset },
                                 )
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -660,15 +627,15 @@ private fun AppPickerRow(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(DarkCard)
             .border(
                 1.dp,
                 if (checked) BrandPrimary.copy(alpha = 0.6f) else DarkBorder,
-                RoundedCornerShape(16.dp),
+                RoundedCornerShape(10.dp),
             )
             .clickable { onToggle(app) }
-            .padding(14.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -715,10 +682,10 @@ private fun AppPickerRow(
 
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                .size(22.dp)
                     .clip(CircleShape)
                     .background(if (checked) BrandPrimary else Color.Transparent)
-                    .border(1.5.dp, if (checked) BrandPrimary else DarkBorder, CircleShape),
+                .border(1.5.dp, if (checked) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (checked) {

@@ -65,6 +65,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.home.FocusFlowModalField
 
 private class PendingWordAction(val action: () -> Unit)
 
@@ -128,7 +129,7 @@ fun BlockedWordsModal(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onClose) {
-                    Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
+                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -138,11 +139,11 @@ fun BlockedWordsModal(
                         Icons.Outlined.TextFields,
                         contentDescription = null,
                         tint = BrandPrimary,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                     Text(
                         text = "Blocked Keywords",
-                        fontSize = 17.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -152,7 +153,7 @@ fun BlockedWordsModal(
                         text = "Save",
                         color = BrandPrimary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        fontSize = 13.sp,
                     )
                 }
             }
@@ -161,10 +162,10 @@ fun BlockedWordsModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF451A03))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                        .padding(14.dp),
+                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 16.dp, vertical = 9.dp),
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -174,7 +175,7 @@ fun BlockedWordsModal(
                         Text(
                             "Block is active — existing keywords are locked. You can add new keywords.",
                             color = Color(0xFFFBBF24),
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                         )
                     }
                 }

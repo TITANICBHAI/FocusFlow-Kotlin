@@ -35,10 +35,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +54,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -107,8 +107,6 @@ fun NuclearModeModal(
     var deviceAdminActive by remember(context) {
         mutableStateOf(devicePolicyManager?.isAdminActive(adminComponent) == true)
     }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     suspend fun reloadApps() {
         loading = true
         error = null
@@ -140,19 +138,19 @@ fun NuclearModeModal(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onClose,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkCard,
-        dragHandle = null,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
                 .navigationBarsPadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header matching 3e_13
@@ -173,7 +171,7 @@ fun NuclearModeModal(
                     )
                     Text(
                         text = "Nuclear Mode",
-                        fontSize = 18.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -187,10 +185,10 @@ fun NuclearModeModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFF450A0A))
-                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                    .padding(16.dp),
+                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .padding(12.dp),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -205,7 +203,7 @@ fun NuclearModeModal(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Permanent action",
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFF87171),
                         )
@@ -224,10 +222,10 @@ fun NuclearModeModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF451A03))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                        .padding(14.dp),
+                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                        .padding(12.dp),
                 ) {
                     Text(
                         "Device Admin is active. Android may prevent uninstalling some protected apps; if needed, temporarily revoke the admin permission.",
@@ -261,10 +259,10 @@ fun NuclearModeModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
-                        .padding(20.dp),
+                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                        .padding(24.dp),
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -299,9 +297,9 @@ fun NuclearModeModal(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
                                 .padding(12.dp),
                         ) {
                             Row(

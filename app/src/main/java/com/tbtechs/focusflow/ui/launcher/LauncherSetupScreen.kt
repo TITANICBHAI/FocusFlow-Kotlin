@@ -16,15 +16,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Image
@@ -33,21 +32,13 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -68,12 +59,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.LauncherController
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.ui.SettingsViewModel
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -82,7 +74,6 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 
 /**
@@ -91,7 +82,6 @@ import kotlinx.coroutines.launch
  * Implements screenshot 3e_1 with dark theme styling, default launcher status check,
  * focus tools selection, and hidden app toggles.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LauncherSetupScreen(
     settingsViewModel: SettingsViewModel,
@@ -100,7 +90,6 @@ fun LauncherSetupScreen(
     launcherController: LauncherController,
     onBack: () -> Unit,
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
@@ -147,21 +136,10 @@ fun LauncherSetupScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Home Launcher",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = DarkTextPrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+            FocusFlowInternalHeader(
+                title = "Home Launcher",
+                subtitle = "Customize your FocusFlow launcher",
+                onBack = onBack,
             )
         },
     ) { padding ->
@@ -169,27 +147,27 @@ fun LauncherSetupScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = dimensions.screenPadding),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Default home app card
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
+                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .padding(12.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(44.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(BrandPrimary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
@@ -204,7 +182,7 @@ fun LauncherSetupScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Default Home App",
-                                fontSize = 15.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
@@ -215,7 +193,7 @@ fun LauncherSetupScreen(
                                     false -> "Choose FocusFlow in Android Home settings"
                                     null -> "Checking Android Home settings…"
                                 },
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 color = if (defaultLauncher == true) Color(0xFF34D399) else DarkTextSecondary,
                             )
                         }
@@ -226,6 +204,10 @@ fun LauncherSetupScreen(
                                     .onFailure { context.startActivity(Intent(Settings.ACTION_SETTINGS)) }
                             },
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                horizontal = 12.dp,
+                                vertical = 6.dp,
+                            ),
                             colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                         ) {
                             Text("Open", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
@@ -239,10 +221,10 @@ fun LauncherSetupScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color(0xFF451A03))
-                            .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                            .padding(16.dp),
+                            .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            .padding(12.dp),
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(
@@ -271,36 +253,27 @@ fun LauncherSetupScreen(
                         color = DarkTextSecondary,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(DarkSurfaceVariant)
+                            .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        LauncherSegment(
+                            label = "Classic",
                             selected = settings.launcherTheme == "classic",
-                            onClick = { settingsViewModel.updateSettings(settings.copy(launcherTheme = "classic")) },
-                            label = { Text("Classic", color = if (settings.launcherTheme == "classic") Color.White else DarkTextSecondary) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                containerColor = DarkSurfaceVariant,
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = settings.launcherTheme == "classic",
-                                borderColor = DarkBorder,
-                                selectedBorderColor = BrandPrimary,
-                            ),
+                            onClick = {
+                                settingsViewModel.updateSettings(settings.copy(launcherTheme = "classic"))
+                            },
                         )
-                        FilterChip(
+                        LauncherSegment(
+                            label = "Glassy",
                             selected = settings.launcherTheme != "classic",
-                            onClick = { settingsViewModel.updateSettings(settings.copy(launcherTheme = "glassy")) },
-                            label = { Text("Glassy", color = if (settings.launcherTheme != "classic") Color.White else DarkTextSecondary) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                containerColor = DarkSurfaceVariant,
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = settings.launcherTheme != "classic",
-                                borderColor = DarkBorder,
-                                selectedBorderColor = BrandPrimary,
-                            ),
+                            onClick = {
+                                settingsViewModel.updateSettings(settings.copy(launcherTheme = "glassy"))
+                            },
                         )
                     }
                 }
@@ -310,10 +283,10 @@ fun LauncherSetupScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(DarkCard)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                                .padding(16.dp),
+                                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                                .padding(8.dp),
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(
@@ -327,7 +300,7 @@ fun LauncherSetupScreen(
                                         Text(
                                             if (settings.launcherWallpaperUri == null) "Default dynamic gradient"
                                             else "Custom wallpaper selected",
-                                            fontSize = 12.sp,
+                                            fontSize = 11.sp,
                                             color = DarkTextSecondary,
                                         )
                                     }
@@ -336,7 +309,7 @@ fun LauncherSetupScreen(
                                         shape = RoundedCornerShape(10.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                                     ) {
-                                        Text("Pick", fontSize = 12.sp, color = Color.White)
+                                        Text("Pick", fontSize = 13.sp, color = Color.White)
                                     }
                                 }
                                 if (settings.launcherWallpaperUri != null) {
@@ -356,10 +329,10 @@ fun LauncherSetupScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(DarkCard)
-                            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                            .padding(16.dp),
+                            .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -369,29 +342,22 @@ fun LauncherSetupScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     "Lock Launcher During Block",
-                                    fontSize = 14.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkTextPrimary,
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     "Prevent switching out of FocusFlow launcher while a standalone block is active.",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     color = DarkTextSecondary,
                                 )
                             }
-                            Switch(
+                            FocusFlowSwitch(
                                 checked = settings.launcherLockDuringStandalone,
                                 onCheckedChange = {
                                     settingsViewModel.updateSettings(settings.copy(launcherLockDuringStandalone = it))
                                 },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = BrandPrimary,
-                                    uncheckedThumbColor = DarkTextMuted,
-                                    uncheckedTrackColor = DarkSurfaceVariant,
-                                    uncheckedBorderColor = DarkBorder,
-                                ),
                             )
                         }
                     }
@@ -489,11 +455,34 @@ fun LauncherSetupScreen(
 }
 
 @Composable
+private fun LauncherSegment(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) BrandPrimary else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = if (selected) Color.White else DarkTextSecondary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
 private fun AppSearchField(value: String, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         singleLine = true,
         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(18.dp)) },
         trailingIcon = {
@@ -504,7 +493,7 @@ private fun AppSearchField(value: String, onValueChange: (String) -> Unit) {
             }
         },
         placeholder = { Text("Search installed apps", color = DarkTextMuted, fontSize = 13.sp) },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = DarkSurfaceVariant,
             unfocusedContainerColor = DarkSurfaceVariant,
@@ -521,22 +510,22 @@ private fun LauncherAppRow(app: InstalledAppInfo, checked: Boolean, onToggle: ()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(DarkCard)
-            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
             .clickable(onClick = onToggle)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             AppIcon(app.icon)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appName,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                     maxLines = 1,
@@ -550,16 +539,9 @@ private fun LauncherAppRow(app: InstalledAppInfo, checked: Boolean, onToggle: ()
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Switch(
+            FocusFlowSwitch(
                 checked = checked,
                 onCheckedChange = { onToggle() },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = BrandPrimary,
-                    uncheckedThumbColor = DarkTextMuted,
-                    uncheckedTrackColor = DarkSurfaceVariant,
-                    uncheckedBorderColor = DarkBorder,
-                ),
             )
         }
     }

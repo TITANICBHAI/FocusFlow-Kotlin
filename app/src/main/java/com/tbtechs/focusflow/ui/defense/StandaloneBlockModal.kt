@@ -59,7 +59,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
@@ -84,6 +83,7 @@ import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.ui.launcher.AppIcon
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.BrandPrimaryLight
 import com.tbtechs.focusflow.ui.theme.DarkBackground

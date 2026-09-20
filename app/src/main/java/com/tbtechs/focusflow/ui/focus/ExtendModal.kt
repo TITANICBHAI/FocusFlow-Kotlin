@@ -67,8 +67,8 @@ fun ExtendModal(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -105,29 +105,29 @@ fun ExtendModal(
 
             Text(
                 "Choose how much extra time to add. Subsequent tasks will shift forward automatically.",
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 color = DarkTextSecondary,
                 lineHeight = 20.sp,
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 extendOptions.chunked(3).forEach { rowOptions ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         rowOptions.forEach { minutes ->
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(DarkCard)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
                                     .clickable(enabled = !extending) {
                                         extending = true
                                         onExtend(minutes)
                                     }
-                                    .padding(vertical = 14.dp),
+                                    .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -148,9 +148,9 @@ fun ExtendModal(
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
+                    .defaultMinSize(minHeight = 40.dp),
             ) {
-                Text("Cancel", color = DarkTextSecondary, fontSize = 15.sp)
+                Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
             }
 
             Spacer(Modifier.height(8.dp))

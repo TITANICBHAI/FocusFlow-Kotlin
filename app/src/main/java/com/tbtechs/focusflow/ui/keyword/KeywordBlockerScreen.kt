@@ -31,15 +31,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.defense.BlockedWordsModal
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -65,7 +62,6 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 private data class KeywordPreset(
     val label: String,
@@ -112,7 +108,6 @@ fun KeywordBlockerScreen(
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onBack: () -> Unit = {},
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     val words = settings.blockedWords
     val active = words.isNotEmpty()
@@ -136,25 +131,9 @@ fun KeywordBlockerScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Keyword Blocker",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkTextPrimary,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+            FocusFlowInternalHeader(
+                title = "Keyword Blocker",
+                onBack = onBack,
             )
         },
     ) { padding ->
@@ -162,8 +141,8 @@ fun KeywordBlockerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = dimensions.screenPadding),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
                 Spacer(modifier = Modifier.height(2.dp))
@@ -177,7 +156,7 @@ fun KeywordBlockerScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(DarkCard)
                         .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
+                        .padding(12.dp),
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -185,7 +164,7 @@ fun KeywordBlockerScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(36.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(BrandPrimary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
@@ -194,7 +173,7 @@ fun KeywordBlockerScreen(
                                 Icons.Outlined.TextFields,
                                 contentDescription = null,
                                 tint = BrandPrimary,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -207,7 +186,7 @@ fun KeywordBlockerScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "When a blocked word appears in a URL, search bar, or on-screen text, the Accessibility Service redirects away from the content.",
-                                fontSize = 13.sp,
+                                fontSize = 11.sp,
                                 lineHeight = 18.sp,
                                 color = DarkTextSecondary,
                             )
@@ -224,7 +203,7 @@ fun KeywordBlockerScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(DarkCard)
                         .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
+                        .padding(12.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -238,13 +217,13 @@ fun KeywordBlockerScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(8.dp)
+                                    .size(12.dp)
                                         .clip(CircleShape)
                                         .background(if (active) Color(0xFF10B981) else DarkTextMuted),
                                 )
                                 Text(
                                     text = if (active) "Active" else "Inactive",
-                                    fontSize = 14.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = if (active) Color(0xFF34D399) else DarkTextSecondary,
                                 )
@@ -253,7 +232,7 @@ fun KeywordBlockerScreen(
                             Text(
                                 text = if (active) "${words.size} keyword${if (words.size == 1) "" else "s"} on the block list"
                                 else "Add keywords below to start filtering content",
-                                fontSize = 13.sp,
+                                fontSize = 11.sp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -281,8 +260,8 @@ fun KeywordBlockerScreen(
                     onClick = { modalVisible = true },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    .height(46.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 ) {
                     Icon(
@@ -321,10 +300,10 @@ fun KeywordBlockerScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color(0xFF451A03))
                             .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                            .padding(12.dp),
+                            .padding(10.dp),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -334,7 +313,7 @@ fun KeywordBlockerScreen(
                             Text(
                                 "Locked — block is active. Keywords cannot be removed until it ends.",
                                 color = Color(0xFFFBBF24),
-                                fontSize = 12.sp,
+                                 fontSize = 11.sp,
                             )
                         }
                     }
@@ -346,7 +325,7 @@ fun KeywordBlockerScreen(
                 Column(modifier = Modifier.padding(top = 8.dp)) {
                     Text(
                         text = "QUICK PRESETS",
-                        fontSize = 12.sp,
+                    fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
                         color = DarkTextSecondary,
@@ -369,9 +348,9 @@ fun KeywordBlockerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                         .clickable {
                             if (allAdded) {
                                 pendingPreset = preset.copy(description = "Every keyword in this preset is already on your block list.")
@@ -382,7 +361,7 @@ fun KeywordBlockerScreen(
                                 )
                             }
                         }
-                        .padding(14.dp),
+                        .padding(12.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -399,21 +378,21 @@ fun KeywordBlockerScreen(
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = preset.description,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
+                                fontSize = 11.sp,
+                                lineHeight = 17.sp,
                                 color = DarkTextSecondary,
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = if (allAdded) "All added ✓" else "+${preset.words.size} keywords",
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (allAdded) Color(0xFF10B981) else BrandPrimary,
                             )
                         }
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(if (allAdded) Color(0xFF064E3B) else BrandPrimary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
@@ -422,7 +401,7 @@ fun KeywordBlockerScreen(
                                 if (allAdded) Icons.Outlined.Check else Icons.Outlined.Add,
                                 contentDescription = null,
                                 tint = if (allAdded) Color(0xFF34D399) else BrandPrimary,
-                                modifier = Modifier.size(18.dp),
+                                 modifier = Modifier.size(16.dp),
                             )
                         }
                     }

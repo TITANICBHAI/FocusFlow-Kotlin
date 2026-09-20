@@ -5,15 +5,24 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -26,6 +35,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -46,11 +58,231 @@ internal val RefAmber = Color(0xFFF59E0B)
 internal val RefRed = Color(0xFFEF4444)
 
 @Composable
+internal fun FocusFlowInternalHeader(
+    title: String,
+    subtitle: String? = null,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailing: @Composable (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(RefHeader)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Back",
+                tint = RefText,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = RefText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = RefSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        trailing?.invoke()
+    }
+}
+
+@Composable
+internal fun FocusFlowInternalCard(
+    modifier: Modifier = Modifier,
+    radius: androidx.compose.ui.unit.Dp = 16.dp,
+    contentPadding: androidx.compose.ui.unit.Dp = 12.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(radius))
+            .background(RefCard)
+            .border(1.dp, RefBorder, RoundedCornerShape(radius))
+            .padding(contentPadding),
+        content = content,
+    )
+}
+
+@Composable
+internal fun FocusFlowModalCard(
+    modifier: Modifier = Modifier,
+    radius: androidx.compose.ui.unit.Dp = 20.dp,
+    contentPadding: androidx.compose.ui.unit.Dp = 24.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(radius))
+            .background(RefCard)
+            .border(1.dp, RefBorder, RoundedCornerShape(radius))
+            .padding(contentPadding),
+        content = content,
+    )
+}
+
+@Composable
+internal fun FocusFlowPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    color: Color = BrandPrimary,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (enabled) color else RefMuted.copy(alpha = 0.35f))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon?.let {
+            Icon(it, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+internal fun FocusFlowSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(RefCard)
+            .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon?.let {
+            Icon(it, contentDescription = null, tint = RefSecondary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(
+            text = text,
+            color = if (enabled) RefSecondary else RefMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+internal fun FocusFlowModalField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    minHeight: androidx.compose.ui.unit.Dp = 48.dp,
+    secure: Boolean = false,
+    onToggleVisibility: (() -> Unit)? = null,
+) {
+    var passwordVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
+            color = RefText,
+            fontSize = 15.sp,
+        ),
+        visualTransformation = if (secure && !passwordVisible) {
+            PasswordVisualTransformation()
+        } else {
+            VisualTransformation.None
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(RefCard)
+                    .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    if (value.isEmpty()) {
+                        Text(placeholder, color = RefMuted, fontSize = 15.sp)
+                    }
+                    innerTextField()
+                }
+                if (secure && onToggleVisibility != null) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = RefSecondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable {
+                                passwordVisible = !passwordVisible
+                                onToggleVisibility()
+                            },
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
 internal fun ReferencePill(
     text: String,
     selected: Boolean,
     modifier: Modifier = Modifier,
     selectedColor: Color = BrandPrimary,
+    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
     onClick: (() -> Unit)? = null,
 ) {
     val shape = CircleShape
@@ -70,7 +302,7 @@ internal fun ReferencePill(
         Text(
             text = text,
             color = RefText,
-            fontSize = 15.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.SemiBold,
         )
     }

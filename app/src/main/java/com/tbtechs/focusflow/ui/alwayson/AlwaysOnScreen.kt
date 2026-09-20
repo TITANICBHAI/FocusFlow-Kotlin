@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AllInclusive
-import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.ClearAll
@@ -35,14 +35,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,6 +66,7 @@ import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -78,7 +76,6 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
@@ -136,7 +133,6 @@ fun AlwaysOnScreen(
     installedAppsRepository: InstalledAppsRepository,
     onBack: () -> Unit,
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val activity = context as? Activity
     val scope = rememberCoroutineScope()
@@ -249,36 +245,15 @@ fun AlwaysOnScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Always-On Block List",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextPrimary,
-                        )
-                        Text(
-                            text = if (selected.isNotEmpty()) {
-                                "${selected.size} app${if (selected.size == 1) "" else "s"} blocked 24/7"
-                            } else {
-                                "Tick apps to block them permanently — no timer"
-                            },
-                            fontSize = 12.sp,
-                            color = DarkTextSecondary,
-                        )
-                    }
+            FocusFlowInternalHeader(
+                title = "Always-On Block List",
+                subtitle = if (selected.isNotEmpty()) {
+                    "${selected.size} app${if (selected.size == 1) "" else "s"} blocked 24/7"
+                } else {
+                    "Tick apps to block them permanently — no timer"
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkTextPrimary,
-                        )
-                    }
-                },
-                actions = {
+                onBack = onBack,
+                trailing = {
                     if (selected.isNotEmpty()) {
                         IconButton(
                             onClick = { clearConfirmation = true },
@@ -292,7 +267,6 @@ fun AlwaysOnScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
             )
         },
         bottomBar = {
@@ -301,15 +275,15 @@ fun AlwaysOnScreen(
                     .fillMaxWidth()
                     .background(DarkBackground)
                     .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
             ) {
                 Button(
                     onClick = { save() },
                     enabled = !loading && !saving,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
+                        .height(46.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BrandPrimary,
                         contentColor = Color.White,
@@ -339,18 +313,18 @@ fun AlwaysOnScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = dimensions.screenPadding),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (showInfo) {
                 // Explanatory Info Card matching 3e_(3)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                        .padding(14.dp),
+                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .padding(12.dp),
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -358,7 +332,7 @@ fun AlwaysOnScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(38.dp)
+                                .size(30.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(BrandPrimary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
@@ -367,7 +341,7 @@ fun AlwaysOnScreen(
                                 Icons.Outlined.AllInclusive,
                                 contentDescription = null,
                                 tint = BrandPrimary,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(17.dp),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -407,17 +381,17 @@ fun AlwaysOnScreen(
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 singleLine = true,
                 placeholder = {
-                    Text("Search apps…", color = DarkTextMuted, fontSize = 14.sp)
+                    Text("Search apps…", color = DarkTextMuted, fontSize = 13.sp)
                 },
                 leadingIcon = {
                     Icon(
                         Icons.Outlined.Search,
                         contentDescription = null,
                         tint = DarkTextSecondary,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 },
                 trailingIcon = {
@@ -432,7 +406,7 @@ fun AlwaysOnScreen(
                         }
                     }
                 },
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = DarkCard,
                     unfocusedContainerColor = DarkCard,
@@ -642,27 +616,27 @@ private fun AlwaysOnAppRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(DarkCard)
             .border(
                 1.dp,
                 if (checked) BrandPrimary.copy(alpha = 0.35f) else DarkBorder,
-                RoundedCornerShape(14.dp),
+                RoundedCornerShape(10.dp),
             ),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onToggle)
-                .padding(14.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             AppIcon(app.icon)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appName,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                     maxLines = 1,
@@ -670,7 +644,7 @@ private fun AlwaysOnAppRow(
                 )
                 Text(
                     text = app.packageName,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     color = DarkTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -679,7 +653,7 @@ private fun AlwaysOnAppRow(
             // Styled rounded checkbox matching 3e_(3)
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(22.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(if (checked) BrandPrimary else Color.Transparent)
                     .border(

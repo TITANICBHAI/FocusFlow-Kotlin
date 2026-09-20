@@ -42,15 +42,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,6 +62,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
@@ -78,6 +76,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -103,21 +102,19 @@ fun GreyoutScheduleModal(
     var editing by remember { mutableStateOf<ScheduleDraft?>(null) }
     var confirmDelete by remember { mutableStateOf<Int?>(null) }
     var pinPrompt by remember { mutableStateOf<PendingScheduleAction?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onClose,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkCard,
-        dragHandle = null,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .imePadding()
                 .navigationBarsPadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp),
+                .imePadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header matching 3e_8
@@ -508,8 +505,6 @@ private fun ScheduleEditor(
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var search by remember { mutableStateOf("") }
     var validationError by remember(draft) { mutableStateOf<String?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     LaunchedEffect(Unit) {
         apps = withContext(Dispatchers.IO) {
             runCatching { InstalledAppsRepository(context).getInstalledApps() }.getOrDefault(emptyList())
@@ -521,12 +516,12 @@ private fun ScheduleEditor(
             it.packageName !in current.packages
     }.take(6)
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onBack,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkCard,
-        dragHandle = null,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
@@ -758,15 +753,9 @@ private fun ScheduleEditor(
                         Text("Window Enabled", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
                         Text("Turn off to temporarily suspend this schedule", fontSize = 12.sp, color = DarkTextSecondary)
                     }
-                    Switch(
+                    FocusFlowSwitch(
                         checked = current.enabled,
                         onCheckedChange = { current = current.copy(enabled = it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = BrandPrimary,
-                            uncheckedThumbColor = DarkTextMuted,
-                            uncheckedTrackColor = DarkCard,
-                        ),
                     )
                 }
 
@@ -782,15 +771,9 @@ private fun ScheduleEditor(
                         }
                         Text("Cut internet access for these apps during this window", fontSize = 12.sp, color = DarkTextSecondary)
                     }
-                    Switch(
+                    FocusFlowSwitch(
                         checked = current.vpnEnabled,
                         onCheckedChange = { current = current.copy(vpnEnabled = it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = BrandPrimary,
-                            uncheckedThumbColor = DarkTextMuted,
-                            uncheckedTrackColor = DarkCard,
-                        ),
                     )
                 }
             }

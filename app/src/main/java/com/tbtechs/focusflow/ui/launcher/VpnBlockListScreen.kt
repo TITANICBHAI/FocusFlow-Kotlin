@@ -12,16 +12,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Search
@@ -36,12 +35,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,6 +59,8 @@ import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -72,7 +69,6 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
@@ -91,7 +87,6 @@ fun VpnBlockListScreen(
     isFocusActive: Boolean = false,
     onBack: () -> Unit,
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val settings by settingsViewModel.settings.collectAsState()
@@ -191,29 +186,12 @@ fun VpnBlockListScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "VPN Block List",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextPrimary,
-                        )
-                        Text(
-                            text = if (selected.isEmpty()) "Cut internet access — no overlay needed"
-                            else "${selected.size} app${if (selected.size == 1) "" else "s"} network-blocked 24/7",
-                            fontSize = 12.sp,
-                            color = DarkTextSecondary,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = DarkTextPrimary)
-                    }
-                },
-                actions = {
+            FocusFlowInternalHeader(
+                title = "VPN Block List",
+                subtitle = if (selected.isEmpty()) "Cut internet access — no overlay needed"
+                else "${selected.size} app${if (selected.size == 1) "" else "s"} network-blocked 24/7",
+                onBack = onBack,
+                trailing = {
                     if (selected.isNotEmpty()) {
                         IconButton(
                             onClick = { clearDialog = true },
@@ -223,7 +201,6 @@ fun VpnBlockListScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
             )
         },
         bottomBar = {
@@ -232,16 +209,16 @@ fun VpnBlockListScreen(
                     .fillMaxWidth()
                     .background(DarkBackground)
                     .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
             ) {
                 Button(
                     onClick = ::save,
                     enabled = !loading && !saving,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(46.dp),
                 ) {
                     if (saving) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
@@ -262,17 +239,17 @@ fun VpnBlockListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = dimensions.screenPadding),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Information Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
+                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                    .padding(12.dp),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -295,14 +272,14 @@ fun VpnBlockListScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "24/7 Network Isolation",
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Selected apps have all internet access routed to an offline loopback VPN. No external servers or sessions required. Operates in addition to visual overlays.",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             lineHeight = 17.sp,
                             color = DarkTextSecondary,
                         )
@@ -331,7 +308,7 @@ fun VpnBlockListScreen(
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 singleLine = true,
                 leadingIcon = {
                     Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(18.dp))
@@ -344,7 +321,7 @@ fun VpnBlockListScreen(
                     }
                 },
                 placeholder = { Text("Search installed apps", color = DarkTextMuted, fontSize = 13.sp) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = DarkSurfaceVariant,
                     unfocusedContainerColor = DarkSurfaceVariant,
@@ -390,13 +367,13 @@ fun VpnBlockListScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(DarkCard)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
                                 .clickable {
                                     selected = if (isChecked) selected - app.packageName else selected + app.packageName
                                 }
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -411,7 +388,7 @@ fun VpnBlockListScreen(
                                     ) {
                                         Text(
                                             text = app.appName,
-                                            fontSize = 14.sp,
+                                    fontSize = 13.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkTextPrimary,
                                             maxLines = 1,
@@ -441,18 +418,11 @@ fun VpnBlockListScreen(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
-                                Switch(
+                                FocusFlowSwitch(
                                     checked = isChecked,
                                     onCheckedChange = {
                                         selected = if (isChecked) selected - app.packageName else selected + app.packageName
                                     },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = BrandPrimary,
-                                        uncheckedThumbColor = DarkTextMuted,
-                                        uncheckedTrackColor = DarkSurfaceVariant,
-                                        uncheckedBorderColor = DarkBorder,
-                                    ),
                                 )
                             }
                         }

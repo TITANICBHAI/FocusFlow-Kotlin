@@ -120,8 +120,8 @@ fun QuickBlockSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -130,13 +130,13 @@ fun QuickBlockSheet(
                 Column(Modifier.weight(1f)) {
                     Text(
                         "Quick Block",
-                        fontSize = 20.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
                     Text(
                         appName,
-                        fontSize = 14.sp,
+                        fontSize = 11.sp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -152,11 +152,11 @@ fun QuickBlockSheet(
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
             ) {
                 Icon(Icons.Outlined.AccessTime, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Block for one hour", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("Block for one hour", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
 
             OutlinedButton(
@@ -169,7 +169,7 @@ fun QuickBlockSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 44.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = DarkCard,
                     contentColor = DarkTextPrimary,
@@ -178,7 +178,7 @@ fun QuickBlockSheet(
                     brush = androidx.compose.ui.graphics.SolidColor(DarkBorder),
                 ),
             ) {
-                Text("Until tonight (11:59 PM)", fontSize = 14.sp)
+                Text("Until tonight (11:59 PM)", fontSize = 13.sp)
             }
 
             OutlinedButton(
@@ -191,7 +191,7 @@ fun QuickBlockSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 44.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = DarkCard,
                     contentColor = DarkTextPrimary,
@@ -200,7 +200,7 @@ fun QuickBlockSheet(
                     brush = androidx.compose.ui.graphics.SolidColor(DarkBorder),
                 ),
             ) {
-                Text("Until tomorrow morning (7:00 AM)", fontSize = 14.sp)
+                Text("Until tomorrow morning (7:00 AM)", fontSize = 13.sp)
             }
 
             OutlinedButton(
@@ -218,7 +218,7 @@ fun QuickBlockSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 44.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = DarkCard,
                     contentColor = DarkTextPrimary,
@@ -229,7 +229,7 @@ fun QuickBlockSheet(
             ) {
                 Text(
                     if (customExpiry == null) "Choose custom expiry..." else "Custom expiry selected",
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                 )
             }
 
@@ -237,10 +237,10 @@ fun QuickBlockSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
+                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                    .padding(8.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -256,13 +256,13 @@ fun QuickBlockSheet(
                     Column(Modifier.weight(1f)) {
                         Text(
                             "Always-On",
-                            fontSize = 15.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkTextPrimary,
                         )
                         Text(
                             "Keep this app blocked indefinitely",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             color = DarkTextSecondary,
                         )
                     }
