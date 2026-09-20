@@ -72,6 +72,8 @@ class FocusFlowWidget : AppWidgetProvider() {
     companion object {
         private const val PREFS_NAME     = "focusday_prefs"
         private const val DEFAULT_ACCENT = "#6366f1"
+        private const val WARNING_ACCENT = "#F87171"
+        private const val PROTECTION_ACCENT = "#22C55E"
 
         // PendingIntent request codes — must be unique per target
         private const val PI_TAP_ROOT = 100
@@ -233,6 +235,7 @@ class FocusFlowWidget : AppWidgetProvider() {
             }
 
             val accent = parseColor(taskColorHex)
+            views.setInt(R.id.widget_accent_bar, "setBackgroundColor", accent)
             // Append a streak suffix to the header so the user sees momentum
             // even mid-task — costs no vertical space, fits within 4×1.
             val headerText = if (streakDays >= 2) "ACTIVE TASK · 🔥 ${streakDays}" else "ACTIVE TASK"
@@ -264,12 +267,12 @@ class FocusFlowWidget : AppWidgetProvider() {
             taskName: String,
             taskColorHex: String?,
         ) {
-            val accent = parseColor(taskColorHex)
+            views.setInt(R.id.widget_accent_bar, "setBackgroundColor", Color.parseColor(WARNING_ACCENT))
             views.setTextViewText(R.id.widget_header_label, "TIME'S UP")
-            views.setTextColor(R.id.widget_header_label, accent)
+            views.setTextColor(R.id.widget_header_label, Color.parseColor(WARNING_ACCENT))
             views.setTextViewText(R.id.widget_task_name, taskName)
             views.setTextViewText(R.id.widget_time_remaining, "Tap to resolve →")
-            views.setTextColor(R.id.widget_time_remaining, accent)
+            views.setTextColor(R.id.widget_time_remaining, Color.parseColor(WARNING_ACCENT))
             views.setViewVisibility(R.id.widget_time_remaining, View.VISIBLE)
             views.setViewVisibility(R.id.widget_progress, View.GONE)
             views.setViewVisibility(R.id.widget_add_task_btn, View.GONE)
@@ -286,7 +289,8 @@ class FocusFlowWidget : AppWidgetProvider() {
             blockedCount: Int,
             untilMs: Long,
         ) {
-            val accent = parseColor(DEFAULT_ACCENT)
+            val accent = Color.parseColor(PROTECTION_ACCENT)
+            views.setInt(R.id.widget_accent_bar, "setBackgroundColor", accent)
             val plural = if (blockedCount == 1) "app" else "apps"
             views.setTextViewText(R.id.widget_header_label, "BLOCK ACTIVE")
             views.setTextColor(R.id.widget_header_label, accent)
@@ -319,6 +323,7 @@ class FocusFlowWidget : AppWidgetProvider() {
             focusMins: Int,
         ) {
             val accent = parseColor(DEFAULT_ACCENT)
+            views.setInt(R.id.widget_accent_bar, "setBackgroundColor", accent)
             views.setTextViewText(R.id.widget_header_label, "NEXT UP")
             views.setTextColor(R.id.widget_header_label, accent)
             views.setTextViewText(R.id.widget_task_name, taskName)
@@ -347,6 +352,7 @@ class FocusFlowWidget : AppWidgetProvider() {
             streakDays: Int,
         ) {
             val accent = parseColor(DEFAULT_ACCENT)
+            views.setInt(R.id.widget_accent_bar, "setBackgroundColor", accent)
             val headerText = if (streakDays >= 2) "FOCUSFLOW · 🔥 ${streakDays}" else "FOCUSFLOW"
             views.setTextViewText(R.id.widget_header_label, headerText)
             views.setTextColor(R.id.widget_header_label, accent)

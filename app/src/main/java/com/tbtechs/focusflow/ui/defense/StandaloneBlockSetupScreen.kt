@@ -22,16 +22,9 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,6 +46,9 @@ import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.StandaloneBlockAndAllowanceConfig
 import com.tbtechs.focusflow.domain.FocusPinManager
 import com.tbtechs.focusflow.ui.SettingsViewModel
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
+import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
+import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -65,7 +61,6 @@ import com.tbtechs.focusflow.ui.settings.dailyAllowanceEntriesFromJson
 import kotlinx.coroutines.delay
 import java.text.DateFormat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StandaloneBlockSetupScreen(
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
@@ -105,25 +100,9 @@ fun StandaloneBlockSetupScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Standalone Block",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            tint = DarkTextPrimary,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+            FocusFlowInternalHeader(
+                title = "Standalone Block",
+                onBack = onBack,
             )
         },
     ) { padding ->
@@ -132,8 +111,8 @@ fun StandaloneBlockSetupScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Hero Status Card
             Box(
@@ -146,16 +125,16 @@ fun StandaloneBlockSetupScreen(
                         if (active) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
                         RoundedCornerShape(16.dp),
                     )
-                    .padding(20.dp),
+                    .padding(12.dp),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(40.dp)
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(
                                     if (active) Color(0xFFEF4444).copy(alpha = 0.15f)
@@ -167,7 +146,7 @@ fun StandaloneBlockSetupScreen(
                                 if (active) Icons.Outlined.Lock else Icons.Outlined.Block,
                                 contentDescription = null,
                                 tint = if (active) Color(0xFFF87171) else BrandPrimary,
-                                modifier = Modifier.size(26.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -193,7 +172,7 @@ fun StandaloneBlockSetupScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = if (active) "Enforcing Restrictions" else "Block Apps Without a Task",
-                                fontSize = 17.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
@@ -207,7 +186,7 @@ fun StandaloneBlockSetupScreen(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(DarkSurfaceVariant)
-                                .padding(14.dp),
+                                .padding(12.dp),
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
@@ -262,7 +241,7 @@ fun StandaloneBlockSetupScreen(
                                                     ),
                                                 )
                                             }
-                                            .padding(vertical = 8.dp),
+                                .padding(vertical = 8.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
@@ -300,36 +279,17 @@ fun StandaloneBlockSetupScreen(
                 }
             }
 
-            Button(
+            FocusFlowPrimaryButton(
+                text = if (active) "Manage Active Block" else "Choose Apps to Block",
                 onClick = { modalVisible = true },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (active) BrandPrimary else BrandPrimary,
-                ),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Icon(Icons.Outlined.Block, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (active) "Manage Active Block" else "Choose Apps to Block",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-
-            OutlinedButton(
+                icon = Icons.Outlined.Block,
+            )
+            FocusFlowSecondaryButton(
+                text = "Return to Defense",
                 onClick = onBack,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = DarkTextSecondary,
-                ),
-                shape = RoundedCornerShape(12.dp),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder),
-                ),
-            ) {
-                Text("Return to Defense")
-            }
+            )
         }
     }
 

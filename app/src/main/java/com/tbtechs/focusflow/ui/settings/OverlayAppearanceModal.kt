@@ -5,29 +5,33 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,10 +40,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.ui.home.FocusFlowInternalCard
+import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
+import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
+import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
+import com.tbtechs.focusflow.ui.home.RefBackground
+import com.tbtechs.focusflow.ui.home.RefBorder
+import com.tbtechs.focusflow.ui.home.RefCard
+import com.tbtechs.focusflow.ui.home.RefMuted
+import com.tbtechs.focusflow.ui.home.RefSecondary
+import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -147,150 +170,151 @@ fun OverlayAppearanceModal(
 
     Dialog(
         onDismissRequest = onClose,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+        Column(
+            modifier = Modifier.fillMaxSize().background(RefBackground).navigationBarsPadding(),
         ) {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
-                contentWindowInsets = WindowInsets.statusBars,
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Overlay Appearance") },
-                        actions = {
-                            TextButton(onClick = onClose) { Text("Close") }
-                        },
-                    )
-                },
-            ) { padding ->
-                    if (loading) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .navigationBarsPadding()
-                                .padding(padding),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Overlay Appearance", modifier = Modifier.weight(1f), color = RefText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onClose) { Text("Close", color = RefSecondary, fontSize = 13.sp) }
+            }
+            if (loading) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator(color = RefText, modifier = Modifier.size(24.dp))
+                    Text("Loading overlay settings", color = RefSecondary, fontSize = 13.sp)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item {
+                        OverlaySection(
+                            title = "BACKGROUND IMAGE",
+                            description = "Pick an image from your gallery for the block overlay. Leave it empty to use the built-in dark gradient.",
                         ) {
-                            CircularProgressIndicator()
-                            Text("Loading overlay settings", style = MaterialTheme.typography.bodyMedium)
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .navigationBarsPadding(),
-                            contentPadding = padding,
-                        ) {
-                            item {
-                                OverlaySection(
-                                    title = "Background image",
-                                    description = "Pick an image from your gallery for the block overlay. Leave it empty to use the built-in dark gradient.",
-                                ) {
-                                    if (wallpaperPath.isBlank()) {
-                                        Text(
-                                            "Using built-in gradient background",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    } else {
-                                        Row(modifier = Modifier.fillMaxWidth()) {
-                                            Text(
-                                                text = wallpaperPath,
-                                                modifier = Modifier.weight(1f),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                            )
-                                            TextButton(onClick = ::removeWallpaper) { Text("Remove") }
-                                        }
-                                    }
-                                    OutlinedButton(onClick = { pickImage.launch("image/*") }) {
-                                        Text(if (wallpaperPath.isBlank()) "Pick from gallery" else "Change image")
-                                    }
-                                }
-                            }
-                            item {
-                                OverlaySection(
-                                    title = "Custom quotes",
-                                    description = "These rotate randomly on the overlay. Leave this list empty to use the built-in focus quotes.",
-                                ) {
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        OutlinedTextField(
-                                            value = draftQuote,
-                                            onValueChange = { draftQuote = it },
-                                            modifier = Modifier.weight(1f),
-                                            label = { Text("Type a motivating quote") },
-                                            minLines = 1,
-                                            maxLines = 4,
-                                        )
-                                        Button(
-                                            enabled = draftQuote.trim().isNotEmpty(),
-                                            onClick = {
-                                                val quote = draftQuote.trim()
-                                                when {
-                                                    quote.isEmpty() -> Unit
-                                                    quote in quotes -> message = OverlayMessage("Duplicate quote", "This quote is already in your list.")
-                                                    else -> {
-                                                        syncQuotes(quotes + quote) { draftQuote = "" }
-                                                    }
-                                                }
-                                            },
-                                        ) { Text("Add") }
-                                    }
-                                    if (quotes.isEmpty()) {
-                                        Text(
-                                            "No custom quotes — built-in pool active",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                            itemsIndexed(quotes, key = { index, quote -> "$index-$quote" }) { index, quote ->
-                                Card(modifier = Modifier.fillMaxWidth()) {
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = "“$quote”",
-                                            modifier = Modifier.weight(1f),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                        )
-                                        TextButton(onClick = { syncQuotes(quotes.filterIndexed { itemIndex, _ -> itemIndex != index }) }) {
-                                            Text("Remove")
-                                        }
-                                    }
-                                }
-                            }
-                            item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Outlined.Image, contentDescription = null, tint = RefSecondary, modifier = Modifier.size(20.dp))
                                 Text(
-                                    "Changes apply immediately. The next block overlay will use these settings.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    if (wallpaperPath.isBlank()) "Using built-in gradient background" else wallpaperPath,
+                                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                                    color = RefSecondary,
+                                    fontSize = 13.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
+                                if (wallpaperPath.isNotBlank()) {
+                                    TextButton(onClick = ::removeWallpaper) { Text("Remove", color = Color(0xFFF87171), fontSize = 13.sp) }
+                                }
+                            }
+                            FocusFlowPrimaryButton(
+                                text = if (wallpaperPath.isBlank()) "Pick from gallery" else "Change image",
+                                icon = Icons.Outlined.Image,
+                                onClick = { pickImage.launch("image/*") },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                            )
+                        }
+                    }
+                    item {
+                        OverlaySection(
+                            title = "CUSTOM QUOTES",
+                            description = "These rotate randomly on the overlay. Leave this list empty to use the built-in focus quotes.",
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.Bottom,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                BasicTextField(
+                                    value = draftQuote,
+                                    onValueChange = { draftQuote = it },
+                                    modifier = Modifier.weight(1f).heightIn(min = 44.dp, max = 120.dp),
+                                    textStyle = androidx.compose.material3.LocalTextStyle.current.copy(color = RefText, fontSize = 13.sp),
+                                    maxLines = 5,
+                                    decorationBox = { inner ->
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp, max = 120.dp)
+                                                .clip(RoundedCornerShape(10.dp)).background(RefCard)
+                                                .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
+                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        ) {
+                                            if (draftQuote.isBlank()) Text("Type a motivating quote", color = RefMuted, fontSize = 13.sp)
+                                            inner()
+                                        }
+                                    },
+                                )
+                                Box(
+                                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
+                                        .background(if (draftQuote.trim().isNotEmpty()) BrandPrimary else RefMuted.copy(alpha = 0.35f))
+                                        .clickable(enabled = draftQuote.trim().isNotEmpty()) {
+                                            val quote = draftQuote.trim()
+                                            when {
+                                                quote in quotes -> message = OverlayMessage("Duplicate quote", "This quote is already in your list.")
+                                                else -> syncQuotes(quotes + quote) { draftQuote = "" }
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(Icons.Outlined.Add, contentDescription = "Add quote", tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            if (quotes.isEmpty()) {
+                                Text("No custom quotes — built-in pool active", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = RefSecondary, fontSize = 11.sp)
                             }
                         }
+                    }
+                    itemsIndexed(quotes, key = { index, quote -> "$index-$quote" }) { index, quote ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("“$quote”", modifier = Modifier.weight(1f), color = RefText, fontSize = 13.sp, lineHeight = 20.sp, fontStyle = FontStyle.Italic)
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = "Delete quote",
+                                tint = RefSecondary,
+                                modifier = Modifier.size(20.dp).clickable { syncQuotes(quotes.filterIndexed { itemIndex, _ -> itemIndex != index }) },
+                            )
+                        }
+                    }
+                    item {
+                        Text("Changes apply immediately. The next block overlay will use these settings.", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = RefSecondary, fontSize = 11.sp, lineHeight = 16.sp)
                     }
                 }
             }
         }
+    }
 
     message?.let { notice ->
-        AlertDialog(
+        Dialog(
             onDismissRequest = { message = null },
-            title = { Text(notice.title) },
-            text = { Text(notice.body) },
-            confirmButton = {
-                if (notice.showSettings) {
-                    Button(onClick = { message = null; openAppSettings() }) { Text("Open settings") }
-                } else {
-                    Button(onClick = { message = null }) { Text("OK") }
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            FocusFlowModalCard(modifier = Modifier.fillMaxWidth().padding(16.dp), radius = 16.dp, contentPadding = 16.dp) {
+                Text(notice.title, color = RefText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(notice.body, color = RefSecondary, fontSize = 11.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (notice.showSettings) {
+                        FocusFlowSecondaryButton(text = "Cancel", onClick = { message = null }, modifier = Modifier.weight(1f))
+                        FocusFlowPrimaryButton(text = "Open settings", onClick = { message = null; openAppSettings() }, modifier = Modifier.weight(1f))
+                    } else {
+                        FocusFlowPrimaryButton(text = "OK", onClick = { message = null })
+                    }
                 }
-            },
-            dismissButton = if (notice.showSettings) {
-                { TextButton(onClick = { message = null }) { Text("Cancel") } }
-            } else null,
-        )
+            }
+        }
     }
 }
 
@@ -301,10 +325,26 @@ private fun OverlaySection(
     content: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-        Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.fillMaxWidth()) { content() }
+        Text(
+            title,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.8.sp,
+            color = RefSecondary,
+        )
+        Text(
+            description,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            color = RefSecondary,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+        )
+        FocusFlowInternalCard(
+            modifier = Modifier.fillMaxWidth(),
+            radius = 16.dp,
+            contentPadding = 0.dp,
+        ) {
+            content()
         }
     }
 }

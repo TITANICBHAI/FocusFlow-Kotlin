@@ -1,25 +1,20 @@
 package com.tbtechs.focusflow.ui.permissions
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.OpenInNew
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -31,10 +26,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.tbtechs.focusflow.data.repository.UsageStatsRepository
+import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
+import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
+import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
+import com.tbtechs.focusflow.ui.home.RefRed
+import com.tbtechs.focusflow.ui.home.RefSecondary
+import com.tbtechs.focusflow.ui.home.RefText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -109,108 +113,110 @@ fun AccessibilityRestrictedRecovery(
         onDismiss()
     }
 
-    AlertDialog(
-        onDismissRequest = {
-            dismissRecovery()
-        },
-        title = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Row {
-                    Icon(Icons.Outlined.Lock, contentDescription = null)
-                    Text(" Accessibility recovery", modifier = Modifier.padding(start = 8.dp))
+    Dialog(
+        onDismissRequest = ::dismissRecovery,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        FocusFlowModalCard(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            radius = 16.dp,
+            contentPadding = 16.dp,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Lock, contentDescription = null, tint = RefText, modifier = Modifier.size(22.dp))
+                    Text("Accessibility recovery", modifier = Modifier.padding(start = 8.dp), color = RefText, fontSize = 18.sp)
                 }
-                IconButton(onClick = {
-                    dismissRecovery()
-                }) { Icon(Icons.Outlined.Close, "Dismiss") }
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Dismiss",
+                    tint = RefSecondary,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clickable(onClick = ::dismissRecovery)
+                        .padding(8.dp),
+                )
             }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Some Android installs need one extra step before FocusFlow can enable Accessibility.")
+            Column(
+                modifier = Modifier.padding(top = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    "Some Android installs need one extra step before FocusFlow can enable Accessibility.",
+                    color = RefSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                )
                 when (stage) {
                     RecoveryStage.QUESTION -> {
-                        Text("Did you tap the greyed-out FocusFlow entry in Accessibility settings?")
-                        Button(onClick = { stage = RecoveryStage.APP_INFO }) { Text("Yes, I tapped it") }
-                        OutlinedButton(onClick = { stage = RecoveryStage.GREYED_ENTRY }) { Text("No, I haven't tapped it") }
-                        TextButton(onClick = {
-                            dismissRecovery()
-                        }) { Text("Skip Accessibility") }
+                        Text("Did you tap the greyed-out FocusFlow entry in Accessibility settings?", color = RefText, fontSize = 13.sp)
+                        FocusFlowPrimaryButton(text = "Yes, I tapped it", onClick = { stage = RecoveryStage.APP_INFO })
+                        FocusFlowSecondaryButton(text = "No, I haven't tapped it", onClick = { stage = RecoveryStage.GREYED_ENTRY })
+                        FocusFlowSecondaryButton(text = "Skip Accessibility", onClick = ::dismissRecovery)
                     }
                     RecoveryStage.GREYED_ENTRY -> {
-                        Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, read Android's explanation, then return here.")
+                        Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, read Android's explanation, then return here.", color = RefSecondary, fontSize = 13.sp, lineHeight = 17.sp)
                         if (!greyedReturned) {
-                            Button(onClick = { openAccessibility(RecoveryStage.GREYED_ENTRY) }) {
-                                Icon(Icons.Outlined.OpenInNew, contentDescription = null)
-                                Text("Open Accessibility Settings")
-                            }
+                            FocusFlowPrimaryButton(text = "Open Accessibility Settings", icon = Icons.Outlined.OpenInNew, onClick = { openAccessibility(RecoveryStage.GREYED_ENTRY) })
                         } else {
-                            Text("Welcome back. Continue when you have tapped the greyed-out entry.")
-                            Button(onClick = { stage = RecoveryStage.APP_INFO }) { Text("I'm done — continue") }
-                            TextButton(onClick = { openAccessibility(RecoveryStage.GREYED_ENTRY) }) { Text("Open settings again") }
+                            Text("Welcome back. Continue when you have tapped the greyed-out entry.", color = RefText, fontSize = 13.sp)
+                            FocusFlowPrimaryButton(text = "I'm done — continue", onClick = { stage = RecoveryStage.APP_INFO })
+                            FocusFlowSecondaryButton(text = "Open settings again", onClick = { openAccessibility(RecoveryStage.GREYED_ENTRY) })
                         }
                     }
                     RecoveryStage.APP_INFO -> {
-                        Text("In App Info, tap the three-dot menu and choose Allow restricted settings.")
-                        if (restricted) Text("Restricted settings are still blocked. Finish the steps, then check again.", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = ::openAppInfo) {
-                            Icon(Icons.Outlined.OpenInNew, contentDescription = null)
-                            Text("Open FocusFlow App Info")
-                        }
-                        Text("1. Open the three-dot menu\n2. Tap Allow restricted settings\n3. Return and check again")
+                        Text("In App Info, tap the three-dot menu and choose Allow restricted settings.", color = RefSecondary, fontSize = 13.sp, lineHeight = 17.sp)
+                        if (restricted) Text("Restricted settings are still blocked. Finish the steps, then check again.", color = RefRed, fontSize = 11.sp)
+                        FocusFlowPrimaryButton(text = "Open FocusFlow App Info", icon = Icons.Outlined.OpenInNew, onClick = ::openAppInfo)
+                        Text("1. Open the three-dot menu\n2. Tap Allow restricted settings\n3. Return and check again", color = RefSecondary, fontSize = 11.sp, lineHeight = 17.sp)
                         if (!fallbackExpanded) {
-                            TextButton(onClick = { fallbackExpanded = true }) { Text("Didn't tap the greyed-out entry?") }
+                            FocusFlowSecondaryButton(text = "Didn't tap the greyed-out entry?", onClick = { fallbackExpanded = true })
                         } else {
-                            Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, then come back.")
+                            Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, then come back.", color = RefSecondary, fontSize = 11.sp, lineHeight = 17.sp)
                             if (!fallbackReturned) {
-                                Button(onClick = {
+                                FocusFlowPrimaryButton(text = "Open Accessibility Settings", icon = Icons.Outlined.OpenInNew, onClick = {
                                     fallbackReturned = false
                                     openAccessibility(RecoveryStage.FALLBACK)
-                                }) {
-                                    Icon(Icons.Outlined.OpenInNew, contentDescription = null)
-                                    Text("Open Accessibility Settings")
-                                }
+                                })
                             } else {
-                                OutlinedButton(onClick = {
+                                FocusFlowSecondaryButton(text = "I tapped it — check again", icon = Icons.Outlined.CheckCircle, onClick = {
                                     fallbackReturned = false
                                     stage = RecoveryStage.CHECKING
                                     scope.launch {
                                         restricted = UsageStatsRepository(context).isRestrictedSettingsBlocked()
                                         stage = if (restricted) RecoveryStage.APP_INFO else RecoveryStage.ENABLE
                                     }
-                                }) {
-                                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
-                                    Text("I tapped it — check again")
-                                }
+                                })
                             }
                         }
-                        OutlinedButton(onClick = {
+                        FocusFlowSecondaryButton(text = "I'm done — check settings", onClick = {
                             stage = RecoveryStage.CHECKING
                             scope.launch {
                                 restricted = UsageStatsRepository(context).isRestrictedSettingsBlocked()
                                 stage = if (restricted) RecoveryStage.APP_INFO else RecoveryStage.ENABLE
                             }
-                        }) { Text("I'm done — check settings") }
+                        })
                     }
                     RecoveryStage.CHECKING -> {
-                        CircularProgressIndicator()
-                        Text("Checking Android settings…")
+                        CircularProgressIndicator(color = RefText, modifier = Modifier.size(22.dp))
+                        Text("Checking Android settings…", color = RefSecondary, fontSize = 13.sp)
                     }
                     RecoveryStage.ENABLE -> {
-                        Row {
-                            Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text(" Restricted settings are ready.", modifier = Modifier.padding(start = 8.dp))
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF34D399), modifier = Modifier.size(22.dp))
+                            Text("Restricted settings are ready.", modifier = Modifier.padding(start = 8.dp), color = RefText, fontSize = 13.sp)
                         }
-                        Text("One last step: return to Accessibility settings and enable FocusFlow.")
-                        Button(onClick = { openAccessibility(RecoveryStage.ENABLE) }) {
-                            Icon(Icons.Outlined.OpenInNew, contentDescription = null)
-                            Text("Open Accessibility Settings")
-                        }
-                        Text("The recovery stays open until Accessibility is actually enabled.")
+                        Text("One last step: return to Accessibility settings and enable FocusFlow.", color = RefSecondary, fontSize = 13.sp)
+                        FocusFlowPrimaryButton(text = "Open Accessibility Settings", icon = Icons.Outlined.OpenInNew, onClick = { openAccessibility(RecoveryStage.ENABLE) })
+                        Text("The recovery stays open until Accessibility is actually enabled.", color = RefSecondary, fontSize = 11.sp)
                     }
                     RecoveryStage.FALLBACK, RecoveryStage.SKIPPED -> Unit
                 }
             }
-        },
-        confirmButton = {},
+        }
     )
 }

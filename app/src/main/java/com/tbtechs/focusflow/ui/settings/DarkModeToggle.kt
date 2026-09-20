@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.ui.settings
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -34,7 +35,8 @@ fun DarkModeToggle(
     onToggle: () -> Unit,
 ) {
     val thumbOffset by animateDpAsState(
-        targetValue = if (isDark) 18.dp else 0.dp,
+        targetValue = if (isDark) 28.dp else 0.dp,
+        animationSpec = spring(),
         label = "darkModeThumbOffset",
     )
     val activeIcon = if (isDark) Icons.Outlined.DarkMode else Icons.Outlined.WbSunny
@@ -42,9 +44,9 @@ fun DarkModeToggle(
 
     Box(
         modifier = Modifier
-            .size(width = 44.dp, height = 26.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .background(if (isDark) Color(0xFF6366F1) else Color(0xFFCBD5E1))
+            .size(width = 58.dp, height = 30.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(if (isDark) Color(0xFF312E81) else Color(0xFF93C5FD))
             .clickable(onClick = onToggle),
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -54,14 +56,14 @@ fun DarkModeToggle(
             tint = Color.White.copy(alpha = 0.58f),
             modifier = Modifier
                 .align(if (isDark) Alignment.CenterStart else Alignment.CenterEnd)
-                .padding(horizontal = 6.dp)
-                .size(11.dp),
+                .padding(horizontal = 5.dp)
+                .size(12.dp),
         )
         Box(
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .padding(3.dp)
-                .size(20.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(Color.White),
             contentAlignment = Alignment.Center,
@@ -70,7 +72,7 @@ fun DarkModeToggle(
                 imageVector = activeIcon,
                 contentDescription = if (isDark) "Dark mode enabled" else "Light mode enabled",
                 tint = if (isDark) Color(0xFF6366F1) else Color(0xFF64748B),
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(13.dp),
             )
         }
     }

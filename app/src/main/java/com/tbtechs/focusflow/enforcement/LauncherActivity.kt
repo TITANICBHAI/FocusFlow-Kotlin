@@ -89,7 +89,7 @@ class LauncherActivity : Activity() {
         private const val PREF_ALWAYS_BLOCK_PKGS = AppBlockerAccessibilityService.PREF_ALWAYS_BLOCK_PKGS
         private const val OWN_PACKAGE = "com.tbtechs.focusflow"
 
-        private const val SIZE_CLOCK = 72f
+        private const val SIZE_CLOCK = 56f
         private const val SIZE_DATE = 13f
         private const val SIZE_SEARCH_HINT = 13f
         private const val SIZE_HOME_LABEL = 13f
@@ -217,7 +217,7 @@ class LauncherActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 minimumHeight = dp(52)
-                setPadding(dp(24), 0, dp(24), 0)
+                setPadding(dp(18), 0, dp(18), 0)
                 layoutParams = RecyclerView.LayoutParams(
                     RecyclerView.LayoutParams.MATCH_PARENT,
                     dp(52),
@@ -228,7 +228,7 @@ class LauncherActivity : Activity() {
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }
             val label = TextView(parent.context).apply {
-                textSize = 16f
+                textSize = 13f
                 setTextColor(TEXT_PRIMARY)
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
@@ -236,7 +236,7 @@ class LauncherActivity : Activity() {
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f,
-                ).also { it.leftMargin = dp(16) }
+                ).also { it.leftMargin = dp(12) }
             }
             row.addView(icon)
             row.addView(label)
@@ -247,12 +247,12 @@ class LauncherActivity : Activity() {
             val cell = FrameLayout(parent.context).apply {
                 layoutParams = RecyclerView.LayoutParams(
                     RecyclerView.LayoutParams.MATCH_PARENT,
-                    dp(92),
+                    dp(80),
                 )
                 setPadding(dp(4), dp(2), dp(4), dp(2))
             }
             val icon = ImageView(parent.context).apply {
-                layoutParams = FrameLayout.LayoutParams(dp(42), dp(42)).also {
+                layoutParams = FrameLayout.LayoutParams(dp(40), dp(40)).also {
                     it.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                 }
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -317,7 +317,7 @@ class LauncherActivity : Activity() {
                         it.height = dp(size)
                     }
                     holder.itemView.layoutParams = holder.itemView.layoutParams.also {
-                        it.height = dp((size + 32).coerceAtLeast(88))
+                        it.height = dp((size + 28).coerceAtLeast(76))
                     }
                     holder.icon.setImageDrawable(getRoundIcon(item.packageName))
                     holder.icon.alpha = if (blocked) 0.45f else 1f
@@ -606,18 +606,18 @@ class LauncherActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).also { it.bottomMargin = dp(16) }
-            setPadding(dp(20), dp(16), dp(20), dp(16))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             isClickable = true
             isFocusable = true
             setOnClickListener { openFocusFlow() }
         }
         val header = TextView(this).apply {
             text = "Current Task"
-            textSize = 16f
+            textSize = 11f
             setTextColor(if (theme == LauncherTheme.CLASSIC) Color.parseColor("#B8B8BC") else TEXT_DIM)
         }
         val title = TextView(this).apply {
-            textSize = 20f
+            textSize = 18f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(TEXT_PRIMARY)
             maxLines = 2
@@ -625,7 +625,7 @@ class LauncherActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).also { it.topMargin = dp(10) }
+            ).also { it.topMargin = dp(8) }
         }
         val track = FrameLayout(this).apply {
             background = roundedBackground(
@@ -636,7 +636,7 @@ class LauncherActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(4),
-            ).also { it.topMargin = dp(16) }
+            ).also { it.topMargin = dp(10) }
         }
         val fill = View(this).apply {
             background = roundedBackground(
@@ -653,7 +653,7 @@ class LauncherActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).also { it.topMargin = dp(12) }
+            ).also { it.topMargin = dp(8) }
         }
         card.addView(header)
         card.addView(title)
@@ -725,16 +725,16 @@ class LauncherActivity : Activity() {
             } else {
                 layeredGlassBackground(20)
             }
-            setPadding(dp(20), dp(16), dp(20), dp(14))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
         }
         card.addView(TextView(this).apply {
             text = "Today's Limits"
-            textSize = 18f
+            textSize = 15f
             setTextColor(if (theme == LauncherTheme.CLASSIC) Color.parseColor("#B8B8BC") else TEXT_DIM)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).also { it.bottomMargin = dp(12) }
+            ).also { it.bottomMargin = dp(8) }
         })
         val innerList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -750,11 +750,11 @@ class LauncherActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                minimumHeight = dp(52)
-                if (index > 0) setPadding(0, dp(8), 0, 0)
+                minimumHeight = dp(48)
+                if (index > 0) setPadding(0, dp(6), 0, 0)
             }
             val icon = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+                layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setImageDrawable(getRoundIcon(allowance.pkg))
             }

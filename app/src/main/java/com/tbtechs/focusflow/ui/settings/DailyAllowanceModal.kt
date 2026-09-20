@@ -35,7 +35,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.WbSunny
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,8 +48,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,6 +64,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.model.BLOCK_ALL_SENTINEL
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.repository.AllowanceUsage
@@ -74,6 +73,10 @@ import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.launcher.AppPickerSheet
+import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
+import com.tbtechs.focusflow.ui.home.FocusFlowModalField
+import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
+import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -257,43 +260,26 @@ fun DailyAllowanceModal(
         containerColor = DarkBackground,
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            Icons.Outlined.WbSunny,
-                            contentDescription = null,
-                            tint = SunAmber,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = "Daily Allowance",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextPrimary,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    TextButton(onClick = onClose) {
-                        Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
-                    }
-                },
-                actions = {
-                    TextButton(onClick = ::save) {
-                        Text(
-                            text = "Save",
-                            color = BrandPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onClose) {
+                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
+                }
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = SunAmber, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Daily Allowance", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                }
+                TextButton(onClick = ::save) {
+                    Text("Save", color = BrandPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
         },
     ) { padding ->
         LazyColumn(
@@ -312,18 +298,18 @@ fun DailyAllowanceModal(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(InfoSurface)
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Icon(Icons.Outlined.Security, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Security, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Removing apps from the allowance list requires your defense password.",
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
                                 color = InfoBodyText,
                             )
                         }
@@ -336,17 +322,17 @@ fun DailyAllowanceModal(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFFFFF5DF))
-                        .padding(horizontal = 20.dp, vertical = 9.dp),
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Icon(Icons.Outlined.Info, contentDescription = null, tint = SunAmber, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Info, contentDescription = null, tint = SunAmber, modifier = Modifier.size(14.dp))
                         Text(
                             "Tap an app to enable its allowance. Tap again to expand its mode settings. Long-press to remove.",
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
                             color = SunAmber,
                         )
                     }
@@ -357,18 +343,18 @@ fun DailyAllowanceModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
                     OutlinedTextField(
                         value = search,
                         onValueChange = { search = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(72.dp),
+                            .height(44.dp),
                         singleLine = true,
-                        placeholder = { Text("Search apps...", color = DarkTextMuted, fontSize = 16.sp) },
+                        placeholder = { Text("Search apps...", color = DarkTextMuted, fontSize = 13.sp) },
                         leadingIcon = {
-                            Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(24.dp))
+                             Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(16.dp))
                         },
                         trailingIcon = {
                             if (search.isNotBlank()) {
@@ -377,7 +363,7 @@ fun DailyAllowanceModal(
                                 }
                             } else {
                                 IconButton(onClick = { pickerVisible = true }) {
-                                    Icon(Icons.Outlined.Add, contentDescription = "Choose apps", tint = BrandPrimary, modifier = Modifier.size(22.dp))
+                                 Icon(Icons.Outlined.Add, contentDescription = "Choose apps", tint = BrandPrimary, modifier = Modifier.size(18.dp))
                                 }
                             }
                         },
@@ -398,7 +384,7 @@ fun DailyAllowanceModal(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 0.dp),
+                        .padding(horizontal = 12.dp, vertical = 0.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -471,10 +457,10 @@ fun DailyAllowanceModal(
                                 },
                                 onLongClick = { if (isActive) requestRemoval(app.packageName) },
                             )
-                            .height(88.dp)
-                            .padding(horizontal = 16.dp),
+                             .height(64.dp)
+                             .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         if (isActive) {
                             Box(
@@ -484,11 +470,11 @@ fun DailyAllowanceModal(
                                     .background(SunAmber),
                             )
                         }
-                        AppIcon(app.icon, size = 48.dp)
+                         AppIcon(app.icon, size = 40.dp)
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = app.appName,
-                                fontSize = 15.sp,
+                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = DarkTextPrimary,
                                 maxLines = 1,
@@ -496,7 +482,7 @@ fun DailyAllowanceModal(
                             )
                             Text(
                                 text = app.packageName,
-                                fontSize = 12.sp,
+                                 fontSize = 11.sp,
                                 color = DarkTextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -515,7 +501,7 @@ fun DailyAllowanceModal(
                                     )
                                     Text(
                                         text = draft.summary(),
-                                        fontSize = 12.sp,
+                                 fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = SunAmber,
                                     )
@@ -534,8 +520,8 @@ fun DailyAllowanceModal(
                         }
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                 .size(32.dp)
+                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isActive) SunAmber.copy(alpha = 0.14f) else DarkSurfaceVariant.copy(alpha = 0.55f)),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -543,7 +529,7 @@ fun DailyAllowanceModal(
                                 Icons.Outlined.WbSunny,
                                 contentDescription = if (isActive) "Allowance enabled" else "Enable allowance",
                                 tint = if (isActive) SunAmber else DarkTextMuted,
-                                modifier = Modifier.size(21.dp),
+                                 modifier = Modifier.size(16.dp),
                             )
                         }
                     }
@@ -554,7 +540,7 @@ fun DailyAllowanceModal(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(DarkSurfaceVariant)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             AllowanceConfiguration(
                                 draft = draft,
@@ -571,14 +557,14 @@ fun DailyAllowanceModal(
                 item {
                     OutlinedButton(
                         onClick = ::requestClear,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(14.dp),
+                         modifier = Modifier.fillMaxWidth().height(44.dp),
+                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
                     ) {
                         Text(
                             if (locked) "Clear new allowances" else "Clear all daily allowances",
-                            fontSize = 14.sp,
+                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                         )
                     }
@@ -592,57 +578,57 @@ fun DailyAllowanceModal(
     }
 
     if (manualPackageDialogVisible) {
-        AlertDialog(
+        Dialog(
             onDismissRequest = { manualPackageDialogVisible = false; packageDraft = "" },
-            containerColor = DarkCard,
-            titleContentColor = DarkTextPrimary,
-            textContentColor = DarkTextSecondary,
-            title = { Text("Add package manually") },
-            text = {
-                OutlinedTextField(
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            FocusFlowModalCard(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                radius = 16.dp,
+                contentPadding = 16.dp,
+            ) {
+                Text("Add package manually", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                FocusFlowModalField(
                     value = packageDraft,
                     onValueChange = { packageDraft = it },
-                    placeholder = { Text("com.example.app") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = DarkSurfaceVariant,
-                        unfocusedContainerColor = DarkSurfaceVariant,
-                        focusedBorderColor = BrandPrimary,
-                        unfocusedBorderColor = DarkBorder,
-                        focusedTextColor = DarkTextPrimary,
-                        unfocusedTextColor = DarkTextPrimary,
-                    ),
+                    placeholder = "com.example.app",
+                    minHeight = 44.dp,
+                    modifier = Modifier.padding(top = 12.dp),
                 )
-            },
-            confirmButton = {
-                Button(
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FocusFlowSecondaryButton(
+                        text = "Cancel",
+                        onClick = { manualPackageDialogVisible = false; packageDraft = "" },
+                        modifier = Modifier.weight(1f),
+                    )
+                    FocusFlowPrimaryButton(
+                        text = "Add",
                     onClick = {
                         if (addPackage()) {
                             manualPackageDialogVisible = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                ) {
-                    Text("Add", color = Color.White)
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { manualPackageDialogVisible = false; packageDraft = "" }) {
-                    Text("Cancel", color = DarkTextSecondary)
-                }
-            },
-        )
+            }
+        }
     }
 
     pendingRemoval?.let { pending ->
-        AlertDialog(
+        Dialog(
             onDismissRequest = { pendingRemoval = null; pin = "" },
-            containerColor = DarkCard,
-            titleContentColor = DarkTextPrimary,
-            textContentColor = DarkTextSecondary,
-            title = { Text("Defense password required") },
-            text = {
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            FocusFlowModalCard(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                radius = 16.dp,
+                contentPadding = 16.dp,
+            ) {
+                Text("Defense password required", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         if (pending is PendingAllowanceRemoval.All) {
@@ -650,28 +636,29 @@ fun DailyAllowanceModal(
                         } else {
                             "Enter your defense password to remove this app from the daily allowance list."
                         },
-                        fontSize = 13.sp,
+                        fontSize = 11.sp,
+                        color = DarkTextSecondary,
                     )
-                    OutlinedTextField(
+                    FocusFlowModalField(
                         value = pin,
                         onValueChange = { pin = it },
-                        label = { Text("Defense password") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
+                        placeholder = "Defense password",
+                        minHeight = 44.dp,
+                        secure = true,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = DarkSurfaceVariant,
-                            unfocusedContainerColor = DarkSurfaceVariant,
-                            focusedBorderColor = BrandPrimary,
-                            unfocusedBorderColor = DarkBorder,
-                            focusedTextColor = DarkTextPrimary,
-                            unfocusedTextColor = DarkTextPrimary,
-                        ),
                     )
                 }
-            },
-            confirmButton = {
-                Button(
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FocusFlowSecondaryButton(
+                        text = "Cancel",
+                        onClick = { pendingRemoval = null; pin = "" },
+                        modifier = Modifier.weight(1f),
+                    )
+                    FocusFlowPrimaryButton(
+                        text = "Remove",
                     onClick = {
                         if (!onVerifyDefensePin(pin)) {
                             message = AllowanceMessage("Incorrect password", "The defense password did not match.")
@@ -687,36 +674,32 @@ fun DailyAllowanceModal(
                             pin = ""
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                ) {
-                    Text("Remove", color = Color.White)
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemoval = null; pin = "" }) {
-                    Text("Cancel", color = DarkTextSecondary)
-                }
-            },
-        )
+            }
+        }
     }
 
     message?.let { notice ->
-        AlertDialog(
+        Dialog(
             onDismissRequest = { message = null },
-            containerColor = DarkCard,
-            titleContentColor = DarkTextPrimary,
-            textContentColor = DarkTextSecondary,
-            title = { Text(notice.title) },
-            text = { Text(notice.body, fontSize = 13.sp) },
-            confirmButton = {
-                Button(
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            FocusFlowModalCard(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                radius = 16.dp,
+                contentPadding = 16.dp,
+            ) {
+                Text(notice.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text(notice.body, fontSize = 11.sp, lineHeight = 17.sp, color = DarkTextSecondary, modifier = Modifier.padding(top = 8.dp))
+                FocusFlowPrimaryButton(
+                    text = "OK",
                     onClick = { message = null },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                ) {
-                    Text("OK", color = Color.White)
+                    modifier = Modifier.padding(top = 12.dp),
+                )
                 }
-            },
-        )
+            }
     }
 
     if (pickerVisible) {
@@ -765,7 +748,7 @@ private fun AllowanceConfiguration(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 "ALLOWANCE MODE",
-                fontSize = 13.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = DarkTextMuted,
             )
@@ -780,12 +763,12 @@ private fun AllowanceConfiguration(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .border(
                                 width = if (isSelected) 2.dp else 1.dp,
                                 color = if (isSelected) SunAmber else DarkBorder.copy(alpha = 0.75f),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(10.dp),
                             )
                             .combinedClickable(
                                 enabled = !locked,
@@ -806,11 +789,11 @@ private fun AllowanceConfiguration(
                                 },
                                 contentDescription = null,
                                 tint = if (isSelected) SunAmber else DarkTextSecondary,
-                                modifier = Modifier.size(17.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                             Text(
                                 text = mode.label,
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) SunAmber else DarkTextSecondary,
                                 maxLines = 1,
@@ -882,42 +865,42 @@ private fun StepperRow(
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             color = DarkTextSecondary,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(9.dp))
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder.copy(alpha = 0.45f), RoundedCornerShape(9.dp))
+                    .border(1.dp, DarkBorder.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
                     .combinedClickable(enabled = !locked, onClick = onDecrease),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Remove, contentDescription = "Decrease", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(17.dp))
+                Icon(Icons.Outlined.Remove, contentDescription = "Decrease", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(16.dp))
             }
             Text(
                 text = value,
-                fontSize = 16.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
-                modifier = Modifier.width(56.dp),
+                modifier = Modifier.width(52.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(9.dp))
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder.copy(alpha = 0.45f), RoundedCornerShape(9.dp))
+                    .border(1.dp, DarkBorder.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
                     .combinedClickable(enabled = !locked, onClick = onIncrease),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Increase", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(17.dp))
+                Icon(Icons.Outlined.Add, contentDescription = "Increase", tint = if (locked) DarkTextMuted else DarkTextPrimary, modifier = Modifier.size(16.dp))
             }
         }
     }

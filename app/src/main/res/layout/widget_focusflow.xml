@@ -8,6 +8,13 @@
     android:orientation="vertical"
     android:padding="12dp">
 
+    <View
+        android:id="@+id/widget_accent_bar"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginBottom="6dp"
+        android:background="@color/focusflow_indigo" />
+
     <TextView
         android:id="@+id/widget_header_label"
         android:layout_width="match_parent"
@@ -53,7 +60,7 @@
         android:layout_height="wrap_content"
         android:gravity="end"
         android:textColor="@color/focusflow_indigo"
-        android:textSize="12sp"
+        android:textSize="14sp"
         android:textStyle="bold"
         android:visibility="gone" />
 
@@ -62,7 +69,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
-        android:background="@drawable/widget_background"
+        android:background="@drawable/widget_cta_background"
+        android:gravity="center"
+        android:minHeight="32dp"
         android:paddingStart="8dp"
         android:paddingTop="4dp"
         android:paddingEnd="8dp"

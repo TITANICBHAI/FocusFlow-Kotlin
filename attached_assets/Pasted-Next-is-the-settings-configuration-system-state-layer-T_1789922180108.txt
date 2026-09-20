@@ -1,0 +1,933 @@
+Next is the **settings/configuration + system-state layer**. This is the remaining group that can still make the app feel inconsistent even after the main screens are polished.
+
+I checked the latest Kotlin source and the React counterparts. There are a few particularly important findings:
+
+* `DarkModeToggle.kt` is a **special control** and should **not** use the generic 44×26 FocusFlow switch. React explicitly uses **58×30** with a 24dp knob and light/dark iconography.
+* `OverlayAppearanceModal.kt` is still heavily Material-based in Kotlin.
+* `DailyAllowanceModal.kt` is currently much larger than its React counterpart.
+* `StandaloneBlockSetupScreen.kt` is still using an oversized `TopAppBar` + 20dp padding + large cards.
+* `AllowedAppsDialog.kt` is still an `AlertDialog`.
+* `BlockedAppOverlay.kt` is a very important user-facing screen and should match the product's enforcement UI rather than looking like a generic error.
+* `TimelineView.kt` is still using a stock `Card`.
+* `AccessibilityRestrictedRecovery.kt` and `RestrictedSettingsBanner.kt` are functional but visually much heavier than React.
+* The error UI should also be brought into the same system.
+
+So this is the next agent pass.
+
+---
+
+# Phase 7 — Settings internals + state/error surfaces
+
+```text id="3r5g1p"
+FOCUSFLOW UI PHASE 7
+SETTINGS INTERNALS + STATE / ERROR SURFACES
+
+The main tabs and major internal configuration screens have already been
+handled.
+
+This phase covers:
+
+SETTINGS INTERNALS
+    ui/settings/DailyAllowanceModal.kt
+    ui/settings/OverlayAppearanceModal.kt
+    ui/settings/DarkModeToggle.kt
+
+TASK / APP CONFIGURATION
+    ui/home/AllowedAppsDialog.kt
+    ui/defense/StandaloneBlockSetupScreen.kt
+    ui/home/TimelineView.kt
+
+ENFORCEMENT / SYSTEM STATE
+    ui/defense/BlockedAppOverlay.kt
+    ui/focus/ActiveBlockScreen.kt
+
+PERMISSION RECOVERY
+    ui/permissions/AccessibilityRestrictedRecovery.kt
+    ui/permissions/RestrictedSettingsBanner.kt
+
+ERROR UI
+    ui/common/ErrorAlertBanner.kt
+    ui/common/ErrorFallback.kt
+
+DO NOT change business logic, persistence, callbacks, or navigation.
+
+Use the React implementation as the sizing and geometry source of truth.
+
+============================================================
+GLOBAL GEOMETRY
+============================================================
+
+Use:
+
+FONT:
+    xs = 11sp
+    sm = 13sp
+    md = 15sp
+    lg = 18sp
+    xl = 22sp
+    xxl = 28sp
+
+SPACING:
+    4
+    8
+    12
+    16
+    24
+
+RADIUS:
+    6
+    10
+    16
+    24
+
+Do not automatically increase these values.
+
+============================================================
+1. DAILY ALLOWANCE MODAL
+============================================================
+
+File:
+
+    ui/settings/DailyAllowanceModal.kt
+
+React geometry:
+
+Header:
+    horizontal padding = 12dp
+    vertical padding = 10dp
+    title = 15sp
+    Cancel = 13sp
+    Save = 13sp
+
+Info banner:
+    horizontal = 24dp
+    vertical = 8dp
+    icon ~= 12–14dp
+    text = 11sp
+    line height ~= 16dp
+
+Search:
+    height ~= 44dp
+    horizontal margin = 12dp
+    radius = 16dp
+    icon = 16dp
+    text = 13sp
+
+Result/app row:
+    horizontal padding = 12dp
+    vertical padding = 8dp
+    gap = 8dp
+    app icon = 40dp
+    app title = 13sp
+    package = 11sp
+
+Count/status label:
+    11sp
+
+Allowance controls:
+    small +/- buttons
+    approximately 32dp
+    radius = 8dp
+    icons = 16dp
+
+Value:
+    13–15sp
+
+Mode selector:
+    compact
+    32–36dp high
+    11–13sp
+
+Bottom/save:
+    44–48dp
+    radius = 10dp
+    text = 13–15sp
+
+CURRENT KOTLIN PROBLEMS:
+
+    search field is 72dp
+    search icon is 24dp
+    text is 16sp
+    app rows are too tall
+    outlined save is too large
+    AlertDialogs are still present
+    TopAppBar is still present
+    multiple controls use 16–18dp geometry
+
+Fix these.
+
+Do NOT modify:
+    allowance calculation
+    locked entries
+    PIN behavior
+    package selection
+    remove/add behavior
+    restore behavior
+
+============================================================
+2. OVERLAY APPEARANCE MODAL
+============================================================
+
+File:
+
+    ui/settings/OverlayAppearanceModal.kt
+
+React is already essentially a full-screen modal page.
+
+KEEP:
+    full-screen Dialog
+
+But replace current Material internals.
+
+CURRENT KOTLIN HAS:
+
+    Material Surface
+    TopAppBar
+    OutlinedButton
+    OutlinedTextField
+    Button
+    Card
+    AlertDialog
+
+Replace those with FocusFlow primitives.
+
+HEADER:
+
+    horizontal = 16dp
+    vertical = 10dp
+
+    title = 18sp
+    Close = 13sp
+
+SECTION:
+
+    section title = 11sp
+    uppercase
+    letterSpacing ~= 0.8sp
+
+    section gap ~= 12dp
+
+Section card:
+
+    radius = 16dp
+    border = 1dp
+    padding = 0 for row containers
+
+Description:
+
+    padding = 12dp
+    font = 11sp
+    lineHeight ~= 18dp
+
+Wallpaper row:
+
+    padding = 12dp
+    icon ~= 20dp
+    text = 13sp
+    Remove action = 13sp
+
+Pick/change button:
+
+    44dp height
+    radius = 10dp
+    icon = 18dp
+    text = 13sp
+
+CUSTOM QUOTES:
+
+Input:
+
+    minHeight = 44dp
+    maxHeight = 120dp
+    radius = 10dp
+    padding horizontal = 12dp
+    padding vertical = 8dp
+    text = 13sp
+
+Add:
+
+    44dp square
+    radius = 10dp
+    icon = 20dp
+
+Quote row:
+
+    padding = 12dp
+    text = 13sp
+    lineHeight = 20dp
+    italic
+    delete icon = 20dp
+
+Empty row:
+
+    13sp
+
+Hint:
+
+    11sp
+    centered
+    lineHeight ~= 16dp
+
+DO NOT:
+    use floating-label Material input
+    create large cards around individual quotes
+    create huge rounded buttons
+
+Error/configuration messages should use the shared compact dialog style.
+
+============================================================
+3. DARK MODE TOGGLE
+============================================================
+
+File:
+
+    ui/settings/DarkModeToggle.kt
+
+SPECIAL CASE:
+Do NOT replace this with the generic 44x26 FocusFlowSwitch.
+
+The React implementation intentionally uses:
+
+    track = 58dp x 30dp
+    track radius = 15dp
+    knob = 24dp
+    knob padding = 3dp
+
+Travel:
+
+    58 - 24 - 6 = 28dp
+
+Track colors:
+
+    light = #93C5FD
+    dark = #312E81
+
+Knob:
+
+    white
+    elevation/shadow subtle
+
+Light mode:
+    right side has tiny cloud + sun accents
+    knob contains sun icon ~= 13dp
+
+Dark mode:
+    left side has tiny stars
+    knob contains moon icon ~= 13dp
+
+Animate:
+    knob movement with spring
+    track color about 240ms
+
+Do NOT replace this with:
+    Material Switch
+    44x26 generic switch
+
+This component is intentionally different.
+
+============================================================
+4. ALLOWED APPS DIALOG
+============================================================
+
+File:
+
+    ui/home/AllowedAppsDialog.kt
+
+React equivalent:
+    AllowedAppsModal.tsx
+
+CURRENT KOTLIN:
+    AlertDialog
+
+Replace with a custom Dialog.
+
+Modal:
+
+    width ~= screen - 32dp
+    max width ~= 420dp
+    radius = 20dp
+    padding = 16dp
+
+Header:
+
+    icon = 36dp
+    title = 18sp
+    subtitle = 11sp
+
+Search:
+
+    height = 44dp
+    radius = 10dp
+    text = 13sp
+    icon = 16dp
+
+App row:
+
+    40dp icon
+    radius = 6dp
+    title = 13sp
+    package = 11sp
+    horizontal padding = 12dp
+    vertical padding = 8dp
+
+Checkbox:
+
+    22dp
+    radius = 6dp
+
+Selected count:
+
+    11sp
+
+Buttons:
+
+    height = 44–48dp
+    radius = 10dp
+    text = 13sp
+
+Do not let AlertDialog determine width/spacing.
+
+Keep app selection semantics.
+
+============================================================
+5. STANDALONE BLOCK SETUP SCREEN
+============================================================
+
+File:
+
+    ui/defense/StandaloneBlockSetupScreen.kt
+
+CURRENT KOTLIN HAS:
+
+    TopAppBar
+    padding = 20dp
+    16dp radius cards
+    48dp icon containers
+    28sp duration number
+    large buttons
+
+React design is considerably tighter.
+
+Replace TopAppBar with:
+
+    FocusFlowInternalHeader
+
+Content:
+
+    horizontal padding = 16dp
+    section gap = 12dp
+
+Main duration display:
+
+    number can remain 28sp
+    but surrounding card:
+        radius = 16dp
+        padding = 12dp
+
+Mode card:
+
+    radius = 10dp
+    padding = 12dp
+
+Mode icon:
+
+    container = 40dp
+    icon ~= 20dp
+
+Mode title:
+
+    15sp
+
+Mode description:
+
+    11sp
+
+Preset buttons:
+
+    height = 40dp
+    radius = 10dp
+    text = 13sp
+
+Decrease/increase:
+
+    32dp
+    radius = 8dp
+    icon = 16dp
+
+Warnings:
+
+    radius = 10dp
+    padding = 12dp
+    body = 11–13sp
+
+Bottom primary action:
+
+    44–48dp
+    radius = 10dp
+    icon = 18dp
+    text = 15sp
+
+Keep:
+    app selection
+    duration
+    presets
+    schedule
+    VPN
+    daily allowance
+    activation/confirmation
+
+Do not change business behavior.
+
+============================================================
+6. TIMELINE VIEW
+============================================================
+
+File:
+
+    ui/home/TimelineView.kt
+
+Current Kotlin uses stock:
+
+    Card(onClick = ...)
+
+Replace the visual card with:
+
+    FocusFlowInternalCard(radius = 10.dp)
+
+Keep:
+    task click callback
+    task ordering
+    timeline calculations
+
+Timeline task row:
+
+    height according to actual duration
+    minimum visual row height ~= 48dp
+
+Title:
+    13sp
+
+Time:
+    11sp
+
+Status:
+    11sp
+
+Left color marker:
+    4dp
+
+Task action:
+    32–34dp
+
+Icon:
+    17–18dp
+
+Do not make every timeline task into a 20dp+ rounded giant card.
+
+============================================================
+7. BLOCKED APP OVERLAY
+============================================================
+
+File:
+
+    ui/defense/BlockedAppOverlay.kt
+
+This is a critical user-facing enforcement screen.
+
+Do not style this as a generic error screen.
+
+It should have:
+
+    dark background
+    centered content
+    strong but compact title
+    clear blocked reason
+    primary action(s)
+    controlled visual hierarchy
+
+Recommended geometry:
+
+background:
+    full screen
+    existing overlay background
+
+content:
+    horizontal padding = 24dp
+    centered
+
+icon:
+    ~56dp
+    but DO NOT put it inside a huge colored card
+
+title:
+    22sp
+    bold
+
+reason:
+    13sp
+    lineHeight ~= 19dp
+    centered
+
+remaining/expiry:
+    15sp
+
+primary action:
+    48dp height
+    radius = 10dp
+    text = 15sp
+
+secondary:
+    compact
+    13sp
+
+"Go home":
+    keep existing behavior
+
+Do NOT change enforcement state or dismissal rules.
+
+Do not add decorative cards around everything.
+
+============================================================
+8. ACTIVE BLOCK SCREEN
+============================================================
+
+File:
+
+    ui/focus/ActiveBlockScreen.kt
+
+This is intentionally minimal.
+
+Do NOT turn it into a regular app screen.
+
+Use:
+
+    dark background
+    centered blocking state
+    icon ~= 56dp
+    title = 22sp
+    body = 13sp
+    action = 48dp
+
+Keep:
+    current focus block state
+    navigation back
+    cancellation restrictions
+    task/focus callbacks
+
+No giant Material TopAppBar.
+
+============================================================
+9. ACCESSIBILITY RESTRICTED RECOVERY
+============================================================
+
+File:
+
+    ui/permissions/AccessibilityRestrictedRecovery.kt
+
+CURRENT KOTLIN:
+    AlertDialog
+    Button
+    OutlinedButton
+    multiple oversized Material controls
+
+React reference:
+    compact guided recovery flow
+
+Replace the main AlertDialog with a custom Dialog or full-screen recovery
+surface depending on current navigation context.
+
+Header:
+
+    title = 18sp
+    close = 40dp hit area
+    icon = 22dp
+
+Step indicator:
+
+    circle = 18dp
+    number = 11sp
+
+Step title:
+    13–15sp
+
+Step description:
+    11sp
+    lineHeight ~= 17dp
+
+Action button:
+    44dp high
+    radius = 10dp
+    text = 13sp
+
+Secondary:
+    13sp
+
+Expandable fallback:
+    radius = 10dp
+    padding = 12dp
+
+Do not change stage logic:
+    APP_INFO
+    GREYED_ENTRY
+    ENABLE
+
+Do not change the actual Android settings intents.
+
+============================================================
+10. RESTRICTED SETTINGS BANNER
+============================================================
+
+File:
+
+    ui/permissions/RestrictedSettingsBanner.kt
+
+React target:
+
+    radius = 16dp
+    border = 1.5dp
+    padding = 12dp
+    icon ring = 36dp
+    icon = 20dp
+    title = 15sp
+    subtitle = 11sp
+    body = 11sp
+    step number = 18dp
+    buttons = compact 40–44dp
+
+Replace the current Material Card/Button presentation.
+
+Use:
+
+    FocusFlowInternalCard(
+        radius = 16.dp,
+        contentPadding = 12.dp
+    )
+
+Icon ring:
+
+    36dp
+    radius = 18dp
+
+Title:
+    15sp
+    bold
+
+Subtitle:
+    11sp
+
+Body:
+    11sp
+    lineHeight ~= 17dp
+
+Steps:
+
+    number circle = 18dp
+    text = 11sp
+
+Primary button:
+
+    height = 40–44dp
+    radius = 10dp
+    text = 11–13sp
+
+Secondary:
+
+    same height
+    1dp border
+    11–13sp
+
+Keep:
+    manufacturer-specific instructions
+    Samsung handling
+    package checks
+    details expansion
+    open-settings behavior
+
+============================================================
+11. ERROR ALERT BANNER
+============================================================
+
+File:
+
+    ui/common/ErrorAlertBanner.kt
+
+React geometry:
+
+    outer radius = 14dp
+    horizontal padding = 12dp
+    vertical padding = 12dp
+    icon circle = 32dp
+    icon = 18dp
+    title = 13sp
+    body = 11sp
+    button = compact
+
+Replace Material Card as the outer visual.
+
+Use:
+
+    FocusFlowInternalCard(radius = 14.dp, contentPadding = 12.dp)
+
+But retain red/warning semantic colors.
+
+Layout:
+
+    left icon circle 32dp
+    message column
+    dismiss 32dp
+
+Title:
+    13sp
+    semibold
+
+Body:
+    11sp
+    lineHeight ~= 17dp
+
+Action pill if present:
+    12sp
+    padding 10x6
+
+Dismiss:
+    32dp touch target
+    visible icon ~= 18dp
+
+Do not make error banners tall.
+
+============================================================
+12. ERROR FALLBACK
+============================================================
+
+File:
+
+    ui/common/ErrorFallback.kt
+
+React reference has two states:
+    normal recovery
+    expanded error details
+
+DO NOT use a huge generic AlertDialog.
+
+Full-screen fallback:
+
+    padding = 24dp
+    icon = 20dp
+    title = 28sp ONLY for the major error title
+    body = 16sp
+    primary action = 48dp
+    secondary actions = 44dp
+
+That is intentionally one of the rare screens where 28sp is appropriate.
+
+Error detail panel:
+
+    radius = 8dp
+    padding = 16dp
+    code/log text = 12sp
+    scrollable
+
+Buttons:
+    compact
+    not oversized
+
+Keep:
+    retry
+    copy logs
+    view details
+    share logs
+    close
+
+Do not alter exception contents or reporting.
+
+============================================================
+13. SHARED RULE FOR SYSTEM-STATE UI
+============================================================
+
+These special screens may use larger hero text only when they are genuinely
+full-screen state surfaces:
+
+    BlockedAppOverlay
+    ActiveBlockScreen
+    ErrorFallback
+    restricted permission recovery
+
+Everything inside settings/configuration modals remains compact.
+
+============================================================
+14. DO NOT DUPLICATE COMPONENTS
+============================================================
+
+Reuse:
+
+    FocusFlowInternalHeader
+    FocusFlowInternalCard
+    FocusFlowModalCard
+    FocusFlowPrimaryButton
+    FocusFlowSecondaryButton
+    FocusFlowModalField
+    FocusFlowSwitch
+
+SPECIAL CASE:
+    DarkModeToggle remains separate because React explicitly uses 58x30.
+
+============================================================
+15. STOP CONDITION
+============================================================
+
+Build after this phase.
+
+Verify:
+
+- dark-mode toggle still animates correctly
+- allowance values remain unchanged
+- overlay quote changes persist
+- wallpaper picker still works
+- app selection still works
+- standalone block setup still activates correctly
+- blocked-app overlay still enforces the same policy
+- accessibility recovery still opens Android settings correctly
+- error retry/copy/share still function
+
+Do not continue to legal/onboarding/support in this pass.
+```
+
+## After this, only the final layer remains
+
+Once this phase is done, the remaining work is relatively self-contained:
+
+```text
+PHASE 8
+    Permissions
+    Accessibility recovery refinements
+    User Profile
+    Password Protection
+    PIN flows
+
+PHASE 9
+    Support
+        How to Use
+        Changelog
+        Diagnostics
+        Troubleshoot
+        Report Issue
+
+PHASE 10
+    Backup / Import
+    Privacy Policy
+    Terms
+    Onboarding
+
+PHASE 11
+    Global visual QA
+    typography pass
+    spacing pass
+    icon consistency
+    light/dark behavior
+    keyboard/insets
+    animation polish
+    accessibility
+```
+
+At that point we should **stop adding new UI architecture** and do a strict comparison pass against the React implementation: find every remaining Kotlin `TopAppBar`, `AlertDialog`, `Material Switch`, oversized `Button`, `Card`, and `OutlinedTextField`, then decide individually whether it matches the React geometry or needs replacement.
+
+That's the point where the app should stop feeling like a Kotlin clone and start feeling like **the same FocusFlow product implemented in Compose**.

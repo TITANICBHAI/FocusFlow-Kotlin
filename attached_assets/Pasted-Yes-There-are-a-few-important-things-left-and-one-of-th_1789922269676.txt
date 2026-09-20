@@ -1,0 +1,714 @@
+Yes. There are **a few important things left**, and one of them is easy to miss: the app has UI that isn't represented by the Compose screens at all.
+
+At this point I would stop adding ordinary screen redesigns and do a **final product-surface pass**.
+
+## The remaining things I would absolutely cover
+
+### 1. The actual FocusFlow Launcher
+
+This is separate from `LauncherSetupScreen`.
+
+The project has:
+
+```text
+enforcement/LauncherActivity.kt
+```
+
+and it is a real Android home-screen replacement implemented with classic `View`/`RecyclerView`/`TextView`/`ImageView`, not Compose.
+
+That means we can make the in-app **Home Launcher settings screen** beautiful while the actual launcher still looks like a different product.
+
+I found things such as:
+
+```text
+52dp classic app rows
+92dp glassy app rows
+42dp / 56dp icon containers
+20–24dp outer padding
+44dp controls
+```
+
+plus separate Classic/Glassy rendering paths.
+
+This needs its own visual pass.
+
+Give the agent:
+
+```text id="5stxqm"
+FINAL UI PASS — ACTUAL HOME LAUNCHER
+
+IMPORTANT:
+This is NOT ui/launcher/LauncherSetupScreen.kt.
+
+The real launcher runtime is:
+
+    enforcement/LauncherActivity.kt
+
+It is implemented using Android Views/RecyclerView rather than Compose.
+
+Do NOT migrate it to Compose.
+Do NOT change launcher behavior, intent handling, app launching,
+home-screen registration, package loading, ordering, or state.
+
+Only align its visual presentation with the React launcher reference.
+
+AUDIT BOTH:
+    LauncherTheme.CLASSIC
+    LauncherTheme.GLASSY
+
+Do not force the two themes to become identical.
+They intentionally have different visual treatments.
+
+However both must share the same FocusFlow sizing discipline.
+
+Target dimensions:
+
+Classic app row:
+    ~= 52dp
+
+Classic horizontal padding:
+    ~= 16–20dp
+
+Standard app icon:
+    ~= 36–40dp
+
+App title:
+    ~= 13sp
+
+Small package/subtitle:
+    ~= 11sp
+
+Glassy app tile:
+    keep larger tile geometry only where the React glassy launcher
+    actually uses it.
+
+Avoid:
+    oversized 92dp rows unless the glassy reference explicitly requires
+    that tile height.
+
+Settings/launcher controls:
+    40–44dp
+
+Search:
+    42–44dp
+
+Section labels:
+    11sp
+
+Main launcher clock/date:
+    match React launcher sizing rather than generic Android headline sizes.
+
+IMPORTANT:
+Do not let launcher setup screen dimensions leak into launcher runtime,
+and do not let MaterialTheme typography dictate this View-based UI.
+
+Use existing dp()/sp() helpers.
+
+Keep:
+    wallpaper
+    custom wallpaper
+    launcher themes
+    app ordering
+    pinned apps
+    blocked apps
+    app badges
+    default-home behavior
+    package launching
+    drawer behavior
+
+unchanged.
+```
+
+---
+
+# 2. Home-screen widget
+
+You also have:
+
+```text
+widget/FocusFlowWidget.kt
+```
+
+This is another completely separate visual surface.
+
+It has several states:
+
+```text
+ACTIVE TASK
+TIME'S UP
+NEXT UP
+BLOCK ACTIVE
+IDLE
+```
+
+The widget is part of the product experience, and right now it is generated using `RemoteViews`.
+
+It should have a **small but deliberate React-equivalent visual language**, not just whatever XML dimensions were convenient.
+
+Send:
+
+```text id="bcndmm"
+FINAL UI PASS — FOCUSFLOW HOME WIDGET
+
+File:
+
+    widget/FocusFlowWidget.kt
+
+Do not change:
+    state detection
+    SharedPreferences keys
+    task timing
+    progress calculations
+    deep links
+    PendingIntent behavior
+    update triggers
+
+This is a presentation-only pass.
+
+The widget has five states:
+
+    ACTIVE TASK
+    TIME'S UP
+    NEXT UP
+    BLOCK ACTIVE
+    IDLE
+
+All five states must look like one product.
+
+Use:
+
+background:
+    deep slate / FocusFlow dark surface
+
+accent:
+    actual task color for task state
+    BrandPrimary for generic states
+
+header label:
+    ~= 10–11sp
+    uppercase/semibold
+
+task title:
+    ~= 13–15sp
+    bold/semibold
+
+secondary line:
+    ~= 10–11sp
+
+remaining/time:
+    ~= 13–15sp
+    semibold
+
+progress bar:
+    thin, approximately 4dp
+
+CTA pill:
+    compact
+    approximately 32–36dp high
+    11–12sp
+
+Padding:
+    approximately 12dp
+
+Do NOT create a giant widget with oversized text.
+
+Make sure:
+    ACTIVE TASK is visually strongest
+    TIME'S UP has a clear warning treatment
+    BLOCK ACTIVE uses protection green/indigo appropriately
+    IDLE is quiet and minimal
+
+Do not alter the state logic.
+```
+
+---
+
+# 3. Notifications
+
+I would absolutely audit these too, although they aren't "screens."
+
+The project has:
+
+```text
+notifications/NotificationChannels.kt
+notifications/NotificationRepository.kt
+```
+
+with:
+
+```text
+Task Reminders
+Morning Digest
+Weekly Report
+Achievements
+Insights
+Resistance
+```
+
+The **content/design** should match the React product voice and branding.
+
+More importantly, the Kotlin version currently contains notification-specific text and emoji independently of the UI.
+
+Do a consistency pass:
+
+```text id="8g8cgx"
+FINAL UI PASS — NOTIFICATIONS
+
+Do not change scheduling logic, channels, IDs, alarms, or permission behavior.
+
+Audit notification presentation:
+
+    task reminder
+    morning digest
+    weekly report
+    achievement
+    insight
+    resistance
+
+Requirements:
+
+- FocusFlow naming consistent with in-app terminology
+- same terminology as React
+- task titles remain user data
+- action labels match the app
+- no contradictory status wording
+- emoji usage only where the reference/product already uses it
+- no notification body should expose information the app would not show
+  in the corresponding UI state
+
+Verify notification deep links route to the same destination as the
+corresponding in-app action.
+
+Do not redesign Android system notification chrome; only control the
+app-provided content.
+```
+
+---
+
+# 4. Global theme is still bigger than the React system
+
+This is probably the **last actual sizing problem** after the individual screens are done.
+
+Your current `Theme.kt` still has:
+
+```kotlin
+extraSmall = 12.dp
+small      = 18.dp
+medium     = 22.dp
+large      = 28.dp
+extraLarge = 32.dp
+```
+
+while the React system is:
+
+```text
+6
+10
+16
+24
+```
+
+Likewise, Kotlin's global typography contains things like:
+
+```kotlin
+headlineSmall = 25.sp
+titleLarge    = 21.sp
+bodyLarge     = 16.sp
+```
+
+while the React design system is basically:
+
+```text
+11
+13
+15
+18
+22
+28
+```
+
+This does **not** mean "globally replace everything immediately."
+
+It means the final agent pass should identify screens that still rely on:
+
+```kotlin
+MaterialTheme.shapes.*
+MaterialTheme.typography.*
+```
+
+and replace those usages with either:
+
+```kotlin
+FocusFlow...
+```
+
+components or explicit reference tokens.
+
+After that, you can safely tighten the global defaults.
+
+Tell the agent:
+
+```text id="1gqjwp"
+FINAL THEME AUDIT
+
+Do not blindly change FocusFlowShapes yet.
+
+First find every remaining UI screen/component using:
+
+    MaterialTheme.shapes.*
+    MaterialTheme.typography.*
+
+that is supposed to match the React design.
+
+Replace those usages with the established FocusFlow dimensions/typography.
+
+Only AFTER the screen-by-screen audit is complete should the global theme
+be reconciled.
+
+Final target design tokens should correspond to the React system:
+
+    11
+    13
+    15
+    18
+    22
+    28
+
+and:
+
+    6
+    10
+    16
+    24
+
+Do not create additional arbitrary sizes unless accessibility or native
+platform requirements justify them.
+```
+
+This avoids breaking things the agent has already fixed.
+
+---
+
+# 5. Keyboard, insets, and scrolling
+
+This doesn't show up in static screenshots, but it will determine whether the polished screens actually feel polished.
+
+The project already has:
+
+```text
+ui/common/KeyboardAwareScrollViewCompat.kt
+```
+
+and `MainActivity` uses edge-to-edge:
+
+```kotlin
+WindowCompat.setDecorFitsSystemWindows(window, false)
+```
+
+So we need a final QA pass for:
+
+```text
+New Task
+Edit Task
+Keyword Blocker
+Always-On
+VPN block list
+Standalone block
+Greyout schedule
+Profile
+Password
+PIN setup
+PIN rotation
+Overlay appearance
+Backup import
+```
+
+The agent should verify:
+
+```text id="3yvx9p"
+keyboard opens
+    ↓
+focused field remains visible
+    ↓
+bottom action does not disappear
+    ↓
+navigation bar inset remains correct
+    ↓
+no content jumps unexpectedly
+```
+
+And:
+
+* status bar doesn't overlap headers
+* gesture/navigation bar doesn't overlap bottom buttons
+* full-screen dialogs respect insets
+* scroll position doesn't reset unnecessarily
+
+This is especially important because your app is edge-to-edge.
+
+---
+
+# 6. Loading / empty / error / disabled states
+
+Another thing screenshots don't fully expose.
+
+Every important screen should have the React equivalent for:
+
+```text loading
+empty
+normal
+active
+disabled
+warning
+error
+locked
+permission unavailable
+```
+
+For example:
+
+```text Stats
+    loading
+    no analytics
+    permission denied
+    normal
+
+Defense
+    VPN unavailable
+    accessibility unavailable
+    normal
+    enabled
+
+Schedule
+    no tasks
+    tasks
+    active
+    completed
+
+Settings
+    loading
+    saved
+    error
+```
+
+We don't need to invent new states. We just need to make sure the **existing Kotlin states use the same component geometry**.
+
+---
+
+# 7. Accessibility and touch-target audit
+
+This one should remain platform-compliant even though the visual controls are compact.
+
+Important distinction:
+
+```text
+visible icon = 18–22dp
+touch target = >= 48dp
+```
+
+So don't tell the agent to make the *whole clickable area* 22dp just because the React icon is 22.
+
+The visible glyph can be small while the hit box remains accessible.
+
+Audit:
+
+```text
+icon-only buttons
+ECG button
+close buttons
+back buttons
+chips
+small app-row actions
+checkboxes
+switches
+FAB
+bottom-nav items
+task actions
+```
+
+Also verify:
+
+```kotlin
+contentDescription
+stateDescription
+role
+```
+
+where appropriate.
+
+---
+
+# 8. Animation consistency
+
+We already handled the splash, but there are still several animations:
+
+```text
+Focus timer
+task completion
+achievement celebration
+expand/collapse
+PIN states
+switches
+modal transitions
+active indicator/state changes
+```
+
+The agent should not add animation everywhere.
+
+Instead:
+
+```text
+React has motion
+    ↓
+preserve it
+
+React is static
+    ↓
+don't invent motion
+```
+
+The biggest thing to avoid is the Kotlin tendency to animate/scale Material components in ways that make them feel heavier than the React UI.
+
+---
+
+# 9. Final icon audit
+
+This is worth doing because we've already found multiple cases where Material icons were simply substituted.
+
+Search the whole Kotlin UI for:
+
+```text id="cv6c3s"
+Icons.Filled.
+Icons.Outlined.
+Icons.Rounded.
+```
+
+and audit each one against the React icon.
+
+Don't replace everything blindly.
+
+Instead classify:
+
+```text
+exact visual match
+acceptable equivalent
+needs custom/vector icon
+```
+
+Especially inspect:
+
+```text
+Shield
+MonitorHeart
+Pulse
+Task play/start
+Calendar
+Timer
+Defense
+Protection
+VPN
+Launcher
+Achievements
+Stats
+Settings
+Back/Close
+```
+
+The React app's icon language is part of why it feels more intentional.
+
+---
+
+# 10. Final visual QA against the React app
+
+After all individual passes, this should be the **last instruction** to the agent:
+
+```text id="9e8a4h"
+FINAL CROSS-APP UI AUDIT
+
+Compare the Kotlin app and React reference screen by screen.
+
+Do NOT compare only colors.
+
+For every screen compare:
+
+    overall density
+    typography scale
+    horizontal margins
+    vertical spacing
+    card radius
+    border thickness
+    icon size
+    icon stroke weight
+    button height
+    switch geometry
+    chip geometry
+    text-field geometry
+    header height
+    bottom navigation height
+    dialog width
+    sheet radius
+    empty-state position
+    loading-state geometry
+    error-state geometry
+
+The Kotlin implementation must not systematically look larger than React.
+
+When Kotlin is larger:
+    reduce it toward the React token/value.
+
+When Kotlin is smaller:
+    increase only if React clearly demonstrates it.
+
+Do not make all elements the same size.
+
+Preserve intentional hierarchy:
+    hero/KPI elements can be large
+    utility UI should remain compact.
+
+Run this audit at:
+    phone width
+    narrow phone
+    normal phone
+    tablet/large width if supported
+
+Verify edge-to-edge/insets after resizing.
+
+Do not change business logic during this phase.
+```
+
+---
+
+## So, are we missing anything major?
+
+After these passes, **no major UI surface is left unaccounted for**.
+
+The remaining inventory is essentially:
+
+```text
+✅ Splash
+✅ Main tabs
+✅ Bottom navigation
+✅ Task creation/edit/details
+✅ Active / Defense / Stats / Settings
+✅ Protection-management screens
+✅ Internal screens
+✅ Shared dialogs/modals
+✅ PIN flows
+✅ Permission flows
+✅ Settings internals
+✅ Error/recovery UI
+
+FINAL SURFACES
+→ Actual Home Launcher
+→ Widget
+→ Notifications
+→ Global theme reconciliation
+→ Insets/keyboard
+→ Loading/error/empty state consistency
+→ Accessibility
+→ Animation consistency
+→ Icon audit
+→ Cross-app visual QA
+```
+
+The **actual `LauncherActivity` is the one I would not skip**. It's completely outside the Compose UI tree, so without that pass you could finish all the Kotlin screens and still have one major part of FocusFlow visibly belonging to a different design system.
