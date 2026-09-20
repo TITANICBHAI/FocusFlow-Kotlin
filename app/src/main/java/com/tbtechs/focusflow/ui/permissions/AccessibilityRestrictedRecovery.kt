@@ -218,4 +218,5 @@ fun AccessibilityRestrictedRecovery(
                 }
             }
         }
+    }
 }
