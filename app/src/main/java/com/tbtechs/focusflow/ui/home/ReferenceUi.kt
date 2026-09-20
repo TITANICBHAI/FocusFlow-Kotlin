@@ -14,18 +14,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardOptions
@@ -64,7 +65,7 @@ internal fun ReferencePill(
                 shape = shape,
             )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 18.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -84,7 +85,7 @@ internal fun ReferenceSectionLabel(
     Text(
         text = text,
         modifier = modifier,
-        fontSize = 16.sp,
+        fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
         color = RefSecondary,
     )
@@ -106,7 +107,7 @@ internal fun ReferenceField(
         onValueChange = onValueChange,
         placeholder = {
             if (placeholder.isNotEmpty()) {
-                Text(placeholder, color = RefMuted, fontSize = 18.sp)
+                Text(placeholder, color = RefMuted, fontSize = 15.sp)
             }
         },
         singleLine = singleLine,
@@ -115,9 +116,9 @@ internal fun ReferenceField(
         modifier = modifier
             .fillMaxWidth()
             .then(if (minHeight != null) Modifier.heightIn(min = minHeight) else Modifier),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
-            fontSize = 18.sp,
+            fontSize = 15.sp,
             color = RefText,
         ),
         colors = OutlinedTextFieldDefaults.colors(
@@ -143,27 +144,47 @@ internal fun ReferenceToggleCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(RefCard)
-            .border(1.dp, RefBorder, RoundedCornerShape(18.dp))
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = RefText)
-            Spacer(Modifier.size(4.dp))
-            Text(description, fontSize = 16.sp, color = RefSecondary)
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+            Spacer(Modifier.size(2.dp))
+            Text(description, fontSize = 13.sp, color = RefSecondary)
         }
-        Switch(
+        ReferenceSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = BrandPrimary,
-                uncheckedThumbColor = Color(0xFFCBD5E1),
-                uncheckedTrackColor = Color(0xFF475569),
-                uncheckedBorderColor = Color.Transparent,
-            ),
+        )
+    }
+}
+
+@Composable
+private fun ReferenceSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 18.dp else 0.dp,
+        label = "referenceSwitch",
+    )
+    Box(
+        modifier = Modifier
+            .size(44.dp, 26.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(if (checked) BrandPrimary else RefBorder)
+            .clickable { onCheckedChange(!checked) }
+            .padding(3.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.White),
         )
     }
 }
@@ -183,7 +204,7 @@ internal fun ReferenceTaskAction(
     ) {
         Box(
             modifier = Modifier
-                .size(60.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center,
@@ -192,10 +213,10 @@ internal fun ReferenceTaskAction(
                 imageVector = icon,
                 contentDescription = label,
                 tint = color,
-                modifier = Modifier.size(29.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
-        Spacer(Modifier.size(8.dp))
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = color)
+        Spacer(Modifier.size(4.dp))
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = color)
     }
 }

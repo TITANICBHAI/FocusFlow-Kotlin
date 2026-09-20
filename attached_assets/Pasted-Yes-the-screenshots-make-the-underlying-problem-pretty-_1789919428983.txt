@@ -1,0 +1,440 @@
+Yes — the screenshots make the underlying problem pretty clear: this isn't just an icon problem. The Kotlin UI is currently using **generic Android/Compose control primitives with their default-ish geometry**, while the reference UI has a much more deliberately designed visual system: tighter controls, thinner strokes, flatter surfaces, consistent radii, controlled typography, and custom active-state treatment.
+
+I can give your coding agent **targeted modifications rather than rewriting the app**.
+
+However, the uploaded ZIP is structured entirely under `__ARCHIVED_DO_NOT_INSPECT__/`, so I don't want to pretend those are the live Kotlin files and give you instructions against the wrong codebase. I can see the archive contains the Android/Kotlin implementation and the corresponding React/TS UI, but the package explicitly marks that tree as archived.
+
+### What I would change across the Kotlin UI
+
+The important thing is to make this a **shared visual-system change**, not individually polish every screen.
+
+#### 1. Replace the current "active screen" icon everywhere
+
+Use the waveform you supplied as a **custom vector**, not an approximation using Material Icons.
+
+Conceptually:
+
+```kotlin
+@Composable
+fun ActivityIndicator(
+    active: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Icon(
+        painter = painterResource(
+            id = R.drawable.ic_activity_waveform
+        ),
+        contentDescription = null,
+        tint = if (active) Color(0xFF22C55E)
+               else Color(0xFFF1F3F7),
+        modifier = modifier
+    )
+}
+```
+
+The vector itself should reproduce:
+
+```text
+       /\        /\
+______/  \______/ \__
+              \    ○
+               \___
+```
+
+with:
+
+* **one continuous white stroke**
+* rounded caps
+* rounded joins
+* no surrounding circle
+* no square/background container
+* small terminal circle
+* approximately the same proportions as your supplied reference
+* green only when the relevant feature/mode is actually active
+
+The important architectural change is:
+
+```kotlin
+ActivityIndicator(
+    active = featureState.isActive
+)
+```
+
+rather than each screen deciding independently how to draw the icon.
+
+That gives you the same component in:
+
+* Schedule header
+* Focus
+* Defense
+* Stats
+* Settings
+* task-related screens
+* any future screen that needs an activity/status indicator
+
+---
+
+### 2. Fix the toggle globally
+
+The screenshot you showed is a very good example of the current problem.
+
+The Kotlin toggle appears to have a **large Material switch track + thumb treatment**, whereas your reference has a much simpler, compact control.
+
+Don't try to tweak every existing `Switch`.
+
+Create one project-level component:
+
+```kotlin
+@Composable
+fun FocusFlowSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // custom implementation
+}
+```
+
+And replace existing:
+
+```kotlin
+Switch(...)
+```
+
+with:
+
+```kotlin
+FocusFlowSwitch(
+    checked = enabled,
+    onCheckedChange = { enabled = it }
+)
+```
+
+The custom switch should have:
+
+```text
+OFF
+
+   ┌───────────────┐
+   │ ●             │
+   └───────────────┘
+
+
+ON
+
+   ┌───────────────┐
+   │             ● │
+   └───────────────┘
+```
+
+but with the exact compact geometry from your reference.
+
+No extra Material outline.
+
+No giant thumb.
+
+No excessive track height.
+
+No elevation.
+
+No ripple-shaped visual boundary around the switch.
+
+---
+
+## 3. Establish a single FocusFlow geometry system
+
+This is actually the bigger fix.
+
+Your screenshots show inconsistent sizing because individual screens appear to be deciding things like:
+
+```kotlin
+padding(...)
+RoundedCornerShape(...)
+height(...)
+Icon(...)
+```
+
+independently.
+
+Have the agent introduce/extend a central design system:
+
+```kotlin
+object FocusFlowDimens {
+    val screenHorizontal = 32.dp
+    val sectionSpacing = 24.dp
+
+    val cardRadius = 24.dp
+    val fieldRadius = 18.dp
+    val buttonRadius = 28.dp
+
+    val compactControlHeight = 48.dp
+    val fieldHeight = 64.dp
+
+    val bottomBarHeight = 88.dp
+}
+```
+
+Then screens should consume these values rather than inventing their own geometry.
+
+---
+
+# Screen-by-screen changes
+
+Based on the screenshots, I'd tell the agent to approach them in this order.
+
+### Schedule screen
+
+Current:
+
+* header is okay structurally
+* status icon needs replacement
+* task card geometry is too generic
+* bottom navigation feels heavier than reference
+* selected navigation icon is oversized/heavy
+* empty state is too visually weak
+* FAB is somewhat disconnected from the rest of the UI
+
+Target:
+
+```text
+Friday, September 18                         ~waveform~
+
+No tasks today
+
+                    [empty state]
+
+
+                                      (+)
+
+
+──────────────────────────────────────────────
+ Focus   Schedule   Defense   Stats   Settings
+```
+
+Keep the existing functionality.
+
+Do **not** rebuild the scheduler.
+
+Only change the presentation layer.
+
+---
+
+### New Task screen
+
+This one needs more than icon replacement.
+
+The reference has:
+
+```text
+Title
+┌─────────────────────────────────────────┐
+│ What do you need to do?                 │
+└─────────────────────────────────────────┘
+
+Notes (optional)
+┌─────────────────────────────────────────┐
+│ Add details...                          │
+│                                         │
+└─────────────────────────────────────────┘
+
+Start
+┌──────────────────┐ ┌──────────────────┐
+│ calendar  Today  │ │ clock  11:08 PM │
+└──────────────────┘ └──────────────────┘
+
+Duration: 1 h
+
+[15m] [30m] [45m] [1h] [1h 30m]
+[2h] [Custom]
+
+┌─────────────────────────────────────────┐
+│ Pomodoro Mode                    [●──] │
+│ Off — one continuous focus session     │
+└─────────────────────────────────────────┘
+```
+
+The Kotlin implementation should use **custom FocusFlow fields/chips**, not default Material components.
+
+Particularly:
+
+```kotlin
+FocusFlowTextField(...)
+FocusFlowChip(...)
+FocusFlowSwitch(...)
+FocusFlowSelectionRow(...)
+```
+
+That prevents every screen from becoming another slightly different Material implementation.
+
+---
+
+### Task card
+
+Your screenshot:
+
+```text
+┌────────────────────────────────────────────┐
+│ │ Hdjf                         Medium      │
+│ │                                          │
+│ │ 11:13 PM – 11:28 PM · 15m       [play] │
+│ │                                          │
+│ │ in 4m                                    │
+└────────────────────────────────────────────┘
+```
+
+The important detail is the **colored vertical accent**.
+
+Don't implement that as a random border.
+
+Use:
+
+```kotlin
+Row {
+    Box(
+        Modifier
+            .width(6.dp)
+            .fillMaxHeight()
+            .clip(...)
+            .background(task.color)
+    )
+
+    // card content
+}
+```
+
+The card itself should have one consistent radius and surface color.
+
+---
+
+### Task detail
+
+The reference is essentially an intentionally sparse detail sheet:
+
+```text
+● Hdjf                                      ×
+
+SCHEDULE
+
+11:13 PM – 11:28 PM
+Friday, September 18
+
+PRIORITY
+
+Medium
+
+STATUS
+
+Scheduled
+
+
+────────────────────────────────────────
+
+   Edit       Complete       Skip       Extend
+```
+
+Don't turn this into a standard Android dialog.
+
+It should be a **full-height FocusFlow surface/sheet**.
+
+The four actions should each have:
+
+* circular/soft circular background
+* icon
+* label
+* semantic color
+
+and **not** giant Material buttons.
+
+---
+
+### Edit Task
+
+This should share almost all components with New Task.
+
+Do not maintain two independent implementations.
+
+For example:
+
+```kotlin
+TaskEditorScreen(
+    mode = TaskEditorMode.Create(...)
+)
+```
+
+and:
+
+```kotlin
+TaskEditorScreen(
+    mode = TaskEditorMode.Edit(task)
+)
+```
+
+The difference should primarily be:
+
+```text
+New Task / Save
+```
+
+versus:
+
+```text
+Edit Task / Save / Delete Task
+```
+
+not two different UI systems.
+
+---
+
+# Most important instruction to give your agent
+
+I'd give your coding agent this **before asking it to touch individual screens**:
+
+> **Do not rewrite the existing Kotlin screens or business logic. Refactor the presentation layer around shared FocusFlow UI primitives first.**
+>
+> The current UI has a repeated problem: Material/default Android controls are being styled individually, which creates oversized switches, inconsistent corner radii, inconsistent paddings, heavy icons, and different control geometry between screens.
+>
+> Create/reuse a small set of shared Compose components:
+>
+> `FocusFlowTextField`
+>
+> `FocusFlowSwitch`
+>
+> `FocusFlowChip`
+>
+> `FocusFlowButton`
+>
+> `FocusFlowCard`
+>
+> `FocusFlowBottomBar`
+>
+> `ActivityIndicator`
+>
+> `FocusFlowIconButton`
+>
+> Centralize dimensions, radii, typography, and colors in the existing theme/design-system layer.
+>
+> Do not alter task scheduling, persistence, navigation, timers, focus logic, defense logic, or other business behavior.
+>
+> Replace existing UI primitives incrementally with these components.
+>
+> The supplied screenshots are the visual reference. Match their geometry rather than approximating them with default Material components.
+>
+> In particular, do not use a Material `Switch` if its geometry produces a visible oversized track/outline. Implement the FocusFlow switch as a custom Compose component.
+>
+> Likewise, do not approximate the supplied waveform/activity icon with an existing Material icon. Add it as an actual vector drawable/path and expose it through one reusable `ActivityIndicator(active = ...)` component.
+>
+> The waveform must be white when inactive and green when the corresponding feature/mode is active. Its shape, stroke width, rounded caps, terminal circle, and proportions should match the supplied reference image.
+>
+> Make the active/inactive state a parameter derived from the existing application state rather than introducing duplicate state.
+
+### One important thing
+
+I **wouldn't let the agent start rewriting all the screens yet**.
+
+The right sequence is:
+
+**1. shared theme/dimensions → 2. waveform icon → 3. switch → 4. buttons/chips/fields → 5. bottom navigation → 6. Schedule → 7. New/Edit Task → 8. Task Detail → 9. Focus/Defense/Stats/Settings.**
+
+That way, when we get to screen #7, we're not fixing the same ugly toggle, card radius, padding, and typography five separate times.
+
+If you give me the **actual live Kotlin project ZIP/source** rather than the archived tree in this upload, I can make the next response much more concrete: **exact file names + exact code blocks to add/replace + deletion instructions**, screen by screen, starting with the shared UI layer.

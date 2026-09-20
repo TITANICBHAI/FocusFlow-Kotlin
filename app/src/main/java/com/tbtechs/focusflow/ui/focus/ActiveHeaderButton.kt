@@ -219,14 +219,14 @@ private fun EcgHeartPulseMonitor(
 ) {
     val iconColor = when {
         level == ActiveStatusLevel.WARNING -> Color(0xFFFBBF24)
-        activeCount > 0 -> Color(0xFF34D399)
+        activeCount > 0 -> Color(0xFF2BAE66)
         else -> Color(0xFFCBD5E1)
     }
 
     Canvas(
         modifier = modifier.size(
-            width = 30.dp,
-            height = 24.dp,
+            width = 24.dp,
+            height = 22.dp,
         ),
     ) {
         val w = size.width
@@ -246,7 +246,7 @@ private fun EcgHeartPulseMonitor(
             path = path,
             color = iconColor,
             style = Stroke(
-                width = 2.2.dp.toPx(),
+                 width = 1.8.dp.toPx(),
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round,
             ),
@@ -260,7 +260,7 @@ private fun EcgHeartPulseMonitor(
                 y = h * 0.58f,
             ),
             style = Stroke(
-                width = 2.2.dp.toPx(),
+                 width = 1.8.dp.toPx(),
             ),
         )
     }

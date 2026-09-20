@@ -514,7 +514,7 @@ fun MainScaffold(
                     .background(RefHeader)
                     .border(1.dp, RefBorder)
                     .navigationBarsPadding()
-                    .padding(top = 10.dp, bottom = 8.dp),
+                    .padding(top = 8.dp, bottom = 8.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
             ) {
                 tabs.forEach { (route, label, icon) ->
@@ -530,12 +530,12 @@ fun MainScaffold(
                             imageVector = icon,
                             contentDescription = label,
                             tint = if (isSelected) BrandPrimary else RefMuted,
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(22.dp),
                         )
-                        Spacer(Modifier.size(4.dp))
+                        Spacer(Modifier.size(2.dp))
                         Text(
                             text = label,
-                            fontSize = if (dimensions.screenPadding < 16.dp) 12.sp else 14.sp,
+                            fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             color = if (isSelected) BrandPrimary else RefSecondary,
                         )

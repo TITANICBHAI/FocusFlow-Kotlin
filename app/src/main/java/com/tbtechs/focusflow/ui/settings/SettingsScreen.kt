@@ -48,8 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -847,18 +845,28 @@ private fun FocusFlowSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = Color.White,
-            checkedTrackColor = BrandPrimary,
-            uncheckedThumbColor = DarkTextSecondary,
-            uncheckedTrackColor = DarkSurfaceVariant,
-            uncheckedBorderColor = DarkBorder,
-        ),
+    val thumbOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (checked) 18.dp else 0.dp,
+        label = "settingsSwitchThumbOffset",
     )
+
+    Box(
+        modifier = modifier
+            .size(width = 44.dp, height = 26.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(if (checked) BrandPrimary else Color(0xFF475569))
+            .clickable { onCheckedChange(!checked) },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .padding(3.dp)
+                .size(20.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(Color.White),
+        )
+    }
 }
 
 private data class SettingsNotice(val title: String, val body: String)

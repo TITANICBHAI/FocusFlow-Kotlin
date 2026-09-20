@@ -1,0 +1,809 @@
+I inspected the **latest `app(3).zip`**. This is enough; you do not need to upload another version yet.
+
+And yes — I can now see why the Kotlin version still feels wrong even though the previous agent has already made several changes.
+
+The latest code is in an awkward halfway state:
+
+* `ReferenceUi.kt` was added, but it still uses a **Material `Switch`**, which is exactly the control you dislike.
+* `ActiveHeaderButton.kt` already has the custom ECG idea, so **do not rebuild the active-status logic**.
+* `MainScaffold` already has a custom bottom bar, but its geometry still doesn't quite match the reference.
+* `QuickAddModal`, `TaskDetailModal`, and `EditTaskModal` have already been converted from bottom sheets to full-screen `Dialog`s, so **do not redo that architecture**.
+* `HomeScreen` and `TaskCard` are partially restyled but still mix `Ref*` values with the older theme values.
+* The latest code is also still using some stock Material controls in places where the reference is visibly custom.
+
+Most importantly: **some of my earlier proposed sizes were too aggressive.** Looking at the actual reference proportions again, I would *not* tell the agent to make the Schedule title 42sp or the FAB 112dp. That would make the problem worse. The reference is compact and controlled.
+
+So let's reset around the actual visual language.
+
+# Phase 1: shared foundation + Schedule only
+
+Do **not** let the agent touch New Task, Edit Task, or Task Details yet.
+
+Paste this to the agent:
+
+```text
+IMPLEMENTATION PHASE 1 ONLY
+FocusFlow Android / Jetpack Compose
+
+I have inspected the current source. This is NOT a greenfield redesign.
+
+The current project already contains partial UI work from an earlier pass:
+
+- ui/home/ReferenceUi.kt
+- ui/home/HomeScreen.kt
+- ui/home/TaskCard.kt
+- ui/home/HomeSupport.kt
+- ui/navigation/FocusFlowNavGraph.kt
+- ui/focus/ActiveHeaderButton.kt
+- ui/home/QuickAddModal.kt
+- ui/home/TaskDetailModal.kt
+- ui/home/EditTaskModal.kt
+
+Preserve the existing application architecture, ViewModels, Room/database,
+navigation, task logic, active-protection logic, and callbacks.
+
+Do NOT rewrite those systems.
+
+This phase covers ONLY:
+
+1. Shared compact UI primitives needed now
+2. ECG active-status indicator
+3. Schedule screen
+4. Schedule task card
+5. Schedule empty state
+6. Main bottom navigation
+
+Do NOT redesign New Task, Edit Task, or Task Details yet.
+Those are Phase 2/3 later.
+
+============================================================
+IMPORTANT VISUAL DIRECTION
+============================================================
+
+The supplied screenshots are the source of truth.
+
+Do NOT make the UI bigger in an attempt to match the screenshots.
+
+The reference is intentionally compact.
+
+Avoid:
+- oversized Material components
+- giant buttons
+- oversized typography
+- thick borders
+- large switch outlines
+- excessive padding
+- default Material navigation indicators
+- default Material switch geometry
+
+Use explicit dimensions for important reference components.
+
+The UI should look like a deliberately designed mobile product,
+not a collection of Material 3 defaults.
+
+============================================================
+1. REFERENCE DESIGN TOKENS
+============================================================
+
+Add/reuse these semantic colors in ReferenceUi.kt or the theme layer:
+
+val RefBackground = Color(0xFF0F172A)
+val RefHeader = Color(0xFF1E293B)
+val RefCard = Color(0xFF202B3D)
+val RefBorder = Color(0xFF334155)
+
+val RefText = Color(0xFFF1F5F9)
+val RefSecondary = Color(0xFF94A3B8)
+val RefMuted = Color(0xFF64748B)
+
+val RefGreen = Color(0xFF34D399)
+val RefBlue = Color(0xFF3B82F6)
+val RefAmber = Color(0xFFF59E0B)
+val RefRed = Color(0xFFEF4444)
+
+Keep BrandPrimary = #6366F1.
+
+Do not globally replace the entire Material color scheme in this phase.
+
+Use these tokens explicitly in the redesigned Schedule UI.
+
+============================================================
+2. CUSTOM SWITCH PRIMITIVE
+============================================================
+
+ReferenceUi.kt currently contains:
+
+    Switch(...)
+
+inside ReferenceToggleCard.
+
+Do NOT leave the Material Switch there.
+
+The current Material switch is one of the obvious visual mismatches:
+it has the wrong geometry and visible boundary treatment.
+
+Create a custom compact switch:
+
+@Composable
+internal fun FocusFlowSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val trackColor =
+        if (checked) RefGreen
+        else Color(0xFF475569)
+
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 24.dp else 4.dp,
+        label = "switchOffset",
+    )
+
+    Box(
+        modifier = modifier
+            .size(width = 56.dp, height = 32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(trackColor)
+            .clickable { onCheckedChange(!checked) },
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(4.dp)
+                .offset(x = thumbOffset)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+        )
+    }
+}
+
+Use the required animation/imports.
+
+IMPORTANT:
+The switch itself must have:
+- no border
+- no Material outline
+- no elevation
+- no secondary container
+- no oversized thumb
+- no ripple-shaped visual frame
+
+Then change ReferenceToggleCard:
+
+    Switch(...)
+
+to:
+
+    FocusFlowSwitch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+    )
+
+Do not change the business state.
+
+This primitive will later be reused by:
+- New Task
+- Edit Task
+- Defense
+- Settings
+- other mode toggles
+
+============================================================
+3. ACTIVE ECG INDICATOR
+============================================================
+
+Do NOT touch evaluateActiveProtection().
+
+That existing logic is correct and already determines:
+
+    INACTIVE
+    ACTIVE
+    WARNING
+
+and:
+
+    activeLayersCount
+
+The existing ActiveStatusIndicator must continue to be the shared component.
+
+File:
+
+    ui/focus/ActiveHeaderButton.kt
+
+DO NOT create a second active-state calculation.
+
+Only improve the visual path.
+
+The icon should look like the supplied reference:
+
+small horizontal ECG/pulse line
+→ sharp upward spike
+→ sharp downward spike
+→ smaller pulse
+→ horizontal line
+→ small outlined terminal circle
+
+Approximate dimensions:
+
+    34.dp x 28.dp
+
+Stroke:
+
+    about 2.2–2.4.dp
+    StrokeCap.Round
+    StrokeJoin.Round
+
+Color:
+
+    WARNING  -> #FBBF24
+    ACTIVE   -> #34D399
+    INACTIVE -> #CBD5E1
+
+There must be:
+- no surrounding container
+- no background
+- no rounded rectangle
+- no Material icon
+
+Keep:
+
+    .clickable(...)
+    contentDescription
+    role = Role.Button
+
+The active state must still be:
+
+    activeLayersCount > 0
+
+Do not create a new boolean such as:
+
+    isAnythingActive
+
+when activeLayersCount already exists.
+
+============================================================
+4. SCHEDULE HEADER
+============================================================
+
+File:
+
+    ui/home/HomeScreen.kt
+
+Keep the existing:
+
+    Scaffold
+
+and existing loading/database behavior.
+
+Do NOT modify:
+
+    AppBootViewModel
+    TaskViewModel
+    FocusSessionViewModel
+    SettingsViewModel
+
+Only replace the Schedule presentation.
+
+Current header is approximately correct structurally,
+but the implementation is still mixing old and new visual tokens.
+
+Replace the topBar content with:
+
+Column(
+    modifier = Modifier
+        .fillMaxWidth()
+        .background(RefHeader)
+        .statusBarsPadding()
+        .padding(
+            horizontal = 32.dp,
+            top = 18.dp,
+            bottom = 18.dp,
+        ),
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = LocalDate.now().format(
+                    DateTimeFormatter.ofPattern("EEEE, MMMM d")
+                ),
+                fontSize = 28.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.Bold,
+                color = RefText,
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = if (todayTasks.isEmpty()) {
+                    "No tasks today"
+                } else {
+                    "${todayTasks.count { it.status == "completed" }}/${todayTasks.size} tasks done"
+                },
+                fontSize = 18.sp,
+                lineHeight = 23.sp,
+                color = RefSecondary,
+            )
+        }
+
+        ActiveStatusIndicator(
+            focusSession = focusSession,
+            settings = settings,
+            onOpenActiveBlocks = onOpenActiveBlocks,
+        )
+    }
+}
+
+Immediately below the header, add only a 1dp divider:
+
+Box(
+    Modifier
+        .fillMaxWidth()
+        .height(1.dp)
+        .background(RefBorder)
+)
+
+DO NOT add a refresh icon.
+
+DO NOT add a second status icon.
+
+DO NOT wrap the ECG in another button/container.
+
+============================================================
+5. SCHEDULE EMPTY STATE
+============================================================
+
+Replace the current EmptySchedule implementation.
+
+The reference empty state is intentionally quiet.
+
+No purple circle.
+
+No big button.
+
+No card.
+
+No elevated container.
+
+Use:
+
+@Composable
+private fun EmptySchedule(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.CalendarToday,
+            contentDescription = null,
+            tint = Color(0xFF475569),
+            modifier = Modifier.size(76.dp),
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "No tasks scheduled for today",
+            fontSize = 23.sp,
+            lineHeight = 28.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF7C8798),
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = "Tap + to add your first task",
+            fontSize = 16.sp,
+            color = Color(0xFF4B5563),
+        )
+    }
+}
+
+The + action comes ONLY from the FAB.
+
+Do not put a Create Task button inside the empty state.
+
+============================================================
+6. SCHEDULE FAB
+============================================================
+
+The current FAB is visually too close to a generic Material FAB.
+
+Do not use a huge 96dp/112dp button.
+
+Use approximately:
+
+    64.dp
+
+with:
+
+    CircleShape
+    BrandPrimary
+    white plus
+    modest elevation
+
+Example:
+
+FloatingActionButton(
+    onClick = { addOpen = true },
+    modifier = Modifier.size(64.dp),
+    shape = CircleShape,
+    containerColor = BrandPrimary,
+    contentColor = Color.White,
+    elevation = FloatingActionButtonDefaults.elevation(
+        defaultElevation = 6.dp,
+    ),
+) {
+    Icon(
+        imageVector = Icons.Outlined.Add,
+        contentDescription = "Add task",
+        modifier = Modifier.size(30.dp),
+    )
+}
+
+Keep it bottom-right.
+
+Do not put text inside it.
+
+============================================================
+7. TASK CARD
+============================================================
+
+File:
+
+    ui/home/TaskCard.kt
+
+Keep all existing task state and callbacks.
+
+Do NOT change:
+- completeTask
+- skipTask
+- extendTask
+- startFocusMode
+- TaskViewModel
+- timing calculations
+
+Only replace the visual layout.
+
+The normal scheduled task card should contain:
+
+left vertical task-color strip
+title
+priority pill
+time range/duration
+relative time
+single action button on the right
+
+Do NOT render the following inside the normal card:
+- multiple action buttons
+- progress bar
+- shield cluster
+- tags
+- debug-style controls
+- multiple status buttons
+
+The card should be:
+
+    horizontal padding: 32.dp
+    vertical spacing between cards: about 8.dp
+    corner radius: 24.dp
+    background: RefCard
+
+Left strip:
+
+    width = 6.dp
+
+Card content padding:
+
+    horizontal = about 24.dp
+    vertical = about 20.dp
+
+Title:
+
+    about 18.sp
+    semibold
+    bright RefText
+
+Do NOT use an oversized 25–30sp task title.
+
+Reference task title is visually prominent but not gigantic.
+
+Priority:
+
+use the existing priorityColor(priority)
+
+but make the pill compact:
+
+    rounded shape
+    about 12–14.dp corner radius
+    horizontal padding 12–14.dp
+    vertical padding 6–7.dp
+    about 14–15sp text
+
+Time line:
+
+    about 17–18sp
+    RefSecondary
+
+Relative time:
+
+    about 15–16sp
+    italic
+    RefSecondary
+
+Right action:
+
+    approximately 56–64.dp square
+
+    RoundedCornerShape(18.dp)
+
+    1dp RefBorder
+
+    no filled button background
+
+    Play icon
+
+Use the existing start/complete callback logic.
+
+Do not change semantics/content descriptions.
+
+============================================================
+8. ACTIVE/RUNNING TASK BANNER
+============================================================
+
+IMPORTANT:
+
+Do not confuse the normal task card with ActiveTaskBanner.
+
+Keep ActiveTaskBanner behavior because it represents a different state.
+
+Do not remove:
+- complete
+- extend
+- skip
+- focus actions
+- NOW/TIME'S UP behavior
+
+Only make sure its geometry uses the same visual language:
+
+    RefCard
+    RefBorder
+    compact controls
+    consistent typography
+    same corner radius family
+
+Do not redesign its business semantics in this phase.
+
+============================================================
+9. BOTTOM NAVIGATION
+============================================================
+
+File:
+
+    ui/navigation/FocusFlowNavGraph.kt
+
+The previous agent already replaced Material NavigationBar with a custom Row.
+KEEP that architecture.
+
+Do not revert to:
+
+    NavigationBar
+    NavigationBarItem
+
+The current custom bar should be refined.
+
+Reference:
+
+    dark elevated surface
+    thin top divider
+    five equal-width destinations
+    icon above label
+    selected = purple
+    unselected = muted gray
+
+Use:
+
+bar:
+    RefHeader
+
+border:
+    1.dp RefBorder
+
+icon:
+    28.dp
+
+label:
+    14.sp
+
+selected:
+    BrandPrimary
+
+unselected:
+    RefSecondary or RefMuted
+
+Do NOT:
+- add Material NavigationBar selected indicator
+- add pill behind selected tab
+- add giant icon
+- add extra vertical padding
+- make the bar unusually tall
+
+Each tab should have at least 48.dp touch height.
+
+The navigation routes MUST remain exactly as they are.
+
+============================================================
+10. REMOVE MIXED THEME COLORS FROM SCHEDULE
+============================================================
+
+In HomeScreen.kt and TaskCard.kt, for the redesigned Schedule UI,
+do not mix:
+
+    DarkCard
+    DarkBackground
+    DarkTextPrimary
+    DarkTextSecondary
+    MaterialTheme.shapes.*
+
+with:
+
+    RefCard
+    RefBackground
+    RefText
+    RefSecondary
+    RefBorder
+
+Pick the reference tokens consistently for this screen.
+
+Do not globally remove the old colors yet because other screens still
+depend on them.
+
+This phase is local to Schedule.
+
+============================================================
+11. DO NOT TOUCH THESE FILES YET
+============================================================
+
+DO NOT redesign:
+
+    QuickAddModal.kt
+    EditTaskModal.kt
+    TaskDetailModal.kt
+    DefenseScreen.kt
+    StatsScreen.kt
+    SettingsScreen.kt
+
+We will do those after Schedule is visually correct.
+
+Do not undo their existing full-screen Dialog conversion.
+
+============================================================
+12. BUILD/VERIFICATION
+============================================================
+
+After this phase:
+
+1. Build the project.
+
+2. Verify Schedule with zero tasks.
+
+3. Verify Schedule with one task.
+
+4. Verify Schedule with several tasks.
+
+5. Verify active protection:
+       ECG turns green.
+
+6. Verify no active protection:
+       ECG turns muted.
+
+7. Verify VPN warning:
+       ECG becomes amber.
+
+8. Verify FAB opens the existing New Task flow.
+
+9. Verify task card still:
+       opens details
+       starts focus
+       completes
+       respects current timing state
+
+10. Verify all bottom-navigation routes still work.
+
+11. Verify no business logic was changed.
+
+12. Compare the screen against the supplied screenshot at the same device
+    resolution.
+
+Do not "improve" the design beyond the supplied reference.
+
+The objective is visual fidelity, not a new design.
+
+STOP after Schedule is complete.
+Do not continue to New Task/Edit/Task Detail in this pass.
+```
+
+## A couple of things I specifically want the agent **not** to do
+
+The current source shows exactly where the previous attempt went wrong.
+
+For example, this:
+
+```kotlin
+Switch(
+    checked = checked,
+    onCheckedChange = onCheckedChange,
+    colors = SwitchDefaults.colors(...)
+)
+```
+
+inside `ReferenceUi.kt` is precisely the wrong abstraction for the reference. Changing colors doesn't change the switch's geometry.
+
+Likewise, the current Schedule code mixes:
+
+```kotlin
+DarkCard
+DarkBackground
+DarkTextPrimary
+```
+
+with:
+
+```kotlin
+RefCard
+RefHeader
+RefText
+```
+
+That causes the screen to look like several design systems stitched together.
+
+And this current task card:
+
+```kotlin
+.padding(horizontal = 20.dp)
+```
+
+combined with:
+
+```kotlin
+.fontSize(16.sp)
+```
+
+and:
+
+```kotlin
+.size(52.dp)
+```
+
+has the **opposite** problem from the huge Material controls: it becomes too compressed in some places while other Material components remain bulky.
+
+The solution is not "make everything smaller." It's **make every component use intentional geometry from the same system**.
+
+### What we have now
+
+The latest code already has the useful architectural pieces:
+
+```text
+ActiveStatusIndicator      ✅ exists
+ReferenceUi                ✅ exists
+Custom bottom nav          ✅ exists
+Full-screen New Task       ✅ exists
+Full-screen Details       ✅ exists
+Full-screen Edit           ✅ exists
+Custom splash animation    ✅ exists
+```
+
+So we should **refine rather than restart**.
+
+Once the agent finishes exactly this first phase, send me the resulting screenshot/code state. Then we'll do **Phase 2: New Task**, and I can give you the same kind of exact `FIND → DELETE → REPLACE` instructions without touching the parts we've already locked down.

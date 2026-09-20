@@ -116,7 +116,7 @@ fun HomeScreen(
                             .fillMaxWidth()
                             .background(RefHeader)
                             .statusBarsPadding()
-                            .padding(horizontal = 20.dp, top = 14.dp, bottom = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -124,7 +124,7 @@ fun HomeScreen(
                         ) {
                             Text(
                                 text = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d")),
-                                fontSize = 28.sp,
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = RefText,
                                 modifier = Modifier.weight(1f),
@@ -139,13 +139,13 @@ fun HomeScreen(
                         Text(
                             text = if (todayTasks.isEmpty()) "No tasks today"
                             else "${todayTasks.count { it.status == "completed" }}/${todayTasks.size} tasks done",
-                            fontSize = 17.sp,
+                            fontSize = 13.sp,
                             color = RefSecondary,
                         )
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 16.dp)
+                                .padding(top = 12.dp)
                                 .height(1.dp)
                                 .background(RefBorder),
                         )
@@ -154,13 +154,13 @@ fun HomeScreen(
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { addOpen = true },
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.size(56.dp),
                     containerColor = BrandPrimary,
                     contentColor = Color.White,
                     shape = CircleShape,
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                 ) {
-                    Icon(Icons.Outlined.Add, contentDescription = "Add task", modifier = Modifier.size(36.dp))
+                    Icon(Icons.Outlined.Add, contentDescription = "Add task", modifier = Modifier.size(28.dp))
                 }
             },
         ) { innerPadding ->
@@ -357,27 +357,27 @@ private fun EmptySchedule(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 16.dp, top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
     ) {
         Icon(
             Icons.Outlined.CalendarToday,
             contentDescription = null,
             tint = RefMuted,
-            modifier = Modifier.size(76.dp),
-        )
-        Spacer(Modifier.height(18.dp))
-        Text(
-            "No tasks scheduled for today",
-            fontSize = 23.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = RefSecondary,
+            modifier = Modifier.size(48.dp),
         )
         Spacer(Modifier.height(8.dp))
         Text(
+            "No tasks scheduled for today",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = RefSecondary,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
             "Tap + to add your first task",
-            fontSize = 16.sp,
+            fontSize = 13.sp,
             color = RefMuted,
         )
     }

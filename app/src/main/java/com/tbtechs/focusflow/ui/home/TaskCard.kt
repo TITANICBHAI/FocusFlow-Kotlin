@@ -78,8 +78,8 @@ fun TaskCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(26.dp))
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
             .clickable(onClick = onOpen)
             .semantics { role = Role.Button },
@@ -92,7 +92,7 @@ fun TaskCard(
             // Left color strip
             Box(
                 modifier = Modifier
-                    .width(5.dp)
+                    .width(4.dp)
                     .fillMaxHeight()
                     .background(accent),
             )
@@ -100,8 +100,8 @@ fun TaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 18.dp, top = 18.dp, bottom = 18.dp, end = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(7.dp),
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -109,7 +109,7 @@ fun TaskCard(
                 ) {
                     Text(
                         text = task.title,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (closed) DarkTextMuted else DarkTextPrimary,
                         maxLines = 1,
@@ -121,11 +121,11 @@ fun TaskCard(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(priorityBadgeBg(task.priority))
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Text(
                             text = task.priority.replaceFirstChar(Char::titlecase),
-                            fontSize = 13.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = priorityColor(task.priority),
                         )
@@ -134,14 +134,14 @@ fun TaskCard(
 
                 Text(
                     text = "${task.startTime.asLocalTime()} – ${task.endTime.asLocalTime()} · ${task.durationMinutes.asDurationLabel()}",
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     color = DarkTextSecondary,
                 )
 
                 if (!closed) {
                     Text(
                         text = if (isActive) task.timeRemainingLabel(nowMs) else task.timeUntilStartLabel(nowMs),
-                        fontSize = 14.sp,
+                        fontSize = 11.sp,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                         color = DarkTextSecondary,
                     )
@@ -151,10 +151,10 @@ fun TaskCard(
             if (!closed) {
                 Box(
                     modifier = Modifier
-                        .padding(end = 12.dp, top = 18.dp, bottom = 18.dp)
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .border(1.dp, RefBorder, RoundedCornerShape(18.dp))
+                        .padding(end = 12.dp, top = 12.dp, bottom = 12.dp)
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
                         .clickable {
                             if (isActive) onComplete(task.id) else onStartFocus(task.id)
                         },
@@ -164,7 +164,7 @@ fun TaskCard(
                         imageVector = Icons.Outlined.PlayArrow,
                         contentDescription = if (isActive) "Complete task" else "Start task",
                         tint = DarkTextSecondary,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }

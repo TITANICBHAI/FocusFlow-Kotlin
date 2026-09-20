@@ -1,0 +1,715 @@
+Yes. **The React implementation should be our sizing reference**, not the larger numbers I suggested earlier.
+
+I compared the React source in `react-app.zip` directly against the latest `app(3).zip`. The difference is quite concrete: the Kotlin version has several components enlarged well beyond the React product's actual design tokens.
+
+So I would **change the agent instructions we just made**. The React code gives us a much better quantitative baseline.
+
+## The actual React sizing system
+
+From `src/styles/theme.ts`, the React app defines:
+
+```text
+FONT
+xs  = 11
+sm  = 13
+md  = 15
+lg  = 18
+xl  = 22
+xxl = 28
+
+RADIUS
+sm = 6
+md = 10
+lg = 16
+xl = 24
+
+SPACING
+xs  = 4
+sm  = 8
+md  = 12
+lg  = 16
+xl  = 24
+xxl = 32
+```
+
+And importantly, the components actually use those values rather than inventing much larger ones.
+
+That explains exactly what you're seeing.
+
+---
+
+# Kotlin vs React — where the Kotlin version is too large
+
+### Schedule header
+
+React:
+
+```tsx
+paddingHorizontal: 16
+paddingVertical: 12
+
+dateText: 22
+subtitle: 13
+```
+
+Latest Kotlin:
+
+```kotlin
+padding(horizontal = 20.dp, top = 14.dp, bottom = 16.dp)
+
+date = 28.sp
+subtitle = 17.sp
+```
+
+So the Kotlin header is substantially larger.
+
+Use:
+
+```kotlin
+.padding(
+    horizontal = 16.dp,
+    vertical = 12.dp,
+)
+```
+
+and:
+
+```kotlin
+fontSize = 22.sp
+```
+
+for the date.
+
+Subtitle:
+
+```kotlin
+fontSize = 13.sp
+```
+
+That is a **major correction**.
+
+---
+
+# Schedule FAB
+
+React:
+
+```tsx
+width: 56,
+height: 56,
+borderRadius: 28,
+Ionicons size={28}
+```
+
+Latest Kotlin:
+
+```kotlin
+modifier = Modifier.size(72.dp)
+
+Icon(... size = 36.dp)
+```
+
+This is exactly the kind of oversized control you were complaining about.
+
+Change it to:
+
+```kotlin
+FloatingActionButton(
+    onClick = { addOpen = true },
+    modifier = Modifier.size(56.dp),
+    shape = CircleShape,
+    containerColor = BrandPrimary,
+    contentColor = Color.White,
+    elevation = FloatingActionButtonDefaults.elevation(
+        defaultElevation = 4.dp,
+    ),
+) {
+    Icon(
+        Icons.Outlined.Add,
+        contentDescription = "Add task",
+        modifier = Modifier.size(28.dp),
+    )
+}
+```
+
+So: **56dp FAB, 28dp icon.**
+
+Not 64/72/96.
+
+---
+
+# Empty Schedule
+
+React:
+
+```tsx
+calendar icon = 48
+emptyText = 18
+emptySubtext = 13
+paddingTop = 80
+```
+
+Latest Kotlin:
+
+```kotlin
+Icon(... size = 76.dp)
+
+Text(... fontSize = 23.sp)
+
+Text(... fontSize = 16.sp)
+```
+
+Again, Kotlin is much too large.
+
+Use:
+
+```kotlin
+Icon(
+    Icons.Outlined.CalendarToday,
+    contentDescription = null,
+    tint = RefMuted,
+    modifier = Modifier.size(48.dp),
+)
+
+Spacer(Modifier.height(8.dp))
+
+Text(
+    "No tasks scheduled for today",
+    fontSize = 18.sp,
+    fontWeight = FontWeight.SemiBold,
+    color = RefSecondary,
+)
+
+Spacer(Modifier.height(4.dp))
+
+Text(
+    "Tap + to add your first task",
+    fontSize = 13.sp,
+    color = RefMuted,
+)
+```
+
+And the vertical placement should be closer to the React:
+
+```kotlin
+.padding(top = 80.dp)
+```
+
+rather than trying to make the empty-state icon huge to occupy the screen.
+
+---
+
+# Task card
+
+This is probably the **most obvious mismatch**.
+
+The React implementation uses:
+
+```tsx
+card:
+    borderRadius = 16
+    marginBottom = 8
+
+body:
+    padding = 12
+
+color bar:
+    width = 4
+
+title:
+    15
+
+priority:
+    11
+
+time:
+    13
+
+action:
+    34 x 34
+    icon = 18
+```
+
+Latest Kotlin uses:
+
+```kotlin
+horizontal padding = 20
+card radius = 26
+body padding = 18
+color bar = 5
+title = 16
+priority = 13
+time = 15
+action = 52 x 52
+icon = 28
+```
+
+That is not a subtle difference.
+
+### Correct Kotlin target
+
+```kotlin
+.padding(horizontal = 16.dp, vertical = 4.dp)
+.clip(RoundedCornerShape(16.dp))
+```
+
+Body:
+
+```kotlin
+.padding(12.dp)
+```
+
+Color strip:
+
+```kotlin
+.width(4.dp)
+```
+
+Title:
+
+```kotlin
+fontSize = 15.sp
+```
+
+Priority:
+
+```kotlin
+.padding(
+    horizontal = 6.dp,
+    vertical = 2.dp,
+)
+
+RoundedCornerShape(6.dp)
+
+fontSize = 11.sp
+```
+
+Time:
+
+```kotlin
+fontSize = 13.sp
+```
+
+Relative time:
+
+```kotlin
+fontSize = 11.sp
+```
+
+Action:
+
+```kotlin
+.size(34.dp)
+.clip(RoundedCornerShape(10.dp))
+```
+
+Icon:
+
+```kotlin
+.size(18.dp)
+```
+
+That is **the scale the React app actually uses**.
+
+---
+
+# Bottom navigation
+
+The React source is very clear here too.
+
+React:
+
+```tsx
+tab bar height:
+    60 + bottom inset
+
+paddingTop:
+    8
+
+icon:
+    22
+
+label:
+    11
+
+fontWeight:
+    600
+```
+
+Latest Kotlin:
+
+```kotlin
+icon = 28.dp
+label = 14.sp
+padding top = 10
+padding bottom = 8
+```
+
+So the Kotlin navigation icons are about **27% larger**, and the labels are noticeably larger.
+
+Use:
+
+```kotlin
+modifier = Modifier.size(22.dp)
+```
+
+and:
+
+```kotlin
+fontSize = 11.sp
+```
+
+The item spacing should be compact rather than vertically expansive.
+
+---
+
+# Active ECG icon
+
+Here there is an interesting point.
+
+The React implementation actually uses:
+
+```tsx
+Ionicons
+name="pulse"
+size={22}
+```
+
+or:
+
+```tsx
+name="pulse-outline"
+size={22}
+```
+
+So the **scale** of our custom ECG should be approximately:
+
+```kotlin
+22.dp
+```
+
+not the `30x24dp` geometry we previously chose.
+
+The custom shape can still be better matched to your supplied screenshot, but it should occupy roughly the same visual footprint as React's `22dp` icon.
+
+I'd therefore change the current:
+
+```kotlin
+modifier.size(
+    width = 30.dp,
+    height = 24.dp,
+)
+```
+
+to approximately:
+
+```kotlin
+modifier.size(
+    width = 24.dp,
+    height = 22.dp,
+)
+```
+
+and keep the stroke around:
+
+```kotlin
+1.8.dp
+```
+
+rather than making it visually heavy.
+
+The React active state is also:
+
+```tsx
+#2BAE66
+```
+
+whereas our Kotlin version is currently:
+
+```kotlin
+#34D399
+```
+
+Those are close, but if the React app is the product source of truth, use:
+
+```kotlin
+Color(0xFF2BAE66)
+```
+
+for active.
+
+---
+
+# New Task / Edit Task controls
+
+This is where the current Kotlin `ReferenceUi.kt` is particularly oversized.
+
+The current Kotlin has:
+
+```kotlin
+ReferenceField:
+    fontSize = 18.sp
+    radius = 18.dp
+
+ReferencePill:
+    horizontal = 18.dp
+    vertical = 10.dp
+    fontSize = 15.sp
+
+ReferenceToggleCard:
+    title = 20.sp
+    description = 16.sp
+    padding = 18x16
+```
+
+But the React implementation uses approximately:
+
+```text
+normal body/input text = 15
+input radius = 10
+input padding = 12 horizontal / 8 vertical
+
+chip:
+    12 horizontal
+    4 vertical
+    15 text
+
+toggle row:
+    12 padding
+    title 15
+    description 13
+
+switch:
+    44 x 26
+    thumb 20
+```
+
+So these Kotlin components need to shrink considerably.
+
+---
+
+# The switch specifically
+
+The React source gives us an exact target:
+
+```tsx
+toggle:
+    width: 44
+    height: 26
+    borderRadius: 13
+    padding: 3
+
+thumb:
+    width: 20
+    height: 20
+    borderRadius: 10
+
+translateX: 18
+```
+
+So my previous 56×32 custom switch was also too large.
+
+The Kotlin implementation should be:
+
+```kotlin
+@Composable
+internal fun FocusFlowSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 18.dp else 0.dp,
+        label = "focusFlowSwitch",
+    )
+
+    Box(
+        modifier = modifier
+            .size(44.dp, 26.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(
+                if (checked) BrandPrimary
+                else RefBorder
+            )
+            .clickable {
+                onCheckedChange(!checked)
+            }
+            .padding(3.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+        )
+    }
+}
+```
+
+**That is the control I would want.**
+
+No boundary.
+
+No Material track.
+
+No Material thumb.
+
+No 56dp-wide switch.
+
+---
+
+# And this changes the overall instruction
+
+I would now explicitly tell the coding agent:
+
+```text
+IMPORTANT SIZING SOURCE OF TRUTH
+
+The React implementation in the provided react-app.zip is the sizing
+reference for the Kotlin implementation.
+
+Do NOT derive component sizes from the screenshots by visually enlarging them.
+
+Use the React source values in src/styles/theme.ts and the actual component
+styles as the baseline.
+
+Core React design tokens:
+
+FONT:
+    xs  = 11sp
+    sm  = 13sp
+    md  = 15sp
+    lg  = 18sp
+    xl  = 22sp
+    xxl = 28sp
+
+RADIUS:
+    sm = 6dp
+    md = 10dp
+    lg = 16dp
+    xl = 24dp
+
+SPACING:
+    xs  = 4dp
+    sm  = 8dp
+    md  = 12dp
+    lg  = 16dp
+    xl  = 24dp
+    xxl = 32dp
+
+Do not arbitrarily increase these values.
+
+Specific reference measurements:
+
+Schedule header:
+    horizontal padding = 16dp
+    vertical padding = 12dp
+    date = 22sp
+    subtitle = 13sp
+
+Schedule FAB:
+    56dp x 56dp
+    plus icon = 28dp
+
+Schedule empty state:
+    calendar icon = 48dp
+    main text = 18sp
+    supporting text = 13sp
+    top placement approximately 80dp
+
+Task card:
+    outer radius = 16dp
+    horizontal screen padding = 16dp
+    card spacing = 8dp
+    left color bar = 4dp
+    body padding = 12dp
+    title = 15sp
+    priority = 11sp
+    time = 13sp
+    secondary/relative time = 11sp
+    action = 34dp
+    action icon = 18dp
+
+Bottom navigation:
+    icon = 22dp
+    label = 11sp
+    top padding = 8dp
+    total bar ~= 60dp + system inset
+
+Active indicator:
+    visual footprint ~= 22dp
+    do not make it a 30dp-large graphic
+
+Text fields:
+    primary text ~= 15sp
+    radius ~= 10dp
+    horizontal padding ~= 12dp
+    vertical padding ~= 8dp
+
+Chips:
+    horizontal ~= 12dp
+    vertical ~= 4dp
+    text ~= 15sp
+
+Toggle row:
+    horizontal/vertical padding ~= 12dp
+    title ~= 15sp
+    description ~= 13sp
+
+Switch:
+    track = 44 x 26dp
+    radius = 13dp
+    inner padding = 3dp
+    thumb = 20dp
+    thumb travel = 18dp
+
+Task Detail:
+    title ~= 22sp
+    section labels ~= 11sp
+    values ~= 15sp
+    action icon container = 48dp
+    action labels ~= 11sp
+
+GENERAL RULE:
+If the Kotlin implementation is larger than these values without a concrete
+interaction/accessibility reason, reduce it toward the React measurement.
+
+Do not make typography 20-30sp by default.
+Do not make icons 28-36dp by default.
+Do not make controls 60-70dp tall by default.
+
+The React implementation is intentionally compact.
+Preserve that compact density in Compose.
+```
+
+## One important correction to our earlier plan
+
+This also means I would **not** have the agent blindly replace the task card with the ultra-simplified version I gave earlier.
+
+The React `TaskCard.tsx` shows that the product's real model includes:
+
+* tags when present
+* focus-mode indicator when applicable
+* active progress/timer state
+* completed/skipped state
+* action controls
+
+So the correct job is **not to remove functionality/content**. It is to make those elements **compact like the React implementation**.
+
+For example, the React task card's active controls are only:
+
+```tsx
+34 × 34
+icon 18
+```
+
+not huge buttons.
+
+That is the distinction we needed.
+
+### So yes: use the React app as the dimensional reference.
+
+The screenshots tell us **what the composition should look like**; the React source tells us **how large the actual components were designed to be**.
+
+That combination is much stronger than my earlier screenshot-based size estimates, and I would now make the agent follow the React measurements above.
