@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -41,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -187,375 +190,389 @@ fun AppPickerSheet(
             decorFitsSystemWindows = false,
         ),
     ) {
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .imePadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .fillMaxHeight(0.94f),
+            shape = RoundedCornerShape(24.dp),
+            color = DarkBackground,
+            tonalElevation = 0.dp,
         ) {
-            // Header (Screenshot 10)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(
-                        text = title,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = if (selected.isEmpty()) {
-                            "All apps will be blocked during focus"
-                        } else {
-                            "${selected.size} app${if (selected.size == 1) "" else "s"} allowed · ${apps.size - selected.size} blocked"
-                        },
-                        fontSize = 12.sp,
-                        color = if (selected.isEmpty()) Color(0xFFFBBF24) else BrandPrimary,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-
-                IconButton(onClick = onClose) {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = "Close",
-                        tint = DarkTextSecondary,
-                    )
-                }
-            }
-
-            // Explanatory note matching Screenshot 10
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurfaceVariant)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .imePadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Info,
-                        contentDescription = null,
-                        tint = BrandPrimary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        "Allowed apps stay open when Focus Mode runs. Everything else is blocked.",
-                        fontSize = 12.sp,
-                        color = DarkTextSecondary,
-                    )
-                }
-            }
-
-            // Search Field
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        Icons.Outlined.Search,
-                        contentDescription = null,
-                        tint = DarkTextMuted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                },
-                placeholder = { Text("Search installed apps...", color = DarkTextMuted, fontSize = 13.sp) },
-                trailingIcon = {
-                    if (search.isNotBlank()) {
-                        IconButton(onClick = { search = "" }) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Clear search",
-                                tint = DarkTextSecondary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = DarkSurfaceVariant,
-                    unfocusedContainerColor = DarkSurfaceVariant,
-                    focusedBorderColor = BrandPrimary,
-                    unfocusedBorderColor = DarkBorder,
-                    focusedTextColor = DarkTextPrimary,
-                    unfocusedTextColor = DarkTextPrimary,
-                ),
-            )
-
-            // Category Filter Chips
-            val categoryOptions = remember(apps) {
-                sensitiveApps.values.map { it.category }.distinct().sorted()
-            }
-            if (categoryOptions.isNotEmpty()) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    item {
-                        ReferencePill(
-                            text = "All (${apps.size})",
-                            selected = categoryFilter == null,
-                            fontSize = 11.sp,
-                            onClick = { categoryFilter = null },
-                        )
-                    }
-                    items(categoryOptions) { category ->
-                        val count = apps.count { sensitiveApps[it.packageName]?.category == category }
-                        ReferencePill(
-                            text = "$category ($count)",
-                            selected = categoryFilter == category,
-                            fontSize = 11.sp,
-                            onClick = { categoryFilter = category },
-                        )
-                    }
-                }
-            }
-
-            // Action Buttons Row (Select All, Deselect All, Save)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Button(
-                    onClick = { selected = apps.mapTo(mutableSetOf()) { it.packageName } },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 36.dp),
-                ) {
-                    Text("Select All", fontSize = 12.sp, color = DarkTextPrimary)
-                }
-
-                Button(
-                    onClick = {
-                        selected = apps
-                            .map { it.packageName }
-                            .filter { it in sensitiveApps }
-                            .toSet()
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 36.dp),
-                ) {
-                    Text("Deselect All", fontSize = 12.sp, color = DarkTextPrimary)
-                }
-
-                Button(
-                    onClick = {
-                        onSave(selectedPackages())
-                        onClose()
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 44.dp),
-                ) {
-                    Text("Save", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            }
-
-            // Presets row
-            if (presets.isNotEmpty() || showPresetInput) {
+                // Header (Screenshot 10)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "SAVED PRESETS",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp,
-                        color = BrandPrimary,
-                    )
+                    Column {
+                        Text(
+                            text = title,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkTextPrimary,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = if (selected.isEmpty()) {
+                                "All apps will be blocked during focus"
+                            } else {
+                                "${selected.size} app${if (selected.size == 1) "" else "s"} allowed · ${apps.size - selected.size} blocked"
+                            },
+                            fontSize = 12.sp,
+                            color = if (selected.isEmpty()) Color(0xFFFBBF24) else BrandPrimary,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = "Close",
+                            tint = DarkTextSecondary,
+                        )
+                    }
                 }
 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                // Explanatory note matching Screenshot 10
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(DarkSurfaceVariant)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    items(presets, key = { it.id }) { preset ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
-                                .combinedClickable(
-                                    onClick = {
-                                        selected = when {
-                                            preset.packages.contains(BLOCK_ALL_SENTINEL) ->
-                                                apps.map { it.packageName }.filter { it in sensitiveApps }.toSet()
-                                            preset.packages.isEmpty() ->
-                                                apps.mapTo(mutableSetOf()) { it.packageName }
-                                            else ->
-                                                (preset.packages + apps.map { it.packageName }.filter { it in sensitiveApps })
-                                                    .filter { packageName -> apps.any { it.packageName == packageName } }
-                                                    .toSet()
-                                        }
-                                    },
-                                    onLongClick = { deletePreset = preset },
-                                )
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text(preset.name, fontSize = 12.sp, color = DarkTextPrimary)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            "Allowed apps stay open when Focus Mode runs. Everything else is blocked.",
+                            fontSize = 12.sp,
+                            color = DarkTextSecondary,
+                        )
+                    }
+                }
+
+                // Search Field
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = DarkTextMuted,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    placeholder = { Text("Search installed apps...", color = DarkTextMuted, fontSize = 13.sp) },
+                    trailingIcon = {
+                        if (search.isNotBlank()) {
+                            IconButton(onClick = { search = "" }) {
                                 Icon(
-                                    Icons.Outlined.Delete,
-                                    contentDescription = "Delete preset",
-                                    tint = DarkTextMuted,
-                                    modifier = Modifier
-                                        .size(13.dp)
-                                        .clickable { deletePreset = preset },
+                                    Icons.Outlined.Close,
+                                    contentDescription = "Clear search",
+                                    tint = DarkTextSecondary,
+                                    modifier = Modifier.size(18.dp),
                                 )
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = DarkSurfaceVariant,
+                        unfocusedContainerColor = DarkSurfaceVariant,
+                        focusedBorderColor = BrandPrimary,
+                        unfocusedBorderColor = DarkBorder,
+                        focusedTextColor = DarkTextPrimary,
+                        unfocusedTextColor = DarkTextPrimary,
+                    ),
+                )
+
+                // Category Filter Chips
+                val categoryOptions = remember(apps) {
+                    sensitiveApps.values.map { it.category }.distinct().sorted()
+                }
+                if (categoryOptions.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        item {
+                            ReferencePill(
+                                text = "All (${apps.size})",
+                                selected = categoryFilter == null,
+                                fontSize = 11.sp,
+                                onClick = { categoryFilter = null },
+                            )
+                        }
+                        items(categoryOptions) { category ->
+                            val count = apps.count { sensitiveApps[it.packageName]?.category == category }
+                            ReferencePill(
+                                text = "$category ($count)",
+                                selected = categoryFilter == category,
+                                fontSize = 11.sp,
+                                onClick = { categoryFilter = category },
+                            )
+                        }
+                    }
+                }
+
+                // Action Buttons Row (Select All, Deselect All, Save)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = { selected = apps.mapTo(mutableSetOf()) { it.packageName } },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 36.dp),
+                    ) {
+                        Text("Select All", fontSize = 12.sp, color = DarkTextPrimary)
+                    }
+
+                    Button(
+                        onClick = {
+                            selected = apps
+                                .map { it.packageName }
+                                .filter { it in sensitiveApps }
+                                .toSet()
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 36.dp),
+                    ) {
+                        Text("Deselect All", fontSize = 12.sp, color = DarkTextPrimary)
+                    }
+
+                    Button(
+                        onClick = {
+                            onSave(selectedPackages())
+                            onClose()
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 44.dp),
+                    ) {
+                        Text("Save", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+
+                // Presets row
+                if (presets.isNotEmpty() || showPresetInput) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "SAVED PRESETS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                            color = BrandPrimary,
+                        )
+                    }
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(presets, key = { it.id }) { preset ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(DarkSurfaceVariant)
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                                    .combinedClickable(
+                                        onClick = {
+                                            selected = when {
+                                                preset.packages.contains(BLOCK_ALL_SENTINEL) ->
+                                                    apps.map { it.packageName }.filter { it in sensitiveApps }.toSet()
+                                                preset.packages.isEmpty() ->
+                                                    apps.mapTo(mutableSetOf()) { it.packageName }
+                                                else ->
+                                                    (preset.packages + apps.map { it.packageName }.filter { it in sensitiveApps })
+                                                        .filter { packageName -> apps.any { it.packageName == packageName } }
+                                                        .toSet()
+                                            }
+                                        },
+                                        onLongClick = { deletePreset = preset },
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(preset.name, fontSize = 12.sp, color = DarkTextPrimary)
+                                    Icon(
+                                        Icons.Outlined.Delete,
+                                        contentDescription = "Delete preset",
+                                        tint = DarkTextMuted,
+                                        modifier = Modifier
+                                            .size(13.dp)
+                                            .clickable { deletePreset = preset },
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Preset save action
-            if (showPresetInput) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = presetName,
-                        onValueChange = { presetName = it.take(32) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        placeholder = { Text("Preset name (e.g. Deep Coding)", color = DarkTextMuted, fontSize = 12.sp) },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = DarkSurfaceVariant,
-                            unfocusedContainerColor = DarkSurfaceVariant,
-                            focusedBorderColor = BrandPrimary,
-                            unfocusedBorderColor = DarkBorder,
-                            focusedTextColor = DarkTextPrimary,
-                            unfocusedTextColor = DarkTextPrimary,
-                        ),
-                    )
-                    Button(
-                        onClick = {
-                            val trimmed = presetName.trim()
-                            if (trimmed.isNotEmpty()) {
-                                onSavePreset(
-                                    AllowedAppPreset(
-                                        id = "${System.currentTimeMillis()}-$trimmed",
-                                        name = trimmed,
-                                        packages = selectedPackages(),
-                                    ),
-                                )
-                                presetName = ""
-                                showPresetInput = false
-                            }
-                        },
-                        enabled = presetName.isNotBlank(),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                // Preset save action
+                if (showPresetInput) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("Save", fontSize = 12.sp, color = Color.White)
-                    }
-                    TextButton(
-                        onClick = {
-                            presetName = ""
-                            showPresetInput = false
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                    ) {
-                        Text("Cancel", fontSize = 12.sp, color = DarkTextSecondary)
-                    }
-                }
-            } else {
-                TextButton(
-                    onClick = { showPresetInput = true },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .align(Alignment.Start)
-                        .defaultMinSize(minHeight = 44.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.BookmarkAdd,
-                        contentDescription = null,
-                        tint = BrandPrimary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Save current selection as preset", fontSize = 12.sp, color = BrandPrimary)
-                }
-            }
-
-            // App List Section
-            when {
-                loading -> Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(32.dp))
-                }
-                loadError != null -> Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
-                }
-                filteredApps.isEmpty() -> Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(36.dp))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("No matching apps found", fontSize = 14.sp, color = DarkTextSecondary)
-                }
-                else -> LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(filteredApps, key = { it.packageName }) { app ->
-                        AppPickerRow(
-                            app = app,
-                            checked = selected.contains(app.packageName),
-                            onToggle = { clickedApp ->
-                                val sensitive = sensitiveApps[clickedApp.packageName]
-                                if (selected.contains(clickedApp.packageName) && sensitive != null) {
-                                    warning = clickedApp.packageName to sensitive
-                                } else {
-                                    selected = selected.toggle(clickedApp.packageName)
+                        OutlinedTextField(
+                            value = presetName,
+                            onValueChange = { presetName = it.take(32) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            placeholder = { Text("Preset name (e.g. Deep Coding)", color = DarkTextMuted, fontSize = 12.sp) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = DarkSurfaceVariant,
+                                unfocusedContainerColor = DarkSurfaceVariant,
+                                focusedBorderColor = BrandPrimary,
+                                unfocusedBorderColor = DarkBorder,
+                                focusedTextColor = DarkTextPrimary,
+                                unfocusedTextColor = DarkTextPrimary,
+                            ),
+                        )
+                        Button(
+                            onClick = {
+                                val trimmed = presetName.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    onSavePreset(
+                                        AllowedAppPreset(
+                                            id = "${System.currentTimeMillis()}-$trimmed",
+                                            name = trimmed,
+                                            packages = selectedPackages(),
+                                        ),
+                                    )
+                                    presetName = ""
+                                    showPresetInput = false
                                 }
                             },
+                            enabled = presetName.isNotBlank(),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        ) {
+                            Text("Save", fontSize = 12.sp, color = Color.White)
+                        }
+                        TextButton(
+                            onClick = {
+                                presetName = ""
+                                showPresetInput = false
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        ) {
+                            Text("Cancel", fontSize = 12.sp, color = DarkTextSecondary)
+                        }
+                    }
+                } else {
+                    TextButton(
+                        onClick = { showPresetInput = true },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .align(Alignment.Start)
+                            .defaultMinSize(minHeight = 44.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.BookmarkAdd,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(16.dp),
                         )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Save current selection as preset", fontSize = 12.sp, color = BrandPrimary)
                     }
                 }
-            }
 
-            Spacer(Modifier.height(12.dp))
+                // App List Section. Bound it to the remaining dialog height so
+                // the picker controls stay visible and only the app list scrolls.
+                when {
+                    loading -> Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(30.dp))
+                    }
+                    loadError != null -> Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
+                    }
+                    filteredApps.isEmpty() -> Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(32.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("No matching apps found", fontSize = 14.sp, color = DarkTextSecondary)
+                    }
+                    else -> LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(filteredApps, key = { it.packageName }) { app ->
+                            AppPickerRow(
+                                app = app,
+                                checked = selected.contains(app.packageName),
+                                onToggle = { clickedApp ->
+                                    val sensitive = sensitiveApps[clickedApp.packageName]
+                                    if (selected.contains(clickedApp.packageName) && sensitive != null) {
+                                        warning = clickedApp.packageName to sensitive
+                                    } else {
+                                        selected = selected.toggle(clickedApp.packageName)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+            }
         }
     }
 
@@ -650,20 +667,20 @@ private fun AppPickerRow(
                 RoundedCornerShape(10.dp),
             )
             .clickable { onToggle(app) }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            AppIcon(app.icon)
+            AppIcon(app.icon, size = 32.dp)
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         app.appName,
-                        fontSize = 14.sp,
+                        fontSize = 13.5.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = DarkTextPrimary,
                         maxLines = 1,
@@ -688,7 +705,7 @@ private fun AppPickerRow(
                 }
                 Text(
                     app.packageName,
-                    fontSize = 11.sp,
+                    fontSize = 10.5.sp,
                     color = DarkTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -697,10 +714,10 @@ private fun AppPickerRow(
 
             Box(
                 modifier = Modifier
-                .size(22.dp)
+                    .size(20.dp)
                     .clip(CircleShape)
                     .background(if (checked) BrandPrimary else Color.Transparent)
-                .border(1.5.dp, if (checked) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp)),
+                    .border(1.5.dp, if (checked) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (checked) {
@@ -708,7 +725,7 @@ private fun AppPickerRow(
                         Icons.Outlined.Check,
                         contentDescription = "Allowed",
                         tint = Color.White,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(13.dp),
                     )
                 }
             }

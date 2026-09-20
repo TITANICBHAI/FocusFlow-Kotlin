@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.ui.SettingsViewModel
-import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkCard
@@ -89,6 +88,9 @@ import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+
+private val ProfileAccent = Color(0xFFA5A7C8)
+private val ProfileAccentButton = Color(0xFF777B9F)
 
 /**
  * Profile questionnaire, journey stats, and profile management screen.
@@ -252,17 +254,17 @@ fun UserProfileScreen(
                                 Icon(
                                     Icons.Outlined.Edit,
                                     contentDescription = null,
-                                    tint = BrandPrimary,
+                                     tint = ProfileAccent,
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Edit", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                                 Text("Edit", color = ProfileAccent, fontWeight = FontWeight.SemiBold)
                             }
                         } else {
                             TextButton(onClick = ::save, enabled = !saving) {
                                 Text(
                                     if (saving) "Saving…" else "Done",
-                                    color = BrandPrimary,
+                                     color = ProfileAccent,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
@@ -306,14 +308,14 @@ fun UserProfileScreen(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
-                            .background(BrandPrimary.copy(alpha = 0.2f))
-                            .border(2.dp, BrandPrimary.copy(alpha = 0.5f), CircleShape),
+                            .background(ProfileAccent.copy(alpha = 0.16f))
+                            .border(2.dp, ProfileAccent.copy(alpha = 0.42f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Outlined.Person,
                             contentDescription = null,
-                            tint = BrandPrimary,
+                            tint = ProfileAccent,
                             modifier = Modifier.size(36.dp),
                         )
                     }
@@ -339,7 +341,7 @@ fun UserProfileScreen(
                         Text(
                             text = "Daily goal: ${dailyGoalHours}h · ${focusGoals.size} active goals",
                             fontSize = 12.sp,
-                            color = BrandPrimary,
+                            color = ProfileAccent,
                             fontWeight = FontWeight.Medium,
                         )
                     }
@@ -374,7 +376,7 @@ fun UserProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BrandPrimary,
+                        focusedBorderColor = ProfileAccent,
                         unfocusedBorderColor = DarkBorder,
                         disabledBorderColor = DarkBorder.copy(alpha = 0.5f),
                         focusedTextColor = DarkTextPrimary,
@@ -413,7 +415,7 @@ fun UserProfileScreen(
                         "${dailyGoalHours} hours / day",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = BrandPrimary,
+                        color = ProfileAccent,
                     )
 
                     Row(
@@ -582,13 +584,13 @@ fun UserProfileScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(BrandPrimary.copy(alpha = 0.15f)),
+                            .background(ProfileAccent.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Outlined.Info,
                             contentDescription = null,
-                            tint = BrandPrimary,
+                            tint = ProfileAccent,
                             modifier = Modifier.size(20.dp),
                         )
                     }
@@ -608,7 +610,7 @@ fun UserProfileScreen(
                         )
                     }
 
-                    Text("View →", fontSize = 13.sp, color = BrandPrimary, fontWeight = FontWeight.Bold)
+                    Text("View →", fontSize = 13.sp, color = ProfileAccent, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -618,7 +620,7 @@ fun UserProfileScreen(
                     onClick = ::save,
                     enabled = !saving,
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = ProfileAccentButton),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -681,7 +683,7 @@ fun UserProfileScreen(
                         Icon(
                             Icons.Outlined.AutoAwesome,
                             contentDescription = null,
-                            tint = BrandPrimary,
+                            tint = ProfileAccent,
                             modifier = Modifier.size(22.dp),
                         )
                         Text(
@@ -815,7 +817,7 @@ private fun ProfileJourneyCard(
                     Icon(
                         Icons.Outlined.TrendingUp,
                         contentDescription = null,
-                        tint = BrandPrimary,
+                        tint = ProfileAccent,
                         modifier = Modifier.size(20.dp),
                     )
                     Text(
@@ -830,7 +832,7 @@ private fun ProfileJourneyCard(
                     text = "${stats.todayMinutes}m / ${goalHours}h today",
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = BrandPrimary,
+                    color = ProfileAccent,
                 )
             }
 
@@ -860,7 +862,7 @@ private fun ProfileJourneyCard(
                         "$progressPercent%",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (progressPercent >= 100) Color(0xFF34D399) else BrandPrimary,
+                        color = if (progressPercent >= 100) Color(0xFF34D399) else ProfileAccent,
                     )
                 }
 
@@ -876,7 +878,7 @@ private fun ProfileJourneyCard(
                             .fillMaxWidth(fraction = (progressPercent / 100f).coerceIn(0f, 1f))
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(if (progressPercent >= 100) Color(0xFF34D399) else BrandPrimary),
+                            .background(if (progressPercent >= 100) Color(0xFF34D399) else ProfileAccent),
                     )
                 }
             }
@@ -922,7 +924,7 @@ private fun ProfileFieldCard(
                     text = title,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = BrandPrimary,
+                    color = ProfileAccent,
                     letterSpacing = 0.5.sp,
                 )
                 if (subtitle != null) {
@@ -955,9 +957,9 @@ private fun FlowChoiceChips(
     ) {
         choices.forEach { (id, label) ->
             val isSelected = id in selected
-            val chipBg = if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant
-            val chipBorder = if (isSelected) BrandPrimary else DarkBorder
-            val chipText = if (isSelected) BrandPrimary else DarkTextSecondary
+            val chipBg = if (isSelected) ProfileAccent.copy(alpha = 0.16f) else DarkSurfaceVariant
+            val chipBorder = if (isSelected) ProfileAccent else DarkBorder
+            val chipText = if (isSelected) ProfileAccent else DarkTextSecondary
 
             Box(
                 modifier = Modifier
@@ -976,7 +978,7 @@ private fun FlowChoiceChips(
                         Icon(
                             Icons.Outlined.Check,
                             contentDescription = null,
-                            tint = BrandPrimary,
+                            tint = ProfileAccent,
                             modifier = Modifier.size(14.dp),
                         )
                     }
@@ -1010,13 +1012,13 @@ private fun ProfileUsageItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(Color(0xFFE7E9FF)),
+                    .background(ProfileAccent.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = BrandPrimary,
+                    tint = ProfileAccent,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -1047,7 +1049,7 @@ private fun ProfileUsageItem(
                 modifier = Modifier.padding(start = 8.dp),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = BrandPrimary,
+                color = ProfileAccent,
                 maxLines = 1,
             )
         }

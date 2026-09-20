@@ -905,7 +905,7 @@ fun StandaloneBlockModal(
                                     .clickable(enabled = !(locked && isBlocked)) {
                                         selected = selected.toggle(pkg, locked)
                                     }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
@@ -966,18 +966,18 @@ fun StandaloneBlockModal(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    AppIcon(app.icon, size = 40.dp)
+                                    AppIcon(app.icon, size = 34.dp)
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = app.appName,
-                                            fontSize = 15.sp,
+                                            fontSize = 14.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkTextPrimary,
                                             maxLines = 1,
                                         )
                                         Text(
                                             text = app.packageName,
-                                            fontSize = 11.5.sp,
+                                            fontSize = 11.sp,
                                             color = DarkTextMuted,
                                             maxLines = 1,
                                         )
@@ -1204,7 +1204,7 @@ private fun AppSelectionIndicator(
 ) {
     Box(
         modifier = Modifier
-            .size(28.dp)
+            .size(24.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(
                 when {
@@ -1225,7 +1225,7 @@ private fun AppSelectionIndicator(
                 Icons.Outlined.Block,
                 contentDescription = "Blocked",
                 tint = Color.White,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }
