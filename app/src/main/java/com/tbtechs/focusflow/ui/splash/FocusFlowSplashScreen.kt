@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -201,6 +202,18 @@ private fun FocusFlowSplashLogo(
             )
         }
     }
+}
+
+private fun Path.moveTo(point: Offset) {
+    moveTo(point.x, point.y)
+}
+
+private fun Path.lineTo(point: Offset) {
+    lineTo(point.x, point.y)
+}
+
+private fun Path.cubicTo(first: Offset, second: Offset, third: Offset) {
+    cubicTo(first.x, first.y, second.x, second.y, third.x, third.y)
 }
 
 private const val LOGO_DURATION_MS = 400

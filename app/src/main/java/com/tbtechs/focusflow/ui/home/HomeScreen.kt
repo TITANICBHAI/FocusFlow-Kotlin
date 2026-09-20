@@ -357,7 +357,7 @@ private fun EmptySchedule(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, top = 80.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
