@@ -36,6 +36,9 @@ import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
 import com.tbtechs.focusflow.ui.home.RefRed
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.data.repository.StartupLogger
+import com.tbtechs.focusflow.ui.support.DiagnosticLogEntry
+import com.tbtechs.focusflow.ui.support.DiagnosticLogLevel
 import com.tbtechs.focusflow.ui.support.DiagnosticsReport
 import com.tbtechs.focusflow.ui.support.DiagnosticsReportType
 import com.tbtechs.focusflow.ui.support.ReportIssueModal
@@ -57,13 +60,11 @@ fun ErrorFallback(
         appendLine("Message: ${error?.message ?: "Unknown error"}")
         appendLine("Stack trace:")
         appendLine(error?.stackTraceToString() ?: "(unavailable)")
-        val recentErrors = AppErrorEvents.snapshot()
-        if (recentErrors.isNotEmpty()) {
+        val diagnostics = StartupLogger.formatForShare()
+        if (diagnostics.isNotBlank()) {
             appendLine()
-            appendLine("Recent app errors:")
-            recentErrors.takeLast(20).forEach { event ->
-                appendLine("[${event.tag}] ${event.message}")
-            }
+            appendLine("Persistent diagnostic logs:")
+            appendLine(diagnostics)
         }
     }
     fun shareDetails() {

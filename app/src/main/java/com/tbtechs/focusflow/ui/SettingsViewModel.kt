@@ -441,10 +441,10 @@ class SettingsViewModel(
         if (!pinManager.verifyPin(oldPin)) return false
 
         if (newPin == oldPin) {
-            val reuseInfo = PinReuseTracker.getPinReuseInfo(prefs, PinReuseTracker.ReuseTrackerKey.ALWAYSON)
-            if (!reuseInfo.canReuse) return false
-            PinReuseTracker.recordPinReuse(prefs, PinReuseTracker.ReuseTrackerKey.ALWAYSON)
-            return true
+            return PinReuseTracker.tryRecordPinReuse(
+                prefs,
+                PinReuseTracker.ReuseTrackerKey.ALWAYSON,
+            )
         }
 
         pinManager.setPin(newPin)
@@ -456,10 +456,10 @@ class SettingsViewModel(
         PinReuseTracker.getPinReuseInfo(prefs, PinReuseTracker.ReuseTrackerKey.ALWAYSON)
 
     fun keepAlwaysOnPin(): Boolean {
-        val reuseInfo = alwaysOnPinReuseInfo()
-        if (!reuseInfo.canReuse) return false
-        PinReuseTracker.recordPinReuse(prefs, PinReuseTracker.ReuseTrackerKey.ALWAYSON)
-        return true
+        return PinReuseTracker.tryRecordPinReuse(
+            prefs,
+            PinReuseTracker.ReuseTrackerKey.ALWAYSON,
+        )
     }
 
     companion object {

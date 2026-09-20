@@ -26,6 +26,7 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["task_id", "is_active"], name = "idx_focus_sessions_task_active"),
         Index(value = ["started_at"],           name = "idx_focus_sessions_started_at"),
+        Index(value = ["is_active", "id"],      name = "idx_focus_sessions_active"),
     ],
 )
 data class FocusSessionEntity(

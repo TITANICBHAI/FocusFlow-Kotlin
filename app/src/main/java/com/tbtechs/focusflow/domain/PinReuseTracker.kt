@@ -52,6 +52,8 @@ object PinReuseTracker {
      */
     data class ReuseInfo(val count: Int, val canReuse: Boolean)
 
+    private val lock = Any()
+
     // ─── Key helpers ─────────────────────────────────────────────────────────
 
     /** Returns the SharedPreferences key for the daily count. Matches TS countKey(). */
@@ -71,18 +73,8 @@ object PinReuseTracker {
      * Mirrors getPinReuseInfo() from pinReuseTracker.ts.
      */
     fun getPinReuseInfo(prefs: SharedPreferences, key: ReuseTrackerKey): ReuseInfo {
-        val today = todayISO()
-        return try {
-            val storedDate  = prefs.getString(dateKey(key),  null)
-            val storedCount = prefs.getString(countKey(key), null)
-            val count = if (storedDate == today) {
-                maxOf(0, storedCount?.toIntOrNull() ?: 0)
-            } else {
-                0
-            }
-            ReuseInfo(count, count < MAX_DAILY_REUSES)
-        } catch (_: Exception) {
-            ReuseInfo(0, true)
+        return synchronized(lock) {
+            readPinReuseInfoLocked(prefs, key)
         }
     }
 
@@ -93,12 +85,35 @@ object PinReuseTracker {
      * Mirrors recordPinReuse() from pinReuseTracker.ts.
      */
     fun recordPinReuse(prefs: SharedPreferences, key: ReuseTrackerKey) {
-        val today   = todayISO()
-        val current = getPinReuseInfo(prefs, key)
-        prefs.edit()
-            .putString(countKey(key), (current.count + 1).toString())
-            .putString(dateKey(key),  today)
-            .apply()
+        synchronized(lock) {
+            val today = todayISO()
+            val current = readPinReuseInfoLocked(prefs, key)
+            prefs.edit()
+                .putString(countKey(key), (current.count + 1).toString())
+                .putString(dateKey(key), today)
+                .apply()
+        }
+    }
+
+    /**
+     * Atomically checks the daily limit and records one reuse.
+     *
+     * Callers that need a check-then-write must use this method instead of
+     * calling getPinReuseInfo() followed by recordPinReuse(), otherwise two
+     * concurrent callers can both observe the same remaining slot.
+     */
+    fun tryRecordPinReuse(prefs: SharedPreferences, key: ReuseTrackerKey): Boolean {
+        return synchronized(lock) {
+            val current = readPinReuseInfoLocked(prefs, key)
+            if (!current.canReuse) return@synchronized false
+
+            val today = todayISO()
+            prefs.edit()
+                .putString(countKey(key), (current.count + 1).toString())
+                .putString(dateKey(key), today)
+                .apply()
+            true
+        }
     }
 
     // ─── Internal ─────────────────────────────────────────────────────────────
@@ -114,5 +129,24 @@ object PinReuseTracker {
             cal.get(Calendar.MONTH) + 1,   // Calendar.MONTH is 0-indexed
             cal.get(Calendar.DAY_OF_MONTH),
         )
+    }
+
+    private fun readPinReuseInfoLocked(
+        prefs: SharedPreferences,
+        key: ReuseTrackerKey,
+    ): ReuseInfo {
+        val today = todayISO()
+        return try {
+            val storedDate = prefs.getString(dateKey(key), null)
+            val storedCount = prefs.getString(countKey(key), null)
+            val count = if (storedDate == today) {
+                maxOf(0, storedCount?.toIntOrNull() ?: 0)
+            } else {
+                0
+            }
+            ReuseInfo(count, count < MAX_DAILY_REUSES)
+        } catch (_: Exception) {
+            ReuseInfo(0, true)
+        }
     }
 }

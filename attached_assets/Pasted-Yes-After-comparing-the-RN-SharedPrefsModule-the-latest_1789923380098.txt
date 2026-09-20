@@ -1,0 +1,1019 @@
+Yes. After comparing the **RN `SharedPrefsModule`**, the latest Kotlin `SettingsRepository`, the enforcement readers, and then checking the current Android guidance, I would change one important part of our previous plan:
+
+**Do not treat “make Kotlin SharedPreferences match RN” as the final architecture. Treat RN’s keys/semantics as the compatibility contract, then make the Android implementation safer around that contract.**
+
+Android now strongly recommends DataStore instead of SharedPreferences for new small key-value storage, mainly because SharedPreferences has synchronous I/O, weak error reporting, no transactional semantics, and consistency/durability limitations. ([Android Developers][1]) Android also recommends keeping storage behind repositories/data sources rather than letting UI/services reach directly into the storage implementation. ([Android Developers][2])
+
+## What I found
+
+### 1. RN → Kotlin parity is already quite high
+
+The Kotlin repository has effectively ported the major native preference contract from RN:
+
+```text
+focus_active
+focus_break_until_ms
+allowed_packages
+
+task_id
+task_name
+task_end_ms
+task_start_ms
+task_color
+next_task_name
+task_duration_ms
+task_last_written_ms
+
+standalone_block_active
+standalone_blocked_packages
+standalone_block_until_ms
+net_block_standalone_vpn_packages
+
+net_block_schedule_vpn_pkgs
+net_block_enabled
+net_block_vpn
+vpn_selected_packages
+net_block_explicit_packages
+
+daily_allowance_used
+daily_allowance_config
+
+launcher_*
+focus_tool_packages
+
+daily_tasks_done
+daily_tasks_total
+daily_focus_mins
+streak_days
+
+active_session_pkg
+active_session_end_ms
+
+blocked_words
+always_block_active
+always_block_packages
+
+system guard / install / shorts / reels
+```
+
+So the agent should **not start inventing missing SharedPreferences keys**. Most of the RN contract already exists.
+
+---
+
+# The bigger issue: the Kotlin implementation currently has three different persistence philosophies mixed together
+
+Right now you effectively have:
+
+```text
+focusday_prefs
+    ├─ enforcement state
+    ├─ temporary runtime state
+    ├─ launcher settings
+    ├─ notification preferences
+    ├─ UI hint state
+    ├─ analytics snapshots
+    ├─ report notes
+    └─ miscellaneous JSON
+
+focusday_setup_backup
+    └─ first-run recovery state
+
+Room
+    └─ actual relational/domain data
+```
+
+And eventually we were going to add:
+
+```text
+startup diagnostics
+```
+
+That is where I would be more deliberate.
+
+---
+
+# What should stay in SharedPreferences for now
+
+There is a good reason **not** to blindly migrate everything to DataStore immediately.
+
+Some of these values are consumed directly by Android enforcement components:
+
+```text
+AccessibilityService
+VPN service
+ForegroundTaskService
+BootReceiver
+LauncherActivity
+Receivers
+Widget
+Overlay activity
+```
+
+For example:
+
+```text
+focus_active
+allowed_packages
+standalone_block_active
+standalone_blocked_packages
+standalone_block_until_ms
+always_block_active
+always_block_packages
+network/VPN flags
+```
+
+These are effectively **native enforcement snapshots**.
+
+The RN architecture intentionally wrote these into native SharedPreferences so they remained available when the JS runtime was gone, such as after the app was killed or after reboot.
+
+So I would **preserve `focusday_prefs` as the compatibility/native-enforcement store for now**.
+
+That is more important than mechanically following the generic recommendation to replace every SharedPreference with DataStore.
+
+---
+
+# But some current SharedPreferences data should eventually move
+
+These are much better candidates for Preferences DataStore:
+
+```text
+dark_mode_enabled
+
+morning_digest_enabled
+achievement_notifications_enabled
+pattern_insight_notifications_enabled
+reschedule_notifications_enabled
+
+block_suggestion_enabled
+week_ahead_enabled
+temptation_spike_enabled
+temptation_spike_threshold
+bed_time
+productive_window_nudge_enabled
+
+task_reminders_enabled
+default_duration_minutes
+auto_focus_enabled
+pomodoro_enabled
+pomodoro_work_minutes
+pomodoro_break_minutes
+
+focus_defense_hint_dismissed
+defense_hint_dismissed
+defense_help_dismissed
+standalone_block_hint_dismissed
+always_on_info_dismissed
+
+local_analytics_notice_dismissed
+```
+
+These aren't needed by the enforcement service as synchronous native snapshots. They're ordinary user preferences.
+
+Android explicitly describes DataStore as a good fit for settings such as notification preferences and show/hide flags. ([Android Developers][2])
+
+So the eventual architecture I'd target is:
+
+```text
+                 FocusFlow persistence
+
+        ┌───────────────┬─────────────────┐
+        │               │                 │
+      Room          DataStore       SharedPrefs
+        │               │                 │
+ domain data       user prefs       native enforcement
+        │               │                 │
+ tasks             UI settings      boot/service snapshots
+ sessions          notification      launcher/native readers
+ analytics         preferences      compatibility state
+ achievements      hints
+```
+
+---
+
+# The most important edge case: `apply()` vs `commit()`
+
+This is where the current implementation needs care.
+
+The Kotlin code has both:
+
+```kotlin
+editor.apply()
+```
+
+and:
+
+```kotlin
+editor.commit()
+```
+
+That is correct **in principle**, but the choice needs to be based on the semantic importance of the state.
+
+Android notes that `apply()` updates the in-memory preference immediately but writes to disk asynchronously, and pending `apply()` writes can still participate in lifecycle blocking. `commit()` is synchronous and should not be used on the main thread. ([Android Developers][1])
+
+### For ordinary settings
+
+Use:
+
+```kotlin
+apply()
+```
+
+from a background/suspend repository path.
+
+Examples:
+
+```text
+dark mode
+notification preference
+hint dismissed
+launcher appearance
+```
+
+### For critical enforcement snapshots
+
+The current:
+
+```kotlin
+publishFocusSnapshot()
+publishStandaloneSnapshot()
+publishStandaloneAndAllowanceSnapshot()
+publishScheduleVpnSnapshot()
+```
+
+using:
+
+```kotlin
+commit()
+```
+
+is reasonable because these are **durability boundaries**.
+
+The important requirement is:
+
+> those commit calls must never execute on the UI thread.
+
+Your repository methods are `suspend`, but that alone does **not** guarantee they run off the main thread.
+
+That should be explicitly enforced by the calling layer/dispatcher.
+
+---
+
+# Another important problem: several operations are still multi-step when they should be one snapshot
+
+You already fixed some of this well.
+
+For example:
+
+```kotlin
+publishFocusSnapshot(...)
+```
+
+writes:
+
+```text
+focus_active
+task_id
+task_name
+task_end_ms
+task_color
+allowed_packages
+next_task_name
+task_duration_ms
+task_last_written_ms
+```
+
+in one editor.
+
+That's good.
+
+But older APIs remain:
+
+```kotlin
+setFocusActive()
+
+setActiveTask()
+
+setActiveTaskStartMs()
+```
+
+which means a caller can still do:
+
+```text
+write focus_active
+    ↓
+process dies
+    ↓
+task metadata wasn't written
+```
+
+or:
+
+```text
+write task
+    ↓
+old start time remains
+```
+
+You have the newer snapshot methods, so the agent should now treat those as the **preferred transaction boundaries**.
+
+---
+
+# There is also a subtle stale-state bug worth fixing
+
+`clearActiveTask()` currently clears:
+
+```text
+task_id
+task_name
+task_end_ms
+task_start_ms
+task_color
+next_task_name
+```
+
+but does **not** clear:
+
+```text
+task_duration_ms
+task_last_written_ms
+```
+
+The RN implementation has the same omission.
+
+This is one of those places where:
+
+**RN parity ≠ ideal native implementation.**
+
+Those two values are metadata associated with the active task snapshot. Leaving them behind creates stale state that a future recovery path could accidentally interpret.
+
+I would fix Kotlin to clear them too:
+
+```kotlin
+prefs.edit()
+    .remove(KEY_TASK_ID)
+    .remove(KEY_TASK_NAME)
+    .remove(KEY_TASK_END_MS)
+    .remove(KEY_TASK_START_MS)
+    .remove(KEY_TASK_COLOR)
+    .remove(KEY_NEXT_TASK_NAME)
+    .remove(KEY_TASK_DURATION_MS)
+    .remove(KEY_TASK_LAST_WRITTEN_MS)
+    .apply()
+```
+
+This is a case where I would **intentionally diverge from RN** because the stronger invariant is better.
+
+---
+
+# Another serious edge case: two preference files cannot be truly atomic
+
+`SetupPersistenceManager` writes:
+
+```text
+focusday_prefs
++
+focusday_setup_backup
+```
+
+separately.
+
+So:
+
+```text
+primary commit succeeds
+backup commit fails
+```
+
+is possible.
+
+Or the reverse.
+
+You already mitigate this by repairing the missing side during reads.
+
+That's reasonable for a recovery backup, but it is **not a transaction across two stores**.
+
+So the invariant should be:
+
+```text
+primary + backup
+
+not required to be simultaneously atomic
+
+BUT
+
+if either survives,
+next read repairs the other
+```
+
+I would keep that architecture for now rather than complicating it.
+
+---
+
+# One thing I would change in SetupPersistenceManager
+
+Currently `SettingsRepository.putString()` does:
+
+```kotlin
+prefs.edit()
+    .putString(...)
+    .commit()
+```
+
+and then for setup keys calls:
+
+```kotlin
+setupPersistence.setPrivacyAccepted(...)
+```
+
+which commits again.
+
+So a single logical setting change can result in multiple synchronous writes.
+
+That is wasteful and makes the code harder to reason about.
+
+For those specific keys, `SettingsRepository.putString()` should delegate directly to `SetupPersistenceManager` rather than first writing the primary preference itself.
+
+For example:
+
+```kotlin
+fun putString(key: String, value: String) {
+    when (key) {
+        SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> {
+            setupPersistence.setPrivacyAccepted(value.equals("true", ignoreCase = true))
+        }
+
+        SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> {
+            setupPersistence.setOnboardingComplete(value.equals("true", ignoreCase = true))
+        }
+
+        SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> {
+            setupPersistence.setUserConsentedBackgroundService(
+                value.equals("true", ignoreCase = true)
+            )
+        }
+
+        SetupPersistenceManager.KEY_PROTECTION_MODE -> {
+            setupPersistence.setProtectionMode(value)
+        }
+
+        else -> {
+            if (!prefs.edit().putString(key, value).commit()) {
+                throw IllegalStateException(...)
+            }
+        }
+    }
+}
+```
+
+That gives each operation one owner.
+
+---
+
+# Another architectural problem: giant generic `getString()` / `putString()`
+
+The RN bridge needed:
+
+```kotlin
+putString(key, value)
+getString(key)
+getLong(key)
+```
+
+because JavaScript was crossing a native bridge.
+
+The Kotlin application no longer needs that abstraction everywhere.
+
+It is useful for migration compatibility, but it weakens type safety.
+
+I'd mark these as:
+
+```text
+legacy compatibility APIs
+```
+
+and prevent new Kotlin code from depending on them.
+
+New code should be:
+
+```kotlin
+settingsRepository.setDarkMode(...)
+settingsRepository.setLauncherTheme(...)
+settingsRepository.setDailyAllowanceConfig(...)
+```
+
+rather than:
+
+```kotlin
+settingsRepository.putString("dark_mode_enabled", ...)
+```
+
+This aligns better with Android's repository/data-source architecture recommendation. ([Android Developers][2])
+
+---
+
+# Another edge case: SharedPreferences does not give you cross-process safety
+
+Android explicitly says `SharedPreferences` does **not support use across multiple processes**. ([Android Developers][1])
+
+I don't see evidence in the source we've inspected that your app intentionally puts these services into separate processes, but this should be a hard invariant:
+
+```text
+all consumers of focusday_prefs
+    must be in the same process
+```
+
+or you need an explicit cross-process design.
+
+Do **not** solve this with the old:
+
+```text
+MODE_MULTI_PROCESS
+```
+
+Android explicitly says that mechanism is deprecated and unreliable. ([Android Developers][3])
+
+This should be part of the agent's audit.
+
+---
+
+# Another race condition: PIN reuse counter
+
+This one is easy to overlook.
+
+`PinReuseTracker` does:
+
+```text
+read current count
++
+increment
++
+write
+```
+
+That is a read-modify-write sequence.
+
+If two calls happen concurrently:
+
+```text
+A reads 2
+B reads 2
+
+A writes 3
+B writes 3
+```
+
+instead of reaching 4.
+
+Even though this is a small UI preference, it is still a correctness bug.
+
+Use a lock around:
+
+```text
+get + increment + persist
+```
+
+similar to the existing allowance lock.
+
+---
+
+# Daily allowance is better handled than the simpler preferences
+
+The current code already does something good here:
+
+```kotlin
+synchronized(ALLOWANCE_USAGE_LOCK) {
+    ...
+}
+```
+
+for:
+
+```text
+usage
+config
+active session
+```
+
+That is the right idea because these values form a coherent enforcement snapshot.
+
+Keep that.
+
+Don't move that particular synchronization responsibility into a generic preferences wrapper.
+
+---
+
+# One more important distinction: SharedPreferences is not your Room substitute
+
+You have JSON such as:
+
+```text
+daily_allowance_config
+recurring_block_schedules
+allowed_app_presets
+last_session_result_by_task_id
+shown_pattern_insight_ids
+daily_allowance_used
+```
+
+Some of these are already approaching "structured domain data."
+
+When we do the **Room pass later**, we should decide case-by-case whether they belong there.
+
+Android's guidance is broadly:
+
+* DataStore → small/simple preferences
+* Room → larger/relational/structured data where partial updates or relationships matter. ([Android Developers][4])
+
+I would especially revisit:
+
+```text
+recurring_block_schedules
+allowed_app_presets
+daily_allowance_config
+daily_allowance_used
+last_session_result_by_task_id
+```
+
+during the Room phase rather than trying to make SharedPreferences more elaborate.
+
+---
+
+# One correction to our previous StartupLogger plan
+
+After looking at the architecture more closely, I would **not implement 500 JSON log entries inside the same `focusday_prefs` file**.
+
+That would make an already giant preference file even worse.
+
+For diagnostics:
+
+```text
+memory ring buffer
++
+app-private append/rotating file
+```
+
+is a better fit for the log.
+
+Then later, if we want richer query/filter/history behavior, Room can own the diagnostic records.
+
+So I'd revise the previous plan to:
+
+```text
+StartupLogger
+    ├── in-memory recent entries
+    └── focusflow-boot.log
+```
+
+rather than:
+
+```text
+StartupLogger
+    └── 500-entry JSON SharedPreference
+```
+
+That is a meaningful correction.
+
+---
+
+# What I would actually tell the agent now
+
+This is the important consolidated instruction:
+
+```text
+PERSISTENCE HARDENING — RN PARITY + ANDROID BEST PRACTICES
+
+We have compared:
+
+    RN SharedPrefsModule
+    Kotlin SettingsRepository
+    SetupPersistenceManager
+    native enforcement readers
+
+The Kotlin key/semantic parity is already substantially complete.
+
+DO NOT invent a second set of preference keys.
+
+DO NOT rewrite the persistence layer from scratch.
+
+============================================================
+1. KEEP focusday_prefs FOR NATIVE ENFORCEMENT COMPATIBILITY
+============================================================
+
+Retain the existing:
+
+    focusday_prefs
+
+for state directly consumed by:
+
+    AccessibilityService
+    VPN service/coordinator
+    ForegroundTaskService
+    BootReceiver
+    LauncherActivity
+    OverlayActivity
+    Receivers
+    Widget
+
+This includes the existing RN-compatible keys for:
+
+    focus
+    active task
+    standalone block
+    always-on
+    VPN
+    allowance enforcement
+    launcher native state
+    blocking flags
+
+Preserve exact key names for migration compatibility.
+
+============================================================
+2. DO NOT MOVE ALL PREFERENCES TO DATASTORE YET
+============================================================
+
+Future architecture may use Preferences DataStore for ordinary user settings,
+but do not migrate enforcement-critical SharedPreferences in this pass.
+
+The migration must be staged.
+
+Candidate future DataStore data:
+
+    dark mode
+    notifications
+    analytics hints
+    UI dismissal flags
+    default duration
+    Pomodoro preferences
+    other non-native-enforcement settings
+
+Do not change storage implementation yet unless necessary for correctness.
+
+============================================================
+3. KEEP ATOMIC SNAPSHOT METHODS
+============================================================
+
+These are the preferred APIs:
+
+    publishFocusSnapshot()
+    publishFocusSnapshotInternal()
+    publishStandaloneSnapshot()
+    publishStandaloneAndAllowanceSnapshot()
+    publishScheduleVpnSnapshot()
+
+Use ONE Editor and ONE commit for each coherent enforcement snapshot.
+
+Do not add new code that updates a coherent snapshot using multiple independent
+preference writes.
+
+============================================================
+4. commit VS apply
+
+Use apply() for normal non-critical preference writes.
+
+Use commit() ONLY for true durability boundaries such as:
+
+    enforcement snapshots
+    recovery-critical setup state
+
+Never perform commit() on the UI/main thread.
+
+Because the repository APIs are suspend functions, ensure their actual call
+path executes on an appropriate background dispatcher.
+
+Do not assume suspend automatically means background execution.
+
+============================================================
+5. FIX clearActiveTask
+
+Current Kotlin/RN behavior clears:
+
+    task_id
+    task_name
+    task_end_ms
+    task_start_ms
+    task_color
+    next_task_name
+
+but leaves:
+
+    task_duration_ms
+    task_last_written_ms
+
+Fix Kotlin so clearActiveTask() also removes:
+
+    KEY_TASK_DURATION_MS
+    KEY_TASK_LAST_WRITTEN_MS
+
+This is intentional hardening against stale recovery/widget metadata.
+
+============================================================
+6. PREFER SNAPSHOT API OVER INDIVIDUAL MUTATORS
+
+Existing APIs:
+
+    setFocusActive()
+    setActiveTask()
+    setActiveTaskStartMs()
+
+remain for compatibility.
+
+But new application code should prefer publishFocusSnapshot()
+for task/session transitions.
+
+Avoid sequences where:
+
+    focus_active
+    task metadata
+    task start
+
+are persisted by separate calls.
+
+============================================================
+7. SETUP PERSISTENCE
+
+Keep:
+
+    SetupPersistenceManager
+
+with:
+
+    primary focusday_prefs
+    backup focusday_setup_backup
+
+Keep the current read-repair strategy.
+
+Do not add another setup store.
+
+However:
+
+    SettingsRepository.putString()
+
+must not write a setup key into the primary store and then invoke
+SetupPersistenceManager to write it again.
+
+For setup keys, delegate directly to SetupPersistenceManager.
+
+============================================================
+8. TYPED KOTLIN API
+
+The existing generic:
+
+    getString(key)
+    putString(key, value)
+    getLong(key)
+
+exists for RN bridge compatibility.
+
+Do not use these APIs for new Kotlin code.
+
+Prefer typed methods:
+
+    setDarkMode()
+    setLauncherTheme()
+    setDefaultDuration()
+    setPomodoro()
+    setNotificationPreferences()
+    etc.
+
+Keep generic access only as a migration/compatibility layer.
+
+============================================================
+9. SHARED PREFERENCES PROCESS MODEL
+
+Verify that all focusday_prefs consumers run in the same application process.
+
+Do not introduce MODE_MULTI_PROCESS.
+
+If any service/component is configured with android:process,
+stop and design explicit cross-process synchronization before modifying
+the preference architecture.
+
+============================================================
+10. PIN REUSE CONCURRENCY
+
+PinReuseTracker currently performs:
+
+    read count
+    increment
+    write
+
+as separate operations.
+
+Protect this sequence with synchronization so concurrent calls cannot
+lose increments.
+
+Use the same lock for:
+
+    get + increment + persist
+
+Do not change the RN-compatible keys.
+
+============================================================
+11. LARGE JSON / STRUCTURED STATE
+
+Do not expand SharedPreferences JSON usage further.
+
+Flag these for the upcoming Room pass:
+
+    recurring_block_schedules
+    daily_allowance_config
+    daily_allowance_used
+    allowed_app_presets
+    last_session_result_by_task_id
+
+Do not migrate them in this task.
+
+============================================================
+12. STARTUP LOGGER
+
+Do NOT store a 500-entry JSON diagnostic history in focusday_prefs.
+
+Use:
+
+    in-memory ring buffer
+    +
+    app-private focusflow-boot.log
+
+Persist only bounded log data.
+
+Later Room migration may be considered if diagnostics need structured
+querying/history.
+
+============================================================
+13. DATASTORE FUTURE MIGRATION
+
+Do not introduce DataStore in this pass solely for stylistic reasons.
+
+Create a short migration map documenting future candidates:
+
+    SharedPreferences -> Preferences DataStore
+    native enforcement snapshots -> remain native until safe migration
+    structured domain data -> Room
+
+No duplicated values should be introduced just to satisfy the migration.
+
+============================================================
+14. TEST EDGE CASES
+
+Test:
+
+A. process killed immediately after normal preference change
+B. process killed immediately after focus snapshot
+C. reboot during active focus session
+D. reboot during standalone block
+E. reboot during VPN block
+F. task changes while a focus snapshot is being published
+G. clearActiveTask followed by reboot
+H. two simultaneous PIN reuse writes
+I. corrupted JSON in a preference
+J. invalid/missing legacy preference types
+K. primary setup store missing but backup exists
+L. backup store missing but primary exists
+M. both setup stores disagree
+N. preference commit failure
+O. widget update failure after a successful preference commit
+P. VPN sync failure after successful preference commit
+
+Persistence failure must not leave partially interpreted enforcement state.
+
+============================================================
+15. DO NOT CHANGE
+============================================================
+
+Do not change:
+
+    Room schema
+    task entities
+    focus session entities
+    enforcement semantics
+    PIN semantics
+    key names
+    boot recovery contract
+    widget contract
+    VPN contract
+```
+
+## My recommendation for the sequence now
+
+We are actually in a good position:
+
+```text
+AsyncStorage audit
+        ↓
+persistent startup logger / diagnostics correction
+        ↓
+SharedPreferences audit + hardening   ← NOW
+        ↓
+Room ↔ RN SQLite comparison
+        ↓
+Room schema / migration / indexing / consistency
+        ↓
+final persistence integration tests
+```
+
+And the key thing is that **the SharedPreferences phase should mostly be hardening, not a rewrite**. The Kotlin port already preserved most of the RN native contract. The real work is eliminating stale-state windows, accidental duplicate writes, race conditions, unsafe generic access, and deciding which settings eventually belong in DataStore versus which native enforcement snapshots must remain immediately available to Android services. ([Android Developers][1])
+
+[1]: https://developer.android.com/reference/android/content/SharedPreferences?utm_source=chatgpt.com "SharedPreferences  |  API reference  |  Android Developers"
+[2]: https://developer.android.com/topic/architecture/data-layer?utm_source=chatgpt.com "Data layer  |  App architecture  |  Android Developers"
+[3]: https://developer.android.com/reference/kotlin/android/content/Context?utm_source=chatgpt.com "Context  |  API reference  |  Android Developers"
+[4]: https://developer.android.com/codelabs/android-preferences-datastore?utm_source=chatgpt.com "Working with Preferences DataStore  |  Android Developers"

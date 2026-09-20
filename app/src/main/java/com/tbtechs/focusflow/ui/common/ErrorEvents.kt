@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.ui.common
 
+import com.tbtechs.focusflow.data.repository.StartupLogger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
@@ -22,7 +23,11 @@ object AppErrorEvents {
     val events = _events.asSharedFlow()
 
     fun report(tag: String, message: String, throwable: Throwable? = null) {
-        val event = AppErrorEvent(tag, message, throwable)
+        StartupLogger.error(tag, message, throwable)
+    }
+
+    internal fun reportFromStartupLogger(tag: String, message: String) {
+        val event = AppErrorEvent(tag, message)
         synchronized(history) {
             history += event
             if (history.size > 100) history.removeAt(0)

@@ -2,12 +2,14 @@ package com.tbtechs.focusflow.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.AlarmRepository
 import com.tbtechs.focusflow.data.repository.BlockOverlayController
 import com.tbtechs.focusflow.data.repository.SettingsRepository
+import com.tbtechs.focusflow.data.repository.ReportNotesRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.data.repository.GreyoutRepository
 import com.tbtechs.focusflow.data.repository.UsageStatsRepository
@@ -60,6 +62,9 @@ object AppModule {
      * [SettingsViewModel], and the enforcement layer.
      */
     lateinit var settingsRepository: SettingsRepository
+        private set
+
+    lateinit var reportNotesRepository: ReportNotesRepository
         private set
 
     lateinit var foregroundServiceController: ForegroundServiceController
@@ -134,11 +139,21 @@ object AppModule {
                 FocusFlowDatabase.MIGRATION_1_2,
                 FocusFlowDatabase.MIGRATION_2_3,
                 FocusFlowDatabase.MIGRATION_3_4,
+                FocusFlowDatabase.MIGRATION_4_5,
             )
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS `idx_focus_sessions_one_active` " +
+                            "ON `focus_sessions` (`is_active`) WHERE `is_active` = 1",
+                    )
+                }
+            })
             .build()
 
         // Repositories — order within this block does not matter.
         settingsRepository = SettingsRepository(app)
+        reportNotesRepository = ReportNotesRepository(app, database.reportNotesDao())
         foregroundServiceController = ForegroundServiceController(app)
         alarmRepository = AlarmRepository(app)
         blockOverlayController = BlockOverlayController(app)

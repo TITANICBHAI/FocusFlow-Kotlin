@@ -16,7 +16,8 @@ import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.LocalDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Snapshot of the allowance state that must be read under one native lock.
@@ -123,7 +124,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_DEFENSE_HELP_DISMISSED = "defense_help_dismissed"
         private const val KEY_STANDALONE_BLOCK_HINT_DISMISSED = "standalone_block_hint_dismissed"
         private const val KEY_ALWAYS_ON_INFO_DISMISSED = "always_on_info_dismissed"
-        private const val KEY_REPORT_NOTE_PREFIX = "report_note_"
         private const val KEY_LAUNCHER_DOCK_PACKAGES = "launcher_dock_packages"
         private const val KEY_LAUNCHER_HIDDEN_PACKAGES = "launcher_hidden_packages"
         private const val KEY_DRAWER_HIDDEN_PACKAGES = "drawer_hidden_packages"
@@ -179,15 +179,19 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    fun putString(key: String, value: String) {
-        if (!prefs.edit().putString(key, value).commit()) {
-            throw IllegalStateException("WRITE_FAILED: settings string commit() returned false")
-        }
+    suspend fun putString(key: String, value: String) {
         when (key) {
-            SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> setupPersistence.setPrivacyAccepted(value == "true")
-            SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> setupPersistence.setOnboardingComplete(value == "true")
-            SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> setupPersistence.setUserConsentedBackgroundService(value == "true")
+            SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> setupPersistence.setPrivacyAccepted(
+                value.equals("true", ignoreCase = true),
+            )
+            SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> setupPersistence.setOnboardingComplete(
+                value.equals("true", ignoreCase = true),
+            )
+            SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> setupPersistence.setUserConsentedBackgroundService(
+                value.equals("true", ignoreCase = true),
+            )
             SetupPersistenceManager.KEY_PROTECTION_MODE -> setupPersistence.setProtectionMode(value)
+            else -> prefs.edit().putString(key, value).apply()
         }
     }
 
@@ -327,6 +331,8 @@ class SettingsRepository(context: Context) {
             .remove(KEY_TASK_START_MS)
             .remove(KEY_TASK_COLOR)
             .remove(KEY_NEXT_TASK_NAME)
+            .remove(KEY_TASK_DURATION_MS)
+            .remove(KEY_TASK_LAST_WRITTEN_MS)
             .apply()
         pushWidgetUpdate()
     }
@@ -424,7 +430,7 @@ class SettingsRepository(context: Context) {
         nextTaskName,
     )
 
-    private fun publishFocusSnapshotImpl(
+    private suspend fun publishFocusSnapshotImpl(
         active: Boolean,
         taskId: String?,
         taskName: String?,
@@ -473,10 +479,7 @@ class SettingsRepository(context: Context) {
                     .remove(KEY_TASK_LAST_WRITTEN_MS)
             }
 
-            if (!editor.commit()) {
-                Log.e(TAG, "[NATIVE_PREFS_COMMIT_FAILED] publishFocusSnapshot")
-                throw IllegalStateException("PREFS_WRITE_FAILED: commit() returned false")
-            }
+            commitEditor(editor, "publishFocusSnapshot")
 
             Log.d(TAG, "[NATIVE_PREFS_OK] publishFocusSnapshot active=$active")
             requestVpnSync()
@@ -559,10 +562,7 @@ class SettingsRepository(context: Context) {
                     .putString(KEY_STANDALONE_VPN_PACKAGES, "[]")
             }
 
-            if (!editor.commit()) {
-                Log.e(TAG, "[NATIVE_PREFS_COMMIT_FAILED] publishStandaloneSnapshot")
-                throw IllegalStateException("PREFS_WRITE_FAILED: commit() returned false")
-            }
+            commitEditor(editor, "publishStandaloneSnapshot")
 
             Log.d(TAG, "[NATIVE_PREFS_OK] publishStandaloneSnapshot active=$active")
             requestVpnSync()
@@ -644,22 +644,22 @@ class SettingsRepository(context: Context) {
                 }
             }
 
-        if (!prefs.edit()
+        commitEditor(
+            prefs.edit()
                 .putString(KEY_RECURRING_BLOCK_SCHEDULES, recurringJson)
                 .putString(
                     "greyout_schedule",
                     JSONArray(existingWindows + scheduleWindows).toString(),
-                )
-                .commit()
-        ) {
-            throw IllegalStateException("WRITE_FAILED: recurring schedule commit() returned false")
-        }
+                ),
+            "recurring schedule",
+        )
     }
 
     suspend fun publishScheduleVpnSnapshot(packagesJson: String) {
-        if (!prefs.edit().putString(KEY_SCHEDULE_VPN_PACKAGES, packagesJson).commit()) {
-            throw IllegalStateException("WRITE_FAILED: commit() returned false")
-        }
+        commitEditor(
+            prefs.edit().putString(KEY_SCHEDULE_VPN_PACKAGES, packagesJson),
+            "schedule VPN snapshot",
+        )
         VpnPolicyCoordinator.requestSync(appContext)
     }
 
@@ -775,9 +775,7 @@ class SettingsRepository(context: Context) {
                 .putLong(KEY_STANDALONE_UNTIL_MS, 0L)
         }
         editor.putString(KEY_DAILY_ALLOWANCE_CONFIG, allowanceJson)
-        if (!editor.commit()) {
-            throw IllegalStateException("WRITE_FAILED: standalone and allowance commit() returned false")
-        }
+        commitEditor(editor, "standalone and allowance snapshot")
         appContext.sendBroadcast(
             Intent(AppBlockerAccessibilityService.ACTION_ALLOWANCE_CONFIG_CHANGED).apply {
                 `package` = appContext.packageName
@@ -937,28 +935,6 @@ class SettingsRepository(context: Context) {
         )
     }
 
-    fun getReportNote(reportKey: String): String =
-        prefs.getString(KEY_REPORT_NOTE_PREFIX + reportKey.sanitizedPreferenceKey(), "") ?: ""
-
-    fun setReportNote(reportKey: String, note: String) {
-        prefs.edit()
-            .putString(KEY_REPORT_NOTE_PREFIX + reportKey.sanitizedPreferenceKey(), note.take(4_000))
-            .apply()
-    }
-
-    /** Returns saved daily report notes for a local inclusive date range. */
-    fun getReportNotes(start: LocalDate, end: LocalDate): Map<String, String> {
-        val notes = linkedMapOf<String, String>()
-        var date = start
-        while (!date.isAfter(end)) {
-            getReportNote("day_$date")
-                .takeIf(String::isNotBlank)
-                ?.let { notes[date.toString()] = it }
-            date = date.plusDays(1)
-        }
-        return notes
-    }
-
     /** Generic overlay/config string setter; an empty value removes the key. */
     suspend fun getLong(key: String): Long = prefs.getLong(key, 0L)
 
@@ -1042,7 +1018,7 @@ class SettingsRepository(context: Context) {
      * enforcement or by the focus/task schedulers.
      */
     suspend fun setDefensePreferences(settings: AppSettings) {
-        val committed = prefs.edit()
+        val editor = prefs.edit()
             .putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, settings.launcherBlockUninstall)
             .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, settings.vpnSelfHealEnabled)
             .putBoolean(KEY_FOCUS_MIRROR_VPN_ENABLED, settings.focusMirrorVpnEnabled)
@@ -1055,10 +1031,7 @@ class SettingsRepository(context: Context) {
             )
             .putBoolean(KEY_AUTO_RESCHEDULE_ENABLED, settings.autoRescheduleEnabled)
             .putBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, settings.autoCopyToAlwaysOn)
-            .commit()
-        if (!committed) {
-            throw IllegalStateException("WRITE_FAILED: defense preferences commit() returned false")
-        }
+        commitEditor(editor, "defense preferences")
         requestVpnSync()
     }
 
@@ -1107,6 +1080,22 @@ class SettingsRepository(context: Context) {
         NetworkBlockerVpnService.requestSync(appContext)
     }
 
+    /**
+     * SharedPreferences.commit() is reserved for durability boundaries and is
+     * always dispatched off the caller's thread. The snapshot is built before
+     * entering this helper, so one Editor still represents one coherent write.
+     */
+    private suspend fun commitEditor(
+        editor: SharedPreferences.Editor,
+        operation: String,
+    ) {
+        val committed = withContext(Dispatchers.IO) { editor.commit() }
+        if (!committed) {
+            Log.e(TAG, "[NATIVE_PREFS_COMMIT_FAILED] $operation")
+            throw IllegalStateException("PREFS_WRITE_FAILED: $operation commit() returned false")
+        }
+    }
+
     private fun parseAllowanceUsage(raw: String?): Map<String, AllowanceUsage> {
         if (raw.isNullOrBlank()) return emptyMap()
         return runCatching {
@@ -1140,9 +1129,6 @@ class SettingsRepository(context: Context) {
     }
 
     private fun List<String>.toJsonArrayString(): String = JSONArray(this).toString()
-
-private fun String.sanitizedPreferenceKey(): String =
-    replace(Regex("[^A-Za-z0-9_-]"), "_").take(120)
 
     private fun parseStringArray(json: String?): List<String> =
         runCatching {

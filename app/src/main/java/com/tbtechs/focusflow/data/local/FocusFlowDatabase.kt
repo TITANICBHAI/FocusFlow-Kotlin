@@ -13,12 +13,14 @@ import com.tbtechs.focusflow.data.local.dao.FocusOverrideDao
 import com.tbtechs.focusflow.data.local.dao.FocusSessionDao
 import com.tbtechs.focusflow.data.local.dao.TaskDao
 import com.tbtechs.focusflow.data.local.dao.WeeklyInsightDao
+import com.tbtechs.focusflow.data.local.dao.ReportNotesDao
 import com.tbtechs.focusflow.data.local.entity.DailyCompletionEntity
 import com.tbtechs.focusflow.data.local.entity.AchievementEntity
 import com.tbtechs.focusflow.data.local.entity.FocusOverrideEntity
 import com.tbtechs.focusflow.data.local.entity.FocusSessionEntity
 import com.tbtechs.focusflow.data.local.entity.TaskEntity
 import com.tbtechs.focusflow.data.local.entity.WeeklyInsightEntity
+import com.tbtechs.focusflow.data.local.entity.ReportNoteEntity
 
 /**
  * Room database for FocusFlow.
@@ -31,10 +33,10 @@ import com.tbtechs.focusflow.data.local.entity.WeeklyInsightEntity
  * | [FocusOverrideEntity] | `focus_overrides` |
  * | [DailyCompletionEntity] | `daily_completions` |
  * | [AchievementEntity] | `achievements` |
+ * | [ReportNoteEntity] | `report_notes` |
  *
  * ## Out-of-scope tables (no Room entities — not managed here)
  * - `settings` — single JSON-blob row; handled by [SettingsRepository] via SharedPreferences.
- * - `report_notes` — still handled outside Room.
  *
  * ## Database file
  * The hybrid React-Native app stored data in `focusday.db` (not `focusflow.db`).
@@ -49,6 +51,7 @@ import com.tbtechs.focusflow.data.local.entity.WeeklyInsightEntity
  * | 2 | `ALTER TABLE tasks ADD COLUMN focus_allowed_packages TEXT` — the column added by the hybrid app's inline try/catch migration in `initSchema`. |
  * | 3 | `CREATE TABLE IF NOT EXISTS achievements (id TEXT PRIMARY KEY, earned_at TEXT NOT NULL)`. |
  * | 4 | `weekly_insights` becomes Room-managed. |
+ * | 5 | `report_notes` becomes Room-managed and active-session indexes are hardened. |
  *
  * ### Hybrid-app database bootstrap — IMPORTANT
  * The hybrid app used expo-sqlite and **never set SQLite `user_version`**, so
@@ -92,8 +95,9 @@ import com.tbtechs.focusflow.data.local.entity.WeeklyInsightEntity
         DailyCompletionEntity::class,
         AchievementEntity::class,
         WeeklyInsightEntity::class,
+        ReportNoteEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -104,6 +108,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
     abstract fun dailyCompletionDao(): DailyCompletionDao
     abstract fun achievementDao(): AchievementDao
     abstract fun weeklyInsightDao(): WeeklyInsightDao
+    abstract fun reportNotesDao(): ReportNotesDao
 
     companion object {
 
@@ -232,6 +237,66 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                         PRIMARY KEY(`week_start`)
                     )
                 """.trimIndent())
+            }
+        }
+
+        /**
+         * Makes report notes Room-managed and hardens active-session lookup.
+         *
+         * Existing RN databases already contain report_notes in this shape.
+         * The guarded column repair also handles early files that predate the
+         * updated_at column without dropping their notes.
+         */
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `report_notes` (
+                        `ref_date` TEXT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `updated_at` TEXT NOT NULL,
+                        PRIMARY KEY(`ref_date`, `type`)
+                    )
+                """.trimIndent())
+
+                val reportColumns = db.query("PRAGMA table_info(`report_notes`)")
+                val hasUpdatedAt = reportColumns.use { cursor ->
+                    val nameIndex = cursor.getColumnIndexOrThrow("name")
+                    generateSequence {
+                        if (cursor.moveToNext()) cursor.getString(nameIndex) else null
+                    }.any { it == "updated_at" }
+                }
+                if (!hasUpdatedAt) {
+                    db.execSQL(
+                        "ALTER TABLE `report_notes` ADD COLUMN `updated_at` TEXT NOT NULL DEFAULT ''",
+                    )
+                }
+
+                // Preserve the newest active session if an older database has
+                // duplicate active rows before adding the partial unique index.
+                val activeIds = db.query(
+                    "SELECT id FROM `focus_sessions` WHERE is_active = 1 ORDER BY id DESC",
+                )
+                val idsToDeactivate = buildList {
+                    activeIds.use { cursor ->
+                        val idIndex = cursor.getColumnIndexOrThrow("id")
+                        if (cursor.moveToNext()) {
+                            while (cursor.moveToNext()) add(cursor.getLong(idIndex))
+                        }
+                    }
+                }
+                idsToDeactivate.forEach { id ->
+                    db.execSQL("UPDATE `focus_sessions` SET is_active = 0 WHERE id = ?", arrayOf(id))
+                }
+
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_focus_sessions_active` " +
+                        "ON `focus_sessions` (`is_active`, `id` DESC)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `idx_focus_sessions_one_active` " +
+                        "ON `focus_sessions` (`is_active`) WHERE `is_active` = 1",
+                )
             }
         }
 
@@ -394,38 +459,5 @@ abstract class FocusFlowDatabase : RoomDatabase() {
          * Migrates legacy daily report notes stored in the TS app's `report_notes` table
          * into SharedPreferences under `report_note_day_{date}` keys.
          */
-        fun migrateReportNotesToSharedPrefs(context: Context, db: FocusFlowDatabase) {
-            try {
-                val prefs = context.getSharedPreferences("FocusFlowPrefs", Context.MODE_PRIVATE)
-                if (prefs.contains("_report_notes_migrated")) return
-
-                val tableCheck = db.openHelper.readableDatabase.query(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='report_notes'",
-                )
-                val hasTable = tableCheck.use { it.moveToFirst() }
-                if (!hasTable) {
-                    prefs.edit().putBoolean("_report_notes_migrated", true).apply()
-                    return
-                }
-
-                val cursor = db.openHelper.readableDatabase.query(
-                    "SELECT ref_date, note FROM report_notes WHERE type = 'daily'",
-                )
-                val editor = prefs.edit()
-                cursor.use {
-                    while (it.moveToNext()) {
-                        val date = it.getString(0) ?: continue  // format: "YYYY-MM-DD"
-                        val note = it.getString(1) ?: continue
-                        val key = "report_note_day_$date"
-                        if (!prefs.contains(key)) editor.putString(key, note)
-                    }
-                }
-                editor.putBoolean("_report_notes_migrated", true)
-                editor.apply()
-                Log.i(TAG, "Report notes migrated from SQLite to SharedPrefs")
-            } catch (e: Exception) {
-                Log.e(TAG, "Report notes migration failed: ${e.message}", e)
-            }
-        }
     }
 }

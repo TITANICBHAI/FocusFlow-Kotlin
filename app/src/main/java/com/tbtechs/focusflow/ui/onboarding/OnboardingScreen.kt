@@ -540,10 +540,12 @@ fun OnboardingScreen(
                             step = OnboardingStep.OPTIONAL
                         } else {
                             settingsViewModel.updateSettings(settings.copy(pinProtectionEnabled = pinChoice))
-                            val setupPersistence = SetupPersistenceManager(context)
-                            setupPersistence.setUserConsentedBackgroundService(true)
-                            setupPersistence.setOnboardingComplete(true)
-                            onFinished()
+                            scope.launch {
+                                val setupPersistence = SetupPersistenceManager(context)
+                                setupPersistence.setUserConsentedBackgroundService(true)
+                                setupPersistence.setOnboardingComplete(true)
+                                onFinished()
+                            }
                         }
                     },
                     shape = RoundedCornerShape(16.dp),

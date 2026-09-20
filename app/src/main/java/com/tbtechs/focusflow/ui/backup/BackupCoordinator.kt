@@ -139,7 +139,7 @@ class BackupCoordinator(
         put("pomodoroBreakMinutes", pomodoroBreakMinutes)
     }
 
-    private fun AppSettings.mergePortableBackup(imported: JSONObject): AppSettings =
+    private suspend fun AppSettings.mergePortableBackup(imported: JSONObject): AppSettings =
         apply {
             imported.optJSONObject("userProfile")?.let { profile ->
                 settingsRepository.putString("user_profile", profile.toString())

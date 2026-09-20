@@ -428,7 +428,7 @@ fun FocusFlowNavGraph(
                 ScreenBoundary(Routes.REPORTS) {
                     ReportsScreen(
                         taskViewModel = taskViewModel,
-                        settingsRepository = AppModule.settingsRepository,
+                        reportNotesRepository = AppModule.reportNotesRepository,
                         onBack = ::back,
                     )
                 }
@@ -437,7 +437,7 @@ fun FocusFlowNavGraph(
                 ScreenBoundary(Routes.REPORT) {
                     ReportScreen(
                         taskViewModel = taskViewModel,
-                        settingsRepository = AppModule.settingsRepository,
+                        reportNotesRepository = AppModule.reportNotesRepository,
                         onBack = ::back,
                     )
                 }

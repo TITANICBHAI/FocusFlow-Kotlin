@@ -35,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.model.Task
-import com.tbtechs.focusflow.data.repository.SettingsRepository
+import com.tbtechs.focusflow.data.repository.ReportNotesRepository
 import com.tbtechs.focusflow.ui.TaskViewModel
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -45,6 +45,13 @@ import java.time.format.DateTimeFormatter
 
 enum class ReportType { Day, Week }
 
+private data class LoadedReport(
+    val current: List<Task>,
+    val previous: List<Task>,
+    val notes: Map<String, String>,
+    val savedNote: String,
+)
+
 /** Shared implementation for both the architecture "reports" route and the legacy "report" slug. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +59,7 @@ fun ReportScreen(
     reportType: ReportType = ReportType.Day,
     referenceDate: LocalDate = LocalDate.now().minusDays(1),
     taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
-    settingsRepository: SettingsRepository? = null,
+    reportNotesRepository: ReportNotesRepository? = null,
     onBack: () -> Unit = {},
 ) {
     val range = remember(reportType, referenceDate) { reportRange(reportType, referenceDate) }
@@ -65,12 +72,8 @@ fun ReportScreen(
     val noteKey = remember(reportType, range.first) {
         "${reportType.name.lowercase()}_${range.first}"
     }
-    var note by remember(noteKey, settingsRepository) {
-        mutableStateOf(settingsRepository?.getReportNote(noteKey).orEmpty())
-    }
-    var savedNote by remember(noteKey, settingsRepository) {
-        mutableStateOf(settingsRepository?.getReportNote(noteKey).orEmpty())
-    }
+    var note by remember(noteKey, reportNotesRepository) { mutableStateOf("") }
+    var savedNote by remember(noteKey, reportNotesRepository) { mutableStateOf("") }
 
     suspend fun reloadReport() {
         loading = true
@@ -82,18 +85,30 @@ fun ReportScreen(
             )
             val baselineStart = range.first.minusDays(if (reportType == ReportType.Week) 7 else 30)
             val baselineEnd = range.first.minusDays(1)
-            Triple(
-                current,
-                taskViewModel.getTasksInDateRange(
+            LoadedReport(
+                current = current,
+                previous = taskViewModel.getTasksInDateRange(
                     baselineStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toString(),
                     baselineEnd.atStartOfDay(ZoneId.systemDefault()).toInstant().toString(),
                 ),
-                settingsRepository?.getReportNotes(range.first, range.second).orEmpty(),
+                notes = reportNotesRepository
+                    ?.getDailyNotes(range.first, range.second)
+                    .orEmpty(),
+                savedNote = reportNotesRepository?.getNote(
+                    range.first,
+                    if (reportType == ReportType.Week) {
+                        ReportNotesRepository.TYPE_WEEK
+                    } else {
+                        ReportNotesRepository.TYPE_DAY
+                    },
+                ).orEmpty(),
             )
-        }.onSuccess { (current, previous, notes) ->
-            reportTasks = current
-            baseline = previous
-            weekNotes = notes
+        }.onSuccess { loaded ->
+            reportTasks = loaded.current
+            baseline = loaded.previous
+            weekNotes = loaded.notes
+            note = loaded.savedNote
+            savedNote = loaded.savedNote
         }.onFailure { failure ->
             loadError = failure.message ?: "Could not load this report."
         }
@@ -122,8 +137,18 @@ fun ReportScreen(
     fun saveNote() {
         val trimmed = note.trim()
         if (trimmed == savedNote) return
-        settingsRepository?.setReportNote(noteKey, trimmed)
-        savedNote = trimmed
+        scope.launch {
+            reportNotesRepository?.saveNote(
+                refDate = range.first,
+                type = if (reportType == ReportType.Week) {
+                    ReportNotesRepository.TYPE_WEEK
+                } else {
+                    ReportNotesRepository.TYPE_DAY
+                },
+                note = trimmed,
+            )
+            savedNote = trimmed
+        }
     }
     val title = if (reportType == ReportType.Week) "${range.first.format(DateTimeFormatter.ofPattern("MMM d"))} – ${range.second.format(DateTimeFormatter.ofPattern("MMM d, uuuu"))}" else referenceDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, uuuu"))
 

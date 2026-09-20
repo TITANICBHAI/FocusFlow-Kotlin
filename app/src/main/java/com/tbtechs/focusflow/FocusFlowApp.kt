@@ -3,6 +3,7 @@ package com.tbtechs.focusflow
 import android.app.Application
 import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.notifications.NotificationChannels
 
 /**
@@ -36,19 +37,25 @@ class FocusFlowApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        StartupLogger.initialize(this)
+        StartupLogger.info("FocusFlowApp", "Application startup began")
 
         // 1. Pre-migrate the legacy SQLite database before Room touches it.
+        StartupLogger.info("Room", "Preparing legacy database before Room initialization")
         FocusFlowDatabase.prepareLegacyDatabase(this)
 
         // 2. Build the Room database and wire all repository singletons.
+        StartupLogger.info("Room", "Initializing Room database and repositories")
         AppModule.init(this)
 
-        // 3. One-time migration: copy settings blob and report notes from SQLite to SharedPreferences.
-        //    Must run after AppModule.init() so the Room DB is open.
+        // 3. One-time migration: copy the legacy settings blob to SharedPreferences.
+        //    Report notes remain in Room and are upgraded by MIGRATION_4_5.
+        StartupLogger.info("Migration", "Checking legacy settings migration")
         FocusFlowDatabase.migrateSettingsBlobToSharedPrefs(this, AppModule.database)
-        FocusFlowDatabase.migrateReportNotesToSharedPrefs(this, AppModule.database)
 
         // 4. Register app-level notification channels.
+        StartupLogger.info("Notifications", "Creating application notification channels")
         NotificationChannels.createAll(this)
+        StartupLogger.info("FocusFlowApp", "Application startup completed")
     }
 }

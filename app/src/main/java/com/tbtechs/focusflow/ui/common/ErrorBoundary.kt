@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.ui.support.ReportIssueModal
 
 /**
@@ -40,6 +41,14 @@ fun ErrorBoundary(
         ReportIssueModal(
             visible = reportVisible,
             error = error,
+            logs = StartupLogger.recent(200).map { entry ->
+                com.tbtechs.focusflow.ui.support.DiagnosticLogEntry(
+                    timestamp = entry.timestamp,
+                    level = com.tbtechs.focusflow.ui.support.DiagnosticLogLevel.valueOf(entry.level.name),
+                    tag = entry.tag,
+                    message = entry.message,
+                )
+            },
             onClose = { reportVisible = false },
         )
     }

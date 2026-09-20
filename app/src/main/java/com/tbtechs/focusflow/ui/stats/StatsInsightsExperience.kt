@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.analytics.ANALYTICS_THREE_MONTHS
@@ -41,6 +42,7 @@ import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import kotlinx.coroutines.launch
 
 /** The superseding Stats experience; do not substitute UsageInsights or WeeklyReport. */
 @Composable
@@ -58,6 +60,7 @@ fun StatsInsightsExperience(
     val state by statsViewModel.loadState.collectAsState()
     val window by statsViewModel.activeWindow.collectAsState()
     val settingsRepository = remember { AppModule.settingsRepository }
+    val scope = rememberCoroutineScope()
     var localNoticeDismissed by remember {
         mutableStateOf(settingsRepository.getString("local_analytics_notice_dismissed") == "true")
     }
@@ -81,8 +84,10 @@ fun StatsInsightsExperience(
         AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
         if (window == ANALYTICS_THREE_MONTHS && !localNoticeDismissed) {
             LocalOnlyNotice(onDismiss = {
-                settingsRepository.putString("local_analytics_notice_dismissed", "true")
-                localNoticeDismissed = true
+                scope.launch {
+                    settingsRepository.putString("local_analytics_notice_dismissed", "true")
+                    localNoticeDismissed = true
+                }
             })
         }
         when (state) {

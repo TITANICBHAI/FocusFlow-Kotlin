@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * SetupPersistenceManager
@@ -59,23 +61,26 @@ class SetupPersistenceManager(context: Context) {
         return when {
             primaryVal == true -> {
                 if (backupVal != true) {
-                    backupPrefs.edit().putString(key, "true").commit()
+                    backupPrefs.edit().putString(key, "true").apply()
                 }
                 true
             }
             backupVal == true -> {
                 Log.i(TAG, "Restored durable flag '$key' from setup backup store")
-                primaryPrefs.edit().putString(key, "true").commit()
+                primaryPrefs.edit().putString(key, "true").apply()
                 true
             }
             else -> false
         }
     }
 
-    fun writeDurableFlag(key: String, value: Boolean) {
+    suspend fun writeDurableFlag(key: String, value: Boolean) {
         val stringVal = if (value) "true" else "false"
-        val primaryOk = primaryPrefs.edit().putString(key, stringVal).commit()
-        val backupOk = backupPrefs.edit().putString(key, stringVal).commit()
+        val (primaryOk, backupOk) = withContext(Dispatchers.IO) {
+            val primaryResult = primaryPrefs.edit().putString(key, stringVal).commit()
+            val backupResult = backupPrefs.edit().putString(key, stringVal).commit()
+            primaryResult to backupResult
+        }
         if (!primaryOk && !backupOk) {
             Log.e(TAG, "Failed to commit durable flag '$key' to storage")
         }
@@ -83,36 +88,38 @@ class SetupPersistenceManager(context: Context) {
 
     fun isPrivacyAccepted(): Boolean = readDurableFlag(KEY_PRIVACY_ACCEPTED)
 
-    fun setPrivacyAccepted(accepted: Boolean) {
+    suspend fun setPrivacyAccepted(accepted: Boolean) {
         writeDurableFlag(KEY_PRIVACY_ACCEPTED, accepted)
     }
 
     fun isOnboardingComplete(): Boolean = readDurableFlag(KEY_ONBOARDING_COMPLETE)
 
-    fun setOnboardingComplete(completed: Boolean) {
+    suspend fun setOnboardingComplete(completed: Boolean) {
         writeDurableFlag(KEY_ONBOARDING_COMPLETE, completed)
     }
 
     fun isUserConsentedBackgroundService(): Boolean = readDurableFlag(KEY_USER_CONSENTED_BACKGROUND_SERVICE)
 
-    fun setUserConsentedBackgroundService(consented: Boolean) {
+    suspend fun setUserConsentedBackgroundService(consented: Boolean) {
         writeDurableFlag(KEY_USER_CONSENTED_BACKGROUND_SERVICE, consented)
     }
 
     fun getProtectionMode(): String {
-        val primary = primaryPrefs.getString(KEY_PROTECTION_MODE, null)
-        val backup = backupPrefs.getString(KEY_PROTECTION_MODE, null)
+        val primary = primaryPrefs.all[KEY_PROTECTION_MODE] as? String
+        val backup = backupPrefs.all[KEY_PROTECTION_MODE] as? String
         val mode = primary ?: backup ?: "standard"
         if (primary == null && backup != null) {
-            primaryPrefs.edit().putString(KEY_PROTECTION_MODE, mode).commit()
+            primaryPrefs.edit().putString(KEY_PROTECTION_MODE, mode).apply()
         } else if (primary != null && backup == null) {
-            backupPrefs.edit().putString(KEY_PROTECTION_MODE, mode).commit()
+            backupPrefs.edit().putString(KEY_PROTECTION_MODE, mode).apply()
         }
         return mode
     }
 
-    fun setProtectionMode(mode: String) {
-        primaryPrefs.edit().putString(KEY_PROTECTION_MODE, mode).commit()
-        backupPrefs.edit().putString(KEY_PROTECTION_MODE, mode).commit()
+    suspend fun setProtectionMode(mode: String) {
+        withContext(Dispatchers.IO) {
+            primaryPrefs.edit().putString(KEY_PROTECTION_MODE, mode).commit()
+            backupPrefs.edit().putString(KEY_PROTECTION_MODE, mode).commit()
+        }
     }
 }

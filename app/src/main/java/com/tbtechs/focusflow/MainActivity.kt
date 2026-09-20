@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
+import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
@@ -65,6 +66,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        StartupLogger.info("MainActivity", "Main activity created")
         requestedRoute = routeFromIntent(intent)
         setTheme(R.style.Theme_FocusFlow)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -79,6 +81,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        StartupLogger.info("MainActivity", "Main activity received a new intent")
         setIntent(intent)
         requestedRoute = routeFromIntent(intent)
         notificationEventNonce++
@@ -175,7 +178,7 @@ private fun FocusFlowRoot(
         }
     }
     var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
-    var diagnosticEvents by remember { mutableStateOf(AppErrorEvents.snapshot()) }
+    var diagnosticEvents by remember { mutableStateOf(startupDiagnosticEntries()) }
     var diagnosticsVisible by remember { mutableStateOf(false) }
     var dismissedAchievementId by remember { mutableStateOf<String?>(null) }
     val achievementState by statsViewModel.achievementState.collectAsState()
@@ -190,7 +193,7 @@ private fun FocusFlowRoot(
 
     LaunchedEffect(Unit) {
         AppErrorEvents.events.collect {
-            diagnosticEvents = AppErrorEvents.snapshot()
+            diagnosticEvents = startupDiagnosticEntries()
         }
     }
 
@@ -346,15 +349,23 @@ private fun FocusFlowRoot(
 
         DiagnosticsModal(
             visible = diagnosticsVisible,
-            logs = diagnosticEvents.map { event ->
-                DiagnosticLogEntry(
-                    timestamp = event.timestampMillis.toString(),
-                    level = DiagnosticLogLevel.ERROR,
-                    tag = event.tag,
-                    message = event.message,
-                )
+            logs = diagnosticEvents,
+            onRefresh = { diagnosticEvents = startupDiagnosticEntries() },
+            onClearLogs = {
+                StartupLogger.clear()
+                diagnosticEvents = emptyList()
             },
             onClose = { diagnosticsVisible = false },
         )
     }
 }
+
+private fun startupDiagnosticEntries(): List<DiagnosticLogEntry> =
+    StartupLogger.recent(200).map { entry ->
+        DiagnosticLogEntry(
+            timestamp = entry.timestamp,
+            level = DiagnosticLogLevel.valueOf(entry.level.name),
+            tag = entry.tag,
+            message = entry.message,
+        )
+    }

@@ -79,6 +79,7 @@ import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
 import com.tbtechs.focusflow.ui.launcher.AllowedAppsModal
 import com.tbtechs.focusflow.ui.support.ReportIssueModal
+import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -576,6 +577,14 @@ fun SettingsScreen(
     )
     ReportIssueModal(
         visible = reportIssueVisible,
+        logs = StartupLogger.recent(200).map { entry ->
+            com.tbtechs.focusflow.ui.support.DiagnosticLogEntry(
+                timestamp = entry.timestamp,
+                level = com.tbtechs.focusflow.ui.support.DiagnosticLogLevel.valueOf(entry.level.name),
+                tag = entry.tag,
+                message = entry.message,
+            )
+        },
         onClose = { reportIssueVisible = false },
     )
 
