@@ -173,8 +173,8 @@ fun AppPickerSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = DarkBackground,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = DarkCard,
     ) {
         Column(
             modifier = Modifier

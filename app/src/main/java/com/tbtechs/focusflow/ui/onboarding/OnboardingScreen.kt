@@ -83,9 +83,10 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LavenderBg
-import com.tbtechs.focusflow.ui.theme.LavenderBorder
-import com.tbtechs.focusflow.ui.theme.LavenderText
+import com.tbtechs.focusflow.ui.theme.InfoBodyText
+import com.tbtechs.focusflow.ui.theme.InfoBorder
+import com.tbtechs.focusflow.ui.theme.InfoSurface
+import com.tbtechs.focusflow.ui.theme.InfoText
 import com.tbtechs.focusflow.ui.theme.StatusOptionalBg
 import com.tbtechs.focusflow.ui.theme.StatusOptionalText
 import kotlinx.coroutines.Dispatchers
@@ -227,9 +228,9 @@ fun OnboardingScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(LavenderBg)
-                            .border(1.dp, LavenderBorder, RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(InfoSurface)
+                            .border(1.dp, InfoBorder.copy(alpha = 0.8f), RoundedCornerShape(22.dp))
                             .padding(16.dp),
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -247,14 +248,14 @@ fun OnboardingScreen(
                                     text = "Why these permissions?",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = LavenderText,
+                                    color = InfoText,
                                 )
                             }
                             Text(
                                 text = "FocusFlow enforces focus at the system level — not just reminders. To actually block apps and keep your session running, Android requires special access that regular apps don't need.",
-                                fontSize = 13.sp,
-                                lineHeight = 19.sp,
-                                color = Color(0xFF3730A3),
+                                 fontSize = 13.sp,
+                                 lineHeight = 20.sp,
+                                 color = InfoBodyText,
                             )
                         }
                     }
@@ -296,12 +297,16 @@ fun OnboardingScreen(
                 // Section Label
                 item {
                     Text(
-                        text = "CORE ACCESS — TAP A CARD TO GIVE ACCESS",
+                        text = "Core access",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp,
-                        color = DarkTextMuted,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandPrimary,
                         modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text(
+                        text = "Tap a card to grant access.",
+                        fontSize = 13.sp,
+                        color = DarkTextSecondary,
                     )
                 }
 
@@ -324,14 +329,14 @@ fun OnboardingScreen(
                     AccessibilityRestrictedRecovery(accessibilityAttempted = accessibilityAttempted)
                 }
 
-                // Bottom Lavender Info Note
+                // Bottom setup note
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(18.dp))
-                            .background(LavenderBg)
-                            .border(1.dp, LavenderBorder, RoundedCornerShape(18.dp))
+                            .background(InfoSurface)
+                            .border(1.dp, InfoBorder.copy(alpha = 0.8f), RoundedCornerShape(18.dp))
                             .padding(14.dp),
                     ) {
                         Row(
@@ -348,7 +353,7 @@ fun OnboardingScreen(
                                 text = "Usage Access, Accessibility Service, and Notifications can be fixed anytime in Settings → Permissions.",
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp,
-                                color = LavenderText,
+                                color = InfoBodyText,
                             )
                         }
                     }
@@ -382,14 +387,13 @@ fun OnboardingScreen(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "OPTIONAL SETUP — TAP A CARD TO GIVE ACCESS",
+                        text = "Optional access",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
-                            color = DarkTextMuted,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandPrimary,
                         )
                         Text(
-                            text = "These features are not required to use FocusFlow and can be configured later.",
+                        text = "These features are not required and can be configured later.",
                             fontSize = 13.sp,
                             color = DarkTextSecondary,
                         )
@@ -427,7 +431,7 @@ fun OnboardingScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(22.dp))
                             .background(DarkCard)
                             .border(1.dp, DarkBorder.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
                             .padding(16.dp),
@@ -542,8 +546,8 @@ fun OnboardingScreen(
                     },
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (step == OnboardingStep.CORE && requiredReady < requiredTotal) LavenderBg else BrandPrimary,
-                        contentColor = if (step == OnboardingStep.CORE && requiredReady < requiredTotal) LavenderText else Color.White,
+                        containerColor = if (step == OnboardingStep.CORE && requiredReady < requiredTotal) InfoSurface else BrandPrimary,
+                        contentColor = if (step == OnboardingStep.CORE && requiredReady < requiredTotal) InfoText else Color.White,
                     ),
                     modifier = Modifier
                         .fillMaxWidth()

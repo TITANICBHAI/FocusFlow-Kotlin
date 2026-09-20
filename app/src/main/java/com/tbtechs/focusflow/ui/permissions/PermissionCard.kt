@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AdminPanelSettings
@@ -40,6 +37,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,7 +67,6 @@ import com.tbtechs.focusflow.ui.theme.StatusReady
 import com.tbtechs.focusflow.ui.theme.StatusReadyBg
 import com.tbtechs.focusflow.ui.theme.StatusReadyText
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PermissionCard(
     permission: PermissionDefinition,
@@ -141,7 +138,7 @@ fun PermissionCard(
     }
 
     val (statusText, statusBg, statusColor) = when (status) {
-        PermissionStatus.GRANTED -> Triple("Ready", StatusReadyBg, StatusReadyText)
+        PermissionStatus.GRANTED -> Triple("Granted", StatusReadyBg, StatusReadyText)
         PermissionStatus.DENIED -> if (permission.optional) {
             Triple("Not set up", StatusNotSetUpBg, StatusNotSetUpText)
         } else {
@@ -153,25 +150,25 @@ fun PermissionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(DarkCard)
-            .border(1.dp, DarkBorder.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
-            .padding(16.dp),
+            .border(1.dp, DarkBorder.copy(alpha = 0.58f), RoundedCornerShape(22.dp))
+            .padding(14.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Main Top Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Colored Icon Badge
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(iconBg),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -183,35 +180,31 @@ fun PermissionCard(
                     )
                 }
 
-                // Title, Status chips, and Description
+                // Title, status pills, and description
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
                         text = permission.title,
-                        fontSize = 15.5.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
                         color = DarkTextPrimary,
                     )
 
-                    // Adaptive Badges Row
-                    FlowRow(
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (permission.optional) {
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(50))
                                     .background(StatusOptionalBg)
-                                    .padding(horizontal = 8.dp, vertical = 2.5.dp),
+                                    .padding(horizontal = 9.dp, vertical = 4.dp),
                             ) {
                                 Text(
                                     text = "Optional",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = StatusOptionalText,
                                 )
                             }
@@ -219,14 +212,13 @@ fun PermissionCard(
 
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(50))
                                 .background(statusBg)
-                                .padding(horizontal = 8.dp, vertical = 2.5.dp),
+                                    .padding(horizontal = 9.dp, vertical = 4.dp),
                         ) {
                             Text(
                                 text = statusText,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.labelSmall,
                                 color = statusColor,
                             )
                         }
@@ -235,7 +227,7 @@ fun PermissionCard(
                     Text(
                         text = permission.description,
                         fontSize = 13.sp,
-                        lineHeight = 18.sp,
+                        lineHeight = 19.sp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -254,7 +246,7 @@ fun PermissionCard(
                 Button(
                     onClick = onGrant,
                     enabled = !busy,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BrandPrimary,
                         disabledContainerColor = Color(0xFF1E283E),
@@ -289,13 +281,13 @@ fun PermissionCard(
 
             // Expanded Details Section
             if (expanded) {
-                HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
+                HorizontalDivider(color = DarkBorder.copy(alpha = 0.55f))
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(DarkSurfaceVariant.copy(alpha = 0.5f))
                             .padding(12.dp),
                     ) {

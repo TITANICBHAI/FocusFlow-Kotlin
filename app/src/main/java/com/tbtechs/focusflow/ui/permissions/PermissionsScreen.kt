@@ -67,9 +67,10 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LavenderBg
-import com.tbtechs.focusflow.ui.theme.LavenderBorder
-import com.tbtechs.focusflow.ui.theme.LavenderText
+import com.tbtechs.focusflow.ui.theme.InfoBodyText
+import com.tbtechs.focusflow.ui.theme.InfoBorder
+import com.tbtechs.focusflow.ui.theme.InfoSurface
+import com.tbtechs.focusflow.ui.theme.InfoText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -231,9 +232,9 @@ fun PermissionsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(LavenderBg)
-                            .border(1.dp, LavenderBorder, RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(InfoSurface)
+                    .border(1.dp, InfoBorder.copy(alpha = 0.8f), RoundedCornerShape(22.dp))
                             .padding(16.dp),
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -251,14 +252,14 @@ fun PermissionsScreen(
                                     text = "Why these permissions?",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = LavenderText,
+                                    color = InfoText,
                                 )
                             }
                             Text(
                                 text = "FocusFlow enforces focus at the system level, not just with reminders. Android requires special access for reliable blocking.",
-                                fontSize = 13.sp,
-                                lineHeight = 19.sp,
-                                color = Color(0xFF3730A3),
+                                 fontSize = 13.sp,
+                                 lineHeight = 20.sp,
+                                 color = InfoBodyText,
                             )
                         }
                     }
@@ -295,7 +296,7 @@ fun PermissionsScreen(
                             trackColor = DarkSurfaceVariant,
                         )
                         if (granted == required) {
-                            Text(
+                             Text(
                                 text = "All required permissions granted — blocking is fully active.",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,

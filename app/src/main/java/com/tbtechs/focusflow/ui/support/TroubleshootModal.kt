@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,15 +50,14 @@ import com.tbtechs.focusflow.ui.permissions.PermissionId
 private data class TroubleshootBrand(
     val id: String,
     val label: String,
-    val icon: String,
 )
 
 private val brands = listOf(
-    TroubleshootBrand("samsung", "Samsung", "📱"),
-    TroubleshootBrand("xiaomi", "Xiaomi / MIUI", "📱"),
-    TroubleshootBrand("oneplus", "OnePlus", "📱"),
-    TroubleshootBrand("realme", "Realme / Oppo", "📱"),
-    TroubleshootBrand("stock", "Stock Android", "🤖"),
+    TroubleshootBrand("samsung", "Samsung"),
+    TroubleshootBrand("xiaomi", "Xiaomi / MIUI"),
+    TroubleshootBrand("oneplus", "OnePlus"),
+    TroubleshootBrand("realme", "Realme / Oppo"),
+    TroubleshootBrand("stock", "Stock Android"),
 )
 
 private val tips: Map<String, Map<PermissionId, List<String>>> = mapOf(
@@ -290,7 +291,7 @@ fun TroubleshootModal(
                             selected = selectedBrand == brand.id,
                             onClick = { selectedBrand = brand.id },
                             shape = RoundedCornerShape(12.dp),
-                            label = { Text("${brand.icon} ${brand.label}") },
+                            label = { Text(brand.label) },
                         )
                     }
                 }
@@ -306,17 +307,19 @@ fun TroubleshootModal(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.Top,
                         ) {
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                ),
-                                shape = CircleShape,
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        CircleShape,
+                                    ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     "${selectedTips.indexOf(tip) + 1}",
                                     color = MaterialTheme.colorScheme.onPrimary,
                                     style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                 )
                             }
                             Text(tip, style = MaterialTheme.typography.bodyMedium)

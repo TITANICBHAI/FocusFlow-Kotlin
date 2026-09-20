@@ -2,13 +2,20 @@ package com.tbtechs.focusflow.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 // FocusFlow Exact Brand Palette matching React reference
 val BrandPrimary = Color(0xFF6366F1)       // Indigo 500
@@ -26,6 +33,12 @@ val DarkTextPrimary = Color(0xFFF8FAFC)    // Clean white text
 val DarkTextSecondary = Color(0xFF94A3B8)  // Medium slate text
 val DarkTextMuted = Color(0xFF64748B)      // Subdued slate text
 
+// Secondary surfaces use a low-contrast indigo tint instead of bright lavender blocks.
+val InfoSurface = Color(0xFF1C2141)
+val InfoBorder = Color(0xFF3D4380)
+val InfoText = Color(0xFFD7D9FF)
+val InfoBodyText = Color(0xFFB9BDEB)
+
 // Semantic Status Colors
 val StatusReady = Color(0xFF10B981)
 val StatusReadyBg = Color(0xFF064E3B)
@@ -40,8 +53,8 @@ val StatusMissingBg = Color(0xFF450A0A)
 val StatusMissingText = Color(0xFFF87171)
 
 val StatusOptional = Color(0xFF8B5CF6)
-val StatusOptionalBg = Color(0xFF2E1065)
-val StatusOptionalText = Color(0xFFC084FC)
+val StatusOptionalBg = Color(0xFFE7EAF1)
+val StatusOptionalText = Color(0xFF687386)
 
 // Info Banner Lavender Colors
 val LavenderBg = Color(0xFFEEF2FF)
@@ -88,6 +101,91 @@ val FocusFlowLightColorScheme = lightColorScheme(
     onError = Color.White,
 )
 
+val FocusFlowShapes = Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+)
+
+val FocusFlowTypography = Typography(
+    displaySmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 30.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-0.25).sp,
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 25.sp,
+        lineHeight = 31.sp,
+        letterSpacing = (-0.2).sp,
+    ),
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 21.sp,
+        lineHeight = 27.sp,
+        letterSpacing = (-0.1).sp,
+    ),
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        lineHeight = 23.sp,
+        letterSpacing = 0.sp,
+    ),
+    titleSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.sp,
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.sp,
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.sp,
+    ),
+    bodySmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 12.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.sp,
+    ),
+    labelLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.sp,
+    ),
+)
+
 @Composable
 fun FocusFlowTheme(
     darkTheme: Boolean = true,
@@ -97,6 +195,8 @@ fun FocusFlowTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = FocusFlowTypography,
+        shapes = FocusFlowShapes,
         content = content,
     )
 }
