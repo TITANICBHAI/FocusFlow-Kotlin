@@ -69,12 +69,25 @@ import java.text.DateFormat
 @Composable
 fun StandaloneBlockSetupScreen(
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+    initialPackage: String? = null,
     onBack: () -> Unit = {},
 ) {
     val settings by settingsViewModel.settings.collectAsState()
     val context = LocalContext.current
     val focusPinManager = remember(context) { FocusPinManager(context) }
     var modalVisible by remember { mutableStateOf(false) }
+    val initialBlockedPackages = remember(settings.standaloneBlockPackages, initialPackage) {
+        if (initialPackage.isNullOrBlank() || initialPackage in settings.standaloneBlockPackages) {
+            settings.standaloneBlockPackages
+        } else {
+            settings.standaloneBlockPackages + initialPackage
+        }
+    }
+    LaunchedEffect(initialPackage) {
+        if (!initialPackage.isNullOrBlank()) {
+            modalVisible = true
+        }
+    }
     val active = settings.standaloneBlockActive &&
         settings.standaloneBlockUntilMs > System.currentTimeMillis() &&
         settings.standaloneBlockPackages.isNotEmpty()
@@ -322,7 +335,7 @@ fun StandaloneBlockSetupScreen(
 
     StandaloneBlockModal(
         visible = modalVisible,
-        blockedPackages = settings.standaloneBlockPackages,
+        blockedPackages = initialBlockedPackages,
         blockUntilMs = settings.standaloneBlockUntilMs,
         locked = active,
         dailyAllowanceEntries = dailyAllowanceEntriesFromJson(settings.dailyAllowanceConfigJson),

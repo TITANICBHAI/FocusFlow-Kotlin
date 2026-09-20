@@ -27,6 +27,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -105,6 +108,7 @@ fun FocusFlowNavGraph(
     val drawerState = androidx.compose.material3.rememberDrawerState(
         androidx.compose.material3.DrawerValue.Closed,
     )
+    var pendingQuickBlockPackage by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun navigate(route: String) {
         if (route == currentRoute) return
@@ -147,7 +151,6 @@ fun FocusFlowNavGraph(
                             focusSessionViewModel = focusSessionViewModel,
                             appBootViewModel = appBootViewModel,
                             onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                            onOpenQuickBlock = { navigate(Routes.BLOCK_DEFENSE) },
                         )
                     }
                 }
@@ -177,6 +180,10 @@ fun FocusFlowNavGraph(
                                 }
                             },
                             onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                            onOpenQuickBlock = { packageName ->
+                                pendingQuickBlockPackage = packageName
+                                navigate(Routes.BLOCK_DEFENSE)
+                            },
                         )
                     }
                 }
@@ -252,7 +259,11 @@ fun FocusFlowNavGraph(
                 ScreenBoundary(Routes.BLOCK_DEFENSE) {
                     StandaloneBlockSetupScreen(
                         settingsViewModel = settingsViewModel,
-                        onBack = ::back,
+                        initialPackage = pendingQuickBlockPackage,
+                        onBack = {
+                            pendingQuickBlockPackage = null
+                            back()
+                        },
                     )
                 }
             }
