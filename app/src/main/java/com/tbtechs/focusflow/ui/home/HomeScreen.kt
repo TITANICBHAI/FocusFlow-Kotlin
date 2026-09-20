@@ -399,6 +399,7 @@ private fun EmptySchedule(
         Text("Create Task", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
     }
+}
 
 internal fun Task.isToday(): Boolean = runCatching {
     Instant.parse(startTime).atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now()
