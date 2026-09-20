@@ -13,13 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AllInclusive
@@ -70,6 +68,7 @@ import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -726,7 +725,7 @@ private fun AlwaysOnAppRow(
                         color = if (vpnEnabled) BrandPrimary else DarkTextSecondary,
                         modifier = Modifier.weight(1f),
                     )
-                    CompactToggle(
+                    FocusFlowSwitch(
                         checked = vpnEnabled,
                         onCheckedChange = { onToggleVpn() },
                     )
@@ -736,29 +735,6 @@ private fun AlwaysOnAppRow(
     }
 }
 
-@Composable
-private fun CompactToggle(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(width = 42.dp, height = 24.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (checked) BrandPrimary else DarkSurfaceVariant)
-            .clickable { onCheckedChange(!checked) }
-            .padding(2.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .offset(x = if (checked) 18.dp else 0.dp)
-                .clip(CircleShape)
-                .background(Color.White),
-        )
-    }
-}
 
 private fun legacyPinHash(pin: String): String =
     MessageDigest.getInstance("SHA-256")

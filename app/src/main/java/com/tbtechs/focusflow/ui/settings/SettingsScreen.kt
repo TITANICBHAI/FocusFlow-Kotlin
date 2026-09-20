@@ -45,7 +45,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,6 +75,7 @@ import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.common.PinType
 import com.tbtechs.focusflow.ui.common.PinVerifyModal
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
 import com.tbtechs.focusflow.ui.launcher.AllowedAppsModal
 import com.tbtechs.focusflow.ui.support.ReportIssueModal
@@ -191,7 +191,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         "Settings",
-                        fontSize = 26.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -721,7 +721,7 @@ fun SettingsScreen(
 private fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
-        fontSize = 12.sp,
+        fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
         color = DarkTextMuted,
         letterSpacing = 0.8.sp,
@@ -734,9 +734,9 @@ private fun SettingsCard(content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(16.dp),
         color = DarkCard,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
         border = BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -757,7 +757,7 @@ private fun SettingsActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -781,7 +781,7 @@ private fun SettingsActionRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                fontSize = 14.5.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (destructive) Color(0xFFEF4444) else DarkTextPrimary,
             )
@@ -789,7 +789,7 @@ private fun SettingsActionRow(
                 Spacer(Modifier.height(1.dp))
                 Text(
                     description,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     color = DarkTextSecondary,
                     lineHeight = 16.sp,
                 )
@@ -800,7 +800,7 @@ private fun SettingsActionRow(
             imageVector = Icons.Outlined.ChevronRight,
             contentDescription = null,
             tint = if (destructive) Color(0xFFEF4444).copy(alpha = 0.6f) else DarkTextMuted,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }
@@ -814,13 +814,13 @@ private fun SettingsToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                fontSize = 14.5.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = DarkTextPrimary,
             )
@@ -828,7 +828,7 @@ private fun SettingsToggleRow(
                 Spacer(Modifier.height(1.dp))
                 Text(
                     description,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     color = DarkTextSecondary,
                     lineHeight = 16.sp,
                 )
@@ -836,36 +836,6 @@ private fun SettingsToggleRow(
         }
         Spacer(Modifier.width(10.dp))
         control()
-    }
-}
-
-@Composable
-private fun FocusFlowSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val thumbOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (checked) 18.dp else 0.dp,
-        label = "settingsSwitchThumbOffset",
-    )
-
-    Box(
-        modifier = modifier
-            .size(width = 44.dp, height = 26.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .background(if (checked) BrandPrimary else Color(0xFF475569))
-            .clickable { onCheckedChange(!checked) },
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .offset(x = thumbOffset)
-                .padding(3.dp)
-                .size(20.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .background(Color.White),
-        )
     }
 }
 

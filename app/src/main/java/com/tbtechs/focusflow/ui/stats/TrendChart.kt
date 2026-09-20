@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,15 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun TrendChart(snapshot: AnalyticsSnapshot) = Card {
-    Column {
-        Text("COMPLETION OVER 12 WEEKS", style = MaterialTheme.typography.labelLarge)
+fun TrendChart(snapshot: AnalyticsSnapshot) = StatsCard {
+    Column(modifier = Modifier.padding(12.dp)) {
+        Text("COMPLETION OVER 12 WEEKS", fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         Text("The line is the pattern. The cards above explain it.")
         val points = snapshot.trends?.weekByWeek.orEmpty()
         val chartPoints = points.filter { it.hasData }

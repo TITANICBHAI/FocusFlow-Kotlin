@@ -1,10 +1,8 @@
 package com.tbtechs.focusflow.ui.home
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 
 internal val RefBackground = Color(0xFF0F172A)
 internal val RefHeader = Color(0xFF1E293B)
@@ -155,36 +154,9 @@ internal fun ReferenceToggleCard(
             Spacer(Modifier.size(2.dp))
             Text(description, fontSize = 13.sp, color = RefSecondary)
         }
-        ReferenceSwitch(
+        FocusFlowSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-        )
-    }
-}
-
-@Composable
-private fun ReferenceSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    val thumbOffset by animateDpAsState(
-        targetValue = if (checked) 18.dp else 0.dp,
-        label = "referenceSwitch",
-    )
-    Box(
-        modifier = Modifier
-            .size(44.dp, 26.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .background(if (checked) BrandPrimary else RefBorder)
-            .clickable { onCheckedChange(!checked) }
-            .padding(3.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .offset(x = thumbOffset)
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(Color.White),
         )
     }
 }

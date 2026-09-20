@@ -1,26 +1,26 @@
 package com.tbtechs.focusflow.ui.stats
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,9 +36,13 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
 import com.tbtechs.focusflow.analytics.AnalyticsWindow
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.DarkBackground
+import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
+import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
+import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 
 /** The superseding Stats experience; do not substitute UsageInsights or WeeklyReport. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsInsightsExperience(
     statsViewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory),
@@ -59,17 +63,21 @@ fun StatsInsightsExperience(
     }
 
     Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
-                Column {
-                    Text("Stats")
-                    Text(windowSubtitle(window), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            },
-            actions = {
-                ActiveStatusIndicator(onOpenActiveBlocks = onOpenActiveBlocks)
-            },
-        )
+        Row(
+            modifier = androidx.compose.ui.Modifier
+                .fillMaxWidth()
+                .background(DarkBackground)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                Text("Stats", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text(windowSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
+            }
+            ActiveStatusIndicator(
+                onOpenActiveBlocks = onOpenActiveBlocks,
+            )
+        }
         AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
         if (window == ANALYTICS_THREE_MONTHS && !localNoticeDismissed) {
             LocalOnlyNotice(onDismiss = {
@@ -145,18 +153,26 @@ private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (Analyt
         ANALYTICS_THREE_MONTHS to "3 Months",
         ANALYTICS_ALL_TIME to "All Time",
     )
-    SingleChoiceSegmentedButtonRow(
+    Row(
         modifier = androidx.compose.ui.Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
     ) {
-        windows.forEachIndexed { index, (window, label) ->
-            SegmentedButton(
-                selected = activeWindow == window,
-                onClick = { onSelect(window) },
-                modifier = androidx.compose.ui.Modifier.width(112.dp),
-                shape = SegmentedButtonDefaults.itemShape(index, windows.size),
-            ) { Text(label) }
+        windows.forEach { (window, label) ->
+            Box(
+                modifier = androidx.compose.ui.Modifier
+                    .clip(CircleShape)
+                    .background(if (activeWindow == window) BrandPrimary else DarkSurfaceVariant)
+                    .clickable { onSelect(window) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (activeWindow == window) Color.White else DarkTextSecondary,
+                )
+            }
         }
     }
 }

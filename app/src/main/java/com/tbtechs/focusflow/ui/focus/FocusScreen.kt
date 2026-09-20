@@ -56,8 +56,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -301,20 +299,20 @@ fun FocusScreen(
         containerColor = DarkBackground,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Focus",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                },
-                actions = {
-                    ActiveHeaderButton(session, settings, onOpenActiveBlocks)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp),
+            ) {
+                ActiveStatusIndicator(
+                    focusSession = session,
+                    settings = settings,
+                    onOpenActiveBlocks = onOpenActiveBlocks,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 8.dp, end = 16.dp),
+                )
+            }
         },
     ) { padding ->
         Column(
@@ -728,7 +726,7 @@ private fun ReadyToFocusPanel(
             // Big elevated timer icon badge
             Box(
                 modifier = Modifier
-                    .size(72.dp)
+                .size(54.dp)
                     .clip(CircleShape)
                     .background(BrandPrimary.copy(alpha = 0.15f))
                     .border(1.dp, BrandPrimary.copy(alpha = 0.3f), CircleShape),
@@ -738,13 +736,13 @@ private fun ReadyToFocusPanel(
                     Icons.Outlined.Timer,
                     contentDescription = null,
                     tint = BrandPrimary,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
             Spacer(Modifier.height(12.dp))
             Text(
                 "Ready to focus?",
-                fontSize = 24.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )
@@ -759,7 +757,9 @@ private fun ReadyToFocusPanel(
 
             Button(
                 onClick = onOpenSchedule,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 shape = RoundedCornerShape(12.dp),
             ) {
@@ -774,11 +774,11 @@ private fun ReadyToFocusPanel(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
                     .clickable(onClick = onOpenStandalone)
-                    .padding(16.dp),
+                    .padding(12.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -786,8 +786,8 @@ private fun ReadyToFocusPanel(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(DarkSurfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -798,7 +798,7 @@ private fun ReadyToFocusPanel(
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             "Block Apps Without a Task",
@@ -808,7 +808,7 @@ private fun ReadyToFocusPanel(
                         )
                         Text(
                             "Start standalone blocking independent of a schedule",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -914,7 +914,7 @@ private fun TaskFocusPanel(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp, start = 20.dp, end = 20.dp),
+                    .padding(top = 12.dp, start = 16.dp, end = 16.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -951,11 +951,11 @@ private fun TaskFocusPanel(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkCard)
-                    .border(1.dp, if (isFocusing) BrandPrimary.copy(alpha = 0.4f) else DarkBorder, RoundedCornerShape(18.dp))
-                    .padding(22.dp),
+                    .border(1.dp, if (isFocusing) BrandPrimary.copy(alpha = 0.4f) else DarkBorder, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -978,13 +978,13 @@ private fun TaskFocusPanel(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = task.title,
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
                     Text(
                         text = "${task.startLabel()} – ${task.endLabel()}",
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
                         color = DarkTextSecondary,
                     )
                     Spacer(Modifier.height(4.dp))
@@ -992,7 +992,7 @@ private fun TaskFocusPanel(
                         progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(8.dp)
+                            .height(6.dp)
                             .clip(RoundedCornerShape(4.dp)),
                         color = if (overdue) Color(0xFFEF4444) else BrandPrimary,
                         trackColor = DarkSurfaceVariant,

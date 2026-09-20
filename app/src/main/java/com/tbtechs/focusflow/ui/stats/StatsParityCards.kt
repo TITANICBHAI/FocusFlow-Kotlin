@@ -18,7 +18,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 import com.tbtechs.focusflow.analytics.LifetimeStats
 import kotlin.math.roundToInt
@@ -35,8 +35,8 @@ import kotlin.math.roundToInt
 @Composable
 fun FocusTimeHero(snapshot: AnalyticsSnapshot) {
     val minutes = snapshot.sessions.totalFocusMinutes.roundToInt()
-    Card {
-        Column(modifier = Modifier.padding(18.dp)) {
+    StatsHeroCard {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Outlined.Timer,
@@ -68,8 +68,8 @@ fun FocusTimeHero(snapshot: AnalyticsSnapshot) {
 @Composable
 fun ProductivityHeatmap(snapshot: AnalyticsSnapshot) {
     val days = listOf("S", "M", "T", "W", "T", "F", "S")
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
+    StatsCard {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
@@ -132,8 +132,8 @@ fun TemptationStats(
     onQuickBlock: (String?) -> Unit,
 ) {
     val blocking = snapshot.blocking
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
+    StatsCard {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Block, null, tint = MaterialTheme.colorScheme.tertiary)
                 Spacer(Modifier.width(8.dp))
@@ -172,7 +172,11 @@ fun TemptationStats(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Button(onClick = { onQuickBlock(packageName) }) {
+                                Button(
+                                    onClick = { onQuickBlock(packageName) },
+                                    modifier = Modifier.height(40.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
                                 Text("Block")
                             }
                         }
@@ -188,8 +192,8 @@ fun AllTimeStats(
     lifetime: LifetimeStats?,
     earnedAchievementCount: Int,
 ) {
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
+    StatsCard {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.EmojiEvents, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
@@ -214,8 +218,8 @@ fun AllTimeStats(
 @Composable
 private fun StatValue(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

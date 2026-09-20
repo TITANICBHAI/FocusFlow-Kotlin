@@ -1,7 +1,8 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,8 +12,8 @@ import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 fun TaskResultList(
     snapshot: AnalyticsSnapshot,
     title: String = "YESTERDAY'S TASKS",
-) = Card {
-    Column {
+) = StatsCard {
+    Column(modifier = androidx.compose.ui.Modifier.padding(12.dp)) {
         Text(title, style = MaterialTheme.typography.labelLarge)
         val rows = snapshot.tasks.resultRows.orEmpty()
         if (rows.isEmpty()) Text("No tasks were recorded yesterday.", color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -1,13 +1,14 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 import com.tbtechs.focusflow.analytics.SOURCE_LOADED
 import java.time.Duration
@@ -21,8 +22,8 @@ fun DataHealthNotice(snapshot: AnalyticsSnapshot) {
     } == true
     val stale = runCatching { Duration.between(Instant.parse(snapshot.generatedAt), Instant.now()).toMinutes() > 5 }.getOrDefault(false)
     if (!degraded && !stale) return
-    Card {
-        Row {
+    StatsCard {
+        Row(modifier = androidx.compose.ui.Modifier.padding(12.dp)) {
             Icon(Icons.Outlined.Info, null, tint = MaterialTheme.colorScheme.tertiary)
             Text(
                 when {

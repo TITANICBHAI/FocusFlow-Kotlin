@@ -1,0 +1,1408 @@
+Yes. We have now finished the **main task/navigation surface**. The next layer is the screens you enter from those tabs or Settings/Defense:
+
+```text
+Main tabs
+├── Schedule              ✅ already handled
+├── Focus                 ✅ already handled
+├── Defense               ✅ already handled
+├── Stats                 ✅ already handled
+└── Settings              ✅ already handled
+
+Internal screens
+├── Active
+├── Always-On Block List
+├── Keyword Blocker
+├── Home Launcher
+├── VPN Block List
+├── Permissions
+├── User Profile
+├── Password Protection
+├── Support
+│   ├── How to Use
+│   ├── Changelog
+│   ├── Diagnostics
+│   ├── Troubleshoot
+│   └── Report Issue
+├── Reports / Report
+├── Backup Import
+├── Legal
+│   ├── Privacy Policy
+│   └── Terms of Service
+└── Onboarding
+```
+
+I checked the **current Kotlin implementation in `app(3).zip`** against the actual React implementation. The React source gives us much better sizing information for these screens too.
+
+The big rule for this layer is:
+
+> **Do not use `TopAppBar`, stock `Card`, stock `Switch`, stock `Button`, or `OutlinedTextField` just because they are convenient. Build the internal screens from small explicit Compose primitives that match the React geometry.**
+
+---
+
+# First create one shared internal header
+
+This will remove a huge amount of the current Kotlin inconsistency.
+
+Create this in `ReferenceUi.kt`:
+
+```kotlin
+@Composable
+internal fun FocusFlowInternalHeader(
+    title: String,
+    subtitle: String? = null,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailing: @Composable (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(RefHeader)
+            .statusBarsPadding()
+            .padding(
+                horizontal = 16.dp,
+                vertical = 8.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Back",
+                tint = RefText,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = RefText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = RefSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        trailing?.invoke()
+    }
+}
+```
+
+Add the `TextOverflow` / `AutoMirrored` imports.
+
+This is deliberately small:
+
+```text
+back button = 40
+icon        = 22
+title       = 18
+subtitle    = 11
+padding     = 16 horizontal / 8 vertical
+```
+
+Those numbers come from the React internal headers.
+
+---
+
+# 1. Active screen
+
+### Current Kotlin problem
+
+`ActiveScreen.kt` currently uses:
+
+```kotlin
+TopAppBar
+```
+
+and:
+
+```kotlin
+ActiveSectionCard(
+    RoundedCornerShape(16.dp)
+    padding(16.dp)
+    icon 38.dp
+)
+```
+
+The React version is much tighter:
+
+```text
+header title      18
+subtitle          11
+content padding   12
+card radius       10
+card header pad   12
+icon              30
+title             15
+status            11
+detail rows       11
+action             11
+```
+
+### Agent instruction
+
+```text
+ACTIVE SCREEN — INTERNAL SCREEN PHASE
+
+File:
+ui/active/ActiveScreen.kt
+
+Keep ALL active-protection calculations and callbacks.
+
+Do not change:
+- focus session logic
+- standalone block logic
+- always-on logic
+- allowance logic
+- keyword blocking logic
+- VPN state logic
+- recurring schedules
+- PIN verification
+- stop/clear behavior
+
+Change presentation only.
+
+1. Delete the Material TopAppBar.
+
+2. Replace it with FocusFlowInternalHeader:
+
+    title = "Active"
+    subtitle = "Live status of your protections"
+
+    trailing:
+        existing ActiveStatusIndicator
+
+3. Main content:
+    horizontal padding = 12dp
+    vertical card gap = 12dp
+
+4. Active summary banner:
+    radius = 10dp
+    padding = 12dp
+    icon = 22dp
+    title = 15sp
+    description = 11sp
+
+5. ActiveSectionCard:
+    radius = 10dp
+    1dp border
+    header padding = 12dp
+    icon container = 30dp
+    icon = 17dp
+    title = 15sp
+    status = 11sp
+
+6. Card body:
+    horizontal padding = 12dp
+    bottom padding = 8dp
+
+7. Key/value rows:
+    label = 11sp
+    value = 11sp
+    vertical padding ~= 8dp
+
+8. Action buttons:
+    radius = 6dp
+    icon = 16dp
+    text = 11sp
+    vertical padding ~= 8dp
+
+9. Package lists:
+    radius = 6dp
+    padding = 8dp
+    package text = 11sp
+
+10. ActiveTodayFooter:
+    radius = 10dp
+    padding = 12dp
+
+11. Remove any oversized 16–18dp section spacing where React uses 8–12.
+
+12. Do not visually turn Active into a second Defense screen.
+It is a compact LIVE STATUS dashboard.
+
+Keep expand/collapse behavior exactly as it exists.
+```
+
+---
+
+# 2. Always-On Block List
+
+React gives us a very clear geometry here.
+
+```text
+header              18 / 11
+banner              radius 10 / padding 12
+search              ~48 high / radius 10
+app icon            40
+app title           13
+package             11
+checkbox            22
+row horizontal      16
+row vertical        8
+footer button       compact
+```
+
+### Agent instruction
+
+```text
+ALWAYS-ON SCREEN
+
+File:
+ui/alwayson/AlwaysOnScreen.kt
+
+Keep:
+- installed app loading
+- search
+- app selection
+- VPN selection
+- save
+- clear
+- PIN flow
+- VPN consent
+- error handling
+
+Presentation only:
+
+1. Replace TopAppBar with FocusFlowInternalHeader:
+
+    title = "Always-On Block List"
+    subtitle = existing subtitle
+
+    trailing:
+        existing Clear action
+
+2. Info/banner card:
+    margin = 12dp
+    padding = 12dp
+    radius = 10dp
+    body = 11sp
+
+3. Search field:
+    min height ~= 48dp
+    radius = 10dp
+    horizontal padding = 12dp
+    icon = 16dp
+    text = 13sp
+
+Do NOT use a giant Material OutlinedTextField.
+
+4. App rows:
+    horizontal padding = 16dp
+    vertical padding = 8dp
+    gap = 8dp
+
+5. App icon:
+    40dp x 40dp
+    radius = 6dp
+
+6. App name:
+    13sp
+    semibold
+
+7. Package name:
+    11sp
+
+8. Checkbox:
+    22dp x 22dp
+    radius = 6dp
+    1.5dp border
+
+9. VPN row:
+    keep current functionality
+    keep compact badge
+    do not enlarge controls
+
+10. Footer:
+    existing Save behavior
+    top divider
+    horizontal padding = 12dp
+    bottom = system inset + 12dp
+
+11. Save button:
+    radius = 10dp
+    text = 15sp
+    compact vertical padding
+
+12. Existing CompactToggle may be replaced by the shared
+FocusFlowSwitch where a switch is actually used.
+
+Do not change selection semantics or persistence.
+```
+
+---
+
+# 3. Keyword Blocker
+
+The current Kotlin version is relatively close, but it has too many large boxes and Material buttons.
+
+React structure:
+
+```text
+header             18 / 11
+content             16 padding
+intro               radius 16 / padding 12
+status              radius 16 / padding 12
+primary action      radius 16
+secondary action    radius 10
+preset cards        radius 16
+preset icon         28
+preset title        15
+preset desc         11
+```
+
+### Agent instruction
+
+```text
+KEYWORD BLOCKER
+
+File:
+ui/keyword/KeywordBlockerScreen.kt
+
+Preserve:
+- blocked words
+- preset lists
+- add/remove
+- clear all
+- defense PIN
+- preset confirmation
+- state persistence
+
+Replace the Material top bar with FocusFlowInternalHeader:
+
+    title = "Keyword Blocker"
+
+Content:
+
+    horizontal padding = 16dp
+    section spacing = 12dp
+
+Intro card:
+
+    radius = 16dp
+    padding = 12dp
+    title = 15sp
+    description = 11sp
+    line height ~= 18sp
+
+Status card:
+
+    radius = 16dp
+    padding = 12dp
+    status dot = 12dp
+    title = 15sp
+    description = 11sp
+
+Primary action:
+
+    radius = 16dp
+    compact height
+    icon = 18dp
+    text = 15sp
+
+Secondary action:
+
+    radius = 10dp
+    icon = 18dp
+    text = 13sp
+
+Section labels:
+
+    11sp
+    uppercase where the React implementation does so
+    muted
+    compact vertical margins
+
+Preset card:
+
+    radius = 16dp
+    padding = 12dp
+    emoji/icon = 28dp
+    title = 15sp
+    description = 11sp
+    count = 11sp
+
+Do NOT make preset cards 20dp+ radius.
+
+Do NOT use giant text fields/buttons.
+
+Retain all confirmation dialogs and defense-password flow.
+```
+
+---
+
+# 4. Home Launcher
+
+This is one of the most important internal screens because the current Kotlin version has **too much vertical bulk**.
+
+React uses:
+
+```text
+content padding       16
+status card radius    10
+status icon           44
+title                 13
+description           11
+preview cards         10
+search                48 high
+app icon              36
+app title             13
+package               11
+setting rows          12 / 8
+```
+
+### Agent instruction
+
+```text
+HOME LAUNCHER
+
+File:
+ui/launcher/LauncherSetupScreen.kt
+
+Keep all launcher functionality.
+
+1. Replace TopAppBar with FocusFlowInternalHeader:
+
+    title = "Home Launcher"
+    subtitle = existing subtitle
+
+2. Content:
+    padding = 16dp
+    section gap = 12dp
+
+3. Launcher status card:
+    radius = 10dp
+    padding = 12dp
+    icon container = 44dp
+    icon = ~24dp
+    title = 13sp
+    description = 11sp
+
+4. "Set as Default Home App":
+    radius = 10dp
+    compact button
+    text = 13sp
+    icon = 16dp
+
+5. Theme preview cards:
+    radius = 10dp
+    padding = 8dp
+    do not enlarge preview cards
+
+6. Launcher configuration cards:
+    radius = 10dp
+    border = 1dp
+    row padding = 12dp horizontal / 8dp vertical
+
+7. Setting titles:
+    13sp
+
+8. Setting descriptions:
+    11sp
+
+9. Search:
+    min height ~= 48dp
+    radius = 10dp
+    text = 13sp
+    icon = 16sp
+
+10. App rows:
+    icon = 36dp
+    radius = 6dp
+    title = 13sp
+    package = 11sp
+
+11. Segment controls:
+    do not use Material segmented buttons.
+    Use compact custom segments matching the React implementation.
+
+12. Replace any Material Switch with shared FocusFlowSwitch.
+
+13. Keep wallpaper picker, theme selection, launcher permission, and
+app ordering behavior unchanged.
+```
+
+---
+
+# 5. VPN Block List
+
+This should share a lot of the geometry with Always-On.
+
+### Agent instruction
+
+```text
+VPN BLOCK LIST
+
+File:
+ui/launcher/VpnBlockListScreen.kt
+
+Keep:
+- VPN configuration
+- app selection
+- search
+- overlay badges
+- save
+- clear
+- permission behavior
+- VPN state
+
+Use the same internal visual system as Always-On.
+
+Header:
+    title = "VPN Block List"
+    18sp
+    subtitle = 11sp
+    16dp horizontal padding
+
+Banner:
+    radius = 10dp
+    padding = 12dp
+    body = 11sp
+
+Search:
+    min height = 48dp
+    radius = 10dp
+    icon = 16dp
+    text = 13sp
+
+App rows:
+    horizontal padding = 16dp
+    vertical padding = 8dp
+    icon = 40dp
+    title = 13sp
+    package = 11sp
+
+Overlay badge:
+    9sp
+    compact pill
+    no oversized padding
+
+Checkbox:
+    22dp
+
+Footer:
+    12dp padding
+    system inset
+    compact save button
+
+Do not use a large Material form-field style.
+```
+
+---
+
+# 6. Permissions
+
+This one should **not** become another giant settings form.
+
+React has a very deliberate permission-card hierarchy:
+
+```text
+header
+tutorial banner
+progress card
+permission card
+    44 icon
+    15 title
+    11 desc
+    optional badge
+expanded:
+    compact explanation
+    action buttons
+```
+
+### Agent instruction
+
+```text
+PERMISSIONS SCREEN
+
+File:
+ui/permissions/PermissionsScreen.kt
+
+Keep every permission's existing Android deep-link/action logic.
+
+1. Replace TopAppBar with FocusFlowInternalHeader:
+
+    title = "Permissions"
+
+    trailing:
+        refresh action
+
+2. Content horizontal padding:
+    16dp
+
+3. Tutorial banner:
+    radius = 10dp
+    padding = 12dp
+    icon ~= 20dp
+    title = 15sp
+    body = 11sp
+
+4. Progress section:
+    radius = 10dp
+    padding = 12dp
+
+5. Progress labels:
+    11–13sp
+
+6. Progress bar:
+    compact; do not make it tall.
+
+7. Permission card:
+    radius = 16dp
+    border = 1dp
+    main padding = 12dp
+    gap = 12dp
+
+8. Permission icon container:
+    44dp x 44dp
+    radius = 10dp
+    icon ~= 22dp
+
+9. Permission title:
+    15sp
+    semibold
+
+10. Description:
+    11sp
+    line height ~= 17dp
+
+11. Optional badge:
+    small pill
+    11sp
+    compact padding
+
+12. Expanded content:
+    padding = 12dp
+    compact explanatory blocks
+
+13. Action buttons:
+    compact 13sp controls
+    radius = 10dp
+
+14. Locked state:
+    preserve functionality.
+    Use:
+        ring ~= 72dp
+        title ~= 22sp
+        body ~= 15sp
+
+    Do not make the entire screen a huge centered card.
+
+15. Replace Material Switch/controls with shared primitives where used.
+
+Do not change permission state calculations.
+```
+
+---
+
+# 7. User Profile
+
+This is an important one because the React implementation is **much denser** than the Kotlin version.
+
+React says:
+
+```text
+header:
+    15/13-ish
+content:
+    16 padding
+sections:
+    18 title
+fields:
+    48 high
+chips:
+    compact
+stepper:
+    42 high
+journey card:
+    radius 16
+stat tiles:
+    compact
+```
+
+The current Kotlin `UserProfileScreen.kt` has a lot of:
+
+```kotlin
+RoundedCornerShape(16.dp)
+padding(18.dp)
+fontSize 16.sp
+```
+
+which makes it feel heavier.
+
+### Agent instruction
+
+```text
+USER PROFILE
+
+File:
+ui/profile/UserProfileScreen.kt
+
+Keep:
+- all profile fields
+- goals
+- preferences
+- save
+- skip
+- usage information
+- profile persistence
+
+1. Header:
+    custom internal header
+    title = 18sp
+    back button = 40dp
+
+2. Screen:
+    padding = 16dp
+    section gap = 24dp
+
+3. Intro text:
+    13sp
+    line height ~= 20dp
+
+4. Welcome banner:
+    radius = 16dp
+    padding = 12dp
+    icon = 36dp
+    title = 15sp
+    body = 11sp
+
+5. Section title:
+    15sp / semibold
+
+6. Text input:
+    exact target:
+        height = 48dp
+        radius = 10dp
+        horizontal padding = 12dp
+        text = 15sp
+
+    Do not use a giant 60–70dp Material field.
+
+7. Selection chips:
+    compact
+    horizontal padding ~= 12dp
+    vertical ~= 8dp
+    radius = full pill
+    text = 13sp
+
+8. Stepper buttons:
+    42dp x 42dp
+    radius = 10dp
+
+9. Goal value:
+    42dp high
+    compact purple surface
+    value = 18sp
+
+10. Journey card:
+    radius = 16dp
+    padding = 12dp
+
+11. Stat tiles:
+    radius = 10dp
+    padding ~= 8–12dp
+    value = 18sp
+    label = 10sp
+
+12. Goal progress:
+    height = 6dp
+
+13. Usage link:
+    radius = 10dp
+    compact row
+
+14. Save button:
+    radius = 16dp
+    text = 15sp
+
+15. Bottom sheet/detail usage modal should also follow the same compact
+    card language rather than a large generic Material sheet.
+
+Keep all data/state logic unchanged.
+```
+
+---
+
+# 8. Password Protection
+
+This one is structurally simple.
+
+React:
+
+```text
+header
+info card
+password card
+    icon 32
+    title 13
+    description 11
+    actions compact
+```
+
+### Agent instruction
+
+```text
+PASSWORD PROTECTION
+
+File:
+ui/profile/PasswordProtectionScreen.kt
+
+Keep all PIN/Password logic intact.
+
+1. Replace TopAppBar with FocusFlowInternalHeader.
+
+2. Content:
+    padding = 16dp
+    gap = 12dp
+
+3. Info banner:
+    radius = 10dp
+    padding = 12dp
+    body = 13sp
+    line height ~= 20dp
+
+4. Password card:
+    radius = 16dp
+    padding = 12dp
+
+5. Icon:
+    container = 32dp
+    icon ~= 18dp
+
+6. Title:
+    13sp
+    semibold
+
+7. Description:
+    11sp
+    line height ~= 17dp
+
+8. Action row:
+    compact
+    primary button and outline button
+    no giant Material controls
+
+9. Badge:
+    very compact
+    11sp
+
+10. Keep PinSetupModal / PinVerifyModal behavior.
+    Only update their visual treatment later in the shared modal phase.
+```
+
+---
+
+# 9. Support screens
+
+The screens:
+
+```text
+HowToUseScreen
+ChangelogScreen
+ReportScreen
+ReportsScreen
+```
+
+should share the same internal header and **content-first layout**.
+
+They shouldn't get the oversized app-bar/card treatment.
+
+### Agent instruction
+
+```text
+SUPPORT SCREENS
+
+Files:
+
+ui/support/HowToUseScreen.kt
+ui/support/ChangelogScreen.kt
+
+ui/stats/ReportScreen.kt
+ui/stats/ReportsScreen.kt
+
+Presentation changes only.
+
+Use FocusFlowInternalHeader on each screen.
+
+Header:
+    title = 18sp
+    subtitle = 11sp if present
+    back = 40dp / icon 22dp
+
+Content:
+    horizontal padding = 16dp
+    section gap = 12dp
+
+Content cards:
+    radius = 16dp
+    padding = 12dp
+
+Body:
+    13sp
+    line height ~= 19–20dp
+
+Section titles:
+    15sp
+
+Small supporting labels:
+    11sp
+
+Buttons:
+    compact
+    radius = 10–16 depending on role
+
+Do not use Material typography styles such as headlineSmall/bodyLarge
+unless their exact size matches the React source.
+
+For Reports:
+    preserve analytics/report calculations.
+    only change presentation.
+```
+
+---
+
+# 10. Diagnostics / Troubleshoot / Report Issue
+
+These are **internal modals**, and they should be handled after the base internal screens.
+
+The React versions use compact sheets/dialogs, not giant Material dialogs.
+
+### Agent instruction
+
+```text
+SUPPORT MODALS — DO NOT REWRITE LOGIC
+
+Files:
+
+ui/support/DiagnosticsModal.kt
+ui/support/TroubleshootModal.kt
+ui/support/ReportIssueModal.kt
+
+Keep all diagnostic/reporting functionality.
+
+Presentation:
+
+- dark surface
+- radius around 16–24dp
+- compact header
+- content padding 16dp
+- title ~= 18sp
+- body ~= 13sp
+- controls ~= 48dp high
+- buttons ~= 15sp
+- no giant AlertDialog typography
+- no full-screen oversized Material dialog unless the React screen is
+  actually full-screen
+
+Use the same FocusFlow text fields/buttons created earlier.
+
+Diagnostics output should remain scrollable and copyable.
+
+Report submission behavior must not change.
+```
+
+---
+
+# 11. Backup Import
+
+This is another screen where the current Kotlin source is visibly still using stock Material:
+
+```kotlin
+Card
+Switch
+Button
+OutlinedButton
+MaterialTheme.typography.headlineSmall
+```
+
+The React design is compact and explicit.
+
+### Agent instruction
+
+```text
+BACKUP IMPORT
+
+File:
+ui/backup/ImportConfirmScreen.kt
+
+Keep:
+- backup parsing
+- restoreSettings
+- restoreTasks
+- replaceTasks
+- current focus protection
+- import execution
+- success/error results
+
+Replace Material layout with explicit FocusFlow surfaces.
+
+Header:
+    internal header
+    title = 18sp
+    back = 40dp
+
+Content:
+    padding = 16dp
+    gap = 12dp
+
+Hero:
+    radius = 16dp
+    padding = 24dp
+    icon = 56dp
+    title = 22sp
+    body = 15sp
+
+Summary card:
+    radius = 10dp
+    padding = 12dp
+
+Choice cards:
+    radius = 10dp
+    padding = 12dp
+
+Replace the stock Material Switch with shared FocusFlowSwitch.
+
+Warning:
+    radius = 10dp
+    padding = 12dp
+    warning body ~= 15sp
+
+Import button:
+    radius = 10dp
+    text = 15sp
+
+Cancel:
+    radius = 10dp
+    15sp
+
+Do not let MaterialTheme.typography determine the visual size.
+
+Keep destructive replace semantics exactly as implemented.
+```
+
+---
+
+# 12. Legal screens
+
+These don't need aggressive redesign.
+
+The React implementation is:
+
+```text
+small header
+large centered hero
+60–76 icon circle
+28 title for Terms
+22 title for Privacy
+15 body
+16 radius cards
+```
+
+The current Kotlin is surprisingly close, except it tends to use larger/material defaults elsewhere.
+
+### Agent instruction
+
+```text
+LEGAL SCREENS
+
+Files:
+
+ui/legal/PrivacyPolicyScreen.kt
+ui/legal/TermsOfServiceScreen.kt
+
+Keep legal text EXACTLY as current source.
+Do not alter legal wording.
+
+Replace TopAppBar with the shared internal header.
+
+Privacy:
+    hero icon circle = 60dp
+    icon = 28dp
+    hero title = 22sp
+    hero subtitle = 15sp
+
+Terms:
+    hero icon circle = 76dp
+    icon ~= 34dp
+    title = 28sp
+    subtitle = 15sp
+
+Content:
+    padding horizontal = 16dp
+    section gap = 12dp
+
+Policy/section card:
+    radius = 16dp
+    padding = 12dp
+    section title = 15sp
+    body = 15sp
+    line height ~= 21dp
+
+External link:
+    compact
+    13sp
+
+Acceptance checkbox:
+    22dp
+    radius = 6dp
+
+Accept/Decline:
+    compact 15sp controls
+
+Do not change any legal content or acceptance semantics.
+```
+
+---
+
+# 13. Onboarding
+
+This is larger, but the React implementation already gives us the exact component system.
+
+The important point is **don't make onboarding look like the current generic Android wizard**.
+
+React uses the same permission cards as the permissions screen:
+
+```text
+44 icon
+15 title
+11 description
+12 padding
+16 card radius
+compact actions
+```
+
+### Agent instruction
+
+```text
+ONBOARDING
+
+File:
+ui/onboarding/OnboardingScreen.kt
+
+Preserve onboarding state machine, step transitions, permission handling,
+PIN setup, skip behavior, and persistence.
+
+Do not change logic.
+
+Use the same compact permission-card primitives as PermissionsScreen.
+
+Core dimensions:
+
+    card radius = 16dp
+    card padding = 12dp
+    icon = 44dp
+    title = 15sp
+    description = 11sp
+    action = compact 13sp
+
+"Why these permissions?" callout:
+    radius = 10dp
+    padding = 8–12dp
+    title = 13–15sp
+    body = 11sp
+
+PIN card:
+    same geometry as permission cards
+    icon = 44dp
+    title = 15sp
+    body = 11sp
+
+Main Enter/Continue button:
+    radius = 16dp
+    text = 18sp only when it is the primary onboarding action
+
+Do not enlarge every section to onboarding-specific giant cards.
+
+Reuse the same FocusFlowCard/FocusFlowSwitch/FocusFlowInternalHeader
+primitives where applicable.
+```
+
+---
+
+# 14. The internal app screens should now use this hierarchy
+
+This is the important design distinction:
+
+```text
+INTERNAL SCREEN SHELL
+
+16dp ── screen edge
+       ↓
+      header
+       ↓
+12dp ─ section gap
+       ↓
+┌────────────────────────────┐
+│ compact card               │
+│ 12dp internal padding      │
+│ 15sp title                 │
+│ 11–13sp supporting text    │
+└────────────────────────────┘
+       ↓
+12dp
+       ↓
+┌────────────────────────────┐
+│ another card               │
+└────────────────────────────┘
+```
+
+Not:
+
+```text
+16dp
+↓
+┌──────────────────────────────┐
+│                              │
+│      20sp / 22sp title       │
+│                              │
+│       huge controls          │
+│                              │
+└──────────────────────────────┘
+↓
+20–24dp
+```
+
+That is the recurring source of the "cheap / oversized Android app" feeling.
+
+---
+
+# 15. One more shared component I want the agent to add
+
+Create:
+
+```kotlin
+@Composable
+internal fun FocusFlowInternalCard(
+    modifier: Modifier = Modifier,
+    radius: Dp = 16.dp,
+    contentPadding: Dp = 12.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(radius))
+            .background(RefCard)
+            .border(
+                1.dp,
+                RefBorder,
+                RoundedCornerShape(radius),
+            )
+            .padding(contentPadding),
+        content = content,
+    )
+}
+```
+
+Then screens can use:
+
+```kotlin
+FocusFlowInternalCard {
+    ...
+}
+```
+
+instead of repeatedly doing:
+
+```kotlin
+Box(
+    Modifier
+        .clip(...)
+        .background(...)
+        .border(...)
+        .padding(...)
+)
+```
+
+**But** allow `radius` to vary:
+
+```text
+Active / AlwaysOn / VPN / Launcher:
+    10dp
+
+Keyword / Profile / Permissions:
+    16dp
+
+Hero:
+    16–24dp
+```
+
+Do not turn every card into 24dp.
+
+---
+
+# 16. Order for the agent
+
+Since you've already sent the main-tab instructions, I'd now send this as a **separate internal-screen pass** with this order:
+
+```text
+PHASE INTERNAL-1
+    ActiveScreen
+    AlwaysOnScreen
+    KeywordBlockerScreen
+    LauncherSetupScreen
+    VpnBlockListScreen
+
+PHASE INTERNAL-2
+    PermissionsScreen
+    UserProfileScreen
+    PasswordProtectionScreen
+
+PHASE INTERNAL-3
+    HowToUseScreen
+    ChangelogScreen
+    ReportsScreen
+    ReportScreen
+    DiagnosticsModal
+    TroubleshootModal
+    ReportIssueModal
+
+PHASE INTERNAL-4
+    ImportConfirmScreen
+    PrivacyPolicyScreen
+    TermsOfServiceScreen
+    OnboardingScreen
+```
+
+And tell it:
+
+```text
+Complete only the specified phase and stop.
+
+Do not modify the five main tabs, bottom navigation, task editor,
+task detail, or schedule implementation during this internal-screen pass.
+
+Do not alter business logic.
+Do not introduce fake state.
+Do not alter text/content unless the existing Kotlin implementation
+already differs from its React counterpart and the text is clearly UI copy
+rather than domain/legal content.
+
+Use the React implementation as the sizing and geometry source of truth.
+```
+
+That gives us a clean progression instead of letting the agent touch fifty files at once.
+
+The **next internal group I'd tackle first is `ActiveScreen + AlwaysOn + KeywordBlocker + HomeLauncher + VPN Block List`**, because they're all protection-management screens and can share the same compact internal components.

@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,8 +20,8 @@ import kotlin.math.roundToInt
 fun PhoneUsageSummary(
     snapshot: AnalyticsSnapshot,
     onQuickBlock: (String?) -> Unit = {},
-) = Card {
-    Column(modifier = androidx.compose.ui.Modifier.padding(16.dp)) {
+) = StatsCard {
+    Column(modifier = androidx.compose.ui.Modifier.padding(12.dp)) {
         Text("ANDROID USAGESTATS", style = MaterialTheme.typography.labelLarge)
         Text("ON DEVICE", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
         val usage = snapshot.phoneUsage
@@ -55,7 +55,11 @@ fun PhoneUsageSummary(
                             )
                         }
                         Spacer(Modifier.width(8.dp))
-                        Button(onClick = { onQuickBlock(app.packageName) }) {
+                        Button(
+                            onClick = { onQuickBlock(app.packageName) },
+                            modifier = Modifier.height(40.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                        ) {
                             Text("Block")
                         }
                     }

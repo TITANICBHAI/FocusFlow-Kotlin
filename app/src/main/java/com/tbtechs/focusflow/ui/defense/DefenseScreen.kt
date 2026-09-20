@@ -49,8 +49,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -82,6 +80,7 @@ import com.tbtechs.focusflow.ui.common.PinRotationModal
 import com.tbtechs.focusflow.ui.common.PinType
 import com.tbtechs.focusflow.ui.settings.DailyAllowanceModal
 import com.tbtechs.focusflow.ui.settings.dailyAllowanceEntriesFromJson
+import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -185,8 +184,8 @@ fun DefenseScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(BrandPrimary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -200,7 +199,7 @@ fun DefenseScreen(
                         Column {
                             Text(
                                 text = "Defense",
-                                fontSize = 20.sp,
+                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
@@ -238,10 +237,10 @@ fun DefenseScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                             .clip(RoundedCornerShape(10.dp))
                             .background(BrandPrimary.copy(alpha = 0.12f))
-                            .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
-                            .padding(14.dp),
+                             .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                             .padding(12.dp),
                     ) {
                         Row(
                             verticalAlignment = Alignment.Top,
@@ -280,10 +279,10 @@ fun DefenseScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                             .clip(RoundedCornerShape(10.dp))
                             .background(BrandPrimary.copy(alpha = 0.12f))
-                            .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
-                            .padding(14.dp),
+                             .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                             .padding(12.dp),
                     ) {
                         Row(
                             verticalAlignment = Alignment.Top,
@@ -823,10 +822,10 @@ internal fun PinPrompt(action: PinAction, onClose: () -> Unit) {
 
 @Composable
 private fun DefenseSection(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.8.sp,
             color = DarkTextMuted,
@@ -835,9 +834,9 @@ private fun DefenseSection(title: String, content: @Composable () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(DarkCard)
-                .border(1.dp, DarkBorder, RoundedCornerShape(16.dp)),
+                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp)),
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 content()
@@ -856,7 +855,7 @@ private fun SettingSwitch(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -875,33 +874,11 @@ private fun SettingSwitch(
                 color = DarkTextSecondary,
             )
         }
-        CompactToggle(
+        FocusFlowSwitch(
             checked = checked,
             onCheckedChange = onChange,
         )
     }
-}
-
-@Composable
-private fun CompactToggle(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = Modifier
-            .height(32.dp)
-            .width(52.dp),
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = Color.White,
-            checkedTrackColor = BrandPrimary,
-            checkedBorderColor = BrandPrimary,
-            uncheckedThumbColor = Color(0xFFCBD5E1),
-            uncheckedTrackColor = Color(0xFF3B465A),
-            uncheckedBorderColor = Color(0xFF526078),
-        ),
-    )
 }
 
 @Composable
@@ -916,7 +893,7 @@ private fun SettingButton(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -924,7 +901,7 @@ private fun SettingButton(
             imageVector = icon,
             contentDescription = null,
             tint = BrandPrimary,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -945,7 +922,7 @@ private fun SettingButton(
             imageVector = Icons.Outlined.KeyboardArrowRight,
             contentDescription = "Open",
             tint = DarkTextMuted,
-            modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(16.dp),
         )
     }
 }
