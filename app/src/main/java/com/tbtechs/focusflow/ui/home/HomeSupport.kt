@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -71,16 +72,17 @@ internal fun ActiveTaskBanner(
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val isRunning = task.isRunningNow()
-    val borderColor = if (isRunning) BrandPrimary.copy(alpha = 0.4f) else Color(0xFFEF4444).copy(alpha = 0.4f)
-    val badgeBg = if (isRunning) BrandPrimary.copy(alpha = 0.15f) else Color(0xFFEF4444).copy(alpha = 0.15f)
-    val badgeColor = if (isRunning) BrandPrimary else Color(0xFFF87171)
+    val borderColor = if (isRunning) Color.White.copy(alpha = 0.35f) else Color(0xFFEF4444).copy(alpha = 0.4f)
+    val badgeBg = if (isRunning) Color.White.copy(alpha = 0.16f) else Color(0xFFEF4444).copy(alpha = 0.15f)
+    val badgeColor = if (isRunning) Color.White else Color(0xFFF87171)
+    val bannerColor = if (isRunning) BrandPrimary else DarkCard
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = dimensions.screenPadding, vertical = 8.dp)
             .clip(MaterialTheme.shapes.medium)
-            .background(DarkCard)
+            .background(bannerColor)
             .border(1.dp, borderColor, MaterialTheme.shapes.medium)
             .clickable(onClick = onOpen)
             .padding(14.dp),
@@ -109,13 +111,13 @@ internal fun ActiveTaskBanner(
                     task.title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkTextPrimary,
+                        color = if (isRunning) Color.White else DarkTextPrimary,
                 )
                 Text(
                     if (isRunning) "Until ${task.endTime.asLocalTime()}"
                     else "Ended ${task.endTime.asLocalTime()} · pick one",
                     fontSize = 12.sp,
-                    color = DarkTextSecondary,
+                    color = if (isRunning) Color.White.copy(alpha = 0.82f) else DarkTextSecondary,
                 )
             }
 
@@ -190,6 +192,7 @@ internal fun HomeTextField(
     onValueChange: (String) -> Unit,
     label: String,
     singleLine: Boolean = true,
+    multilineMinHeight: Dp = 160.dp,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
@@ -198,7 +201,7 @@ internal fun HomeTextField(
         onValueChange = onValueChange,
         placeholder = label,
         singleLine = singleLine,
-        minHeight = if (singleLine) null else 160.dp,
+        minHeight = if (singleLine) null else multilineMinHeight,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
     )

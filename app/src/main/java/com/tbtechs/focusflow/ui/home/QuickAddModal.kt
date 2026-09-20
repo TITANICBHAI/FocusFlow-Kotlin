@@ -214,7 +214,7 @@ fun QuickAddModal(
                     "New Task",
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    fontSize = 24.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                 )
@@ -240,7 +240,13 @@ fun QuickAddModal(
             ReferenceSectionLabel("Title")
             HomeTextField(title, { title = it }, "Title")
             ReferenceSectionLabel("Notes (optional)")
-            HomeTextField(notes, { notes = it }, "Notes (optional)", singleLine = false)
+            HomeTextField(
+                notes,
+                { notes = it },
+                "Notes (optional)",
+                singleLine = false,
+                multilineMinHeight = 112.dp,
+            )
 
             // Date & Time pickers
             ReferenceSectionLabel("Start")
@@ -347,6 +353,8 @@ fun QuickAddModal(
                             text = opt.replaceFirstChar(Char::titlecase),
                             selected = isSelected,
                             modifier = Modifier.weight(1f),
+                            fontSize = 12.sp,
+                            horizontalPadding = 4.dp,
                             selectedColor = if (opt == "medium") RefBlue else BrandPrimary,
                             onClick = { priority = opt },
                         )

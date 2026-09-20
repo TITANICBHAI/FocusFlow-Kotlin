@@ -284,6 +284,7 @@ internal fun ReferencePill(
     modifier: Modifier = Modifier,
     selectedColor: Color = BrandPrimary,
     fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
     onClick: (() -> Unit)? = null,
 ) {
     val shape = CircleShape
@@ -297,7 +298,7 @@ internal fun ReferencePill(
                 shape = shape,
             )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = horizontalPadding, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

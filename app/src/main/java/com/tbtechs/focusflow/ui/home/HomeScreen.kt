@@ -208,7 +208,6 @@ fun HomeScreen(
                                 },
                                 onSkip = { skipTask = task },
                                 onExtend = { extendTask = task },
-                                onStartFocus = focusSessionViewModel::startFocusMode,
                             )
                         }
                     }

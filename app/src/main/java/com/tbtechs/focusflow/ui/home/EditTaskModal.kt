@@ -219,7 +219,7 @@ fun EditTaskModal(
                     "Edit Task",
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    fontSize = 24.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                 )
@@ -249,9 +249,9 @@ fun EditTaskModal(
             ) {
                 Icon(Icons.Outlined.Description, contentDescription = "Notes", tint = RefSecondary, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.width(14.dp))
-                Text("Notes", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = RefText)
-                Spacer(Modifier.width(12.dp))
-                Text("Optional", fontSize = 16.sp, color = RefSecondary, modifier = Modifier.weight(1f))
+                Text("Notes", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                Spacer(Modifier.width(8.dp))
+                Text("Optional", fontSize = 13.sp, color = RefSecondary, modifier = Modifier.weight(1f))
                 Icon(
                     if (notesExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (notesExpanded) "Collapse notes" else "Expand notes",
@@ -260,7 +260,13 @@ fun EditTaskModal(
                 )
             }
             if (notesExpanded) {
-                HomeTextField(notes, { notes = it }, "Add details...", singleLine = false)
+                HomeTextField(
+                    notes,
+                    { notes = it },
+                    "Add details...",
+                    singleLine = false,
+                    multilineMinHeight = 112.dp,
+                )
             }
 
             // Start Time Selector
@@ -328,6 +334,8 @@ fun EditTaskModal(
                             text = opt.replaceFirstChar(Char::titlecase),
                             selected = isSelected,
                             modifier = Modifier.weight(1f),
+                            fontSize = 12.sp,
+                            horizontalPadding = 4.dp,
                             selectedColor = if (opt == "medium") RefBlue else BrandPrimary,
                             onClick = { priority = opt },
                         )

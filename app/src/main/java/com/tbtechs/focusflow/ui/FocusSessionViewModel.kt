@@ -220,8 +220,28 @@ class FocusSessionViewModel(
                     }.getOrDefault(emptyList())
                 }
 
-            val startMs = Instant.parse(task.startTime).toEpochMilli()
-            val endMs   = Instant.parse(task.endTime).toEpochMilli()
+            val scheduledStartMs = Instant.parse(task.startTime).toEpochMilli()
+            val scheduledEndMs = Instant.parse(task.endTime).toEpochMilli()
+            val now = Instant.now()
+            val nowMs = now.toEpochMilli()
+            val shouldStartNow = scheduledStartMs > nowMs || scheduledEndMs <= nowMs
+            val startMs = if (shouldStartNow) nowMs else scheduledStartMs
+            val endMs = if (shouldStartNow) {
+                nowMs + (scheduledEndMs - scheduledStartMs).coerceAtLeast(60_000L)
+            } else {
+                scheduledEndMs
+            }
+
+            if (shouldStartNow) {
+                taskRepository.updateTask(
+                    task.copy(
+                        startTime = Instant.ofEpochMilli(startMs).toString(),
+                        endTime = Instant.ofEpochMilli(endMs).toString(),
+                        status = "active",
+                        updatedAt = now.toString(),
+                    ),
+                )
+            }
 
             val session = FocusSession(
                 taskId          = task.id,

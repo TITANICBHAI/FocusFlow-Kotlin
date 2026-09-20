@@ -17,7 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,7 +61,6 @@ fun TaskCard(
     onComplete: (String) -> Unit,
     onSkip: (String) -> Unit,
     onExtend: (Task) -> Unit,
-    onStartFocus: (String) -> Unit,
 ) {
     val complete = task.status == "completed"
     val closed = complete || task.status == "skipped"
@@ -156,14 +156,14 @@ fun TaskCard(
                         .clip(RoundedCornerShape(10.dp))
                         .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
                         .clickable {
-                            if (isActive) onComplete(task.id) else onStartFocus(task.id)
+                            if (isActive) onComplete(task.id) else onSkip(task.id)
                         },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.PlayArrow,
-                        contentDescription = if (isActive) "Complete task" else "Start task",
-                        tint = DarkTextSecondary,
+                        imageVector = if (isActive) Icons.Outlined.Check else Icons.Outlined.SkipNext,
+                        contentDescription = if (isActive) "Complete task" else "Skip task",
+                        tint = if (isActive) Color.White else DarkTextSecondary,
                         modifier = Modifier.size(18.dp),
                     )
                 }
