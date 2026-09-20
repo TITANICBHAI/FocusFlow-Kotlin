@@ -71,6 +71,7 @@ import com.tbtechs.focusflow.ui.theme.InfoBodyText
 import com.tbtechs.focusflow.ui.theme.InfoBorder
 import com.tbtechs.focusflow.ui.theme.InfoSurface
 import com.tbtechs.focusflow.ui.theme.InfoText
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -84,6 +85,7 @@ fun PermissionsScreen(
     onBack: () -> Unit = {},
     onConfigureLauncher: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -175,7 +177,7 @@ fun PermissionsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
+                    .padding(dimensions.screenPadding),
                 verticalArrangement = Arrangement.Center,
             ) {
                 Box(
@@ -224,8 +226,8 @@ fun PermissionsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(horizontal = dimensions.screenPadding),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
                 item { RestrictedSettingsBanner() }
                 item {

@@ -53,6 +53,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 /**
  * Screenshot 6c: ActiveTaskBanner for running or awaiting-decision tasks
@@ -66,6 +67,7 @@ internal fun ActiveTaskBanner(
     onSkip: () -> Unit,
     onStartFocus: () -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val isRunning = task.isRunningNow()
     val borderColor = if (isRunning) BrandPrimary.copy(alpha = 0.4f) else Color(0xFFEF4444).copy(alpha = 0.4f)
     val badgeBg = if (isRunning) BrandPrimary.copy(alpha = 0.15f) else Color(0xFFEF4444).copy(alpha = 0.15f)
@@ -74,10 +76,10 @@ internal fun ActiveTaskBanner(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .padding(horizontal = dimensions.screenPadding, vertical = 8.dp)
+            .clip(MaterialTheme.shapes.medium)
             .background(DarkCard)
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .border(1.dp, borderColor, MaterialTheme.shapes.medium)
             .clickable(onClick = onOpen)
             .padding(14.dp),
     ) {
@@ -193,7 +195,7 @@ internal fun HomeTextField(
         label = { Text(label, color = DarkTextMuted) },
         singleLine = singleLine,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = DarkTextPrimary,
             unfocusedTextColor = DarkTextPrimary,
@@ -213,7 +215,7 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         containerColor = DarkCard,
         titleContentColor = DarkTextPrimary,
         textContentColor = DarkTextSecondary,
@@ -239,9 +241,9 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(MaterialTheme.shapes.small)
                                 .background(if (minutes == opt.toString()) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (minutes == opt.toString()) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
+                                .border(1.dp, if (minutes == opt.toString()) BrandPrimary else DarkBorder, MaterialTheme.shapes.small)
                                 .clickable { minutes = opt.toString() }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
@@ -262,7 +264,7 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
             Button(
                 onClick = { minutes.toIntOrNull()?.takeIf { it > 0 }?.let(onExtend) },
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Extend")
@@ -271,7 +273,7 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Cancel", color = DarkTextSecondary)

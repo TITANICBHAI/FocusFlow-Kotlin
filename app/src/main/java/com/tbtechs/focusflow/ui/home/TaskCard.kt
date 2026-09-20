@@ -57,6 +57,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
@@ -77,6 +78,7 @@ fun TaskCard(
     onExtend: (Task) -> Unit,
     onStartFocus: (String) -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val complete = task.status == "completed"
     val closed = complete || task.status == "skipped"
     val accent = taskAccent(task.color)
@@ -96,10 +98,10 @@ fun TaskCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .padding(horizontal = dimensions.screenPadding, vertical = 6.dp)
+            .clip(MaterialTheme.shapes.medium)
             .background(DarkCard)
-            .border(1.dp, cardBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, cardBorder, MaterialTheme.shapes.medium)
             .alpha(if (closed) 0.55f else 1f)
             .clickable(onClick = onOpen)
             .semantics { role = Role.Button },
@@ -120,7 +122,7 @@ fun TaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(14.dp),
+                    .padding(dimensions.cardPadding),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 // Header row: Title, focus shield icon, priority badge
@@ -143,6 +145,8 @@ fun TaskCard(
                         fontWeight = FontWeight.Bold,
                         color = if (closed) DarkTextSecondary else DarkTextPrimary,
                         textDecoration = if (complete) TextDecoration.LineThrough else null,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))

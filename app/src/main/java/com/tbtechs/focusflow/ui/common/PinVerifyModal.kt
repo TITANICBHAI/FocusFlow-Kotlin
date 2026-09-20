@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -85,7 +86,7 @@ fun PinVerifyModal(
 
     AlertDialog(
         onDismissRequest = onCancel,
-        shape = RoundedCornerShape(24.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         containerColor = DarkCard,
         titleContentColor = DarkTextPrimary,
         textContentColor = DarkTextSecondary,
@@ -93,7 +94,7 @@ fun PinVerifyModal(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(BrandPrimary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -144,7 +145,7 @@ fun PinVerifyModal(
                             )
                         }
                     },
-                    shape = RoundedCornerShape(14.dp),
+                     shape = MaterialTheme.shapes.medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = DarkSurfaceVariant,
                         unfocusedContainerColor = DarkSurfaceVariant,
@@ -164,7 +165,7 @@ fun PinVerifyModal(
         confirmButton = {
             Button(
                 onClick = ::confirm,
-                shape = RoundedCornerShape(14.dp),
+                 shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
@@ -174,7 +175,7 @@ fun PinVerifyModal(
         dismissButton = {
             TextButton(
                 onClick = onCancel,
-                shape = RoundedCornerShape(14.dp),
+                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Cancel", color = DarkTextSecondary)

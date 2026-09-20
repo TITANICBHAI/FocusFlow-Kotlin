@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -63,6 +65,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 /**
  * Redesigned Report Issue modal sheet matching screenshots 12a and 12b.
@@ -80,6 +83,7 @@ fun ReportIssueModal(
 ) {
     if (!visible) return
 
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     var description by remember { mutableStateOf("") }
     var reportType by remember { mutableStateOf(DiagnosticsReportType.BUG) }
@@ -101,15 +105,17 @@ fun ReportIssueModal(
     ModalBottomSheet(
         onDismissRequest = { if (!busy) onClose() },
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         containerColor = DarkCard,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header
             Row(

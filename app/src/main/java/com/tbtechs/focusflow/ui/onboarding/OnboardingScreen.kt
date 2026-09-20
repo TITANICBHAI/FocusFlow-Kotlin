@@ -87,6 +87,7 @@ import com.tbtechs.focusflow.ui.theme.InfoBodyText
 import com.tbtechs.focusflow.ui.theme.InfoBorder
 import com.tbtechs.focusflow.ui.theme.InfoSurface
 import com.tbtechs.focusflow.ui.theme.InfoText
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.StatusOptionalBg
 import com.tbtechs.focusflow.ui.theme.StatusOptionalText
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +101,7 @@ fun OnboardingScreen(
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onFinished: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -200,8 +202,8 @@ fun OnboardingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = dimensions.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))

@@ -68,6 +68,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -86,6 +87,7 @@ fun HomeScreen(
     onOpenActiveBlocks: () -> Unit = {},
     onRefresh: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val tasks by taskViewModel.tasks.collectAsState()
     val focusSession by focusSessionViewModel.focusSession.collectAsState()
     val settings by settingsViewModel.settings.collectAsState()
@@ -151,7 +153,7 @@ fun HomeScreen(
                     onClick = { addOpen = true },
                     containerColor = BrandPrimary,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp),
+                     shape = MaterialTheme.shapes.large,
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = "Add task", modifier = Modifier.size(24.dp))
@@ -186,7 +188,7 @@ fun HomeScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp),
+                         contentPadding = PaddingValues(top = 4.dp, bottom = dimensions.bottomContentPadding),
                     ) {
                         items(todayTasks, key = Task::id) { task ->
                             TaskCard(
@@ -279,7 +281,7 @@ fun HomeScreen(
                 Button(
                     onClick = { taskViewModel.skipTask(task.id); skipTask = null },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                    shape = RoundedCornerShape(8.dp),
+             shape = MaterialTheme.shapes.small,
                 ) { Text("Skip") }
             },
             dismissButton = {
@@ -349,13 +351,15 @@ private fun DatabaseUnavailable(onRetry: () -> Unit) = Column(
 private fun EmptySchedule(
     modifier: Modifier = Modifier,
     onAddTask: () -> Unit = {},
-) = Column(
-    modifier = modifier
-        .fillMaxWidth()
-        .padding(32.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
+    Column(
+        modifier = modifier
+        .fillMaxWidth()
+            .padding(dimensions.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
     Box(
         modifier = Modifier
             .size(72.dp)
@@ -394,7 +398,7 @@ private fun EmptySchedule(
         Spacer(Modifier.width(8.dp))
         Text("Create Task", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
-}
+    }
 
 internal fun Task.isToday(): Boolean = runCatching {
     Instant.parse(startTime).atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now()

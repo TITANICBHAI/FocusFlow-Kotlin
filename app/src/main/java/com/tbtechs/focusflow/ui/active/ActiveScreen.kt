@@ -42,6 +42,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -90,6 +91,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import java.time.Instant
@@ -115,6 +117,7 @@ fun ActiveScreen(
     onOpenKeywordBlocker: () -> Unit = {},
     onOpenVpnBlockList: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val installedAppsRepository = remember { InstalledAppsRepository(context) }
     val resolvedVpnRepo = remember(vpnRepository) { vpnRepository ?: VpnRepository(context) }
@@ -229,8 +232,8 @@ fun ActiveScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(horizontal = dimensions.screenPadding, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Top Status Summary Banner
             item {
@@ -642,7 +645,7 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(
                 if (nothingActive) DarkCard
                 else BrandPrimary.copy(alpha = 0.12f),
@@ -650,7 +653,7 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
             .border(
                 1.dp,
                 if (nothingActive) DarkBorder else BrandPrimary.copy(alpha = 0.35f),
-                RoundedCornerShape(14.dp),
+                MaterialTheme.shapes.medium,
             )
             .padding(16.dp),
     ) {
@@ -706,12 +709,12 @@ private fun ActiveSectionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(DarkCard)
             .border(
                 1.dp,
                 if (warning) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
-                RoundedCornerShape(14.dp),
+                MaterialTheme.shapes.medium,
             )
             .then(if (expandable) Modifier.clickable(onClick = onToggle) else Modifier)
             .padding(16.dp),
@@ -724,7 +727,7 @@ private fun ActiveSectionCard(
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .background(DarkSurfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -753,7 +756,7 @@ private fun ActiveSectionCard(
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(statusColor.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp),
                 ) {

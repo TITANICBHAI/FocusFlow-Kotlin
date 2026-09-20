@@ -2,7 +2,9 @@ package com.tbtechs.focusflow.ui.common
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.Routes
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 data class SideMenuItem(
     val route: String,
@@ -44,7 +47,13 @@ fun SideMenu(
         SideMenuItem(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
         SideMenuItem(Routes.DEFENSE, "Defense", Icons.Outlined.Shield),
     )
-    ModalDrawerSheet {
+    val dimensions = LocalFocusFlowDimensions.current
+    ModalDrawerSheet(
+        modifier = Modifier
+            .widthIn(max = dimensions.drawerMaxWidth)
+            .navigationBarsPadding(),
+        drawerShape = MaterialTheme.shapes.large,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

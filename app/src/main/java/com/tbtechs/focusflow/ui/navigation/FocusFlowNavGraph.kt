@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -74,6 +76,7 @@ import com.tbtechs.focusflow.ui.stats.ReportsScreen
 import com.tbtechs.focusflow.ui.stats.StatsInsightsExperience
 import com.tbtechs.focusflow.ui.support.ChangelogScreen
 import com.tbtechs.focusflow.ui.support.HowToUseScreen
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 
 @Composable
@@ -472,6 +475,7 @@ fun MainScaffold(
     onNavigate: (String) -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val tabs = listOf(
         Triple(Routes.FOCUS, "Focus", Icons.Outlined.Timer),
         Triple(Routes.HOME, "Schedule", Icons.Outlined.CalendarMonth),
@@ -487,10 +491,13 @@ fun MainScaffold(
                 containerColor = com.tbtechs.focusflow.ui.theme.DarkBackground,
                 windowInsets = WindowInsets.navigationBars,
                 tonalElevation = 0.dp,
-                modifier = Modifier.border(
-                    width = 1.dp,
-                    color = com.tbtechs.focusflow.ui.theme.DarkBorder,
-                ),
+                modifier = Modifier
+                    .border(
+                        width = 1.dp,
+                        color = com.tbtechs.focusflow.ui.theme.DarkBorder.copy(alpha = 0.65f),
+                        shape = MaterialTheme.shapes.large,
+                    )
+                    .clip(MaterialTheme.shapes.large),
             ) {
                 tabs.forEach { (route, label, icon) ->
                     val isSelected = currentRoute == route
@@ -507,7 +514,7 @@ fun MainScaffold(
                         label = {
                             Text(
                                 text = label,
-                                fontSize = 11.sp,
+                                fontSize = if (dimensions.screenPadding < 16.dp) 10.sp else 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isSelected) com.tbtechs.focusflow.ui.theme.BrandPrimary else com.tbtechs.focusflow.ui.theme.DarkTextSecondary,
                             )

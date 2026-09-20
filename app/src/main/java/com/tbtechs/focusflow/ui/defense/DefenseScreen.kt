@@ -92,6 +92,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -116,6 +117,7 @@ fun DefenseScreen(
     onOpenLauncher: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     val allowanceUsage by settingsViewModel.allowanceUsage.collectAsState()
     val context = LocalContext.current
@@ -228,9 +230,9 @@ fun DefenseScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = dimensions.screenPadding)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
 

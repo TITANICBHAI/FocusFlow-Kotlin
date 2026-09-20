@@ -98,6 +98,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -122,6 +123,7 @@ fun FocusScreen(
     onOpenSchedule: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val now by rememberClock()
     val pinManager = remember { FocusPinManager(context) }
@@ -325,7 +327,7 @@ fun FocusScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .padding(horizontal = dimensions.screenPadding, vertical = 6.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(BrandPrimary.copy(alpha = 0.12f))
                         .border(1.dp, BrandPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
@@ -372,7 +374,7 @@ fun FocusScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .padding(horizontal = dimensions.screenPadding, vertical = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
                         .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(12.dp))

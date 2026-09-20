@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -102,11 +103,11 @@ val FocusFlowLightColorScheme = lightColorScheme(
 )
 
 val FocusFlowShapes = Shapes(
-    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-    small = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
-    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
 )
 
 val FocusFlowTypography = Typography(
@@ -192,11 +193,14 @@ fun FocusFlowTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) FocusFlowDarkColorScheme else FocusFlowLightColorScheme
+    val dimensions = focusFlowDimensionsForWidth(LocalConfiguration.current.screenWidthDp)
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = FocusFlowTypography,
-        shapes = FocusFlowShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalFocusFlowDimensions provides dimensions) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = FocusFlowTypography,
+            shapes = FocusFlowShapes,
+            content = content,
+        )
+    }
 }

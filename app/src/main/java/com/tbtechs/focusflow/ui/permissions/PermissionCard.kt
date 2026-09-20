@@ -56,6 +56,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.StatusMissing
 import com.tbtechs.focusflow.ui.theme.StatusMissingBg
 import com.tbtechs.focusflow.ui.theme.StatusMissingText
@@ -79,6 +80,7 @@ fun PermissionCard(
     onGrant: () -> Unit,
     onTroubleshoot: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val (icon, iconBg, iconTint) = when (permission.id) {
         PermissionId.NOTIFICATIONS -> Triple(
             Icons.Outlined.Notifications,
@@ -150,10 +152,10 @@ fun PermissionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(DarkCard)
-            .border(1.dp, DarkBorder.copy(alpha = 0.58f), RoundedCornerShape(22.dp))
-            .padding(14.dp),
+            .border(1.dp, DarkBorder.copy(alpha = 0.58f), MaterialTheme.shapes.large)
+            .padding(dimensions.cardPadding),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Main Top Row

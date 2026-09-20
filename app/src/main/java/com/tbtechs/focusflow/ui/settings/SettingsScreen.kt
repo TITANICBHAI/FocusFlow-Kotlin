@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -87,6 +89,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import org.json.JSONObject
 
 /**
@@ -110,6 +113,7 @@ fun SettingsScreen(
     onOpenChangelog: () -> Unit = {},
     onOpenPrivacyTerms: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     val tasks by taskViewModel.tasks.collectAsState()
     val focusSession by focusSessionViewModel.focusSession.collectAsState()
@@ -209,8 +213,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = dimensions.screenPadding, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // 1. PROFILE
             item {
@@ -729,12 +733,13 @@ private fun SettingsSectionHeader(title: String) {
 
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
-    Box(
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(DarkCard)
-            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp)),
+            .fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = DarkCard,
+        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             content()
