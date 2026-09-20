@@ -218,5 +218,4 @@ fun AccessibilityRestrictedRecovery(
                 }
             }
         }
-    )
 }
