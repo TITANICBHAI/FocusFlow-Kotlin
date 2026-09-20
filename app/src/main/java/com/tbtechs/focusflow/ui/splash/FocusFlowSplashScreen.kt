@@ -6,19 +6,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,28 +87,7 @@ fun FocusFlowSplashOverlay(
                         animationSpec = tween(LOGO_DURATION_MS),
                     ),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(132.dp)
-                            .background(Color.White.copy(alpha = 0.14f), CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Shield,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(62.dp),
-                        )
-                        Icon(
-                            imageVector = Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = BrandPrimary,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .align(Alignment.Center)
-                                .offset(y = 1.dp),
-                        )
-                    }
+                    FocusFlowSplashLogo()
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -138,6 +116,89 @@ fun FocusFlowSplashOverlay(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Custom splash mark keeps the shield silhouette and rounded check independent
+ * from the unrelated Material icon shapes.
+ */
+@Composable
+private fun FocusFlowSplashLogo(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(132.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            val scale = size.minDimension / 132f
+
+            drawCircle(
+                color = Color.White.copy(alpha = 0.14f),
+                radius = size.minDimension / 2f,
+                center = center,
+            )
+
+            val left = (size.width - 100f * scale) / 2f
+            val top = (size.height - 100f * scale) / 2f
+
+            fun point(x: Float, y: Float) =
+                androidx.compose.ui.geometry.Offset(
+                    left + x * scale,
+                    top + y * scale,
+                )
+
+            val shield = Path().apply {
+                moveTo(point(50f, 22f))
+                cubicTo(
+                    point(42f, 25f),
+                    point(31f, 28f),
+                    point(23f, 30f),
+                )
+                lineTo(point(23f, 50f))
+                cubicTo(
+                    point(23f, 67f),
+                    point(34f, 82f),
+                    point(50f, 89f),
+                )
+                cubicTo(
+                    point(66f, 82f),
+                    point(77f, 67f),
+                    point(77f, 50f),
+                )
+                lineTo(point(77f, 30f))
+                cubicTo(
+                    point(69f, 28f),
+                    point(58f, 25f),
+                    point(50f, 22f),
+                )
+                close()
+            }
+
+            drawPath(
+                path = shield,
+                color = Color.White,
+            )
+
+            val check = Path().apply {
+                moveTo(point(36f, 50f))
+                lineTo(point(46f, 60f))
+                lineTo(point(66f, 38f))
+            }
+
+            drawPath(
+                path = check,
+                color = BrandPrimary,
+                style = Stroke(
+                    width = 5.5f * scale,
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round,
+                ),
+            )
         }
     }
 }

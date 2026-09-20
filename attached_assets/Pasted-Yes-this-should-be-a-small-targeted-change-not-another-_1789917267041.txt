@@ -1,0 +1,352 @@
+Yes — this should be a **small targeted change**, not another rewrite.
+
+I checked the project you supplied. The icon you are talking about is the shared `ActiveStatusIndicator` in:
+
+```text
+app/src/main/java/com/tbtechs/focusflow/ui/focus/ActiveHeaderButton.kt
+```
+
+It is currently using:
+
+```kotlin
+Icons.Outlined.MonitorHeart
+```
+
+That is exactly why it looks like a generic Material icon.
+
+Your reference is better treated as a **custom-drawn status glyph**: a thin ECG/pulse line ending in a small circle.
+
+## Give your coding agent this instruction
+
+```text
+ADDITIONAL UI TASK — REPLACE THE ACTIVE-PROTECTION STATUS ICON
+
+Target file:
+app/src/main/java/com/tbtechs/focusflow/ui/focus/ActiveHeaderButton.kt
+
+The existing shared ActiveStatusIndicator appears across the main tabs.
+It currently renders:
+
+    Icons.Outlined.MonitorHeart
+
+Do NOT use the Material MonitorHeart icon anymore.
+
+Replace it with a custom Compose Canvas drawing that visually matches the
+provided reference image:
+
+    white/thin ECG pulse line
+    starting from the left
+    short horizontal segment
+    sharp upward spike
+    sharp downward spike
+    smaller upward spike
+    short horizontal segment
+    ending in a small outlined circle
+
+The visual should resemble a minimal medical ECG/pulse waveform, NOT a heart
+icon and NOT the Material MonitorHeart icon.
+
+REFERENCE SHAPE:
+
+        /\ 
+_______/  \____/\____○
+
+More precisely:
+- thin stroke
+- rounded stroke caps
+- sharp/clean waveform corners
+- small circular ring at the right
+- horizontally centered
+- compact enough for a top app-bar/header
+- no surrounding box
+- no background
+- no extra heart shape
+- no Material icon
+
+Use Compose Canvas/Path so the shape is deterministic and independent of
+icon-font differences.
+
+--------------------------------------------------
+IMPORTANT EXISTING LOGIC
+--------------------------------------------------
+
+DO NOT change evaluateActiveProtection().
+
+It already calculates the actual active state across the protection layers:
+
+1. Focus Session
+2. Standalone Block
+3. Always-On Apps
+4. Daily Allowance
+5. Keyword Blocker
+6. VPN Blocking
+7. Scheduled Blocks
+
+It produces:
+
+    ActiveStatusLevel.INACTIVE
+    ActiveStatusLevel.ACTIVE
+    ActiveStatusLevel.WARNING
+
+and:
+
+    activeLayersCount
+
+Keep all of that logic intact.
+
+The new icon must use the EXISTING summary.level / activeLayersCount.
+
+--------------------------------------------------
+COLOR BEHAVIOR
+--------------------------------------------------
+
+When ANY feature/mode/protection layer is active:
+
+    activeCount > 0
+
+the ECG icon should be GREEN.
+
+Use the existing FocusFlow success green:
+
+    Color(0xFF34D399)
+
+This is the important visual state:
+
+    activeCount > 0 -> GREEN
+
+When nothing is active:
+
+    activeCount == 0 -> the same muted light/white-gray used for inactive
+                         header UI, approximately #CBD5E1
+
+The green state should not depend on which particular feature is active.
+One or more active layers means GREEN.
+
+For now preserve the existing WARNING state semantics for accessibility/
+VPN problems only if the product requires it, but do not let the old
+lavender #A5B4FC ACTIVE color remain. ACTIVE must become green.
+
+If WARNING is retained:
+
+    WARNING  -> existing warning amber
+    ACTIVE   -> #34D399
+    INACTIVE -> #CBD5E1
+
+Do not change the underlying warning detection.
+
+--------------------------------------------------
+RECOMMENDED IMPLEMENTATION
+--------------------------------------------------
+
+Replace the current:
+
+    Icon(
+        imageVector = Icons.Outlined.MonitorHeart,
+        ...
+    )
+
+inside EcgHeartPulseMonitor() with a custom composable.
+
+Example:
+
+@Composable
+private fun EcgHeartPulseMonitor(
+    level: ActiveStatusLevel,
+    activeCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val iconColor = when (level) {
+        ActiveStatusLevel.WARNING -> Color(0xFFFBBF24)
+        ActiveStatusLevel.ACTIVE -> Color(0xFF34D399)
+        ActiveStatusLevel.INACTIVE -> Color(0xFFCBD5E1)
+    }
+
+    Canvas(
+        modifier = modifier.size(
+            width = 30.dp,
+            height = 24.dp,
+        ),
+    ) {
+        val w = size.width
+        val h = size.height
+
+        val path = Path().apply {
+            moveTo(w * 0.02f, h * 0.58f)
+
+            // left horizontal
+            lineTo(w * 0.18f, h * 0.58f)
+
+            // large upward spike
+            lineTo(w * 0.30f, h * 0.10f)
+
+            // large downward spike
+            lineTo(w * 0.43f, h * 0.92f)
+
+            // return upward
+            lineTo(w * 0.53f, h * 0.43f)
+
+            // smaller pulse
+            lineTo(w * 0.61f, h * 0.58f)
+
+            // right horizontal
+            lineTo(w * 0.78f, h * 0.58f)
+        }
+
+        drawPath(
+            path = path,
+            color = iconColor,
+            style = Stroke(
+                width = 2.2.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+
+        // Small terminal circle from the reference.
+        drawCircle(
+            color = iconColor,
+            radius = h * 0.14f,
+            center = Offset(
+                x = w * 0.88f,
+                y = h * 0.58f,
+            ),
+            style = Stroke(
+                width = 2.2.dp.toPx(),
+            ),
+        )
+    }
+}
+
+Add the necessary imports:
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+
+Remove the MonitorHeart import:
+
+import androidx.compose.material.icons.outlined.MonitorHeart
+
+and remove the Material Icon usage for this component.
+
+--------------------------------------------------
+DO NOT CHANGE THE CLICK BEHAVIOR
+--------------------------------------------------
+
+Keep:
+
+    .clickable(
+        onClick = onOpenActiveBlocks,
+        onClickLabel = "Open active protections",
+    )
+
+and keep the existing accessibility semantics/content description.
+
+The ECG glyph is still a button/status indicator.
+
+Do not change navigation.
+
+--------------------------------------------------
+VISUAL SIZE
+--------------------------------------------------
+
+The current icon is 24.dp.
+
+Make the ECG approximately:
+
+    30.dp x 24.dp
+
+because the waveform is horizontally elongated.
+
+Do NOT put it inside a circular button/background.
+
+Do NOT add a pill.
+
+Do NOT add a badge showing the active count.
+
+The number of active layers can remain in the accessibility description;
+it should not appear visually next to the icon.
+
+--------------------------------------------------
+REFERENCE-MATCH REQUIREMENT
+--------------------------------------------------
+
+Use the supplied reference image as the visual source of truth.
+
+The desired result is:
+
+INACTIVE:
+
+    muted ECG line ───────○
+
+ACTIVE:
+
+    green ECG line ───────○
+
+WARNING:
+
+    amber ECG line ───────○
+
+The waveform itself stays identical.
+Only its stroke color changes.
+
+The green active state is particularly important: the icon should provide
+an immediate visual signal that at least one FocusFlow protection/mode is
+currently running.
+
+Do not redesign this icon.
+Do not substitute another Material icon.
+Do not use an emoji.
+Do not use an image asset unless absolutely necessary.
+
+After changing it, verify it appears consistently on all screens that call
+ActiveStatusIndicator / ActiveHeaderButton.
+```
+
+### One adjustment I'd make to the snippet
+
+The supplied reference has a **more distinctive waveform** than my ASCII approximation. I'd have the agent tune the `Path` against your image rather than blindly accepting the coordinates above.
+
+Conceptually, the path should be:
+
+```text
+                    /\
+                   /  \
+__________________/    \____
+                         /\___
+                            \____ ○
+```
+
+with the **circle being an outline**, not a filled dot.
+
+And importantly, I would **not animate the ECG itself**. The icon should be static; its semantic state is communicated by the color change.
+
+### Your existing state logic is already basically right
+
+This part of your project is actually useful:
+
+```kotlin
+val activeCount = listOf(
+    isFocusActive,
+    isStandaloneActive,
+    isAlwaysOnActive,
+    hasDailyAllowance,
+    hasKeywords,
+    isVpnRunning,
+    hasActiveSchedule,
+).count { it }
+```
+
+So don't have the agent create another `isActive` system. The desired mapping is simply:
+
+```kotlin
+activeCount > 0
+    → Color(0xFF34D399)
+```
+
+That gives you the behavior you described: **whether it's Focus Session, blocking, VPN, scheduled protection, keywords, etc., the same ECG becomes green whenever at least one protection/mode is active.**
+
+Also, this is independent of the bottom navigation icons in `FocusFlowNavGraph.kt`. I would **leave those alone** unless you want the ECG indicator to replace something there too.

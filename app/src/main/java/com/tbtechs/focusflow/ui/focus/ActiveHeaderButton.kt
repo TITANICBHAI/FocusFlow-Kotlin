@@ -1,13 +1,11 @@
 package com.tbtechs.focusflow.ui.focus
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MonitorHeart
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -15,7 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -214,22 +217,53 @@ private fun EcgHeartPulseMonitor(
     activeCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val iconColor = when (level) {
-        ActiveStatusLevel.WARNING -> Color(0xFFFBBF24)
-        ActiveStatusLevel.ACTIVE -> Color(0xFFA5B4FC)
-        ActiveStatusLevel.INACTIVE -> Color(0xFFCBD5E1)
+    val iconColor = when {
+        level == ActiveStatusLevel.WARNING -> Color(0xFFFBBF24)
+        activeCount > 0 -> Color(0xFF34D399)
+        else -> Color(0xFFCBD5E1)
     }
 
-    Icon(
-        imageVector = Icons.Outlined.MonitorHeart,
-        contentDescription = if (activeCount > 0) {
-            "$activeCount active protection layers"
-        } else {
-            "Protection status"
-        },
-        tint = iconColor,
-        modifier = modifier.size(24.dp),
-    )
+    Canvas(
+        modifier = modifier.size(
+            width = 30.dp,
+            height = 24.dp,
+        ),
+    ) {
+        val w = size.width
+        val h = size.height
+
+        val path = Path().apply {
+            moveTo(w * 0.02f, h * 0.58f)
+            lineTo(w * 0.18f, h * 0.58f)
+            lineTo(w * 0.30f, h * 0.10f)
+            lineTo(w * 0.43f, h * 0.92f)
+            lineTo(w * 0.53f, h * 0.43f)
+            lineTo(w * 0.61f, h * 0.58f)
+            lineTo(w * 0.78f, h * 0.58f)
+        }
+
+        drawPath(
+            path = path,
+            color = iconColor,
+            style = Stroke(
+                width = 2.2.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+
+        drawCircle(
+            color = iconColor,
+            radius = h * 0.14f,
+            center = Offset(
+                x = w * 0.88f,
+                y = h * 0.58f,
+            ),
+            style = Stroke(
+                width = 2.2.dp.toPx(),
+            ),
+        )
+    }
 }
 
 /** Backward-compatible alias for existing call sites. */
