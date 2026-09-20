@@ -88,12 +88,12 @@ fun TaskDetailModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(RefHeader)
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(16.dp)
                         .clip(CircleShape)
                         .background(accent),
                 )
@@ -101,7 +101,7 @@ fun TaskDetailModal(
                 Text(
                     task.title,
                     modifier = Modifier.weight(1f),
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                     maxLines = 1,
@@ -115,7 +115,7 @@ fun TaskDetailModal(
                         Icons.Outlined.Close,
                         contentDescription = "Close",
                         tint = RefSecondary,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
@@ -126,52 +126,48 @@ fun TaskDetailModal(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .imePadding()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ReferenceSectionLabel("SCHEDULE")
                 Text(
                     "${task.startTime.asLocalTime()} – ${task.endTime.asLocalTime()}",
-                    fontSize = 23.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RefText,
                 )
                 Text(
                     task.startTime.asLocalDate(),
-                    fontSize = 17.sp,
+                    fontSize = 15.sp,
                     color = RefSecondary,
-                    modifier = Modifier.padding(top = (-16).dp),
                 )
 
                 ReferenceSectionLabel("PRIORITY")
                 Text(
                     task.priority.replaceFirstChar(Char::titlecase),
-                    fontSize = 22.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = priorityColor(task.priority),
-                    modifier = Modifier.padding(top = (-16).dp),
                 )
 
                 ReferenceSectionLabel("STATUS")
                 Text(
                     task.status.replaceFirstChar(Char::titlecase),
-                    fontSize = 22.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = when (task.status.lowercase()) {
                         "completed" -> RefGreen
                         "skipped" -> RefMuted
                         else -> RefText
                     },
-                    modifier = Modifier.padding(top = (-16).dp),
                 )
 
                 task.description?.takeIf { it.isNotBlank() }?.let { notes ->
                     ReferenceSectionLabel("NOTES")
                     Text(
                         notes,
-                        fontSize = 17.sp,
+                        fontSize = 15.sp,
                         color = RefSecondary,
-                        modifier = Modifier.padding(top = (-16).dp),
                     )
                 }
 
@@ -179,16 +175,16 @@ fun TaskDetailModal(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(BrandPrimary.copy(alpha = 0.14f))
-                            .border(1.dp, BrandPrimary.copy(alpha = 0.45f), RoundedCornerShape(18.dp))
+                            .border(1.dp, BrandPrimary.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
                             .clickable(onClick = onStartFocus)
-                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Shield, contentDescription = "Start focus", tint = BrandPrimary, modifier = Modifier.size(26.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Start Focus", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                            Icon(Icons.Outlined.Shield, contentDescription = "Start focus", tint = BrandPrimary, modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Start Focus", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = RefText)
                         }
                     }
                 }
@@ -200,7 +196,7 @@ fun TaskDetailModal(
                     .background(RefHeader)
                     .border(1.dp, RefBorder)
                     .navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 ReferenceTaskAction(Icons.Outlined.Edit, "Edit", RefBlue, onEdit)
