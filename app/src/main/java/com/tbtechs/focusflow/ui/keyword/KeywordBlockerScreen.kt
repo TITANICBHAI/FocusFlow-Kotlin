@@ -65,6 +65,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 private data class KeywordPreset(
     val label: String,
@@ -111,6 +112,7 @@ fun KeywordBlockerScreen(
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onBack: () -> Unit = {},
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     val words = settings.blockedWords
     val active = words.isNotEmpty()
@@ -160,8 +162,8 @@ fun KeywordBlockerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = dimensions.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             item {
                 Spacer(modifier = Modifier.height(2.dp))

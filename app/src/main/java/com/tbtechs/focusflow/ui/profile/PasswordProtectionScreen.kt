@@ -61,6 +61,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 /**
  * Password Protection hub.
@@ -75,6 +76,7 @@ fun PasswordProtectionScreen(
     focusPinManager: FocusPinManager,
     onBack: () -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     var focusSet by remember { mutableStateOf(focusPinManager.isPinSet()) }
     var modal by remember { mutableStateOf<PasswordModal?>(null) }
@@ -113,9 +115,9 @@ fun PasswordProtectionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimensions.screenPadding)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             Spacer(modifier = Modifier.height(2.dp))
 

@@ -48,12 +48,14 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 private const val TERMS_URL = "https://focusflowapp.pages.dev/terms-of-service/"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TermsOfServiceScreen(onBack: () -> Unit) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val sections = listOf(
         "1. Acceptance" to "By installing or using FocusFlow you unconditionally agree to these Terms. If you do not agree, uninstall the app immediately. These Terms may be changed, amended, or replaced at any time without prior notice or obligation. Continued use after any change constitutes your immediate, irrevocable acceptance of the updated Terms. You are solely responsible for reviewing these Terms periodically.",
@@ -86,9 +88,9 @@ fun TermsOfServiceScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimensions.screenPadding)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 

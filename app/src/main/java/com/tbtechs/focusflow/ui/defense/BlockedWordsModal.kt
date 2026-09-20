@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,6 +61,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 private class PendingWordAction(val action: () -> Unit)
 
@@ -74,6 +77,7 @@ fun BlockedWordsModal(
     verifyPin: ((String) -> Boolean)? = null,
 ) {
     if (!visible) return
+    val dimensions = LocalFocusFlowDimensions.current
     var localWords by remember(visible, words) { mutableStateOf(words) }
     var input by remember(visible) { mutableStateOf("") }
     var confirmClear by remember { mutableStateOf(false) }
@@ -98,16 +102,18 @@ fun BlockedWordsModal(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header: Cancel / Aa Blocked Keywords / Save
             Row(

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -69,6 +71,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,6 +90,7 @@ fun NuclearModeModal(
     onClose: () -> Unit,
 ) {
     if (!visible) return
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -139,15 +143,17 @@ fun NuclearModeModal(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header matching 3e_13
             Row(

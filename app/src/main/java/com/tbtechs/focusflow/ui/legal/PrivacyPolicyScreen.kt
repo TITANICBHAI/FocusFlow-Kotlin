@@ -82,6 +82,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -99,6 +100,7 @@ fun PrivacyPolicyScreen(
     onAccepted: () -> Unit,
     onDeclineExit: (() -> Unit)? = null,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val chinese = remember { Locale.getDefault().language.startsWith("zh") }
@@ -190,9 +192,9 @@ fun PrivacyPolicyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimensions.screenPadding)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 

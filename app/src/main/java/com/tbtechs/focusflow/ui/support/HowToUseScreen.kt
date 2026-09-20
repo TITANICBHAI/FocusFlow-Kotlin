@@ -59,6 +59,7 @@ import com.tbtechs.focusflow.ui.theme.DarkCard
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 private data class GuideStep(val heading: String, val body: String)
 private data class GuideSection(val title: String, val icon: ImageVector, val iconBg: Color, val iconTint: Color, val steps: List<GuideStep>)
@@ -138,6 +139,7 @@ fun HowToUseScreen(
     onBack: () -> Unit,
     onGetStarted: () -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     var expanded by remember { mutableStateOf<Int?>(null) }
     if (isOnboarding) {
         BackHandler { onGetStarted() }
@@ -175,9 +177,9 @@ fun HowToUseScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimensions.screenPadding)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header Section matching 2.jpg
             Column(

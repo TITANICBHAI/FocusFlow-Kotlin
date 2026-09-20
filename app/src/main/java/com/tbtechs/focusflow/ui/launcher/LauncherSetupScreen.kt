@@ -82,6 +82,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 
 /**
@@ -99,6 +100,7 @@ fun LauncherSetupScreen(
     launcherController: LauncherController,
     onBack: () -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
@@ -167,8 +169,8 @@ fun LauncherSetupScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = dimensions.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Default home app card
             item {

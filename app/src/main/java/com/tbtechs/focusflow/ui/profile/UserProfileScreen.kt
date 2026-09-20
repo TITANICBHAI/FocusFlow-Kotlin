@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -71,6 +73,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -90,6 +93,7 @@ fun UserProfileScreen(
     focusSessionRepository: FocusSessionRepository? = null,
     settingsViewModel: SettingsViewModel? = null,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val scope = rememberCoroutineScope()
     var editing by remember(isEditMode) { mutableStateOf(!isEditMode) }
     var name by remember { mutableStateOf("") }
@@ -267,9 +271,9 @@ fun UserProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 18.dp)
+                .padding(horizontal = dimensions.screenPadding)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             Spacer(Modifier.height(2.dp))
 
@@ -644,8 +648,10 @@ fun UserProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .imePadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = dimensions.modalPadding, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

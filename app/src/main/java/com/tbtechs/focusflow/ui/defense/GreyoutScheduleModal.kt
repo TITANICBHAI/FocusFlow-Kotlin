@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,6 +77,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -94,6 +97,7 @@ fun GreyoutScheduleModal(
     onClose: () -> Unit,
 ) {
     if (!visible) return
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     var localWindows by remember(visible, windows) { mutableStateOf(windows) }
     var editing by remember { mutableStateOf<ScheduleDraft?>(null) }
@@ -104,15 +108,17 @@ fun GreyoutScheduleModal(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header matching 3e_8
             Row(
@@ -497,6 +503,7 @@ private fun ScheduleEditor(
     onBack: () -> Unit,
     onCommit: (ScheduleDraft) -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     var current by remember(draft) { mutableStateOf(draft) }
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var search by remember { mutableStateOf("") }
@@ -517,16 +524,18 @@ private fun ScheduleEditor(
     ModalBottomSheet(
         onDismissRequest = onBack,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Header matching 3e_9
             Row(

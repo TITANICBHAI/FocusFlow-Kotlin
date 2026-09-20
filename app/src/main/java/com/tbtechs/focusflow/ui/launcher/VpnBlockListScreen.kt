@@ -72,6 +72,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
@@ -90,6 +91,7 @@ fun VpnBlockListScreen(
     isFocusActive: Boolean = false,
     onBack: () -> Unit,
 ) {
+    val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val settings by settingsViewModel.settings.collectAsState()
@@ -260,8 +262,8 @@ fun VpnBlockListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = dimensions.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
             // Information Card
             Box(
