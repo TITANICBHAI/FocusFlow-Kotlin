@@ -34,6 +34,8 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
@@ -424,7 +426,7 @@ fun StandaloneBlockModal(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(
-                            text = if (locked) "BLOCK EXPIRES AT" else "BLOCK EXPIRY",
+                            text = if (locked) "BLOCK UNTIL (LOCKED)" else "BLOCK EXPIRY",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextMuted,
@@ -435,60 +437,65 @@ fun StandaloneBlockModal(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            OutlinedButton(
-                                onClick = ::chooseDate,
-                                enabled = !locked,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .defaultMinSize(minHeight = 44.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = DarkCard,
-                                    contentColor = DarkTextPrimary,
-                                    disabledContainerColor = DarkCard.copy(alpha = 0.5f),
-                                    disabledContentColor = DarkTextSecondary,
-                                ),
-                                border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
-                            ) {
-                                Icon(
-                                    Icons.Outlined.CalendarToday,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = if (!locked) BrandPrimary else DarkTextMuted,
+                            if (locked) {
+                                ExpiryLockedChip(
+                                    text = DateFormat.getDateInstance(DateFormat.MEDIUM).format(until),
+                                    modifier = Modifier.weight(1f),
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    DateFormat.getDateInstance(DateFormat.MEDIUM).format(until),
-                                    fontSize = 14.sp,
+                                ExpiryLockedChip(
+                                    text = DateFormat.getTimeInstance(DateFormat.SHORT).format(until),
+                                    modifier = Modifier.weight(1f),
                                 )
-                            }
+                            } else {
+                                OutlinedButton(
+                                    onClick = ::chooseDate,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .defaultMinSize(minHeight = 44.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = DarkCard,
+                                        contentColor = DarkTextPrimary,
+                                    ),
+                                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.CalendarToday,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = BrandPrimary,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        DateFormat.getDateInstance(DateFormat.MEDIUM).format(until),
+                                        fontSize = 14.sp,
+                                    )
+                                }
 
-                            OutlinedButton(
-                                onClick = ::chooseTime,
-                                enabled = !locked,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .defaultMinSize(minHeight = 44.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = DarkCard,
-                                    contentColor = DarkTextPrimary,
-                                    disabledContainerColor = DarkCard.copy(alpha = 0.5f),
-                                    disabledContentColor = DarkTextSecondary,
-                                ),
-                                border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Timer,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = if (!locked) BrandPrimary else DarkTextMuted,
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    DateFormat.getTimeInstance(DateFormat.SHORT).format(until),
-                                    fontSize = 14.sp,
-                                )
+                                OutlinedButton(
+                                    onClick = ::chooseTime,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .defaultMinSize(minHeight = 44.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = DarkCard,
+                                        contentColor = DarkTextPrimary,
+                                    ),
+                                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Timer,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = BrandPrimary,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        DateFormat.getTimeInstance(DateFormat.SHORT).format(until),
+                                        fontSize = 14.sp,
+                                    )
+                                }
                             }
                         }
 
@@ -672,8 +679,15 @@ fun StandaloneBlockModal(
                             Icon(Icons.Outlined.Settings, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                if (advanced) "Hide Advanced" else "Advanced — Add by Package Name",
+                                "Advanced",
                                 fontSize = 14.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                imageVector = if (advanced) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = if (advanced) "Collapse Advanced" else "Expand Advanced",
+                                tint = DarkTextSecondary,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
 
@@ -1178,6 +1192,39 @@ fun StandaloneBlockModal(
             },
             onDismiss = { configuringAllowanceApp = null },
         )
+    }
+}
+
+@Composable
+private fun ExpiryLockedChip(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(44.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFFE5E7EB))
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = "Locked",
+                tint = Color(0xFF9CA3AF),
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = text,
+                color = Color(0xFF6B7280),
+                fontSize = 14.sp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
