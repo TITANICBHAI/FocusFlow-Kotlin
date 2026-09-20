@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -92,7 +93,7 @@ private val colorOptions = listOf("Primary", "Secondary", "Tertiary", "Error")
 fun QuickAddModal(
     onDismiss: () -> Unit,
     onSave: (Task) -> Unit,
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val settings by settingsViewModel.settings.collectAsState()
     val presets = settings.launcherPresets
@@ -135,6 +136,7 @@ fun QuickAddModal(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
@@ -181,9 +183,9 @@ fun QuickAddModal(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showDatePicker = true }
                         .padding(14.dp),
                 ) {
@@ -201,9 +203,9 @@ fun QuickAddModal(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showTimePicker = true }
                         .padding(14.dp),
                 ) {
@@ -237,9 +239,9 @@ fun QuickAddModal(
                         val isSelected = if (customDuration) choice == "Custom" else duration.asDurationLabel() == choice
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable {
                                     customDuration = choice == "Custom"
                                     if (!customDuration) duration = durationOptions.first { it.asDurationLabel() == choice }
@@ -293,9 +295,9 @@ fun QuickAddModal(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) priorityBadgeBg(opt) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) priorityColor(opt) else DarkBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) priorityColor(opt) else DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable { priority = opt }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
@@ -329,9 +331,9 @@ fun QuickAddModal(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable { selectedColor = colName }
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center,
@@ -369,9 +371,9 @@ fun QuickAddModal(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(DarkSurfaceVariant)
-                            .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                             .clickable { showAllowedApps = true }
                             .padding(14.dp),
                     ) {
@@ -440,16 +442,21 @@ fun QuickAddModal(
                         onDismiss()
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text("Save Task", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
 
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
             }
@@ -467,22 +474,31 @@ fun QuickAddModal(
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
+            shape = RoundedCornerShape(24.dp),
             colors = DatePickerDefaults.colors(
                 containerColor = DarkCard,
             ),
             confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { millis ->
-                        date = Instant.ofEpochMilli(millis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
-                            .toString()
-                    }
-                    showDatePicker = false
-                }) { Text("OK", color = BrandPrimary) }
+                TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            date = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                                .toString()
+                        }
+                        showDatePicker = false
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("OK", color = BrandPrimary) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = DarkTextSecondary) }
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("Cancel", color = DarkTextSecondary) }
             },
         ) {
             DatePicker(
@@ -515,6 +531,7 @@ fun QuickAddModal(
         )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -539,13 +556,21 @@ fun QuickAddModal(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    time = String.format(Locale.US, "%02d:%02d", pickerState.hour, pickerState.minute)
-                    showTimePicker = false
-                }) { Text("OK", color = BrandPrimary) }
+                TextButton(
+                    onClick = {
+                        time = String.format(Locale.US, "%02d:%02d", pickerState.hour, pickerState.minute)
+                        showTimePicker = false
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("OK", color = BrandPrimary) }
             },
             dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancel", color = DarkTextSecondary) }
+                TextButton(
+                    onClick = { showTimePicker = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("Cancel", color = DarkTextSecondary) }
             },
         )
     }
@@ -578,9 +603,9 @@ private fun ToggleCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(DarkSurfaceVariant)
-            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
         Row(

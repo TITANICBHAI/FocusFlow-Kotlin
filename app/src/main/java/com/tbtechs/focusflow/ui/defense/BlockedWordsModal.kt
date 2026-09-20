@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -97,6 +98,7 @@ fun BlockedWordsModal(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
@@ -147,10 +149,10 @@ fun BlockedWordsModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF451A03))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                        .padding(12.dp),
+                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                        .padding(14.dp),
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -281,15 +283,15 @@ fun BlockedWordsModal(
                     localWords.forEach { word ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable {
                                     if (!locked) {
                                         requestRemoval { localWords = localWords - word }
                                     }
                                 }
-                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -319,24 +321,31 @@ fun BlockedWordsModal(
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text("Clear All Keywords") },
-            text = { Text("Remove all blocked keywords from this list?") },
+            title = { Text("Clear All Keywords", fontWeight = FontWeight.Bold) },
+            text = { Text("Remove all blocked keywords from this list?", fontSize = 13.sp, lineHeight = 18.sp) },
             confirmButton = {
                 Button(
                     onClick = {
                         localWords = emptyList()
                         confirmClear = false
                     },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Clear All", color = Color.White)
+                    Text("Clear All", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClear = false }) {
+                TextButton(
+                    onClick = { confirmClear = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },
@@ -346,13 +355,14 @@ fun BlockedWordsModal(
     pinPrompt?.let { pending ->
         AlertDialog(
             onDismissRequest = { pinPrompt = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text("Defense Password Required") },
+            title = { Text("Defense Password Required", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Enter your defense password to remove keywords.", fontSize = 13.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Enter your defense password to remove keywords.", fontSize = 13.sp, lineHeight = 18.sp)
                     OutlinedTextField(
                         value = pin,
                         onValueChange = { pin = it; pinError = null },
@@ -360,6 +370,7 @@ fun BlockedWordsModal(
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = DarkSurfaceVariant,
                             unfocusedContainerColor = DarkSurfaceVariant,
@@ -382,13 +393,19 @@ fun BlockedWordsModal(
                             pinError = "Incorrect defense password."
                         }
                     },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Confirm", color = Color.White)
+                    Text("Confirm", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pinPrompt = null }) {
+                TextButton(
+                    onClick = { pinPrompt = null },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },
@@ -398,17 +415,20 @@ fun BlockedWordsModal(
     message?.let { (title, body) ->
         AlertDialog(
             onDismissRequest = { message = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text(title) },
-            text = { Text(body, fontSize = 13.sp) },
+            title = { Text(title, fontWeight = FontWeight.Bold) },
+            text = { Text(body, fontSize = 13.sp, lineHeight = 18.sp) },
             confirmButton = {
                 Button(
                     onClick = { message = null },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("OK", color = Color.White)
+                    Text("OK", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
         )

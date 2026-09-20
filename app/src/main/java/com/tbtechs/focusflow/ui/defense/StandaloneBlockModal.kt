@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -37,9 +39,11 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -61,6 +65,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,7 +81,9 @@ import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.BrandPrimaryLight
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkCard
@@ -142,8 +149,12 @@ fun StandaloneBlockModal(
     var pendingSave by remember { mutableStateOf(false) }
     var clearPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var loadingApps by remember { mutableStateOf(false) }
+    var configuringAllowanceApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
 
     LaunchedEffect(visible) {
+        if (!visible) return@LaunchedEffect
+        loadingApps = true
         apps = withContext(Dispatchers.IO) {
             runCatching {
                 InstalledAppsRepository(context).getInstalledApps()
@@ -151,6 +162,7 @@ fun StandaloneBlockModal(
                     .sortedBy { it.appName.lowercase() }
             }.getOrDefault(emptyList())
         }
+        loadingApps = false
     }
 
     val results = apps.filter {
@@ -244,7 +256,11 @@ fun StandaloneBlockModal(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            TextButton(onClick = onClose) {
+                            TextButton(
+                                onClick = onClose,
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                            ) {
                                 Text("Cancel", color = DarkTextSecondary, fontSize = 15.sp)
                             }
                             Row(
@@ -275,7 +291,8 @@ fun StandaloneBlockModal(
                                     disabledContainerColor = DarkSurfaceVariant,
                                     disabledContentColor = DarkTextMuted,
                                 ),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                             ) {
                                 Text("Save", fontWeight = FontWeight.SemiBold)
                             }
@@ -298,9 +315,9 @@ fun StandaloneBlockModal(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(16.dp))
                                     .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
-                                    .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                    .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(16.dp))
                                     .padding(14.dp),
                             ) {
                                 Row(
@@ -330,9 +347,9 @@ fun StandaloneBlockModal(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .background(Color(0xFFEF4444).copy(alpha = 0.15f))
-                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(14.dp))
                                     .padding(12.dp),
                             ) {
                                 Text(msg, color = Color(0xFFFCA5A5), fontSize = 13.sp)
@@ -346,9 +363,9 @@ fun StandaloneBlockModal(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 20.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(16.dp))
                                     .background(BrandPrimary.copy(alpha = 0.10f))
-                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
                                     .padding(14.dp),
                             ) {
                                 Row(
@@ -416,8 +433,10 @@ fun StandaloneBlockModal(
                             OutlinedButton(
                                 onClick = ::chooseDate,
                                 enabled = !locked,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .defaultMinSize(minHeight = 44.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = DarkCard,
                                     contentColor = DarkTextPrimary,
@@ -442,8 +461,10 @@ fun StandaloneBlockModal(
                             OutlinedButton(
                                 onClick = ::chooseTime,
                                 enabled = !locked,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .defaultMinSize(minHeight = 44.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = DarkCard,
                                     contentColor = DarkTextPrimary,
@@ -481,9 +502,9 @@ fun StandaloneBlockModal(
                                 listOf(30L, 60L, 120L, 240L).forEach { minutes ->
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(DarkSurfaceVariant)
-                                            .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
+                                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
                                             .clickable { until += minutes * 60_000L }
                                             .padding(horizontal = 12.dp, vertical = 6.dp),
                                     ) {
@@ -524,9 +545,9 @@ fun StandaloneBlockModal(
                                 presets.forEach { preset ->
                                     Box(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(10.dp))
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(DarkCard)
-                                            .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
                                             .clickable {
                                                 val safePackages = preset.packages.filterNot {
                                                     isNeverBlockPackage(it, context.packageName)
@@ -573,9 +594,9 @@ fun StandaloneBlockModal(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .background(DarkCard)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                                     .padding(10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -586,6 +607,7 @@ fun StandaloneBlockModal(
                                     placeholder = { Text("Preset name", color = DarkTextMuted) },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = DarkTextPrimary,
                                         unfocusedTextColor = DarkTextPrimary,
@@ -609,7 +631,8 @@ fun StandaloneBlockModal(
                                     },
                                     enabled = presetName.isNotBlank(),
                                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                                 ) {
                                     Text("Save")
                                 }
@@ -631,8 +654,10 @@ fun StandaloneBlockModal(
                     ) {
                         OutlinedButton(
                             onClick = { advanced = !advanced },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 44.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = DarkCard,
                                 contentColor = DarkTextPrimary,
@@ -659,6 +684,7 @@ fun StandaloneBlockModal(
                                     placeholder = { Text("com.example.app", color = DarkTextMuted) },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = DarkTextPrimary,
                                         unfocusedTextColor = DarkTextPrimary,
@@ -679,7 +705,8 @@ fun StandaloneBlockModal(
                                     },
                                     enabled = manual.contains('.'),
                                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                                 ) {
                                     Text("Add")
                                 }
@@ -712,7 +739,7 @@ fun StandaloneBlockModal(
                                 }
                             },
                             singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = DarkCard,
                                 unfocusedContainerColor = DarkCard,
@@ -723,7 +750,7 @@ fun StandaloneBlockModal(
                             ),
                         )
                         Text(
-                            text = "${selected.size} app${if (selected.size == 1) "" else "s"} will be blocked",
+                            text = "${selected.size} app${if (selected.size == 1) "" else "s"} will be blocked — tap to toggle",
                             fontSize = 13.sp,
                             color = DarkTextSecondary,
                             fontWeight = FontWeight.Medium,
@@ -731,59 +758,279 @@ fun StandaloneBlockModal(
                     }
                 }
 
-                // Manual packages if present
-                if (manualPackages.isNotEmpty()) {
-                    items(manualPackages) { pkg ->
-                        AppSelectionRow(
-                            packageName = pkg,
-                            name = "Manual Entry",
-                            selected = pkg in selected,
-                            locked = locked,
-                            onClick = { selected = selected.toggle(pkg, locked) },
-                        )
+                // Loading animation when querying apps
+                if (loadingApps) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    color = BrandPrimary,
+                                    strokeWidth = 3.dp,
+                                    modifier = Modifier.size(36.dp),
+                                )
+                                Text(
+                                    text = "Loading installed apps…",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = DarkTextPrimary,
+                                )
+                                Text(
+                                    text = "Scanning device applications",
+                                    fontSize = 12.sp,
+                                    color = DarkTextMuted,
+                                )
+                            }
+                        }
+                    }
+                } else if (results.isEmpty() && manualPackages.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 36.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Search,
+                                    contentDescription = null,
+                                    tint = DarkTextMuted,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                                Text(
+                                    text = if (search.isNotBlank()) "No apps matching \"$search\"" else "No installed apps found",
+                                    fontSize = 13.5.sp,
+                                    color = DarkTextSecondary,
+                                )
+                            }
+                        }
                     }
                 }
 
-                // Installed Apps List
-                items(results, key = { it.packageName }) { app ->
-                    if (app.packageName !in manualPackages) {
+                // Manual packages if present
+                if (manualPackages.isNotEmpty()) {
+                    items(manualPackages) { pkg ->
+                        val isBlocked = pkg in selected
+                        val allowance = allowances[pkg]
+                        val vpnBlocked = pkg in vpn
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(DarkCard)
-                                .border(1.dp, if (app.packageName in selected) BrandPrimary.copy(alpha = 0.4f) else DarkBorder, RoundedCornerShape(12.dp))
-                                .padding(12.dp),
+                                .border(
+                                    1.dp,
+                                    if (isBlocked) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
+                                    RoundedCornerShape(16.dp),
+                                ),
                         ) {
-                            AppSelectionRow(
-                                packageName = app.packageName,
-                                name = app.appName,
-                                selected = app.packageName in selected,
-                                locked = locked,
-                                onClick = { selected = selected.toggle(app.packageName, locked) },
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !(locked && isBlocked)) {
+                                        selected = selected.toggle(pkg, locked)
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Manual Package",
+                                        fontSize = 14.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = DarkTextPrimary,
+                                    )
+                                    Text(
+                                        text = pkg,
+                                        fontSize = 11.5.sp,
+                                        color = DarkTextMuted,
+                                    )
+                                }
+                                if (isBlocked) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFEF4444)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Block,
+                                            contentDescription = "Blocked",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(15.dp),
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .border(1.5.dp, DarkTextMuted, RoundedCornerShape(6.dp)),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Installed Apps List matching 4a.jpg reference
+                items(results, key = { it.packageName }) { app ->
+                    if (app.packageName !in manualPackages) {
+                        val isBlocked = app.packageName in selected
+                        val allowance = allowances[app.packageName]
+                        val vpnBlocked = app.packageName in vpn
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(DarkCard)
+                                .border(
+                                    1.dp,
+                                    if (isBlocked) Color(0xFFEF4444).copy(alpha = 0.45f) else DarkBorder,
+                                    RoundedCornerShape(16.dp),
+                                ),
+                        ) {
+                            // Top Row: App info + Red block icon / rounded checkbox
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !(locked && isBlocked)) {
+                                        selected = selected.toggle(app.packageName, locked)
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    AppIcon(app.icon)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = app.appName,
+                                            fontSize = 14.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = DarkTextPrimary,
+                                            maxLines = 1,
+                                        )
+                                        Text(
+                                            text = app.packageName,
+                                            fontSize = 11.5.sp,
+                                            color = DarkTextMuted,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                if (isBlocked) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFEF4444)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Block,
+                                            contentDescription = "Blocked",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(15.dp),
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .border(1.5.dp, DarkTextMuted, RoundedCornerShape(6.dp)),
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(
+                                color = DarkBorder,
+                                thickness = 0.8.dp,
+                                modifier = Modifier.padding(horizontal = 14.dp),
                             )
-                            if (app.packageName in selected) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    color = DarkBorder,
+
+                            // Sub-row 1: Daily allowance
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { configuringAllowanceApp = app }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.WbSunny,
+                                    contentDescription = null,
+                                    tint = if (allowance != null) Color(0xFFF59E0B) else DarkTextMuted,
+                                    modifier = Modifier.size(15.dp),
                                 )
-                                AllowanceRow(
-                                    app = app,
-                                    entry = allowances[app.packageName],
-                                    locked = locked,
-                                    onToggle = {
-                                        allowances = if (app.packageName in allowances) {
-                                            allowances - app.packageName
-                                        } else {
-                                            allowances + (app.packageName to DailyAllowanceEntry(app.packageName, 30L * 60_000L))
+                                Text(
+                                    text = if (allowance == null) {
+                                        "Add daily allowance"
+                                    } else {
+                                        when (allowance.mode) {
+                                            "count" -> "${allowance.countPerDay} launches / day"
+                                            "interval" -> "Every ${allowance.intervalMinutes}m"
+                                            else -> "${allowance.budgetMinutes}m daily allowance"
                                         }
                                     },
-                                    onEntry = { entry ->
-                                        allowances = allowances + (app.packageName to entry)
-                                    },
-                                    vpnEnabled = app.packageName in vpn,
-                                    onVpnToggle = { vpn = vpn.toggle(app.packageName, locked) },
+                                    fontSize = 12.5.sp,
+                                    color = if (allowance != null) Color(0xFFFBBF24) else DarkTextSecondary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+
+                            HorizontalDivider(
+                                color = DarkBorder.copy(alpha = 0.5f),
+                                thickness = 0.8.dp,
+                                modifier = Modifier.padding(horizontal = 14.dp),
+                            )
+
+                            // Sub-row 2: Network block (VPN)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !locked) {
+                                        vpn = vpn.toggle(app.packageName, locked)
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Shield,
+                                    contentDescription = null,
+                                    tint = if (vpnBlocked) BrandPrimary else DarkTextMuted,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                                Text(
+                                    text = if (vpnBlocked) "Blocked from internet (VPN)" else "Add network block (VPN)",
+                                    fontSize = 12.5.sp,
+                                    color = if (vpnBlocked) BrandPrimaryLight else DarkTextSecondary,
+                                    modifier = Modifier.weight(1f),
                                 )
                             }
                         }
@@ -795,9 +1042,11 @@ fun StandaloneBlockModal(
                     if (selected.isNotEmpty() && !locked) {
                         TextButton(
                             onClick = { confirmClear = true },
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                                .defaultMinSize(minHeight = 44.dp),
                         ) {
                             Icon(Icons.Outlined.Delete, contentDescription = null, tint = Color(0xFFEF4444))
                             Spacer(Modifier.width(8.dp))
@@ -813,6 +1062,7 @@ fun StandaloneBlockModal(
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -830,13 +1080,18 @@ fun StandaloneBlockModal(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Clear")
+                    Text("Clear", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClear = false }) {
+                TextButton(
+                    onClick = { confirmClear = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },
@@ -849,6 +1104,7 @@ fun StandaloneBlockModal(
                 pinPrompt = false
                 clearPin = ""
             },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -859,6 +1115,7 @@ fun StandaloneBlockModal(
                     onValueChange = { clearPin = it },
                     label = { Text("Password", color = DarkTextMuted) },
                     singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = DarkTextPrimary,
                         unfocusedTextColor = DarkTextPrimary,
@@ -883,287 +1140,301 @@ fun StandaloneBlockModal(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Confirm")
+                    Text("Confirm", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pinPrompt = false }) {
+                TextButton(
+                    onClick = { pinPrompt = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },
         )
     }
-}
 
-@Composable
-private fun AppSelectionRow(
-    packageName: String,
-    name: String,
-    selected: Boolean,
-    locked: Boolean = false,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected) Color(0xFFEF4444).copy(alpha = 0.15f) else DarkSurfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = name.firstOrNull()?.uppercase() ?: "A",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (selected) Color(0xFFF87171) else DarkTextSecondary,
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = DarkTextPrimary,
-                    maxLines = 1,
-                )
-                Text(
-                    text = packageName,
-                    fontSize = 12.sp,
-                    color = DarkTextMuted,
-                    maxLines = 1,
-                )
-            }
-        }
-        Spacer(Modifier.width(10.dp))
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    if (selected) Color(0xFFEF4444).copy(alpha = 0.2f)
-                    else DarkSurfaceVariant,
-                )
-                .border(
-                    1.dp,
-                    if (selected) Color(0xFFEF4444) else DarkBorder,
-                    RoundedCornerShape(8.dp),
-                )
-                .clickable(enabled = !(locked && selected), onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-        ) {
-            Text(
-                text = if (selected) "Blocked" else "Block",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (selected) Color(0xFFF87171) else DarkTextSecondary,
-            )
-        }
+    configuringAllowanceApp?.let { app ->
+        StandaloneAllowanceDialog(
+            app = app,
+            currentEntry = allowances[app.packageName],
+            locked = locked,
+            onConfirm = { entry ->
+                allowances = allowances + (app.packageName to entry)
+                configuringAllowanceApp = null
+            },
+            onRemove = {
+                allowances = allowances - app.packageName
+                configuringAllowanceApp = null
+            },
+            onDismiss = { configuringAllowanceApp = null },
+        )
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AllowanceRow(
+private fun StandaloneAllowanceDialog(
     app: InstalledAppInfo,
-    entry: DailyAllowanceEntry?,
+    currentEntry: DailyAllowanceEntry?,
     locked: Boolean,
-    onToggle: () -> Unit,
-    onEntry: (DailyAllowanceEntry) -> Unit,
-    vpnEnabled: Boolean,
-    onVpnToggle: () -> Unit,
+    onConfirm: (DailyAllowanceEntry) -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(DarkSurfaceVariant.copy(alpha = 0.5f))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
+    var mode by remember { mutableStateOf(currentEntry?.mode ?: "time_budget") }
+    var minutes by remember { mutableIntStateOf(currentEntry?.budgetMinutes?.takeIf { it > 0 } ?: 30) }
+    var count by remember { mutableIntStateOf(currentEntry?.countPerDay?.takeIf { it > 0 } ?: 3) }
+    var interval by remember { mutableIntStateOf(currentEntry?.intervalMinutes?.takeIf { it > 0 } ?: 15) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = DarkCard,
+        titleContentColor = DarkTextPrimary,
+        textContentColor = DarkTextSecondary,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                AppIcon(app.icon)
+                Column {
+                    Text(
+                        text = "Daily Allowance",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkTextPrimary,
+                    )
+                    Text(
+                        text = app.appName,
+                        fontSize = 13.sp,
+                        color = DarkTextSecondary,
+                        maxLines = 1,
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
                 Text(
-                    text = "Daily Allowance",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = DarkTextPrimary,
-                )
-                Text(
-                    text = if (entry == null) {
-                        "None (full block)"
-                    } else {
-                        when (entry.mode) {
-                            "count" -> "${entry.countPerDay} launches/day"
-                            "interval" -> "Every ${entry.intervalMinutes}m"
-                            else -> "${entry.budgetMinutes} min/day"
-                        }
-                    },
-                    fontSize = 12.sp,
+                    text = "Allow limited daily access during active block periods.",
+                    fontSize = 12.5.sp,
                     color = DarkTextSecondary,
                 )
-            }
-            Switch(
-                checked = entry != null,
-                onCheckedChange = { onToggle() },
-                enabled = !locked,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = BrandPrimary,
-                    uncheckedThumbColor = DarkTextMuted,
-                    uncheckedTrackColor = DarkCard,
-                    uncheckedBorderColor = DarkBorder,
-                ),
-            )
-        }
 
-        if (entry != null && !locked) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                listOf("count" to "Count", "time_budget" to "Time", "interval" to "Interval")
-                    .forEach { (mode, label) ->
+                // Mode Selector
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DarkSurfaceVariant)
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    val modes = listOf(
+                        "time_budget" to "Time Limit",
+                        "count" to "Launches",
+                        "interval" to "Cooldown",
+                    )
+                    modes.forEach { (m, label) ->
+                        val isSelected = mode == m
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (entry.mode == mode) BrandPrimary else DarkCard)
-                                .border(1.dp, if (entry.mode == mode) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp))
-                                .clickable { onEntry(entry.copy(mode = mode)) }
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) BrandPrimary else Color.Transparent)
+                                .clickable { mode = m }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = label,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (entry.mode == mode) Color.White else DarkTextSecondary,
-                            )
-                        }
-                    }
-
-                when (entry.mode) {
-                    "count" -> listOf(1, 3, 5, 10).forEach { count ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (entry.countPerDay == count) BrandPrimary else DarkCard)
-                                .border(1.dp, if (entry.countPerDay == count) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp))
-                                .clickable {
-                                    onEntry(
-                                        entry.copy(
-                                            mode = "count",
-                                            countPerDay = count,
-                                            dailyAllowanceMs = 0L,
-                                        ),
-                                    )
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                "$count/day",
-                                fontSize = 11.sp,
-                                color = if (entry.countPerDay == count) Color.White else DarkTextSecondary,
-                            )
-                        }
-                    }
-                    "interval" -> listOf(5, 15, 30, 60).forEach { minutes ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (entry.intervalMinutes == minutes) BrandPrimary else DarkCard)
-                                .border(1.dp, if (entry.intervalMinutes == minutes) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp))
-                                .clickable {
-                                    onEntry(
-                                        entry.copy(
-                                            mode = "interval",
-                                            intervalMinutes = minutes,
-                                            dailyAllowanceMs = minutes * 60_000L,
-                                        ),
-                                    )
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                "${minutes}m",
-                                fontSize = 11.sp,
-                                color = if (entry.intervalMinutes == minutes) Color.White else DarkTextSecondary,
-                            )
-                        }
-                    }
-                    else -> listOf(5L, 15L, 30L, 60L).forEach { minutes ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (entry.budgetMinutes == minutes.toInt()) BrandPrimary else DarkCard)
-                                .border(1.dp, if (entry.budgetMinutes == minutes.toInt()) BrandPrimary else DarkBorder, RoundedCornerShape(6.dp))
-                                .clickable {
-                                    onEntry(
-                                        entry.copy(
-                                            mode = "time_budget",
-                                            budgetMinutes = minutes.toInt(),
-                                            dailyAllowanceMs = minutes * 60_000L,
-                                        ),
-                                    )
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                "${minutes}m",
-                                fontSize = 11.sp,
-                                color = if (entry.budgetMinutes == minutes.toInt()) Color.White else DarkTextSecondary,
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color.White else DarkTextSecondary,
                             )
                         }
                     }
                 }
-            }
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.Shield,
-                    contentDescription = null,
-                    tint = if (vpnEnabled) BrandPrimary else DarkTextMuted,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (vpnEnabled) "Network block: on" else "Add network block (VPN)",
-                    fontSize = 13.sp,
-                    color = DarkTextSecondary,
-                )
+                when (mode) {
+                    "time_budget" -> {
+                        Text(
+                            text = "Daily Time Budget",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = DarkTextPrimary,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf(10, 15, 20, 30, 45, 60, 90, 120).forEach { mins ->
+                                val isSelected = minutes == mins
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) BrandPrimary else DarkSurfaceVariant)
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) BrandPrimary else DarkBorder,
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                        .clickable { minutes = mins }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                ) {
+                                    Text(
+                                        text = "${mins}m",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isSelected) Color.White else DarkTextPrimary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    "count" -> {
+                        Text(
+                            text = "Max Launches Per Day",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = DarkTextPrimary,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf(1, 2, 3, 5, 10).forEach { c ->
+                                val isSelected = count == c
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) BrandPrimary else DarkSurfaceVariant)
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) BrandPrimary else DarkBorder,
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                        .clickable { count = c }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "$c",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.White else DarkTextPrimary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    "interval" -> {
+                        Text(
+                            text = "Cooldown Interval Between Opens",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = DarkTextPrimary,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf(5, 15, 30, 60).forEach { mins ->
+                                val isSelected = interval == mins
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) BrandPrimary else DarkSurfaceVariant)
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) BrandPrimary else DarkBorder,
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                        .clickable { interval = mins }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "${mins}m",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isSelected) Color.White else DarkTextPrimary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            Switch(
-                checked = vpnEnabled,
-                onCheckedChange = { onVpnToggle() },
-                enabled = !locked,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = BrandPrimary,
-                    uncheckedThumbColor = DarkTextMuted,
-                    uncheckedTrackColor = DarkCard,
-                    uncheckedBorderColor = DarkBorder,
-                ),
-            )
-        }
-    }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val entry = when (mode) {
+                        "count" -> DailyAllowanceEntry(
+                            packageName = app.packageName,
+                            dailyAllowanceMs = 0L,
+                            mode = "count",
+                            countPerDay = count,
+                            budgetMinutes = minutes,
+                            intervalMinutes = interval,
+                        )
+                        "interval" -> DailyAllowanceEntry(
+                            packageName = app.packageName,
+                            dailyAllowanceMs = interval * 60_000L,
+                            mode = "interval",
+                            countPerDay = count,
+                            budgetMinutes = minutes,
+                            intervalMinutes = interval,
+                        )
+                        else -> DailyAllowanceEntry(
+                            packageName = app.packageName,
+                            dailyAllowanceMs = minutes * 60_000L,
+                            mode = "time_budget",
+                            budgetMinutes = minutes,
+                            countPerDay = count,
+                            intervalMinutes = interval,
+                        )
+                    }
+                    onConfirm(entry)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+            ) {
+                Text("Set Allowance", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (currentEntry != null && !locked) {
+                    TextButton(
+                        onClick = onRemove,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                    ) {
+                        Text("Remove", color = Color(0xFFEF4444), fontSize = 13.sp)
+                    }
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
+                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
+                }
+            }
+        },
+    )
 }
 
 private fun Set<String>.toggle(value: String, locked: Boolean): Set<String> {

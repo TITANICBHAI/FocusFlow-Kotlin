@@ -12,9 +12,9 @@ import com.tbtechs.focusflow.ui.active.ActiveScreen
  */
 @Composable
 fun ActiveBlockScreen(
-    taskViewModel: TaskViewModel = viewModel(),
-    settingsViewModel: SettingsViewModel = viewModel(),
-    focusSessionViewModel: FocusSessionViewModel = viewModel(),
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+    focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
     onBack: () -> Unit = {},
     onOpenFocus: () -> Unit = {},
     onOpenAlwaysOn: () -> Unit = {},

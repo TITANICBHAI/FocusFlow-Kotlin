@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -74,9 +75,9 @@ internal fun ActiveTaskBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
             .clickable(onClick = onOpen)
             .padding(14.dp),
     ) {
@@ -87,9 +88,9 @@ internal fun ActiveTaskBanner(
             Column(modifier = Modifier.weight(1f)) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(badgeBg)
-                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
                 ) {
                     Text(
                         if (isRunning) "NOW" else "TIME'S UP",
@@ -114,12 +115,12 @@ internal fun ActiveTaskBanner(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 IconButton(
                     onClick = onComplete,
                     modifier = Modifier
                         .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF10B981).copy(alpha = 0.15f)),
                 ) {
                     Icon(
@@ -133,7 +134,7 @@ internal fun ActiveTaskBanner(
                     onClick = onExtend,
                     modifier = Modifier
                         .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(DarkSurfaceVariant),
                 ) {
                     Icon(
@@ -148,7 +149,7 @@ internal fun ActiveTaskBanner(
                         onClick = onSkip,
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(DarkSurfaceVariant),
                     ) {
                         Icon(
@@ -163,7 +164,7 @@ internal fun ActiveTaskBanner(
                         onClick = onStartFocus,
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(BrandPrimary.copy(alpha = 0.15f)),
                     ) {
                         Icon(
@@ -192,7 +193,7 @@ internal fun HomeTextField(
         label = { Text(label, color = DarkTextMuted) },
         singleLine = singleLine,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = DarkTextPrimary,
             unfocusedTextColor = DarkTextPrimary,
@@ -212,6 +213,7 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
         containerColor = DarkCard,
         titleContentColor = DarkTextPrimary,
         textContentColor = DarkTextSecondary,
@@ -231,17 +233,17 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     presetOptions.take(4).forEach { opt ->
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (minutes == opt.toString()) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (minutes == opt.toString()) BrandPrimary else DarkBorder, RoundedCornerShape(8.dp))
-                            .clickable { minutes = opt.toString() }
-                            .padding(vertical = 8.dp),
+                                .border(1.dp, if (minutes == opt.toString()) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
+                                .clickable { minutes = opt.toString() }
+                                .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
@@ -260,13 +262,18 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
             Button(
                 onClick = { minutes.toIntOrNull()?.takeIf { it > 0 }?.let(onExtend) },
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Extend")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+            ) {
                 Text("Cancel", color = DarkTextSecondary)
             }
         },

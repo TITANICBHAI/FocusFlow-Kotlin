@@ -104,7 +104,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefenseScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     isFocusActive: Boolean = false,
     vpnRepository: VpnRepository? = null,
     onOpenAlwaysOn: () -> Unit = {},

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -172,12 +173,13 @@ fun AppPickerSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Header (Screenshot 10)
@@ -219,9 +221,9 @@ fun AppPickerSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(DarkSurfaceVariant)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -235,7 +237,7 @@ fun AppPickerSheet(
                     )
                     Text(
                         "Allowed apps stay open when Focus Mode runs. Everything else is blocked.",
-                        fontSize = 11.5.sp,
+                        fontSize = 12.sp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -268,7 +270,7 @@ fun AppPickerSheet(
                         }
                     }
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = DarkSurfaceVariant,
                     unfocusedContainerColor = DarkSurfaceVariant,
@@ -291,6 +293,7 @@ fun AppPickerSheet(
                         FilterChip(
                             selected = categoryFilter == null,
                             onClick = { categoryFilter = null },
+                            shape = RoundedCornerShape(12.dp),
                             label = {
                                 Text(
                                     "All (${apps.size})",
@@ -315,6 +318,7 @@ fun AppPickerSheet(
                         FilterChip(
                             selected = categoryFilter == category,
                             onClick = { categoryFilter = category },
+                            shape = RoundedCornerShape(12.dp),
                             label = {
                                 Text(
                                     "$category ($count)",
@@ -344,9 +348,11 @@ fun AppPickerSheet(
             ) {
                 Button(
                     onClick = { selected = apps.mapTo(mutableSetOf()) { it.packageName } },
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 44.dp),
                 ) {
                     Text("Select All", fontSize = 12.sp, color = DarkTextPrimary)
                 }
@@ -358,9 +364,11 @@ fun AppPickerSheet(
                             .filter { it in sensitiveApps }
                             .toSet()
                     },
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 44.dp),
                 ) {
                     Text("Deselect All", fontSize = 12.sp, color = DarkTextPrimary)
                 }
@@ -370,9 +378,11 @@ fun AppPickerSheet(
                         onSave(selectedPackages())
                         onClose()
                     },
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 44.dp),
                 ) {
                     Text("Save", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
@@ -400,9 +410,9 @@ fun AppPickerSheet(
                     items(presets, key = { it.id }) { preset ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
                                 .combinedClickable(
                                     onClick = {
                                         selected = when {
@@ -451,7 +461,7 @@ fun AppPickerSheet(
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         placeholder = { Text("Preset name (e.g. Deep Coding)", color = DarkTextMuted, fontSize = 12.sp) },
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = DarkSurfaceVariant,
                             unfocusedContainerColor = DarkSurfaceVariant,
@@ -477,22 +487,30 @@ fun AppPickerSheet(
                             }
                         },
                         enabled = presetName.isNotBlank(),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                     ) {
                         Text("Save", fontSize = 12.sp, color = Color.White)
                     }
-                    TextButton(onClick = {
-                        presetName = ""
-                        showPresetInput = false
-                    }) {
+                    TextButton(
+                        onClick = {
+                            presetName = ""
+                            showPresetInput = false
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                    ) {
                         Text("Cancel", fontSize = 12.sp, color = DarkTextSecondary)
                     }
                 }
             } else {
                 TextButton(
                     onClick = { showPresetInput = true },
-                    modifier = Modifier.align(Alignment.Start),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .defaultMinSize(minHeight = 44.dp),
                 ) {
                     Icon(
                         Icons.Outlined.BookmarkAdd,
@@ -555,6 +573,7 @@ fun AppPickerSheet(
     warning?.let { (packageName, sensitive) ->
         AlertDialog(
             onDismissRequest = { warning = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -571,13 +590,19 @@ fun AppPickerSheet(
                         selected = selected - packageName
                         warning = null
                     },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                 ) {
                     Text("Block anyway", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { warning = null }) {
+                TextButton(
+                    onClick = { warning = null },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Keep allowed", color = DarkTextSecondary)
                 }
             },
@@ -587,6 +612,7 @@ fun AppPickerSheet(
     deletePreset?.let { preset ->
         AlertDialog(
             onDismissRequest = { deletePreset = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -598,13 +624,19 @@ fun AppPickerSheet(
                         onDeletePreset(preset.id)
                         deletePreset = null
                     },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                 ) {
                     Text("Delete", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deletePreset = null }) {
+                TextButton(
+                    onClick = { deletePreset = null },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },
@@ -621,15 +653,15 @@ private fun AppPickerRow(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
             .border(
                 1.dp,
                 if (checked) BrandPrimary.copy(alpha = 0.6f) else DarkBorder,
-                RoundedCornerShape(12.dp),
+                RoundedCornerShape(16.dp),
             )
             .clickable { onToggle(app) }
-            .padding(12.dp),
+            .padding(14.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

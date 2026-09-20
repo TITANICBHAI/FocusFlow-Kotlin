@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -103,6 +104,7 @@ fun GreyoutScheduleModal(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
@@ -152,10 +154,10 @@ fun GreyoutScheduleModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                    .padding(14.dp),
             ) {
                 Text(
                     text = "Scheduled blocks activate automatically at specified hours and days. Configure which apps to block for each window.",
@@ -236,7 +238,7 @@ fun GreyoutScheduleModal(
                 onClick = { editing = ScheduleDraft.empty() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .defaultMinSize(minHeight = 48.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary),
@@ -272,24 +274,31 @@ fun GreyoutScheduleModal(
     confirmDelete?.let { index ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text("Remove Window") },
-            text = { Text("Are you sure you want to remove this scheduled block window?") },
+            title = { Text("Remove Window", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to remove this scheduled block window?", fontSize = 13.sp, lineHeight = 18.sp) },
             confirmButton = {
                 Button(
                     onClick = {
                         localWindows = localWindows.filterIndexed { itemIndex, _ -> itemIndex != index }
                         confirmDelete = null
                     },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Remove", color = Color.White)
+                    Text("Remove", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) {
+                TextButton(
+                    onClick = { confirmDelete = null },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },
@@ -299,17 +308,20 @@ fun GreyoutScheduleModal(
     pinPrompt?.let {
         AlertDialog(
             onDismissRequest = { pinPrompt = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text("Block is Active") },
-            text = { Text(it.message, fontSize = 13.sp) },
+            title = { Text("Block is Active", fontWeight = FontWeight.Bold) },
+            text = { Text(it.message, fontSize = 13.sp, lineHeight = 18.sp) },
             confirmButton = {
                 Button(
                     onClick = { pinPrompt = null },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("OK", color = Color.White)
+                    Text("OK", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
         )
@@ -325,9 +337,9 @@ private fun ScheduleCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
-            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
         Row(
@@ -505,6 +517,7 @@ private fun ScheduleEditor(
     ModalBottomSheet(
         onDismissRequest = onBack,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
@@ -553,7 +566,7 @@ private fun ScheduleEditor(
                     placeholder = { Text("Search apps to add…", color = DarkTextMuted, fontSize = 13.sp) },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(18.dp)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = DarkSurfaceVariant,
                         unfocusedContainerColor = DarkSurfaceVariant,
@@ -569,9 +582,9 @@ private fun ScheduleEditor(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(DarkSurfaceVariant)
-                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp)),
+                            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp)),
                     ) {
                         results.forEach { app ->
                             Row(
@@ -608,9 +621,9 @@ private fun ScheduleEditor(
                         current.packages.forEachIndexed { index, pkg ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(DarkSurfaceVariant)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
                                     .clickable {
                                         val remove = {
                                             current = current.copy(
@@ -696,9 +709,9 @@ private fun ScheduleEditor(
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) BrandPrimary else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(10.dp))
+                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable {
                                     current = current.copy(
                                         days = if (isSelected) current.days - index else current.days + index,
@@ -721,9 +734,9 @@ private fun ScheduleEditor(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -777,9 +790,9 @@ private fun ScheduleEditor(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(DarkSurfaceVariant.copy(alpha = 0.5f))
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                     .padding(12.dp),
             ) {
                 Text(
@@ -824,7 +837,7 @@ private fun ScheduleEditor(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .defaultMinSize(minHeight = 50.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
             ) {
@@ -852,9 +865,9 @@ private fun TimeStepperRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(DarkSurfaceVariant)
-            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -867,7 +880,7 @@ private fun TimeStepperRow(
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DarkCard)
                     .clickable { onHourChange((hour + 23) % 24) },
                 contentAlignment = Alignment.Center,
@@ -883,7 +896,7 @@ private fun TimeStepperRow(
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DarkCard)
                     .clickable { onHourChange((hour + 1) % 24) },
                 contentAlignment = Alignment.Center,
@@ -897,7 +910,7 @@ private fun TimeStepperRow(
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DarkCard)
                     .clickable { onMinuteChange((minute + 55) % 60) },
                 contentAlignment = Alignment.Center,
@@ -913,7 +926,7 @@ private fun TimeStepperRow(
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DarkCard)
                     .clickable { onMinuteChange((minute + 5) % 60) },
                 contentAlignment = Alignment.Center,

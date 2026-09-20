@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -83,7 +84,7 @@ fun EditTaskModal(
     onDismiss: () -> Unit,
     onSave: (Task) -> Unit,
     onDelete: () -> Unit,
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val settings by settingsViewModel.settings.collectAsState()
     val presets = settings.launcherPresets
@@ -181,6 +182,7 @@ fun EditTaskModal(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
@@ -224,8 +226,10 @@ fun EditTaskModal(
             } else {
                 OutlinedButton(
                     onClick = { notesExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 44.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
                 ) {
                     Text("+ Add Notes", color = DarkTextSecondary, fontSize = 13.sp)
@@ -236,9 +240,9 @@ fun EditTaskModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                     .clickable { showTimePicker = true }
                     .padding(14.dp),
             ) {
@@ -274,9 +278,9 @@ fun EditTaskModal(
                         val isSelected = if (customDuration) choice == "Custom" else duration.asDurationLabel() == choice
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable {
                                     customDuration = choice == "Custom"
                                     if (!customDuration) {
@@ -319,9 +323,9 @@ fun EditTaskModal(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) priorityBadgeBg(opt) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) priorityColor(opt) else DarkBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) priorityColor(opt) else DarkBorder, RoundedCornerShape(12.dp))
                                 .clickable { priority = opt }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
@@ -354,11 +358,11 @@ fun EditTaskModal(
                         tags.forEach { tag ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(DarkSurfaceVariant)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(6.dp))
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
                                     .clickable { tags = tags - tag }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text("#$tag", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.Medium)
@@ -380,7 +384,8 @@ fun EditTaskModal(
                     Button(
                         onClick = ::addTag,
                         colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     ) {
                         Text("Add")
                     }
@@ -391,9 +396,9 @@ fun EditTaskModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                     .padding(14.dp),
             ) {
                 Row(
@@ -422,9 +427,9 @@ fun EditTaskModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showAllowedApps = true }
                         .padding(14.dp),
                 ) {
@@ -456,19 +461,23 @@ fun EditTaskModal(
             // Actions
             Button(
                 onClick = ::saveTask,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text("Save Changes", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
 
             OutlinedButton(
                 onClick = { showDeleteConfirmation = true },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF87171)),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Icon(Icons.Outlined.Delete, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
@@ -477,7 +486,10 @@ fun EditTaskModal(
 
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
             }
@@ -494,6 +506,7 @@ fun EditTaskModal(
         )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -518,13 +531,21 @@ fun EditTaskModal(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    time = "%02d:%02d".format(pickerState.hour, pickerState.minute)
-                    showTimePicker = false
-                }) { Text("OK", color = BrandPrimary) }
+                TextButton(
+                    onClick = {
+                        time = "%02d:%02d".format(pickerState.hour, pickerState.minute)
+                        showTimePicker = false
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("OK", color = BrandPrimary) }
             },
             dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancel", color = DarkTextSecondary) }
+                TextButton(
+                    onClick = { showTimePicker = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("Cancel", color = DarkTextSecondary) }
             },
         )
     }
@@ -549,6 +570,7 @@ fun EditTaskModal(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -560,12 +582,18 @@ fun EditTaskModal(
                         showDeleteConfirmation = false
                         onDelete()
                     },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
                     Text("Delete", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) { Text("Cancel", color = DarkTextSecondary) }
+                TextButton(
+                    onClick = { showDeleteConfirmation = false },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) { Text("Cancel", color = DarkTextSecondary) }
             },
         )
     }

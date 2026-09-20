@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -138,6 +139,7 @@ fun NuclearModeModal(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkCard,
         dragHandle = null,
     ) {
@@ -179,10 +181,10 @@ fun NuclearModeModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(Color(0xFF450A0A))
-                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                    .padding(14.dp),
+                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                    .padding(16.dp),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -216,10 +218,10 @@ fun NuclearModeModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF451A03))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                        .padding(12.dp),
+                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                        .padding(14.dp),
                 ) {
                     Text(
                         "Device Admin is active. Android may prevent uninstalling some protected apps; if needed, temporarily revoke the admin permission.",
@@ -253,9 +255,9 @@ fun NuclearModeModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
                         .padding(20.dp),
                 ) {
                     Column(
@@ -285,15 +287,15 @@ fun NuclearModeModal(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(apps, key = { it.packageName }) { app ->
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                                 .padding(12.dp),
                         ) {
                             Row(
@@ -321,8 +323,9 @@ fun NuclearModeModal(
                                 }
                                 Button(
                                     onClick = { pending = app },
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                                    modifier = Modifier.defaultMinSize(minHeight = 38.dp),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                 ) {
                                     Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
@@ -361,11 +364,12 @@ fun NuclearModeModal(
     pending?.let { app ->
         AlertDialog(
             onDismissRequest = { pending = null },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text("Uninstall ${app.appName}?") },
-            text = { Text("Android will open its system uninstallation prompt for confirmation.", fontSize = 13.sp) },
+            title = { Text("Uninstall ${app.appName}?", fontWeight = FontWeight.Bold) },
+            text = { Text("Android will open its system uninstallation prompt for confirmation.", fontSize = 13.sp, lineHeight = 18.sp) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -378,13 +382,19 @@ fun NuclearModeModal(
                                 }
                         }
                     },
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Uninstall", color = Color.White)
+                    Text("Uninstall", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pending = null }) {
+                TextButton(
+                    onClick = { pending = null },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Cancel", color = DarkTextSecondary)
                 }
             },

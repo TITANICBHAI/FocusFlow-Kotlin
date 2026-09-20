@@ -5,7 +5,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 
 // FocusFlow Exact Brand Palette matching React reference
 val BrandPrimary = Color(0xFF6366F1)       // Indigo 500
@@ -91,6 +94,7 @@ fun FocusFlowTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) FocusFlowDarkColorScheme else FocusFlowLightColorScheme
+
     MaterialTheme(
         colorScheme = colorScheme,
         content = content,

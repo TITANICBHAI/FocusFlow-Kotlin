@@ -35,7 +35,7 @@ import com.tbtechs.focusflow.di.AppModule
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsInsightsExperience(
-    statsViewModel: StatsViewModel = viewModel(),
+    statsViewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory),
     onOpenUsageAccessSettings: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
 ) {

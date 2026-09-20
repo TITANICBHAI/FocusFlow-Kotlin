@@ -79,10 +79,10 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    taskViewModel: TaskViewModel = viewModel(),
-    settingsViewModel: SettingsViewModel = viewModel(),
-    focusSessionViewModel: FocusSessionViewModel = viewModel(),
-    appBootViewModel: AppBootViewModel = viewModel(),
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+    focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
+    appBootViewModel: AppBootViewModel = viewModel(factory = AppBootViewModel.Factory),
     onOpenActiveBlocks: () -> Unit = {},
     onRefresh: () -> Unit = {},
 ) {

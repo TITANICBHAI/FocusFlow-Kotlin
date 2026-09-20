@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -60,6 +61,7 @@ fun ExtendModal(
     ModalBottomSheet(
         onDismissRequest = { if (!extending) onDismiss() },
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
@@ -118,9 +120,9 @@ fun ExtendModal(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .background(DarkCard)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                                     .clickable(enabled = !extending) {
                                         extending = true
                                         onExtend(minutes)
@@ -143,7 +145,10 @@ fun ExtendModal(
             TextButton(
                 onClick = onDismiss,
                 enabled = !extending,
-                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Cancel", color = DarkTextSecondary, fontSize = 15.sp)
             }

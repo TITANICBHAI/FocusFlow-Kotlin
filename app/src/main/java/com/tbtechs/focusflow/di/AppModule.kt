@@ -45,6 +45,9 @@ import com.tbtechs.focusflow.domain.PinManager
  */
 object AppModule {
 
+    lateinit var applicationContext: Context
+        private set
+
     // ─── Database ─────────────────────────────────────────────────────────────
 
     lateinit var database: FocusFlowDatabase
@@ -118,6 +121,7 @@ object AppModule {
      */
     fun init(context: Context) {
         val app = context.applicationContext
+        applicationContext = app
 
         // Room database — name must match the hybrid app's file ("focusday.db").
         database = Room.databaseBuilder(

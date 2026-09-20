@@ -1,10 +1,13 @@
 package com.tbtechs.focusflow.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.di.AppModule
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +55,26 @@ class AppBootViewModel(
     companion object {
         /** Timeout for the settings accessibility check (step 1). */
         private const val SETTINGS_TIMEOUT_MS = 3_000L
+
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return AppBootViewModel(
+                    settingsRepository = AppModule.settingsRepository,
+                    taskRepository = AppModule.taskRepository,
+                    focusSessionRepository = AppModule.focusSessionRepository,
+                ) as T
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                return AppBootViewModel(
+                    settingsRepository = AppModule.settingsRepository,
+                    taskRepository = AppModule.taskRepository,
+                    focusSessionRepository = AppModule.focusSessionRepository,
+                ) as T
+            }
+        }
     }
 
     // ─── State ────────────────────────────────────────────────────────────────

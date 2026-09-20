@@ -1,14 +1,17 @@
 package com.tbtechs.focusflow.ui.support
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Accessibility
@@ -242,24 +245,28 @@ fun TroubleshootModal(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.96f),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 24.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
         ) {
             Column(
                 modifier = Modifier.padding(bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(permission.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text(
                         "Troubleshoot: ${permission.label}",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 10.dp),
@@ -272,16 +279,17 @@ fun TroubleshootModal(
                     "Select your phone brand for step-by-step instructions",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 18.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp),
                 )
                 LazyRow(
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(brands) { brand ->
                         FilterChip(
                             selected = selectedBrand == brand.id,
                             onClick = { selectedBrand = brand.id },
+                            shape = RoundedCornerShape(12.dp),
                             label = { Text("${brand.icon} ${brand.label}") },
                         )
                     }
@@ -289,7 +297,7 @@ fun TroubleshootModal(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp)
+                        .padding(horizontal = 20.dp)
                         .weight(1f, fill = false),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -302,13 +310,13 @@ fun TroubleshootModal(
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                 ),
-                                shape = RoundedCornerShape(50),
+                                shape = CircleShape,
                             ) {
                                 Text(
                                     "${selectedTips.indexOf(tip) + 1}",
                                     color = MaterialTheme.colorScheme.onPrimary,
                                     style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                 )
                             }
                             Text(tip, style = MaterialTheme.typography.bodyMedium)
@@ -321,10 +329,10 @@ fun TroubleshootModal(
                                 .padding(top = 4.dp)
                                 .background(
                                     MaterialTheme.colorScheme.secondaryContainer,
-                                    RoundedCornerShape(12.dp),
+                                    RoundedCornerShape(16.dp),
                                 )
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.Top,
                         ) {
                             Icon(Icons.Outlined.Info, contentDescription = null)
@@ -337,11 +345,13 @@ fun TroubleshootModal(
                 }
                 Button(
                     onClick = onClose,
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
+                        .padding(horizontal = 20.dp)
+                        .defaultMinSize(minHeight = 46.dp),
                 ) {
-                    Text("Got it")
+                    Text("Got it", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                 }
             }
         }

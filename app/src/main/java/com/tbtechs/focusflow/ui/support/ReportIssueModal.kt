@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -100,6 +101,7 @@ fun ReportIssueModal(
     ModalBottomSheet(
         onDismissRequest = { if (!busy) onClose() },
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
@@ -122,7 +124,7 @@ fun ReportIssueModal(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(BrandPrimary.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -154,9 +156,9 @@ fun ReportIssueModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                     .padding(14.dp),
             ) {
                 Row(
@@ -201,9 +203,9 @@ fun ReportIssueModal(
 
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(bg)
-                                .border(1.dp, border, RoundedCornerShape(8.dp))
+                                .border(1.dp, border, RoundedCornerShape(12.dp))
                                 .clickable { reportType = type }
                                 .padding(horizontal = 14.dp, vertical = 9.dp),
                             contentAlignment = Alignment.Center,
@@ -266,7 +268,7 @@ fun ReportIssueModal(
                         )
                     },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = BrandPrimary,
                         unfocusedBorderColor = DarkBorder,
@@ -282,9 +284,9 @@ fun ReportIssueModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                     .clickable { includeLogs = !includeLogs }
                     .padding(14.dp),
             ) {
@@ -332,7 +334,7 @@ fun ReportIssueModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(if (statusSuccess) BrandPrimary.copy(alpha = 0.15f) else Color(0xFFEF4444).copy(alpha = 0.15f))
                         .padding(12.dp),
                 ) {
@@ -368,11 +370,11 @@ fun ReportIssueModal(
                     }
                 },
                 enabled = !busy,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .defaultMinSize(minHeight = 48.dp),
             ) {
                 if (busy) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
@@ -394,12 +396,12 @@ fun ReportIssueModal(
             OutlinedButton(
                 onClick = onClose,
                 enabled = !busy,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkTextSecondary),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
+                    .defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Cancel", fontSize = 14.sp)
             }

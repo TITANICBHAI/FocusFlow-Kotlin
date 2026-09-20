@@ -8,11 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AdminPanelSettings
@@ -50,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkCard
+import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
@@ -64,6 +69,7 @@ import com.tbtechs.focusflow.ui.theme.StatusReady
 import com.tbtechs.focusflow.ui.theme.StatusReadyBg
 import com.tbtechs.focusflow.ui.theme.StatusReadyText
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PermissionCard(
     permission: PermissionDefinition,
@@ -134,12 +140,22 @@ fun PermissionCard(
         )
     }
 
+    val (statusText, statusBg, statusColor) = when (status) {
+        PermissionStatus.GRANTED -> Triple("Ready", StatusReadyBg, StatusReadyText)
+        PermissionStatus.DENIED -> if (permission.optional) {
+            Triple("Not set up", StatusNotSetUpBg, StatusNotSetUpText)
+        } else {
+            Triple("Missing", StatusMissingBg, StatusMissingText)
+        }
+        PermissionStatus.UNKNOWN -> Triple("Checking…", Color(0xFF1E283E), DarkTextSecondary)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(DarkCard)
-            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, DarkBorder.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -148,14 +164,14 @@ fun PermissionCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 // Colored Icon Badge
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(iconBg),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -167,62 +183,54 @@ fun PermissionCard(
                     )
                 }
 
-                // Title, Optional pill, Status pill, and Description
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = permission.title,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextPrimary,
-                        )
+                // Title, Status chips, and Description
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = permission.title,
+                        fontSize = 15.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkTextPrimary,
+                    )
 
+                    // Adaptive Badges Row
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    ) {
                         if (permission.optional) {
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(100.dp))
+                                    .clip(RoundedCornerShape(6.dp))
                                     .background(StatusOptionalBg)
-                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                                    .padding(horizontal = 8.dp, vertical = 2.5.dp),
                             ) {
                                 Text(
                                     text = "Optional",
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = StatusOptionalText,
                                 )
                             }
                         }
 
-                        // Status Badge
-                        val (statusText, statusBg, statusColor) = when (status) {
-                            PermissionStatus.GRANTED -> Triple("Ready", StatusReadyBg, StatusReadyText)
-                            PermissionStatus.DENIED -> if (permission.optional) {
-                                Triple("Not set up", StatusNotSetUpBg, StatusNotSetUpText)
-                            } else {
-                                Triple("Missing", StatusMissingBg, StatusMissingText)
-                            }
-                            PermissionStatus.UNKNOWN -> Triple("Unknown", Color(0xFF1E283E), DarkTextSecondary)
-                        }
-
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(100.dp))
+                                .clip(RoundedCornerShape(6.dp))
                                 .background(statusBg)
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                                .padding(horizontal = 8.dp, vertical = 2.5.dp),
                         ) {
                             Text(
                                 text = statusText,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = statusColor,
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = permission.description,
@@ -241,19 +249,19 @@ fun PermissionCard(
                 )
             }
 
-            // Action Button when not granted and not expanded (matches 1a.jpg / 1b.jpg)
+            // Action Button when not granted and not expanded
             if (status != PermissionStatus.GRANTED && !expanded) {
                 Button(
                     onClick = onGrant,
                     enabled = !busy,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BrandPrimary,
                         disabledContainerColor = Color(0xFF1E283E),
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp),
+                        .defaultMinSize(minHeight = 44.dp),
                 ) {
                     if (busy) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
@@ -281,58 +289,84 @@ fun PermissionCard(
 
             // Expanded Details Section
             if (expanded) {
-                HorizontalDivider(color = DarkBorder)
+                HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
 
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Why this is needed",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                    Text(
-                        text = permission.whyNeeded,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = DarkTextSecondary,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(DarkSurfaceVariant.copy(alpha = 0.5f))
+                            .padding(12.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Why this is needed",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkTextPrimary,
+                            )
+                            Text(
+                                text = permission.whyNeeded,
+                                fontSize = 12.5.sp,
+                                lineHeight = 18.sp,
+                                color = DarkTextSecondary,
+                            )
+                        }
+                    }
 
                     if (status != PermissionStatus.GRANTED) {
-                        Text(
-                            text = "Without this permission:",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = StatusMissing,
-                        )
-                        permission.brokenWithout.forEach { item ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Close,
-                                    contentDescription = null,
-                                    tint = StatusMissing,
-                                    modifier = Modifier.size(16.dp),
-                                )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(StatusMissingBg.copy(alpha = 0.35f))
+                                .border(1.dp, StatusMissing.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                                .padding(12.dp),
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
-                                    text = item,
-                                    fontSize = 12.sp,
-                                    lineHeight = 17.sp,
-                                    color = DarkTextSecondary,
+                                    text = "Without this permission:",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StatusMissingText,
                                 )
+                                permission.brokenWithout.forEach { item ->
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.Top,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = null,
+                                            tint = StatusMissingText,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = item,
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp,
+                                            color = DarkTextSecondary,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
 
                     if (status != PermissionStatus.GRANTED || showOpenWhenGranted) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Button(
                                 onClick = onGrant,
                                 enabled = !busy,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                modifier = Modifier.weight(1f).height(44.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .defaultMinSize(minHeight = 44.dp),
                             ) {
                                 Text(
                                     text = if (busy) "Opening…" else permission.actionLabel,
@@ -342,8 +376,8 @@ fun PermissionCard(
                             if (showTroubleshoot && status != PermissionStatus.GRANTED) {
                                 OutlinedButton(
                                     onClick = onTroubleshoot,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.height(44.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                                 ) {
                                     Icon(Icons.Outlined.HelpOutline, contentDescription = null)
                                     Spacer(modifier = Modifier.width(4.dp))

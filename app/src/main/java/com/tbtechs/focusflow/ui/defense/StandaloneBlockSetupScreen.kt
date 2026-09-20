@@ -68,7 +68,7 @@ import java.text.DateFormat
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StandaloneBlockSetupScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onBack: () -> Unit = {},
 ) {
     val settings by settingsViewModel.settings.collectAsState()

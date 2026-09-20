@@ -1,7 +1,9 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.analytics.AchievementEngine
 import com.tbtechs.focusflow.analytics.AchievementState
 import com.tbtechs.focusflow.analytics.AnalyticsProcessor
@@ -11,6 +13,7 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_THREE_MONTHS
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.InsightCard
 import com.tbtechs.focusflow.analytics.InsightEngine
+import com.tbtechs.focusflow.di.AppModule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,5 +115,27 @@ class StatsViewModel(
             (snapshot.trends?.weeksWithData ?: 0) > 0 ||
             snapshot.phoneUsage?.byHour?.values?.any { it > 0.0 } == true
         return hasRecords
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return StatsViewModel(
+                    analyticsProcessor = AppModule.analyticsProcessor,
+                    insightEngine = AppModule.insightEngine,
+                    achievementEngine = AppModule.achievementEngine,
+                ) as T
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                return StatsViewModel(
+                    analyticsProcessor = AppModule.analyticsProcessor,
+                    insightEngine = AppModule.insightEngine,
+                    achievementEngine = AppModule.achievementEngine,
+                ) as T
+            }
+        }
     }
 }

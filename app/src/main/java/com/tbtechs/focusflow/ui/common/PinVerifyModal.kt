@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -84,14 +85,15 @@ fun PinVerifyModal(
 
     AlertDialog(
         onDismissRequest = onCancel,
+        shape = RoundedCornerShape(24.dp),
         containerColor = DarkCard,
         titleContentColor = DarkTextPrimary,
         textContentColor = DarkTextSecondary,
         icon = {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(BrandPrimary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -142,7 +144,7 @@ fun PinVerifyModal(
                             )
                         }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = DarkSurfaceVariant,
                         unfocusedContainerColor = DarkSurfaceVariant,
@@ -162,14 +164,19 @@ fun PinVerifyModal(
         confirmButton = {
             Button(
                 onClick = ::confirm,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
                 Text("Confirm", fontWeight = FontWeight.SemiBold, color = Color.White)
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(
+                onClick = onCancel,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+            ) {
                 Text("Cancel", color = DarkTextSecondary)
             }
         },

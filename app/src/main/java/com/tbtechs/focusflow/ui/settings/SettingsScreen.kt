@@ -96,10 +96,10 @@ import org.json.JSONObject
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
-    taskViewModel: TaskViewModel = viewModel(),
-    focusSessionViewModel: FocusSessionViewModel = viewModel(),
-    appBootViewModel: AppBootViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
+    focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
+    appBootViewModel: AppBootViewModel = viewModel(factory = AppBootViewModel.Factory),
     onOpenActiveBlocks: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},

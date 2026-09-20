@@ -3,12 +3,15 @@ package com.tbtechs.focusflow.ui
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.model.FocusSession
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -372,6 +375,36 @@ class FocusSessionViewModel(
         viewModelScope.launch {
             settingsRepository.setFocusBreak(active = false, untilMs = 0L)
             foregroundServiceController.clearBreak()
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                val app = extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
+                    ?: runCatching { AppModule.applicationContext }.getOrNull()
+                val ctx = app?.applicationContext
+                    ?: throw IllegalStateException("Application context not available to instantiate FocusSessionViewModel")
+                return FocusSessionViewModel(
+                    focusSessionRepository = AppModule.focusSessionRepository,
+                    taskRepository = AppModule.taskRepository,
+                    settingsRepository = AppModule.settingsRepository,
+                    context = ctx,
+                ) as T
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val ctx = runCatching { AppModule.applicationContext }.getOrNull()
+                    ?: throw IllegalStateException("AppModule not initialized to instantiate FocusSessionViewModel")
+                return FocusSessionViewModel(
+                    focusSessionRepository = AppModule.focusSessionRepository,
+                    taskRepository = AppModule.taskRepository,
+                    settingsRepository = AppModule.settingsRepository,
+                    context = ctx,
+                ) as T
+            }
         }
     }
 }

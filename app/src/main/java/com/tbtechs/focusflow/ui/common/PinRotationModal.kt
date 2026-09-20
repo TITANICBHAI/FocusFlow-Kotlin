@@ -1,17 +1,30 @@
 package com.tbtechs.focusflow.ui.common
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,10 +35,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.domain.PinReuseTracker
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.DarkBorder
+import com.tbtechs.focusflow.ui.theme.DarkCard
+import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
+import com.tbtechs.focusflow.ui.theme.DarkTextMuted
+import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
+import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,61 +96,185 @@ fun PinRotationModal(
 
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(actionLabel) },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = DarkCard,
+        titleContentColor = DarkTextPrimary,
+        textContentColor = DarkTextSecondary,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(BrandPrimary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        },
+        title = {
+            Text(
+                text = actionLabel,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(actionDescription, style = MaterialTheme.typography.bodySmall)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(actionDescription, fontSize = 13.sp, lineHeight = 18.sp, color = DarkTextSecondary)
                 when (mode) {
                     "choose" -> {
-                        Text("Choose the password that will protect this action.")
+                        Text("Choose the password that will protect this action.", fontSize = 13.sp, color = DarkTextMuted)
                         Button(
                             enabled = reuseInfo.canReuse && !saving,
                             onClick = {
                                 if (onKeepSame()) onComplete()
                                 else error = "The daily reuse limit has been reached."
                             },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
                         ) {
-                            Text("Keep same password (${PinReuseTracker.MAX_DAILY_REUSES - reuseInfo.count} of ${PinReuseTracker.MAX_DAILY_REUSES} reuses remaining today)")
+                            Text("Keep same password (${PinReuseTracker.MAX_DAILY_REUSES - reuseInfo.count} of ${PinReuseTracker.MAX_DAILY_REUSES} left)", fontWeight = FontWeight.SemiBold)
                         }
-                        Button(onClick = { mode = "custom"; error = null }) { Text("Set new password") }
-                        Button(onClick = { mode = "generate"; error = null }) { Text("Auto-generate") }
-                        TextButton(onClick = onComplete) { Text("Skip — proceed without changing password") }
+                        Button(
+                            onClick = { mode = "custom"; error = null },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
+                        ) {
+                            Text("Set new password", color = DarkTextPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                        Button(
+                            onClick = { mode = "generate"; error = null },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
+                        ) {
+                            Text("Auto-generate", color = DarkTextPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                        TextButton(
+                            onClick = onComplete,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
+                        ) {
+                            Text("Skip — proceed without changing password", color = DarkTextSecondary)
+                        }
                     }
                     "custom" -> {
-                        TextButton(onClick = { mode = "choose"; error = null }) { Text("← Back") }
+                        TextButton(
+                            onClick = { mode = "choose"; error = null },
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Text("← Back", color = BrandPrimary)
+                        }
                         PasswordRotationField(password, "New password (8+ characters)", showPassword, { password = it; error = null }) {
                             showPassword = !showPassword
                         }
                         PasswordRotationField(confirmation, "Confirm password", showConfirmation, { confirmation = it; error = null }) {
                             showConfirmation = !showConfirmation
                         }
-                        Text(passwordStrength(password), style = MaterialTheme.typography.labelSmall)
-                        Button(enabled = !saving, onClick = { saveNew(password) }) {
-                            if (saving) CircularProgressIndicator() else Text("Set Password & Continue")
+                        Text(passwordStrength(password), fontSize = 12.sp, color = DarkTextMuted)
+                        Button(
+                            enabled = !saving,
+                            onClick = { saveNew(password) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
+                        ) {
+                            if (saving) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                            else Text("Set Password & Continue", fontWeight = FontWeight.SemiBold)
                         }
                     }
                     else -> {
-                        TextButton(onClick = { mode = "choose"; error = null }) { Text("← Back") }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(generated, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                            IconButton(onClick = { generated = rotationPassword(); acknowledged = false }) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Generate another password")
+                        TextButton(
+                            onClick = { mode = "choose"; error = null },
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Text("← Back", color = BrandPrimary)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(DarkSurfaceVariant)
+                                .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = generated,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandPrimary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                IconButton(onClick = { generated = rotationPassword(); acknowledged = false }) {
+                                    Icon(
+                                        Icons.Outlined.Refresh,
+                                        contentDescription = "Generate another password",
+                                        tint = DarkTextSecondary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                             }
                         }
-                        Text("Write this down now. Only the hash is stored; there is no recovery option.", style = MaterialTheme.typography.bodySmall)
-                        androidx.compose.material3.Checkbox(checked = acknowledged, onCheckedChange = { acknowledged = it })
-                        Text("I have written this password down somewhere safe", style = MaterialTheme.typography.bodySmall)
-                        Button(enabled = acknowledged && !saving, onClick = { saveNew(generated) }) {
-                            if (saving) CircularProgressIndicator() else Text("Save & Continue")
+                        Text(
+                            "Write this down now. Only the hash is stored; there is no recovery option.",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = Color(0xFFFBBF24),
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.Checkbox(
+                                checked = acknowledged,
+                                onCheckedChange = { acknowledged = it },
+                                colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                    checkedColor = BrandPrimary,
+                                    uncheckedColor = DarkBorder,
+                                ),
+                            )
+                            Text("I have saved this password somewhere safe", fontSize = 12.sp, color = DarkTextPrimary)
+                        }
+                        Button(
+                            enabled = acknowledged && !saving,
+                            onClick = { saveNew(generated) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
+                        ) {
+                            if (saving) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                            else Text("Save & Continue", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Text("Passwords are hashed before storage. The raw password is never saved on this device.", style = MaterialTheme.typography.labelSmall)
+                error?.let { Text(it, color = Color(0xFFEF4444), fontSize = 12.sp) }
+                Text(
+                    "Passwords are hashed before storage. The raw password is never saved on this device.",
+                    fontSize = 11.sp,
+                    color = DarkTextMuted,
+                )
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(
+                onClick = onCancel,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+            ) {
+                Text("Cancel", color = DarkTextSecondary)
+            }
+        },
     )
 }
 
@@ -138,17 +286,33 @@ private fun PasswordRotationField(
     onValueChange: (String) -> Unit,
     onToggleVisibility: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
-            label = { Text(label) },
-            singleLine = true,
-            visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        )
-        TextButton(onClick = onToggleVisibility) { Text(if (visible) "Hide" else "Show") }
-    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(label, color = DarkTextMuted, fontSize = 13.sp) },
+        singleLine = true,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            IconButton(onClick = onToggleVisibility) {
+                Icon(
+                    if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    contentDescription = if (visible) "Hide" else "Show",
+                    tint = DarkTextSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        },
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = DarkSurfaceVariant,
+            unfocusedContainerColor = DarkSurfaceVariant,
+            focusedBorderColor = BrandPrimary,
+            unfocusedBorderColor = DarkBorder,
+            focusedTextColor = DarkTextPrimary,
+            unfocusedTextColor = DarkTextPrimary,
+        ),
+    )
 }
 
 private fun rotationPassword(): String {

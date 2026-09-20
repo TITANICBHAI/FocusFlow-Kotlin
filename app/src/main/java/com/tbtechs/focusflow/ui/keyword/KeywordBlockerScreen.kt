@@ -108,7 +108,7 @@ private val keywordPresets = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeywordBlockerScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onBack: () -> Unit = {},
 ) {
     val settings by settingsViewModel.settings.collectAsState()

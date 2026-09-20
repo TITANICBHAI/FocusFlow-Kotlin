@@ -115,9 +115,9 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FocusScreen(
-    taskViewModel: TaskViewModel = viewModel(),
-    settingsViewModel: SettingsViewModel = viewModel(),
-    focusSessionViewModel: FocusSessionViewModel = viewModel(),
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+    focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
     onOpenActiveBlocks: () -> Unit = {},
     onOpenSchedule: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},

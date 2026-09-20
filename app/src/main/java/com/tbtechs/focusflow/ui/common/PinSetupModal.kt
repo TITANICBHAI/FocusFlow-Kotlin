@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -107,14 +108,15 @@ fun PinSetupModal(
 
     AlertDialog(
         onDismissRequest = onCancel,
+        shape = RoundedCornerShape(24.dp),
         containerColor = DarkCard,
         titleContentColor = DarkTextPrimary,
         textContentColor = DarkTextSecondary,
         icon = {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(BrandPrimary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -146,16 +148,16 @@ fun PinSetupModal(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-                        .padding(3.dp),
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                        .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(9.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(if (custom) BrandPrimary else Color.Transparent)
                             .clickable { custom = true; error = null }
                             .padding(vertical = 8.dp),
@@ -172,7 +174,7 @@ fun PinSetupModal(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(9.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(if (!custom) BrandPrimary else Color.Transparent)
                             .clickable { custom = false; error = null }
                             .padding(vertical = 8.dp),
@@ -207,7 +209,7 @@ fun PinSetupModal(
                                     )
                                 }
                             },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = DarkSurfaceVariant,
                                 unfocusedContainerColor = DarkSurfaceVariant,
@@ -235,7 +237,7 @@ fun PinSetupModal(
                                     )
                                 }
                             },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = DarkSurfaceVariant,
                                 unfocusedContainerColor = DarkSurfaceVariant,
@@ -275,9 +277,9 @@ fun PinSetupModal(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(DarkSurfaceVariant)
-                                .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                                .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
                         ) {
                             Row(
@@ -311,9 +313,9 @@ fun PinSetupModal(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(Color(0xFF451A03))
-                                .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f), RoundedCornerShape(14.dp))
                                 .padding(12.dp),
                         ) {
                             Row(
@@ -368,7 +370,8 @@ fun PinSetupModal(
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
             ) {
                 if (saving) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
@@ -382,7 +385,11 @@ fun PinSetupModal(
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(
+                onClick = onCancel,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+            ) {
                 Text("Cancel", color = DarkTextSecondary)
             }
         },

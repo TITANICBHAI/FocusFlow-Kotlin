@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -78,6 +79,7 @@ fun TaskDetailModal(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
@@ -118,9 +120,9 @@ fun TaskDetailModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .padding(14.dp),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -144,9 +146,9 @@ fun TaskDetailModal(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                     .padding(14.dp),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -187,18 +189,18 @@ fun TaskDetailModal(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .padding(12.dp),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("PRIORITY", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkTextMuted, letterSpacing = 0.8.sp)
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(priorityBadgeBg(task.priority))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
                         ) {
                             Text(
                                 task.priority.replaceFirstChar(Char::titlecase),
@@ -213,9 +215,9 @@ fun TaskDetailModal(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .padding(12.dp),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -245,10 +247,10 @@ fun TaskDetailModal(
                         task.tags.forEach { tag ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(DarkSurfaceVariant)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
                             ) {
                                 Text("#$tag", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.Medium)
                             }
@@ -262,9 +264,9 @@ fun TaskDetailModal(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(DarkCard)
-                        .border(1.dp, BrandPrimary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .border(1.dp, BrandPrimary.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
                         .padding(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -292,8 +294,10 @@ fun TaskDetailModal(
             ) {
                 OutlinedButton(
                     onClick = onEdit,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 44.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
                 ) {
                     Icon(Icons.Outlined.Edit, contentDescription = null, tint = DarkTextPrimary, modifier = Modifier.size(16.dp))
@@ -304,9 +308,11 @@ fun TaskDetailModal(
                 if (canAct) {
                     Button(
                         onClick = onComplete,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 44.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(14.dp),
                     ) {
                         Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -315,8 +321,10 @@ fun TaskDetailModal(
 
                     OutlinedButton(
                         onClick = onExtend,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
                     ) {
                         Icon(Icons.Outlined.Alarm, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
@@ -327,9 +335,11 @@ fun TaskDetailModal(
                     if (task.focusMode) {
                         Button(
                             onClick = onStartFocus,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minHeight = 44.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(14.dp),
                         ) {
                             Icon(Icons.Outlined.Shield, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
@@ -342,7 +352,10 @@ fun TaskDetailModal(
             if (canAct) {
                 TextButton(
                     onClick = onSkip,
-                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 44.dp),
                 ) {
                     Text("Skip Task", color = DarkTextMuted, fontSize = 13.sp)
                 }

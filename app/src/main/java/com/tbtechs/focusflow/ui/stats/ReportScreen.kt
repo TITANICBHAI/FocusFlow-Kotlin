@@ -51,7 +51,7 @@ enum class ReportType { Day, Week }
 fun ReportScreen(
     reportType: ReportType = ReportType.Day,
     referenceDate: LocalDate = LocalDate.now().minusDays(1),
-    taskViewModel: TaskViewModel = viewModel(),
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
     settingsRepository: SettingsRepository? = null,
     onBack: () -> Unit = {},
 ) {

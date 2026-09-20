@@ -3,7 +3,9 @@ package com.tbtechs.focusflow.ui
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.QuickBlockConfig
@@ -14,6 +16,7 @@ import com.tbtechs.focusflow.data.repository.AllowanceUsage
 import com.tbtechs.focusflow.data.repository.AllowanceSnapshot
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
+import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.FocusPinManager
 import com.tbtechs.focusflow.domain.PinReuseTracker
@@ -457,5 +460,33 @@ class SettingsViewModel(
         if (!reuseInfo.canReuse) return false
         PinReuseTracker.recordPinReuse(prefs, PinReuseTracker.ReuseTrackerKey.ALWAYSON)
         return true
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                val app = extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
+                    ?: runCatching { AppModule.applicationContext }.getOrNull()
+                val ctx = app?.applicationContext
+                    ?: throw IllegalStateException("Application context not available to instantiate SettingsViewModel")
+                return SettingsViewModel(
+                    settingsRepository = AppModule.settingsRepository,
+                    pinManager = AppModule.pinManager,
+                    context = ctx,
+                ) as T
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val ctx = runCatching { AppModule.applicationContext }.getOrNull()
+                    ?: throw IllegalStateException("AppModule not initialized to instantiate SettingsViewModel")
+                return SettingsViewModel(
+                    settingsRepository = AppModule.settingsRepository,
+                    pinManager = AppModule.pinManager,
+                    context = ctx,
+                ) as T
+            }
+        }
     }
 }

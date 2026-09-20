@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -77,7 +78,7 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PermissionsScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     isFocusActive: Boolean = false,
     onBack: () -> Unit = {},
     onConfigureLauncher: () -> Unit = {},
@@ -179,12 +180,12 @@ fun PermissionsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                        .border(1.dp, DarkBorder.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
                         .padding(20.dp),
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -206,9 +207,11 @@ fun PermissionsScreen(
                         )
                         Button(
                             onClick = onBack,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 44.dp),
                         ) {
                             Text("Go Back", fontWeight = FontWeight.Bold)
                         }
@@ -228,9 +231,9 @@ fun PermissionsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(LavenderBg)
-                            .border(1.dp, LavenderBorder, RoundedCornerShape(16.dp))
+                            .border(1.dp, LavenderBorder, RoundedCornerShape(20.dp))
                             .padding(16.dp),
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -286,8 +289,8 @@ fun PermissionsScreen(
                             progress = { if (required > 0) granted.toFloat() / required.toFloat() else 0f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)),
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
                             color = BrandPrimary,
                             trackColor = DarkSurfaceVariant,
                         )

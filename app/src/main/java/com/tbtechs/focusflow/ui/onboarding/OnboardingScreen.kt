@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -95,7 +96,7 @@ private enum class OnboardingStep { CORE, OPTIONAL }
 
 @Composable
 fun OnboardingScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onFinished: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -226,9 +227,9 @@ fun OnboardingScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(LavenderBg)
-                            .border(1.dp, LavenderBorder, RoundedCornerShape(16.dp))
+                            .border(1.dp, LavenderBorder, RoundedCornerShape(20.dp))
                             .padding(16.dp),
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -259,7 +260,7 @@ fun OnboardingScreen(
                     }
                 }
 
-                // Progress Tracker matching 1a.jpg
+                // Progress Tracker
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
@@ -281,11 +282,11 @@ fun OnboardingScreen(
                             )
                         }
                         LinearProgressIndicator(
-                            progress = { requiredReady.toFloat() / requiredTotal.toFloat() },
+                            progress = { if (requiredTotal > 0) requiredReady.toFloat() / requiredTotal.toFloat() else 0f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)),
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
                             color = BrandPrimary,
                             trackColor = DarkSurfaceVariant,
                         )
@@ -323,14 +324,14 @@ fun OnboardingScreen(
                     AccessibilityRestrictedRecovery(accessibilityAttempted = accessibilityAttempted)
                 }
 
-                // Bottom Lavender Info Note matching 1b.jpg
+                // Bottom Lavender Info Note
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(18.dp))
                             .background(LavenderBg)
-                            .border(1.dp, LavenderBorder, RoundedCornerShape(14.dp))
+                            .border(1.dp, LavenderBorder, RoundedCornerShape(18.dp))
                             .padding(14.dp),
                     ) {
                         Row(
@@ -421,26 +422,26 @@ fun OnboardingScreen(
                     )
                 }
 
-                // PIN Protection Card matching 1d.jpg
+                // PIN Protection Card
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(DarkCard)
-                            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                            .border(1.dp, DarkBorder.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
                             .padding(16.dp),
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(14.dp))
                                         .background(StatusOptionalBg),
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -483,21 +484,23 @@ fun OnboardingScreen(
                             if (pinChoice && !defensePinSet) {
                                 Button(
                                     onClick = { pinDialog = true },
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(14.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 44.dp),
                                 ) {
                                     Text("Set Password Now", fontWeight = FontWeight.Bold)
                                 }
                             }
 
-                            // Inner callout box matching 1d.jpg
+                            // Inner callout box
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(DarkSurfaceVariant)
-                                    .padding(10.dp),
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(DarkSurfaceVariant.copy(alpha = 0.6f))
+                                    .padding(12.dp),
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -512,7 +515,7 @@ fun OnboardingScreen(
                                     Text(
                                         text = if (pinChoice && defensePinSet) "Defense Password set — your protections are locked."
                                         else "You can enable this anytime in Settings → PIN Protection or Block Enforcement.",
-                                        fontSize = 12.sp,
+                                        fontSize = 12.5.sp,
                                         color = DarkTextSecondary,
                                     )
                                 }
@@ -522,9 +525,9 @@ fun OnboardingScreen(
                 }
             }
 
-            // Bottom CTA Button matching 1b.jpg / 1d.jpg
+            // Bottom CTA Button
             item {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = {
                         if (step == OnboardingStep.CORE) {
@@ -544,7 +547,7 @@ fun OnboardingScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .defaultMinSize(minHeight = 50.dp),
                 ) {
                     Text(
                         text = if (step == OnboardingStep.CORE) {
@@ -557,7 +560,7 @@ fun OnboardingScreen(
                                 else -> "$optionalReady optional permissions enabled — let's start"
                             }
                         },
-                        fontSize = 16.sp,
+                        fontSize = 15.5.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -580,17 +583,19 @@ fun OnboardingScreen(
     if (pinDialog) {
         AlertDialog(
             onDismissRequest = { pinDialog = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
-            title = { Text("Set Defense Password") },
+            title = { Text("Set Defense Password", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = pin,
                         onValueChange = { pin = it },
                         label = { Text("Password") },
                         singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
@@ -598,6 +603,7 @@ fun OnboardingScreen(
                         onValueChange = { pinConfirm = it },
                         label = { Text("Confirm password") },
                         singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (pin.isNotEmpty() && pin != pinConfirm) {
@@ -618,11 +624,15 @@ fun OnboardingScreen(
                         }
                     },
                     enabled = pin.length >= 4 && pin == pinConfirm,
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                ) { Text("Set Password", color = Color.White) }
+                ) { Text("Set Password", color = Color.White, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
-                TextButton(onClick = { pinDialog = false }) { Text("Set later", color = DarkTextSecondary) }
+                TextButton(
+                    onClick = { pinDialog = false },
+                    shape = RoundedCornerShape(14.dp),
+                ) { Text("Set later", color = DarkTextSecondary) }
             },
         )
     }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -113,6 +114,7 @@ fun QuickBlockSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
     ) {
         Column(
@@ -146,9 +148,11 @@ fun QuickBlockSheet(
             Button(
                 onClick = { applyTemporary(60 * 60 * 1000L) },
                 enabled = !loading,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Icon(Icons.Outlined.AccessTime, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -162,8 +166,10 @@ fun QuickBlockSheet(
                     applyTemporary(Duration.between(now, tonight).toMillis())
                 },
                 enabled = !loading,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = DarkCard,
                     contentColor = DarkTextPrimary,
@@ -182,8 +188,10 @@ fun QuickBlockSheet(
                     applyTemporary(Duration.between(LocalDateTime.now(), wakeUp).toMillis())
                 },
                 enabled = !loading,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = DarkCard,
                     contentColor = DarkTextPrimary,
@@ -207,8 +215,10 @@ fun QuickBlockSheet(
                     }
                 },
                 enabled = !loading,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 44.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = DarkCard,
                     contentColor = DarkTextPrimary,
@@ -227,9 +237,9 @@ fun QuickBlockSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                     .padding(14.dp),
             ) {
                 Row(
@@ -271,6 +281,8 @@ fun QuickBlockSheet(
                                 }
                             }
                         },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     ) {
                         Text("Enable", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                     }
@@ -283,7 +295,11 @@ fun QuickBlockSheet(
                     color = Color(0xFFFBBF24),
                     fontSize = 13.sp,
                 )
-                TextButton(onClick = onOpenActive) {
+                TextButton(
+                    onClick = onOpenActive,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
                     Text("Open Active Dashboard", color = BrandPrimary)
                 }
             }
@@ -299,6 +315,7 @@ fun QuickBlockSheet(
     if (protectedWarning) {
         AlertDialog(
             onDismissRequest = { protectedWarning = false },
+            shape = RoundedCornerShape(24.dp),
             containerColor = DarkCard,
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
@@ -308,6 +325,8 @@ fun QuickBlockSheet(
                 Button(
                     onClick = { protectedWarning = false },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
                     Text("OK")
                 }

@@ -1,10 +1,13 @@
 package com.tbtechs.focusflow.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.repository.AlarmRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.di.AppModule
 import java.time.Instant
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -230,6 +233,26 @@ class TaskViewModel(
                 if (newEndMs > System.currentTimeMillis()) {
                     alarmRepository.scheduleAlarm(taskId, task.title, newEndMs)
                 }
+            }
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return TaskViewModel(
+                    taskRepository = AppModule.taskRepository,
+                    alarmRepository = AppModule.alarmRepository,
+                ) as T
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                return TaskViewModel(
+                    taskRepository = AppModule.taskRepository,
+                    alarmRepository = AppModule.alarmRepository,
+                ) as T
             }
         }
     }
