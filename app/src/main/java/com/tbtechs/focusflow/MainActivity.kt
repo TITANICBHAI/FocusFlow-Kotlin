@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -264,6 +265,15 @@ private fun FocusFlowRoot(
     SideEffect {
         val window = (view.context as? android.app.Activity)?.window
         if (window != null) {
+            // The app draws edge-to-edge. Transparent system bars let the
+            // active Material theme continue behind the clock/status strip
+            // and behind both gesture and 3-button navigation.
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                window.isStatusBarContrastEnforced = false
+                window.isNavigationBarContrastEnforced = false
+            }
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !settings.darkModeEnabled
                 isAppearanceLightNavigationBars = !settings.darkModeEnabled
@@ -274,7 +284,11 @@ private fun FocusFlowRoot(
     com.tbtechs.focusflow.ui.theme.FocusFlowTheme(
         darkTheme = settings.darkModeEnabled,
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
             ErrorBoundary(screenName = "root") {
                 FocusFlowNavGraph(
                     navController = navController,
