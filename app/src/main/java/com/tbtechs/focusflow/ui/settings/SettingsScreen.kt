@@ -527,6 +527,7 @@ fun SettingsScreen(
                         icon = Icons.Outlined.RocketLaunch,
                         title = "What's New",
                         description = "Changelog — features, fixes, and improvements",
+                        iconContainer = true,
                         onClick = onOpenChangelog,
                     )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
@@ -760,6 +761,7 @@ private fun SettingsActionRow(
     title: String,
     description: String? = null,
     destructive: Boolean = false,
+    iconContainer: Boolean = false,
     onClick: () -> Unit,
 ) {
     Row(
@@ -769,21 +771,29 @@ private fun SettingsActionRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(
-                    if (destructive) Color(0xFFEF4444).copy(alpha = 0.12f)
-                    else BrandPrimary.copy(alpha = 0.12f),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
+        if (iconContainer) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(BrandPrimary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (destructive) Color(0xFFEF4444) else BrandPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        } else {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (destructive) Color(0xFFEF4444) else BrandPrimary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier
+                    .size(22.dp)
+                    .padding(horizontal = 1.dp),
             )
         }
         Spacer(Modifier.width(10.dp))

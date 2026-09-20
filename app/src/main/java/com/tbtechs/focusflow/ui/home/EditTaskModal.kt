@@ -22,10 +22,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
@@ -208,12 +211,23 @@ fun EditTaskModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(RefHeader)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                    Text("Cancel", color = RefSecondary, fontSize = 16.sp)
+                 IconButton(
+                     onClick = onDismiss,
+                     modifier = Modifier
+                         .size(40.dp)
+                         .clip(CircleShape)
+                         .background(RefCard),
+                 ) {
+                     Icon(
+                         Icons.AutoMirrored.Outlined.ArrowBack,
+                         contentDescription = "Cancel editing",
+                         tint = RefSecondary,
+                         modifier = Modifier.size(20.dp),
+                     )
                 }
                 Text(
                     "Edit Task",
@@ -223,8 +237,19 @@ fun EditTaskModal(
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                 )
-                TextButton(onClick = ::saveTask, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                    Text("Save", color = BrandPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                 IconButton(
+                     onClick = ::saveTask,
+                     modifier = Modifier
+                         .size(40.dp)
+                         .clip(CircleShape)
+                         .background(BrandPrimary.copy(alpha = 0.16f)),
+                 ) {
+                     Icon(
+                         Icons.Outlined.CheckCircle,
+                         contentDescription = "Save task",
+                         tint = BrandPrimary,
+                         modifier = Modifier.size(22.dp),
+                     )
                 }
             }
 
@@ -232,8 +257,8 @@ fun EditTaskModal(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
             HomeTextField(title, { title = it; showError = false }, "Task title")
 
@@ -241,22 +266,22 @@ fun EditTaskModal(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .border(2.dp, RefBorder, RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, RefBorder, RoundedCornerShape(14.dp))
                     .clickable { notesExpanded = !notesExpanded }
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.Description, contentDescription = "Notes", tint = RefSecondary, modifier = Modifier.size(26.dp))
-                Spacer(Modifier.width(14.dp))
-                Text("Notes", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = RefText)
-                Spacer(Modifier.width(8.dp))
-                Text("Optional", fontSize = 13.sp, color = RefSecondary, modifier = Modifier.weight(1f))
+                 Icon(Icons.Outlined.Description, contentDescription = "Notes", tint = RefSecondary, modifier = Modifier.size(22.dp))
+                 Spacer(Modifier.width(10.dp))
+                 Text("Notes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                 Spacer(Modifier.width(6.dp))
+                 Text("Optional", fontSize = 12.sp, color = RefSecondary, modifier = Modifier.weight(1f))
                 Icon(
                     if (notesExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (notesExpanded) "Collapse notes" else "Expand notes",
                     tint = RefSecondary,
-                    modifier = Modifier.size(26.dp),
+                     modifier = Modifier.size(22.dp),
                 )
             }
             if (notesExpanded) {
@@ -265,7 +290,7 @@ fun EditTaskModal(
                     { notes = it },
                     "Add details...",
                     singleLine = false,
-                    multilineMinHeight = 112.dp,
+                     multilineMinHeight = 96.dp,
                 )
             }
 
@@ -277,7 +302,7 @@ fun EditTaskModal(
                     .background(RefCard)
                     .border(1.dp, RefBorder, RoundedCornerShape(18.dp))
                     .clickable { showTimePicker = true }
-                    .padding(14.dp),
+                    .padding(11.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -286,9 +311,9 @@ fun EditTaskModal(
                     Icon(Icons.Outlined.Schedule, contentDescription = "Start time", tint = RefSecondary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(time.asDisplayTime(), fontSize = 18.sp, color = RefText)
+                         Text(time.asDisplayTime(), fontSize = 16.sp, color = RefText)
                     }
-                    Text("Change", fontSize = 14.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                     Text("Change", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -378,7 +403,7 @@ fun EditTaskModal(
                 )
                 Text(
                     "Press return to add each tag.",
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     color = RefSecondary,
                 )
             }
@@ -399,7 +424,7 @@ fun EditTaskModal(
                         .background(RefCard)
                         .border(1.dp, RefBorder, RoundedCornerShape(14.dp))
                         .clickable { showAllowedApps = true }
-                        .padding(14.dp),
+                         .padding(11.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -408,10 +433,10 @@ fun EditTaskModal(
                         Icon(Icons.Outlined.Shield, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Allowed Apps", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = RefText)
-                            Text(allowedAppsDescription, fontSize = 14.sp, color = RefSecondary)
+                             Text("Allowed Apps", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                             Text(allowedAppsDescription, fontSize = 12.sp, color = RefSecondary)
                         }
-                        Text("Customize", fontSize = 13.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                         Text("Customize", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

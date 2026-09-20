@@ -955,6 +955,7 @@ fun StandaloneBlockModal(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable(enabled = !(locked && isBlocked)) {
+                                        expandedAllowancePackage = null
                                         selected = selected.toggle(app.packageName, locked)
                                     }
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1014,6 +1015,7 @@ fun StandaloneBlockModal(
                                         .fillMaxWidth()
                                         .background(DarkSurfaceVariant.copy(alpha = 0.9f))
                                         .clickable {
+                                        expandedAllowancePackage = null
                                             if (allowance == null) {
                                                 createAllowance(app.packageName)
                                             } else {
@@ -1028,11 +1030,11 @@ fun StandaloneBlockModal(
                                         Icons.Outlined.WbSunny,
                                         contentDescription = null,
                                         tint = if (allowance != null) Color(0xFFF59E0B) else DarkTextMuted,
-                                        modifier = Modifier.size(14.dp),
+                                        modifier = Modifier.size(13.dp),
                                     )
                                     Text(
                                         text = if (allowance == null) "Add daily allowance" else allowanceSummary(allowance),
-                                        fontSize = 11.5.sp,
+                                        fontSize = 11.sp,
                                         color = if (allowance != null) Color(0xFFFBBF24) else DarkTextSecondary,
                                         modifier = Modifier.weight(1f),
                                     )
@@ -1051,9 +1053,10 @@ fun StandaloneBlockModal(
                                     .fillMaxWidth()
                                     .background(DarkSurfaceVariant.copy(alpha = 0.9f))
                                     .clickable(enabled = !locked) {
+                                        expandedAllowancePackage = null
                                         vpn = vpn.toggle(app.packageName, locked)
                                     }
-                                    .padding(horizontal = 12.dp, vertical = 5.dp),
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -1061,11 +1064,11 @@ fun StandaloneBlockModal(
                                     Icons.Outlined.Shield,
                                     contentDescription = null,
                                     tint = if (vpnBlocked) BrandPrimary else DarkTextMuted,
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(13.dp),
                                 )
                                 Text(
                                     text = if (vpnBlocked) "Blocked from internet (VPN)" else "Add network block (VPN)",
-                                    fontSize = 11.5.sp,
+                                    fontSize = 11.sp,
                                     color = if (vpnBlocked) BrandPrimaryLight else DarkTextSecondary,
                                     modifier = Modifier.weight(1f),
                                 )

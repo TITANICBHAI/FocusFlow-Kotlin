@@ -195,7 +195,7 @@ fun ActiveStatusIndicator(
                 contentDescription = summary.description
                 role = Role.Button
             }
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         EcgHeartPulseMonitor(
@@ -225,8 +225,8 @@ private fun EcgHeartPulseMonitor(
 
     Canvas(
         modifier = modifier.size(
-            width = 24.dp,
-            height = 22.dp,
+             width = 21.dp,
+             height = 19.dp,
         ),
     ) {
         val w = size.width
@@ -246,7 +246,7 @@ private fun EcgHeartPulseMonitor(
             path = path,
             color = iconColor,
             style = Stroke(
-                 width = 1.8.dp.toPx(),
+                 width = 1.6.dp.toPx(),
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round,
             ),
@@ -260,7 +260,7 @@ private fun EcgHeartPulseMonitor(
                 y = h * 0.58f,
             ),
             style = Stroke(
-                 width = 1.8.dp.toPx(),
+                 width = 1.6.dp.toPx(),
             ),
         )
     }

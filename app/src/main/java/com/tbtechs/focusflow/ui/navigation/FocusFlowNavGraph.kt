@@ -215,7 +215,9 @@ fun FocusFlowNavGraph(
                             onOpenPermissions = { navigate(Routes.PERMISSIONS) },
                             onOpenStats = { navigate(Routes.STATS) },
                             onOpenChangelog = { navigate(Routes.CHANGELOG) },
-                            onOpenPrivacyTerms = { navigate(Routes.PRIVACY_POLICY) },
+                            onOpenPrivacyTerms = {
+                                navigate("${Routes.PRIVACY_POLICY}?revisit=true")
+                            },
                         )
                     }
                 }

@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
@@ -201,13 +201,13 @@ fun QuickAddModal(
             ) {
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = "Close",
                         tint = RefSecondary,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(24.dp),
                     )
                 }
                 Text(
@@ -223,19 +223,19 @@ fun QuickAddModal(
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = 20.dp,
-                        vertical = 10.dp,
+                        horizontal = 16.dp,
+                        vertical = 8.dp,
                     ),
                 ) {
-                    Text("Save", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Save", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
             ReferenceSectionLabel("Title")
             HomeTextField(title, { title = it }, "Title")
@@ -245,7 +245,7 @@ fun QuickAddModal(
                 { notes = it },
                 "Notes (optional)",
                 singleLine = false,
-                multilineMinHeight = 112.dp,
+                 multilineMinHeight = 96.dp,
             )
 
             // Date & Time pickers
@@ -261,16 +261,16 @@ fun QuickAddModal(
                         .background(DarkSurfaceVariant)
                         .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showDatePicker = true }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
+                             Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 if (parsedDate == LocalDate.now()) "Today"
                                 else parsedDate.format(DateTimeFormatter.ofPattern("MMM d")),
-                                fontSize = 17.sp,
+                                 fontSize = 15.sp,
                                 color = RefText,
                             )
                         }
@@ -284,7 +284,7 @@ fun QuickAddModal(
                         .background(DarkSurfaceVariant)
                         .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showTimePicker = true }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -292,7 +292,7 @@ fun QuickAddModal(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 parsedTime.format(DateTimeFormatter.ofPattern("h:mm a")),
-                                fontSize = 17.sp,
+                                 fontSize = 15.sp,
                                 color = RefText,
                             )
                         }

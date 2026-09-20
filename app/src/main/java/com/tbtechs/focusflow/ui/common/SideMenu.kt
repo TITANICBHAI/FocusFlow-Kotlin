@@ -90,9 +90,9 @@ fun SideMenu(
             )
             NavigationDrawerItem(
                 label = { Text("Privacy & Terms") },
-                selected = currentRoute == Routes.PRIVACY_POLICY,
+                selected = currentRoute?.startsWith(Routes.PRIVACY_POLICY) == true,
                 onClick = {
-                    onNavigate(Routes.PRIVACY_POLICY)
+                    onNavigate("${Routes.PRIVACY_POLICY}?revisit=true")
                     onClose()
                 },
                 icon = { Icon(Icons.Outlined.Lock, contentDescription = null) },

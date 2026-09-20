@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -141,13 +141,6 @@ fun HomeScreen(
                             else "${todayTasks.count { it.status == "completed" }}/${todayTasks.size} tasks done",
                             fontSize = 13.sp,
                             color = RefSecondary,
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp)
-                                .height(1.dp)
-                                .background(RefBorder),
                         )
                     }
             },
@@ -361,7 +354,7 @@ private fun EmptySchedule(
         verticalArrangement = Arrangement.Top,
     ) {
         Icon(
-            Icons.Outlined.CalendarToday,
+             Icons.Outlined.CalendarMonth,
             contentDescription = null,
             tint = RefMuted,
             modifier = Modifier.size(48.dp),

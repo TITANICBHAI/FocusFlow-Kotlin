@@ -161,11 +161,11 @@ internal fun FocusFlowPrimaryButton(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minHeight = 44.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (enabled) color else RefMuted.copy(alpha = 0.35f))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -176,7 +176,7 @@ internal fun FocusFlowPrimaryButton(
         Text(
             text = text,
             color = Color.White,
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -193,12 +193,12 @@ internal fun FocusFlowSecondaryButton(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minHeight = 44.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(RefCard)
             .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -209,7 +209,7 @@ internal fun FocusFlowSecondaryButton(
         Text(
             text = text,
             color = if (enabled) RefSecondary else RefMuted,
-            fontSize = 13.sp,
+            fontSize = 12.5.sp,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -221,7 +221,7 @@ internal fun FocusFlowModalField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
-    minHeight: androidx.compose.ui.unit.Dp = 48.dp,
+    minHeight: androidx.compose.ui.unit.Dp = 44.dp,
     secure: Boolean = false,
     onToggleVisibility: (() -> Unit)? = null,
 ) {
@@ -232,7 +232,7 @@ internal fun FocusFlowModalField(
         singleLine = true,
         textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
             color = RefText,
-            fontSize = 15.sp,
+            fontSize = 14.sp,
         ),
         visualTransformation = if (secure && !passwordVisible) {
             PasswordVisualTransformation()
@@ -250,12 +250,12 @@ internal fun FocusFlowModalField(
                     .clip(RoundedCornerShape(10.dp))
                     .background(RefCard)
                     .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     if (value.isEmpty()) {
-                        Text(placeholder, color = RefMuted, fontSize = 15.sp)
+                         Text(placeholder, color = RefMuted, fontSize = 14.sp)
                     }
                     innerTextField()
                 }
@@ -283,8 +283,8 @@ internal fun ReferencePill(
     selected: Boolean,
     modifier: Modifier = Modifier,
     selectedColor: Color = BrandPrimary,
-    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
-    horizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 10.dp,
     onClick: (() -> Unit)? = null,
 ) {
     val shape = CircleShape
@@ -298,13 +298,13 @@ internal fun ReferencePill(
                 shape = shape,
             )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = horizontalPadding, vertical = 4.dp),
+            .padding(horizontal = horizontalPadding, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             color = RefText,
-            fontSize = fontSize,
+             fontSize = fontSize,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -335,34 +335,37 @@ internal fun ReferenceField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     onValueChange: (String) -> Unit,
 ) {
-    OutlinedTextField(
+    BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = {
-            if (placeholder.isNotEmpty()) {
-                Text(placeholder, color = RefMuted, fontSize = 15.sp)
-            }
-        },
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (minHeight != null) Modifier.heightIn(min = minHeight) else Modifier),
-        shape = RoundedCornerShape(10.dp),
         textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             color = RefText,
         ),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = RefCard,
-            unfocusedContainerColor = RefCard,
-            disabledContainerColor = RefCard,
-            focusedBorderColor = RefBorder,
-            unfocusedBorderColor = RefBorder,
-            cursorColor = BrandPrimary,
-            focusedTextColor = RefText,
-            unfocusedTextColor = RefText,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight ?: 44.dp),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight ?: 44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(RefCard)
+                    .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top,
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    if (value.isEmpty() && placeholder.isNotEmpty()) {
+                        Text(placeholder, color = RefMuted, fontSize = 14.sp)
+                    }
+                    innerTextField()
+                }
+            }
         ),
     )
 }
@@ -380,13 +383,13 @@ internal fun ReferenceToggleCard(
             .clip(RoundedCornerShape(10.dp))
             .background(RefCard)
             .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RefText)
             Spacer(Modifier.size(2.dp))
-            Text(description, fontSize = 13.sp, color = RefSecondary)
+            Text(description, fontSize = 12.sp, color = RefSecondary)
         }
         FocusFlowSwitch(
             checked = checked,

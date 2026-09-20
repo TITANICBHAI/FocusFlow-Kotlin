@@ -35,11 +35,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.tbtechs.focusflow.analytics.ANALYTICS_ALL_TIME
 import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
@@ -64,6 +69,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.SunAmber
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * Kotlin port of the archived RN stats layout.
@@ -85,6 +91,8 @@ fun ArchivedStatsScreen(
     val loadState by statsViewModel.loadState.collectAsState()
     val window by statsViewModel.activeWindow.collectAsState()
     var usagePermission by remember { mutableStateOf<Boolean?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (statsViewModel.activeWindow.value != ANALYTICS_TODAY) {
@@ -93,6 +101,21 @@ fun ArchivedStatsScreen(
         usagePermission = runCatching {
             com.tbtechs.focusflow.di.AppModule.usageStatsRepository.hasPermission()
         }.getOrDefault(false)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    usagePermission = runCatching {
+                        com.tbtechs.focusflow.di.AppModule.usageStatsRepository.hasPermission()
+                    }.getOrDefault(false)
+                    statsViewModel.reload()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
@@ -442,6 +465,7 @@ private fun DeviceUsageCard(
         usage.peakPeriod?.let {
             Text("Heaviest use is around $it.", fontSize = 12.sp, color = DarkTextSecondary)
         }
+        HourlyUsageChart(usage.byHour)
         if (usage.apps.isNotEmpty()) {
             Text(
                 "Most-used apps",
@@ -472,6 +496,59 @@ private fun DeviceUsageCard(
                         Text("Block", fontSize = 12.sp)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HourlyUsageChart(byHour: Map<Int, Double>) {
+    val maxMinutes = byHour.values.maxOrNull()?.coerceAtLeast(0.0) ?: 0.0
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            "Observed time by hour",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = DarkTextPrimary,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(82.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            (0..23).forEach { hour ->
+                val minutes = byHour[hour] ?: 0.0
+                val fraction = if (maxMinutes > 0.0) {
+                    (minutes / maxMinutes).toFloat().coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height((4f + 58f * fraction).dp)
+                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        .background(
+                            if (minutes > 0.0) Color(0xFF63A7FF)
+                            else DarkBorder.copy(alpha = 0.7f),
+                        ),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            listOf("12a", "4a", "8a", "12p", "4p", "8p").forEach { label ->
+                Text(label, fontSize = 10.sp, color = DarkTextMuted)
             }
         }
     }

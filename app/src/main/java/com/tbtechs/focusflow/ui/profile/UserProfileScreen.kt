@@ -89,8 +89,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
-private val ProfileAccent = Color(0xFFA5A7C8)
-private val ProfileAccentButton = Color(0xFF777B9F)
+private val ProfileAccent = Color(0xFF7777FF)
+private val ProfileAccentButton = Color(0xFF6366F1)
 
 /**
  * Profile questionnaire, journey stats, and profile management screen.
@@ -570,11 +570,8 @@ fun UserProfileScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                     .clickable { usageVisible = true }
-                    .padding(16.dp),
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -910,34 +907,30 @@ private fun ProfileFieldCard(
     subtitle: String? = null,
     content: @Composable () -> Unit,
 ) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(DarkCard)
-            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-            .padding(18.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = ProfileAccent,
+                letterSpacing = 0.5.sp,
+            )
+            if (subtitle != null) {
                 Text(
-                    text = title,
+                    text = subtitle,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = ProfileAccent,
-                    letterSpacing = 0.5.sp,
+                    color = DarkTextSecondary,
+                    lineHeight = 16.sp,
                 )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 12.sp,
-                        color = DarkTextSecondary,
-                        lineHeight = 16.sp,
-                    )
-                }
             }
-            content()
         }
+        content()
     }
 }
 
