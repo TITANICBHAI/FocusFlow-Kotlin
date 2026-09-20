@@ -10,54 +10,42 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
-import com.tbtechs.focusflow.ui.theme.DarkBackground
-import com.tbtechs.focusflow.ui.theme.DarkBorder
-import com.tbtechs.focusflow.ui.theme.DarkCard
-import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
-import com.tbtechs.focusflow.ui.theme.DarkTextMuted
-import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
-import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -76,298 +64,152 @@ fun TaskDetailModal(
     onStartFocus: () -> Unit,
     onEdit: () -> Unit,
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val canAct = task.status !in setOf("completed", "skipped")
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val accent = runCatching {
+        Color(android.graphics.Color.parseColor(task.color))
+    }.getOrDefault(BrandPrimary)
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkBackground,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
+                .fillMaxSize()
+                .background(RefBackground)
+                .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+            ,
         ) {
-            // Header Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(RefHeader)
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(accent),
+                )
+                Spacer(Modifier.width(12.dp))
                 Text(
                     task.title,
+                    modifier = Modifier.weight(1f),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkTextPrimary,
-                    modifier = Modifier.weight(1f),
+                    color = RefText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = "Close",
-                        tint = DarkTextSecondary,
-                        modifier = Modifier.size(20.dp),
+                        tint = RefSecondary,
+                        modifier = Modifier.size(30.dp),
                     )
                 }
             }
 
-            // Description / Notes
-            task.description?.takeIf { it.isNotBlank() }?.let { notes ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
-                        .padding(14.dp),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "NOTES",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkTextMuted,
-                            letterSpacing = 0.8.sp,
-                        )
-                        Text(
-                            notes,
-                            fontSize = 14.sp,
-                            color = DarkTextPrimary,
-                        )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                ReferenceSectionLabel("SCHEDULE")
+                Text(
+                    "${task.startTime.asLocalTime()} – ${task.endTime.asLocalTime()}",
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = RefText,
+                )
+                Text(
+                    task.startTime.asLocalDate(),
+                    fontSize = 17.sp,
+                    color = RefSecondary,
+                    modifier = Modifier.padding(top = (-16).dp),
+                )
+
+                ReferenceSectionLabel("PRIORITY")
+                Text(
+                    task.priority.replaceFirstChar(Char::titlecase),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = priorityColor(task.priority),
+                    modifier = Modifier.padding(top = (-16).dp),
+                )
+
+                ReferenceSectionLabel("STATUS")
+                Text(
+                    task.status.replaceFirstChar(Char::titlecase),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = when (task.status.lowercase()) {
+                        "completed" -> RefGreen
+                        "skipped" -> RefMuted
+                        else -> RefText
+                    },
+                    modifier = Modifier.padding(top = (-16).dp),
+                )
+
+                task.description?.takeIf { it.isNotBlank() }?.let { notes ->
+                    ReferenceSectionLabel("NOTES")
+                    Text(
+                        notes,
+                        fontSize = 17.sp,
+                        color = RefSecondary,
+                        modifier = Modifier.padding(top = (-16).dp),
+                    )
+                }
+
+                if (canAct && task.focusMode) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(BrandPrimary.copy(alpha = 0.14f))
+                            .border(1.dp, BrandPrimary.copy(alpha = 0.45f), RoundedCornerShape(18.dp))
+                            .clickable(onClick = onStartFocus)
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Shield, contentDescription = "Start focus", tint = BrandPrimary, modifier = Modifier.size(26.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Start Focus", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                        }
                     }
                 }
             }
 
-            // Schedule Card
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
+                    .background(RefHeader)
+                    .border(1.dp, RefBorder)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "SCHEDULE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextMuted,
-                        letterSpacing = 0.8.sp,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Schedule, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "${task.startTime.asLocalTime()} – ${task.endTime.asLocalTime()} · ${task.durationMinutes.asDurationLabel()}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkTextPrimary,
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            task.startTime.asLocalDate(),
-                            fontSize = 13.sp,
-                            color = DarkTextSecondary,
-                        )
-                    }
-                }
-            }
-
-            // Priority & Status Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
-                        .padding(12.dp),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("PRIORITY", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkTextMuted, letterSpacing = 0.8.sp)
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(priorityBadgeBg(task.priority))
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                        ) {
-                            Text(
-                                task.priority.replaceFirstChar(Char::titlecase),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = priorityColor(task.priority),
-                            )
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
-                        .padding(12.dp),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("STATUS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkTextMuted, letterSpacing = 0.8.sp)
-                        Text(
-                            task.status.replaceFirstChar(Char::titlecase),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = when (task.status.lowercase()) {
-                                "completed" -> Color(0xFF34D399)
-                                "skipped" -> DarkTextMuted
-                                else -> DarkTextPrimary
-                            },
-                        )
-                    }
-                }
-            }
-
-            // Tags
-            if (task.tags.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("TAGS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkTextMuted, letterSpacing = 0.8.sp)
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        task.tags.forEach { tag ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(DarkSurfaceVariant)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                            ) {
-                                Text("#$tag", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.Medium)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Focus Mode Details
-            if (task.focusMode) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DarkCard)
-                        .border(1.dp, BrandPrimary.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
-                        .padding(12.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Shield, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text("Focus Mode Enabled", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                            Text(
-                                if (task.focusAllowedPackages == null) "Using global allowed apps list"
-                                else "${task.focusAllowedPackages.size} custom allowed app(s)",
-                                fontSize = 11.sp,
-                                color = DarkTextSecondary,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onEdit,
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 44.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
-                ) {
-                    Icon(Icons.Outlined.Edit, contentDescription = null, tint = DarkTextPrimary, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Edit", color = DarkTextPrimary, fontSize = 13.sp)
-                }
-
+                ReferenceTaskAction(Icons.Outlined.Edit, "Edit", RefBlue, onEdit)
                 if (canAct) {
-                    Button(
-                        onClick = onComplete,
-                        modifier = Modifier
-                            .weight(1f)
-                            .defaultMinSize(minHeight = 44.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                        shape = RoundedCornerShape(14.dp),
-                    ) {
-                        Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Done", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    OutlinedButton(
-                        onClick = onExtend,
-                        modifier = Modifier
-                            .weight(1f)
-                            .defaultMinSize(minHeight = 44.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
-                    ) {
-                        Icon(Icons.Outlined.Alarm, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Extend", color = DarkTextPrimary, fontSize = 13.sp)
-                    }
-
-                    if (task.focusMode) {
-                        Button(
-                            onClick = onStartFocus,
-                            modifier = Modifier
-                                .weight(1f)
-                                .defaultMinSize(minHeight = 44.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            shape = RoundedCornerShape(14.dp),
-                        ) {
-                            Icon(Icons.Outlined.Shield, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Focus", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
+                    ReferenceTaskAction(Icons.Outlined.Check, "Complete", RefGreen, onComplete)
+                    ReferenceTaskAction(Icons.Outlined.Close, "Skip", RefMuted, onSkip)
+                    ReferenceTaskAction(Icons.Outlined.Alarm, "Extend", RefAmber, onExtend)
                 }
             }
-
-            if (canAct) {
-                TextButton(
-                    onClick = onSkip,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 44.dp),
-                ) {
-                    Text("Skip Task", color = DarkTextMuted, fontSize = 13.sp)
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
         }
     }
 }

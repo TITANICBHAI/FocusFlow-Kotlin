@@ -1,14 +1,20 @@
 package com.tbtechs.focusflow.ui.navigation
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Analytics
@@ -17,10 +23,6 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,6 +83,12 @@ import com.tbtechs.focusflow.ui.stats.StatsInsightsExperience
 import com.tbtechs.focusflow.ui.support.ChangelogScreen
 import com.tbtechs.focusflow.ui.support.HowToUseScreen
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.home.RefBorder
+import com.tbtechs.focusflow.ui.home.RefHeader
+import com.tbtechs.focusflow.ui.home.RefSecondary
+import com.tbtechs.focusflow.ui.home.RefMuted
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.DarkBackground
 import kotlinx.coroutines.launch
 
 @Composable
@@ -500,47 +508,38 @@ fun MainScaffold(
         containerColor = com.tbtechs.focusflow.ui.theme.DarkBackground,
         contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
-            NavigationBar(
-                containerColor = com.tbtechs.focusflow.ui.theme.DarkBackground,
-                windowInsets = WindowInsets.navigationBars,
-                tonalElevation = 0.dp,
+            Row(
                 modifier = Modifier
-                    .border(
-                        width = 1.dp,
-                        color = com.tbtechs.focusflow.ui.theme.DarkBorder.copy(alpha = 0.65f),
-                        shape = MaterialTheme.shapes.large,
-                    )
-                    .clip(MaterialTheme.shapes.large),
+                    .fillMaxWidth()
+                    .background(RefHeader)
+                    .border(1.dp, RefBorder)
+                    .navigationBarsPadding()
+                    .padding(top = 10.dp, bottom = 8.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
             ) {
                 tabs.forEach { (route, label, icon) ->
                     val isSelected = currentRoute == route
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = { onNavigate(route) },
-                        icon = {
-                            Icon(
-                                icon,
-                                contentDescription = label,
-                                tint = if (isSelected) com.tbtechs.focusflow.ui.theme.BrandPrimary else com.tbtechs.focusflow.ui.theme.DarkTextMuted,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = label,
-                                fontSize = if (dimensions.screenPadding < 16.dp) 10.sp else 11.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) com.tbtechs.focusflow.ui.theme.BrandPrimary else com.tbtechs.focusflow.ui.theme.DarkTextSecondary,
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = com.tbtechs.focusflow.ui.theme.BrandPrimary,
-                            selectedTextColor = com.tbtechs.focusflow.ui.theme.BrandPrimary,
-                            unselectedIconColor = com.tbtechs.focusflow.ui.theme.DarkTextMuted,
-                            unselectedTextColor = com.tbtechs.focusflow.ui.theme.DarkTextSecondary,
-                            indicatorColor = com.tbtechs.focusflow.ui.theme.BrandPrimary.copy(alpha = 0.14f),
-                        ),
-                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigate(route) }
+                            .padding(vertical = 2.dp),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (isSelected) BrandPrimary else RefMuted,
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Spacer(Modifier.size(4.dp))
+                        Text(
+                            text = label,
+                            fontSize = if (dimensions.screenPadding < 16.dp) 12.sp else 14.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (isSelected) BrandPrimary else RefSecondary,
+                        )
+                    }
                 }
             }
         },

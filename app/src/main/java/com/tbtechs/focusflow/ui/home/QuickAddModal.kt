@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Close
@@ -38,7 +40,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -48,7 +49,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -62,8 +62,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.SettingsViewModel
@@ -81,6 +84,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 
@@ -98,7 +102,6 @@ fun QuickAddModal(
     onSave: (Task) -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     val presets = settings.launcherPresets
     val initialStart = remember { LocalDateTime.now().plusMinutes(5) }
@@ -135,53 +138,114 @@ fun QuickAddModal(
         if (count == 0) "All apps allowed" else "$count app${if (count == 1) "" else "s"} allowed"
     }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    fun saveTask() {
+        val finalDuration = if (customDuration) customDurationValue.toIntOrNull() else duration
+        val start = runCatching {
+            LocalDateTime.of(LocalDate.parse(date), LocalTime.parse(time))
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+        }.getOrNull()
+        if (
+            title.isBlank() ||
+            start == null ||
+            runCatching { LocalDate.parse(date).isBefore(LocalDate.now()) }.getOrDefault(true) ||
+            finalDuration == null ||
+            finalDuration <= 0
+        ) {
+            showError = true
+        } else {
+            onSave(
+                Task(
+                    id = UUID.randomUUID().toString(),
+                    title = title.trim(),
+                    description = notes.trim().ifBlank { null },
+                    startTime = start.toString(),
+                    endTime = start.plusSeconds(finalDuration * 60L).toString(),
+                    durationMinutes = finalDuration,
+                    status = "scheduled",
+                    priority = priority,
+                    tags = tags.split(',').map(String::trim).filter(String::isNotBlank),
+                    color = savedTaskColor,
+                    focusMode = focusMode,
+                    focusAllowedPackages = if (!focusMode || useGlobalApps) null else allowedPackages.toPackageList(),
+                    createdAt = Instant.now().toString(),
+                    updatedAt = Instant.now().toString(),
+                ),
+            )
+            onDismiss()
+        }
+    }
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkBackground,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .background(RefBackground)
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .navigationBarsPadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .padding(bottom = 16.dp),
         ) {
-            // Header Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(RefHeader)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    "New task",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextPrimary,
-                )
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = "Close",
-                        tint = DarkTextSecondary,
-                        modifier = Modifier.size(20.dp),
+                        tint = RefSecondary,
+                        modifier = Modifier.size(30.dp),
                     )
+                }
+                Text(
+                    "New Task",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = RefText,
+                )
+                Button(
+                    onClick = ::saveTask,
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 20.dp,
+                        vertical = 10.dp,
+                    ),
+                ) {
+                    Text("Save", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // Title & Notes
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+            ReferenceSectionLabel("Title")
             HomeTextField(title, { title = it }, "Title")
+            ReferenceSectionLabel("Notes (optional)")
             HomeTextField(notes, { notes = it }, "Notes (optional)", singleLine = false)
 
             // Date & Time pickers
+            ReferenceSectionLabel("Start")
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -193,16 +257,19 @@ fun QuickAddModal(
                         .background(DarkSurfaceVariant)
                         .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showDatePicker = true }
-                        .padding(14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Date", fontSize = 11.sp, color = DarkTextMuted)
+                            Text(
+                                if (parsedDate == LocalDate.now()) "Today"
+                                else parsedDate.format(DateTimeFormatter.ofPattern("MMM d")),
+                                fontSize = 17.sp,
+                                color = RefText,
+                            )
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(date, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
                     }
                 }
 
@@ -213,29 +280,25 @@ fun QuickAddModal(
                         .background(DarkSurfaceVariant)
                         .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
                         .clickable { showTimePicker = true }
-                        .padding(14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Schedule, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Start time", fontSize = 11.sp, color = DarkTextMuted)
+                            Text(
+                                parsedTime.format(DateTimeFormatter.ofPattern("h:mm a")),
+                                fontSize = 17.sp,
+                                color = RefText,
+                            )
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(time, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
                     }
                 }
             }
 
             // Duration section
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "DURATION",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
-                )
+                ReferenceSectionLabel("Duration: ${if (customDuration) customDurationValue.ifBlank { "—" } else duration.asDurationLabel()}")
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -243,24 +306,14 @@ fun QuickAddModal(
                 ) {
                     (durationOptions.map(Int::asDurationLabel) + "Custom").forEach { choice ->
                         val isSelected = if (customDuration) choice == "Custom" else duration.asDurationLabel() == choice
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
-                                .clickable {
-                                    customDuration = choice == "Custom"
-                                    if (!customDuration) duration = durationOptions.first { it.asDurationLabel() == choice }
-                                }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                choice,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) BrandPrimary else DarkTextPrimary,
-                            )
-                        }
+                        ReferencePill(
+                            text = choice,
+                            selected = isSelected,
+                            onClick = {
+                                customDuration = choice == "Custom"
+                                if (!customDuration) duration = durationOptions.first { it.asDurationLabel() == choice }
+                            },
+                        )
                     }
                 }
                 if (customDuration) {
@@ -270,8 +323,8 @@ fun QuickAddModal(
             }
 
             // Pomodoro toggle
-            ToggleCard(
-                title = "Pomodoro mode",
+            ReferenceToggleCard(
+                title = "Pomodoro Mode",
                 description = if (settings.pomodoroEnabled) {
                     "On — ${settings.pomodoroWorkMinutes}m work / ${settings.pomodoroBreakMinutes}m break"
                 } else {
@@ -285,89 +338,59 @@ fun QuickAddModal(
 
             // Priority section
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "PRIORITY",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
-                )
+                ReferenceSectionLabel("Priority")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     priorityOptions.forEach { opt ->
                         val isSelected = priority.lowercase() == opt
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) priorityBadgeBg(opt) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) priorityColor(opt) else DarkBorder, RoundedCornerShape(12.dp))
-                                .clickable { priority = opt }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                opt.replaceFirstChar(Char::titlecase),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) priorityColor(opt) else DarkTextPrimary,
-                            )
-                        }
+                        ReferencePill(
+                            text = opt.replaceFirstChar(Char::titlecase),
+                            selected = isSelected,
+                            modifier = Modifier.weight(1f),
+                            selectedColor = if (opt == "medium") RefBlue else BrandPrimary,
+                            onClick = { priority = opt },
+                        )
                     }
                 }
             }
 
             // Color section
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "COLOR ACCENT",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ReferenceSectionLabel("Color")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     colorOptions.forEach { colName ->
                         val isSelected = selectedColor == colName
                         Box(
                             modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(colorForName(colName))
+                                .border(if (isSelected) 2.dp else 0.dp, Color.White, CircleShape)
                                 .clickable { selectedColor = colName }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                colName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isSelected) BrandPrimary else DarkTextPrimary,
-                            )
-                        }
+                        )
                     }
                 }
             }
 
             // Tags
+            ReferenceSectionLabel("Tags (comma separated)")
             HomeTextField(tags, { tags = it }, "Tags (comma separated, e.g. work, design)")
 
             // Focus Mode
-            ToggleCard(
-                title = "Enable Focus Mode",
+            ReferenceToggleCard(
+                title = "Focus Mode",
                 description = "Block distractions during this task",
                 checked = focusMode,
                 onCheckedChange = { focusMode = it },
             )
 
             if (focusMode) {
-                ToggleCard(
+                ReferenceToggleCard(
                     title = "Use Global Allowed List",
                     description = "Use the allowed apps list configured in Settings",
                     checked = useGlobalApps,
@@ -407,67 +430,8 @@ fun QuickAddModal(
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // Action Buttons
-            Button(
-                onClick = {
-                    val finalDuration = if (customDuration) customDurationValue.toIntOrNull() else duration
-                    val start = runCatching {
-                        LocalDateTime.of(LocalDate.parse(date), LocalTime.parse(time))
-                            .atZone(ZoneId.systemDefault())
-                            .toInstant()
-                    }.getOrNull()
-                    if (
-                        title.isBlank() ||
-                        start == null ||
-                        runCatching { LocalDate.parse(date).isBefore(LocalDate.now()) }.getOrDefault(true) ||
-                        finalDuration == null ||
-                        finalDuration <= 0
-                    ) {
-                        showError = true
-                    } else {
-                        onSave(
-                            Task(
-                                id = UUID.randomUUID().toString(),
-                                title = title.trim(),
-                                description = notes.trim().ifBlank { null },
-                                startTime = start.toString(),
-                                endTime = start.plusSeconds(finalDuration * 60L).toString(),
-                                durationMinutes = finalDuration,
-                                status = "scheduled",
-                                priority = priority,
-                                tags = tags.split(',').map(String::trim).filter(String::isNotBlank),
-                                color = savedTaskColor,
-                                focusMode = focusMode,
-                                focusAllowedPackages = if (!focusMode || useGlobalApps) null else allowedPackages.toPackageList(),
-                                createdAt = Instant.now().toString(),
-                                updatedAt = Instant.now().toString(),
-                            ),
-                        )
-                        onDismiss()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(14.dp),
-            ) {
-                Text("Save Task", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
-
-            TextButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-            ) {
-                Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
-            }
-
             Spacer(Modifier.height(16.dp))
+            }
         }
     }
 
@@ -596,44 +560,6 @@ fun QuickAddModal(
                 )
             },
         )
-    }
-}
-
-@Composable
-private fun ToggleCard(
-    title: String,
-    description: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(DarkSurfaceVariant)
-            .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                Text(description, fontSize = 12.sp, color = DarkTextSecondary)
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = BrandPrimary,
-                    uncheckedThumbColor = DarkTextMuted,
-                    uncheckedTrackColor = DarkCard,
-                    uncheckedBorderColor = DarkBorder,
-                ),
-            )
-        }
     }
 }
 

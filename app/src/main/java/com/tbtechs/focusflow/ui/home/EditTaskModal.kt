@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +26,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
@@ -32,7 +37,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -40,7 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -54,8 +57,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.SettingsViewModel
@@ -89,7 +98,6 @@ fun EditTaskModal(
     onDelete: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
     val presets = settings.launcherPresets
     val zone = remember { ZoneId.systemDefault() }
@@ -134,7 +142,7 @@ fun EditTaskModal(
         if (count == 0) "All apps allowed for this task"
         else "$count custom app${if (count == 1) "" else "s"} allowed"
     }
-    val savedTaskColor = priorityColor(priority).toArgb().toColorString()
+    val savedTaskColor = task.color
     val currentTime = runCatching { LocalTime.parse(time) }.getOrDefault(initialTime)
 
     fun addTag() {
@@ -181,65 +189,80 @@ fun EditTaskModal(
         onDismiss()
     }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-        containerColor = DarkBackground,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .background(RefBackground)
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .navigationBarsPadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .padding(bottom = 16.dp),
         ) {
-            // Header Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(RefHeader)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                TextButton(onClick = onDismiss, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                    Text("Cancel", color = RefSecondary, fontSize = 16.sp)
+                }
                 Text(
-                    "Edit task",
-                    fontSize = 20.sp,
+                    "Edit Task",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkTextPrimary,
+                    color = RefText,
                 )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = "Close",
-                        tint = DarkTextSecondary,
-                        modifier = Modifier.size(20.dp),
-                    )
+                TextButton(onClick = ::saveTask, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                    Text("Save", color = BrandPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
             // Title
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
             HomeTextField(title, { title = it; showError = false }, "Task title")
 
             // Notes
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(2.dp, RefBorder, RoundedCornerShape(18.dp))
+                    .clickable { notesExpanded = !notesExpanded }
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Description, contentDescription = "Notes", tint = RefSecondary, modifier = Modifier.size(26.dp))
+                Spacer(Modifier.width(14.dp))
+                Text("Notes", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                Spacer(Modifier.width(12.dp))
+                Text("Optional", fontSize = 16.sp, color = RefSecondary, modifier = Modifier.weight(1f))
+                Icon(
+                    if (notesExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = if (notesExpanded) "Collapse notes" else "Expand notes",
+                    tint = RefSecondary,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
             if (notesExpanded) {
-                HomeTextField(notes, { notes = it }, "Notes (optional)", singleLine = false)
-            } else {
-                OutlinedButton(
-                    onClick = { notesExpanded = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 44.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
-                ) {
-                    Text("+ Add Notes", color = DarkTextSecondary, fontSize = 13.sp)
-                }
+                HomeTextField(notes, { notes = it }, "Add details...", singleLine = false)
             }
 
             // Start Time Selector
@@ -247,8 +270,8 @@ fun EditTaskModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                    .background(RefCard)
+                    .border(1.dp, RefBorder, RoundedCornerShape(18.dp))
                     .clickable { showTimePicker = true }
                     .padding(14.dp),
             ) {
@@ -256,25 +279,18 @@ fun EditTaskModal(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Outlined.Schedule, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Schedule, contentDescription = "Start time", tint = RefSecondary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Start time", fontSize = 11.sp, color = DarkTextMuted)
-                        Text(time.asDisplayTime(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
+                        Text(time.asDisplayTime(), fontSize = 18.sp, color = RefText)
                     }
-                    Text("Change", fontSize = 13.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("Change", fontSize = 14.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                 }
             }
 
             // Duration
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "DURATION",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
-                )
+                ReferenceSectionLabel("Duration")
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -282,27 +298,17 @@ fun EditTaskModal(
                 ) {
                     (editDurationOptions.map(Int::asDurationLabel) + "Custom").forEach { choice ->
                         val isSelected = if (customDuration) choice == "Custom" else duration.asDurationLabel() == choice
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) BrandPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) BrandPrimary else DarkBorder, RoundedCornerShape(12.dp))
-                                .clickable {
+                        ReferencePill(
+                            text = choice,
+                            selected = isSelected,
+                            onClick = {
                                     customDuration = choice == "Custom"
                                     if (!customDuration) {
                                         duration = editDurationOptions.first { it.asDurationLabel() == choice }
                                         customDurationValue = duration.toString()
                                     }
-                                }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                choice,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) BrandPrimary else DarkTextPrimary,
-                            )
-                        }
+                                },
+                        )
                     }
                 }
                 if (customDuration) {
@@ -313,49 +319,27 @@ fun EditTaskModal(
 
             // Priority
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "PRIORITY",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
-                )
+                ReferenceSectionLabel("Priority")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     priorityOptions.forEach { opt ->
                         val isSelected = priority.lowercase() == opt
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) priorityBadgeBg(opt) else DarkSurfaceVariant)
-                                .border(1.dp, if (isSelected) priorityColor(opt) else DarkBorder, RoundedCornerShape(12.dp))
-                                .clickable { priority = opt }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                opt.replaceFirstChar(Char::titlecase),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) priorityColor(opt) else DarkTextPrimary,
-                            )
-                        }
+                        ReferencePill(
+                            text = opt.replaceFirstChar(Char::titlecase),
+                            selected = isSelected,
+                            modifier = Modifier.weight(1f),
+                            selectedColor = if (opt == "medium") RefBlue else BrandPrimary,
+                            onClick = { priority = opt },
+                        )
                     }
                 }
             }
 
             // Tags
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "TAGS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
-                )
+                ReferenceSectionLabel("Tags")
                 if (tags.isNotEmpty()) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -365,77 +349,49 @@ fun EditTaskModal(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(DarkSurfaceVariant)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp))
+                                    .background(RefCard)
+                                    .border(1.dp, RefBorder, RoundedCornerShape(8.dp))
                                     .clickable { tags = tags - tag }
                                     .padding(horizontal = 10.dp, vertical = 5.dp),
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("#$tag", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.Medium)
+                                    Text("#$tag", fontSize = 14.sp, color = BrandPrimary, fontWeight = FontWeight.Medium)
                                     Spacer(Modifier.width(4.dp))
-                                    Text("×", fontSize = 14.sp, color = DarkTextMuted)
+                                    Text("×", fontSize = 16.sp, color = RefMuted)
                                 }
                             }
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        HomeTextField(newTag, { newTag = it }, "Add a tag")
-                    }
-                    Button(
-                        onClick = ::addTag,
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                    ) {
-                        Text("Add")
-                    }
-                }
+                HomeTextField(
+                    value = newTag,
+                    onValueChange = { newTag = it },
+                    label = "Add a tag",
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { addTag() }),
+                )
+                Text(
+                    "Press return to add each tag.",
+                    fontSize = 15.sp,
+                    color = RefSecondary,
+                )
             }
 
             // Focus Mode Toggle
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Focus Mode", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                        Text("Block distracting apps during this task", fontSize = 12.sp, color = DarkTextSecondary)
-                    }
-                    Switch(
-                        checked = focusMode,
-                        onCheckedChange = { focusMode = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = BrandPrimary,
-                            uncheckedThumbColor = DarkTextMuted,
-                            uncheckedTrackColor = DarkCard,
-                            uncheckedBorderColor = DarkBorder,
-                        ),
-                    )
-                }
-            }
+            ReferenceToggleCard(
+                title = "Focus Mode",
+                description = "Block distracting apps during this task",
+                checked = focusMode,
+                onCheckedChange = { focusMode = it },
+            )
 
             if (focusMode) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(DarkSurfaceVariant)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
+                        .background(RefCard)
+                        .border(1.dp, RefBorder, RoundedCornerShape(14.dp))
                         .clickable { showAllowedApps = true }
                         .padding(14.dp),
                 ) {
@@ -446,8 +402,8 @@ fun EditTaskModal(
                         Icon(Icons.Outlined.Shield, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Allowed Apps", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                            Text(allowedAppsDescription, fontSize = 12.sp, color = DarkTextSecondary)
+                            Text("Allowed Apps", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                            Text(allowedAppsDescription, fontSize = 14.sp, color = RefSecondary)
                         }
                         Text("Customize", fontSize = 13.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                     }
@@ -462,45 +418,24 @@ fun EditTaskModal(
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // Actions
-            Button(
-                onClick = ::saveTask,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(14.dp),
+                    .clip(RoundedCornerShape(24.dp))
+                    .border(2.dp, RefRed.copy(alpha = 0.4f), RoundedCornerShape(24.dp))
+                    .clickable { showDeleteConfirmation = true }
+                    .padding(vertical = 18.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text("Save Changes", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
-
-            OutlinedButton(
-                onClick = { showDeleteConfirmation = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF87171)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(14.dp),
-            ) {
-                Icon(Icons.Outlined.Delete, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Delete Task", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
-
-            TextButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-            ) {
-                Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Delete, contentDescription = "Delete task", tint = RefRed, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Delete Task", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = RefRed)
+                }
             }
 
             Spacer(Modifier.height(16.dp))
+            }
         }
     }
 

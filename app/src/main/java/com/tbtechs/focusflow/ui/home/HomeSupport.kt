@@ -42,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.model.Task
@@ -188,23 +190,17 @@ internal fun HomeTextField(
     onValueChange: (String) -> Unit,
     label: String,
     singleLine: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
-    OutlinedTextField(
+    ReferenceField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = DarkTextMuted) },
+        placeholder = label,
         singleLine = singleLine,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = DarkTextPrimary,
-            unfocusedTextColor = DarkTextPrimary,
-            focusedContainerColor = DarkSurfaceVariant,
-            unfocusedContainerColor = DarkSurfaceVariant,
-            focusedBorderColor = BrandPrimary,
-            unfocusedBorderColor = DarkBorder,
-            cursorColor = BrandPrimary,
-        ),
+        minHeight = if (singleLine) null else 160.dp,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
     )
 }
 
