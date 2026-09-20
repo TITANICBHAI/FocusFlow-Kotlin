@@ -340,6 +340,10 @@ fun StandaloneBlockSetupScreen(
             modalVisible = false
         },
         onClose = { modalVisible = false },
+        hintDismissed = settings.standaloneBlockHintDismissed,
+        onDismissHint = {
+            settingsViewModel.updateSettings(settings.copy(standaloneBlockHintDismissed = true))
+        },
         verifyPin = settingsViewModel::verifyFocusPin,
         sessionPinSet = settingsViewModel.isFocusPinSet(),
         hashPin = focusPinManager::hash,

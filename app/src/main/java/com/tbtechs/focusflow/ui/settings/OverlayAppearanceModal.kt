@@ -7,10 +7,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -20,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -142,113 +146,128 @@ fun OverlayAppearanceModal(
 
     Dialog(
         onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Overlay Appearance") },
-                    actions = {
-                        TextButton(onClick = onClose) { Text("Close") }
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background,
+                contentWindowInsets = WindowInsets.statusBars,
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Overlay Appearance") },
+                        actions = {
+                            TextButton(onClick = onClose) { Text("Close") }
+                        },
                     },
-                )
-            },
-        ) { padding ->
-            if (loading) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    CircularProgressIndicator()
-                    Text("Loading overlay settings", style = MaterialTheme.typography.bodyMedium)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = padding,
-                ) {
-                    item {
-                        OverlaySection(
-                            title = "Background image",
-                            description = "Pick an image from your gallery for the block overlay. Leave it empty to use the built-in dark gradient.",
+                ) { padding ->
+                    if (loading) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .navigationBarsPadding()
+                                .padding(padding),
                         ) {
-                            if (wallpaperPath.isBlank()) {
-                                Text(
-                                    "Using built-in gradient background",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            } else {
-                                Row(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        text = wallpaperPath,
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                    TextButton(onClick = ::removeWallpaper) { Text("Remove") }
-                                }
-                            }
-                            OutlinedButton(onClick = { pickImage.launch("image/*") }) {
-                                Text(if (wallpaperPath.isBlank()) "Pick from gallery" else "Change image")
-                            }
+                            CircularProgressIndicator()
+                            Text("Loading overlay settings", style = MaterialTheme.typography.bodyMedium)
                         }
-                    }
-                    item {
-                        OverlaySection(
-                            title = "Custom quotes",
-                            description = "These rotate randomly on the overlay. Leave this list empty to use the built-in focus quotes.",
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .navigationBarsPadding(),
+                            contentPadding = padding,
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(
-                                    value = draftQuote,
-                                    onValueChange = { draftQuote = it },
-                                    modifier = Modifier.weight(1f),
-                                    label = { Text("Type a motivating quote") },
-                                    minLines = 1,
-                                    maxLines = 4,
-                                )
-                                Button(
-                                    enabled = draftQuote.trim().isNotEmpty(),
-                                    onClick = {
-                                        val quote = draftQuote.trim()
-                                        when {
-                                            quote.isEmpty() -> Unit
-                                            quote in quotes -> message = OverlayMessage("Duplicate quote", "This quote is already in your list.")
-                                            else -> {
-                                                syncQuotes(quotes + quote) { draftQuote = "" }
-                                            }
+                            item {
+                                OverlaySection(
+                                    title = "Background image",
+                                    description = "Pick an image from your gallery for the block overlay. Leave it empty to use the built-in dark gradient.",
+                                ) {
+                                    if (wallpaperPath.isBlank()) {
+                                        Text(
+                                            "Using built-in gradient background",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    } else {
+                                        Row(modifier = Modifier.fillMaxWidth()) {
+                                            Text(
+                                                text = wallpaperPath,
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                            )
+                                            TextButton(onClick = ::removeWallpaper) { Text("Remove") }
                                         }
-                                    },
-                                ) { Text("Add") }
+                                    }
+                                    OutlinedButton(onClick = { pickImage.launch("image/*") }) {
+                                        Text(if (wallpaperPath.isBlank()) "Pick from gallery" else "Change image")
+                                    }
+                                }
                             }
-                            if (quotes.isEmpty()) {
+                            item {
+                                OverlaySection(
+                                    title = "Custom quotes",
+                                    description = "These rotate randomly on the overlay. Leave this list empty to use the built-in focus quotes.",
+                                ) {
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        OutlinedTextField(
+                                            value = draftQuote,
+                                            onValueChange = { draftQuote = it },
+                                            modifier = Modifier.weight(1f),
+                                            label = { Text("Type a motivating quote") },
+                                            minLines = 1,
+                                            maxLines = 4,
+                                        )
+                                        Button(
+                                            enabled = draftQuote.trim().isNotEmpty(),
+                                            onClick = {
+                                                val quote = draftQuote.trim()
+                                                when {
+                                                    quote.isEmpty() -> Unit
+                                                    quote in quotes -> message = OverlayMessage("Duplicate quote", "This quote is already in your list.")
+                                                    else -> {
+                                                        syncQuotes(quotes + quote) { draftQuote = "" }
+                                                    }
+                                                }
+                                            },
+                                        ) { Text("Add") }
+                                    }
+                                    if (quotes.isEmpty()) {
+                                        Text(
+                                            "No custom quotes — built-in pool active",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                            itemsIndexed(quotes, key = { index, quote -> "$index-$quote" }) { index, quote ->
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = "“$quote”",
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        TextButton(onClick = { syncQuotes(quotes.filterIndexed { itemIndex, _ -> itemIndex != index }) }) {
+                                            Text("Remove")
+                                        }
+                                    }
+                                }
+                            }
+                            item {
                                 Text(
-                                    "No custom quotes — built-in pool active",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    "Changes apply immediately. The next block overlay will use these settings.",
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
-                    }
-                    itemsIndexed(quotes, key = { index, quote -> "$index-$quote" }) { index, quote ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = "“$quote”",
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                TextButton(onClick = { syncQuotes(quotes.filterIndexed { itemIndex, _ -> itemIndex != index }) }) {
-                                    Text("Remove")
-                                }
-                            }
-                        }
-                    }
-                    item {
-                        Text(
-                            "Changes apply immediately. The next block overlay will use these settings.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }

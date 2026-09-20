@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.ClearAll
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
@@ -159,6 +160,9 @@ fun AlwaysOnScreen(
     var pinError by remember { mutableStateOf<String?>(null) }
     var showConsent by remember { mutableStateOf(false) }
     var clearConfirmation by remember { mutableStateOf(false) }
+    var showInfo by remember(settings.alwaysOnInfoDismissed) {
+        mutableStateOf(!settings.alwaysOnInfoDismissed)
+    }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -340,47 +344,63 @@ fun AlwaysOnScreen(
                 .padding(horizontal = dimensions.screenPadding),
             verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
         ) {
-            // Explanatory Info Card matching 3e_(3)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.Top,
+            if (showInfo) {
+                // Explanatory Info Card matching 3e_(3)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkCard)
+                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                        .padding(14.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(BrandPrimary.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.Top,
                     ) {
-                        Icon(
-                            Icons.Outlined.AllInclusive,
-                            contentDescription = null,
-                            tint = BrandPrimary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "These apps are blocked continuously — no session or timer needed. They stay blocked until you untick them here.",
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            color = DarkTextPrimary,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Removing apps requires your defense password (if set). Tap a blocked app to also enable network blocking (VPN).",
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp,
-                            color = DarkTextSecondary,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(BrandPrimary.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.AllInclusive,
+                                contentDescription = null,
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "These apps are blocked continuously — no session or timer needed. They stay blocked until you untick them here.",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = DarkTextPrimary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Removing apps requires your defense password (if set). Tap a blocked app to also enable network blocking (VPN).",
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                color = DarkTextSecondary,
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                showInfo = false
+                                settingsViewModel.updateSettings(settings.copy(alwaysOnInfoDismissed = true))
+                            },
+                            modifier = Modifier.size(26.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Dismiss information",
+                                tint = DarkTextMuted,
+                                modifier = Modifier.size(17.dp),
+                            )
+                        }
                     }
                 }
             }

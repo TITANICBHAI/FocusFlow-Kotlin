@@ -115,6 +115,10 @@ data class AppSettings(
     val pomodoroBreakMinutes: Int = 5,
     val focusDefenseHintDismissed: Boolean = false,
     val localAnalyticsNoticeDismissed: Boolean = false,
+    val defenseHintDismissed: Boolean = false,
+    val defenseHelpDismissed: Boolean = false,
+    val standaloneBlockHintDismissed: Boolean = false,
+    val alwaysOnInfoDismissed: Boolean = false,
 )
 
 /**

@@ -119,6 +119,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_POMODORO_BREAK_MINUTES = "pomodoro_break_minutes"
         private const val KEY_FOCUS_DEFENSE_HINT_DISMISSED = "focus_defense_hint_dismissed"
         private const val KEY_LOCAL_ANALYTICS_NOTICE_DISMISSED = "local_analytics_notice_dismissed"
+        private const val KEY_DEFENSE_HINT_DISMISSED = "defense_hint_dismissed"
+        private const val KEY_DEFENSE_HELP_DISMISSED = "defense_help_dismissed"
+        private const val KEY_STANDALONE_BLOCK_HINT_DISMISSED = "standalone_block_hint_dismissed"
+        private const val KEY_ALWAYS_ON_INFO_DISMISSED = "always_on_info_dismissed"
         private const val KEY_REPORT_NOTE_PREFIX = "report_note_"
         private const val KEY_LAUNCHER_DOCK_PACKAGES = "launcher_dock_packages"
         private const val KEY_LAUNCHER_HIDDEN_PACKAGES = "launcher_hidden_packages"
@@ -810,6 +814,10 @@ class SettingsRepository(context: Context) {
             .putInt(KEY_POMODORO_BREAK_MINUTES, settings.pomodoroBreakMinutes.coerceIn(1, 60))
             .putBoolean(KEY_FOCUS_DEFENSE_HINT_DISMISSED, settings.focusDefenseHintDismissed)
             .putBoolean(KEY_LOCAL_ANALYTICS_NOTICE_DISMISSED, settings.localAnalyticsNoticeDismissed)
+            .putBoolean(KEY_DEFENSE_HINT_DISMISSED, settings.defenseHintDismissed)
+            .putBoolean(KEY_DEFENSE_HELP_DISMISSED, settings.defenseHelpDismissed)
+            .putBoolean(KEY_STANDALONE_BLOCK_HINT_DISMISSED, settings.standaloneBlockHintDismissed)
+            .putBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, settings.alwaysOnInfoDismissed)
             .apply {
                 if (settings.lastShownDebriefSessionId == null) {
                     remove(KEY_LAST_SHOWN_DEBRIEF_SESSION_ID)
@@ -922,6 +930,10 @@ class SettingsRepository(context: Context) {
             pomodoroBreakMinutes = prefs.getInt(KEY_POMODORO_BREAK_MINUTES, 5).coerceIn(1, 60),
             focusDefenseHintDismissed = prefs.getBoolean(KEY_FOCUS_DEFENSE_HINT_DISMISSED, false),
             localAnalyticsNoticeDismissed = prefs.getBoolean(KEY_LOCAL_ANALYTICS_NOTICE_DISMISSED, false),
+            defenseHintDismissed = prefs.getBoolean(KEY_DEFENSE_HINT_DISMISSED, false),
+            defenseHelpDismissed = prefs.getBoolean(KEY_DEFENSE_HELP_DISMISSED, false),
+            standaloneBlockHintDismissed = prefs.getBoolean(KEY_STANDALONE_BLOCK_HINT_DISMISSED, false),
+            alwaysOnInfoDismissed = prefs.getBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, false),
         )
     }
 

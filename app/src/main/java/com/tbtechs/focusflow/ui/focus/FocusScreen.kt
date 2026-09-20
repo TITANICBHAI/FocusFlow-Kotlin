@@ -493,6 +493,10 @@ fun FocusScreen(
             onSavePreset = ::saveBlockPreset,
             onDeletePreset = ::deleteBlockPreset,
             onClose = { showStandaloneEditor = false },
+            hintDismissed = settings.standaloneBlockHintDismissed,
+            onDismissHint = {
+                settingsViewModel.updateSettings(settings.copy(standaloneBlockHintDismissed = true))
+            },
             verifyPin = settingsViewModel::verifyFocusPin,
             sessionPinSet = settingsViewModel.isFocusPinSet(),
             hashPin = pinManager::hash,

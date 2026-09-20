@@ -63,7 +63,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,8 +121,8 @@ fun DefenseScreen(
     val allowanceUsage by settingsViewModel.allowanceUsage.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showHint by rememberSaveable { mutableStateOf(true) }
-    var showHelp by rememberSaveable { mutableStateOf(true) }
+    var showHint by remember(settings.defenseHintDismissed) { mutableStateOf(!settings.defenseHintDismissed) }
+    var showHelp by remember(settings.defenseHelpDismissed) { mutableStateOf(!settings.defenseHelpDismissed) }
     var allowanceVisible by remember { mutableStateOf(false) }
     var schedulesVisible by remember { mutableStateOf(false) }
     var nuclearVisible by remember { mutableStateOf(false) }
@@ -269,7 +268,10 @@ fun DefenseScreen(
                                 tint = DarkTextMuted,
                                 modifier = Modifier
                                     .size(18.dp)
-                                    .clickable { showHint = false },
+                                    .clickable {
+                                        showHint = false
+                                        update(settings.copy(defenseHintDismissed = true))
+                                    },
                             )
                         }
                     }
@@ -336,7 +338,10 @@ fun DefenseScreen(
                                 tint = DarkTextMuted,
                                 modifier = Modifier
                                     .size(18.dp)
-                                    .clickable { showHelp = false },
+                                    .clickable {
+                                        showHelp = false
+                                        update(settings.copy(defenseHelpDismissed = true))
+                                    },
                             )
                         }
                     }

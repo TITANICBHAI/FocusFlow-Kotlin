@@ -116,13 +116,15 @@ fun StandaloneBlockModal(
     onSavePreset: ((BlockPresetUi) -> Unit)? = null,
     onDeletePreset: ((String) -> Unit)? = null,
     onClose: () -> Unit,
+    hintDismissed: Boolean = false,
+    onDismissHint: () -> Unit = {},
     verifyPin: ((String) -> Boolean)? = null,
     sessionPinSet: Boolean = false,
     hashPin: ((String) -> String)? = null,
 ) {
     if (!visible) return
     val context = LocalContext.current
-    var showStrongerBlockHint by remember { mutableStateOf(true) }
+    var showStrongerBlockHint by remember(visible, hintDismissed) { mutableStateOf(!hintDismissed) }
 
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var selected by remember(visible, blockedPackages) {
@@ -396,7 +398,10 @@ fun StandaloneBlockModal(
                                         )
                                     }
                                     IconButton(
-                                        onClick = { showStrongerBlockHint = false },
+                                        onClick = {
+                                            showStrongerBlockHint = false
+                                            onDismissHint()
+                                        },
                                         modifier = Modifier.size(24.dp),
                                     ) {
                                         Icon(
@@ -977,7 +982,7 @@ fun StandaloneBlockModal(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { configuringAllowanceApp = app }
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    .padding(horizontal = 14.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -985,7 +990,7 @@ fun StandaloneBlockModal(
                                     Icons.Outlined.WbSunny,
                                     contentDescription = null,
                                     tint = if (allowance != null) Color(0xFFF59E0B) else DarkTextMuted,
-                                    modifier = Modifier.size(15.dp),
+                                    modifier = Modifier.size(14.dp),
                                 )
                                 Text(
                                     text = if (allowance == null) {
@@ -997,7 +1002,7 @@ fun StandaloneBlockModal(
                                             else -> "${allowance.budgetMinutes}m daily allowance"
                                         }
                                     },
-                                    fontSize = 12.5.sp,
+                                    fontSize = 11.5.sp,
                                     color = if (allowance != null) Color(0xFFFBBF24) else DarkTextSecondary,
                                     modifier = Modifier.weight(1f),
                                 )
@@ -1016,7 +1021,7 @@ fun StandaloneBlockModal(
                                     .clickable(enabled = !locked) {
                                         vpn = vpn.toggle(app.packageName, locked)
                                     }
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    .padding(horizontal = 14.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -1024,11 +1029,11 @@ fun StandaloneBlockModal(
                                     Icons.Outlined.Shield,
                                     contentDescription = null,
                                     tint = if (vpnBlocked) BrandPrimary else DarkTextMuted,
-                                    modifier = Modifier.size(15.dp),
+                                    modifier = Modifier.size(14.dp),
                                 )
                                 Text(
                                     text = if (vpnBlocked) "Blocked from internet (VPN)" else "Add network block (VPN)",
-                                    fontSize = 12.5.sp,
+                                    fontSize = 11.5.sp,
                                     color = if (vpnBlocked) BrandPrimaryLight else DarkTextSecondary,
                                     modifier = Modifier.weight(1f),
                                 )

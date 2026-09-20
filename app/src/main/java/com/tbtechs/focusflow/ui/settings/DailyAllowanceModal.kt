@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -246,6 +248,7 @@ fun DailyAllowanceModal(
 
     Scaffold(
         containerColor = DarkBackground,
+        contentWindowInsets = WindowInsets.statusBars,
         topBar = {
             TopAppBar(
                 title = {
@@ -290,6 +293,7 @@ fun DailyAllowanceModal(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -394,7 +398,7 @@ fun DailyAllowanceModal(
                 )
             }
 
-            // Add manual package row & choose apps button
+            // Add manual package row
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
@@ -428,17 +432,6 @@ fun DailyAllowanceModal(
                         }
                     }
 
-                    OutlinedButton(
-                        onClick = { pickerVisible = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkTextPrimary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
-                    ) {
-                        Icon(Icons.Outlined.Apps, contentDescription = null, modifier = Modifier.size(18.dp), tint = BrandPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Choose from all installed apps", fontSize = 13.sp)
-                    }
                 }
             }
 
