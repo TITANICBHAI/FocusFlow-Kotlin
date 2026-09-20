@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
@@ -144,7 +145,7 @@ private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (Analyt
         ANALYTICS_THREE_MONTHS to "3 Months",
         ANALYTICS_ALL_TIME to "All Time",
     )
-    Row(
+    SingleChoiceSegmentedButtonRow(
         modifier = androidx.compose.ui.Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
