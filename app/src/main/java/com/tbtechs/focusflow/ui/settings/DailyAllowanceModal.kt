@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -293,21 +293,47 @@ fun DailyAllowanceModal(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(InfoSurface)
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top,
+            if (locked) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFFFF5DF))
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Outlined.Security, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Icon(Icons.Outlined.Security, contentDescription = null, tint = SunAmber, modifier = Modifier.size(14.dp))
+                            Text(
+                                "Block is active — existing allowances are locked. You can add new apps but cannot remove them until the block expires.",
+                                modifier = Modifier.weight(1f),
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
+                                color = SunAmber,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (requireDefensePin && !locked) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(InfoSurface)
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Icon(Icons.Outlined.Security, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(14.dp))
                             Text(
                                 "Removing apps from the allowance list requires your defense password.",
+                                modifier = Modifier.weight(1f),
                                 fontSize = 11.sp,
                                 lineHeight = 16.sp,
                                 color = InfoBodyText,
@@ -350,7 +376,7 @@ fun DailyAllowanceModal(
                         onValueChange = { search = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(44.dp),
+                            .heightIn(min = 44.dp),
                         singleLine = true,
                         placeholder = { Text("Search apps...", color = DarkTextMuted, fontSize = 13.sp) },
                         leadingIcon = {
@@ -457,7 +483,7 @@ fun DailyAllowanceModal(
                                 },
                                 onLongClick = { if (isActive) requestRemoval(app.packageName) },
                             )
-                             .height(64.dp)
+                             .heightIn(min = 64.dp)
                              .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                              horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -465,10 +491,13 @@ fun DailyAllowanceModal(
                         if (isActive) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxHeight()
                                     .width(4.dp)
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(2.dp))
                                     .background(SunAmber),
                             )
+                        } else {
+                            Spacer(modifier = Modifier.width(4.dp))
                         }
                          AppIcon(app.icon, size = 40.dp)
                         Column(modifier = Modifier.weight(1f)) {
