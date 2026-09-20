@@ -783,6 +783,8 @@ fun UserProfileScreen(
     }
 }
 
+}
+
 @Composable
 private fun ProfileJourneyCard(
     stats: ProfileStats,

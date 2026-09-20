@@ -164,8 +164,9 @@ fun OverlayAppearanceModal(
                         actions = {
                             TextButton(onClick = onClose) { Text("Close") }
                         },
-                    },
-                ) { padding ->
+                    )
+                },
+            ) { padding ->
                     if (loading) {
                         Column(
                             modifier = Modifier
@@ -272,7 +273,6 @@ fun OverlayAppearanceModal(
                 }
             }
         }
-    }
 
     message?.let { notice ->
         AlertDialog(
