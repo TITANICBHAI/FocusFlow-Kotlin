@@ -28,3 +28,7 @@ args = "bash scripts/push-to-github.sh"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[ports]]
+localPort = 22876
+externalPort = 80

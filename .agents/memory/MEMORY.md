@@ -1,2 +1,3 @@
 - [Shared preference compatibility](shared-preference-compatibility.md) — user data can retain a key under an older Android preference type.
 - [GitHub Actions APK builds](github-actions-apk-build.md) — GitHub Actions provisions the Java and Android SDK needed for reliable APK verification.
+- [Artifact preview dependencies](artifact-preview-dependency-install.md) — generated artifact workflows may need package installation inside the artifact directory.
