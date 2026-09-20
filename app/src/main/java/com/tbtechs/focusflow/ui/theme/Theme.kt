@@ -8,6 +8,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
@@ -25,20 +26,76 @@ val BrandPrimaryLight = Color(0xFFE0E7FF)  // Indigo 100
 val BrandPrimaryDark = Color(0xFF4338CA)   // Indigo 700
 
 // Dark Slate Theme (Reference Dark Background & Surfaces)
-val DarkBackground = Color(0xFF0D1322)     // Deep slate navy screen background
-val DarkCard = Color(0xFF151C2E)           // Dark slate card surface
-val DarkSurfaceVariant = Color(0xFF1C253B) // Secondary card / active hover
-val DarkBorder = Color(0xFF263249)         // Subtle slate border
-
-val DarkTextPrimary = Color(0xFFF8FAFC)    // Clean white text
-val DarkTextSecondary = Color(0xFF94A3B8)  // Medium slate text
-val DarkTextMuted = Color(0xFF64748B)      // Subdued slate text
+private val DarkPaletteBackground = Color(0xFF0D1322)
+private val DarkPaletteCard = Color(0xFF151C2E)
+private val DarkPaletteSurfaceVariant = Color(0xFF1C253B)
+private val DarkPaletteBorder = Color(0xFF263249)
+private val DarkPaletteTextPrimary = Color(0xFFF8FAFC)
+private val DarkPaletteTextSecondary = Color(0xFF94A3B8)
+private val DarkPaletteTextMuted = Color(0xFF64748B)
 
 // Secondary surfaces use a low-contrast indigo tint instead of bright lavender blocks.
-val InfoSurface = Color(0xFF1C2141)
-val InfoBorder = Color(0xFF3D4380)
-val InfoText = Color(0xFFD7D9FF)
-val InfoBodyText = Color(0xFFB9BDEB)
+private val DarkPaletteInfoSurface = Color(0xFF1C2141)
+private val DarkPaletteInfoBorder = Color(0xFF3D4380)
+private val DarkPaletteInfoText = Color(0xFFD7D9FF)
+private val DarkPaletteInfoBodyText = Color(0xFFB9BDEB)
+
+private val LocalFocusFlowDarkTheme = staticCompositionLocalOf { true }
+
+/**
+ * Compatibility names used throughout the existing screens.
+ *
+ * These are composable color properties rather than fixed dark colors, so
+ * older screens automatically follow the active light/dark Material scheme.
+ */
+val DarkBackground: Color
+    @Composable get() = MaterialTheme.colorScheme.background
+
+val DarkCard: Color
+    @Composable get() = MaterialTheme.colorScheme.surface
+
+val DarkSurfaceVariant: Color
+    @Composable get() = MaterialTheme.colorScheme.surfaceVariant
+
+val DarkBorder: Color
+    @Composable get() = MaterialTheme.colorScheme.outline
+
+val DarkTextPrimary: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurface
+
+val DarkTextSecondary: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+
+val DarkTextMuted: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
+
+val InfoSurface: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        DarkPaletteInfoSurface
+    } else {
+        Color(0xFFE8EBFF)
+    }
+
+val InfoBorder: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        DarkPaletteInfoBorder
+    } else {
+        Color(0xFFC7D2FE)
+    }
+
+val InfoText: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        DarkPaletteInfoText
+    } else {
+        Color(0xFF312E81)
+    }
+
+val InfoBodyText: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        DarkPaletteInfoBodyText
+    } else {
+        Color(0xFF4338CA)
+    }
 
 // Semantic Status Colors
 val StatusReady = Color(0xFF10B981)
@@ -68,15 +125,15 @@ val FocusFlowDarkColorScheme = darkColorScheme(
     primaryContainer = BrandPrimaryHover,
     onPrimaryContainer = Color.White,
     secondary = BrandPrimaryLight,
-    onSecondary = DarkBackground,
-    background = DarkBackground,
-    onBackground = DarkTextPrimary,
-    surface = DarkCard,
-    onSurface = DarkTextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = DarkTextSecondary,
-    outline = DarkBorder,
-    outlineVariant = DarkBorder,
+    onSecondary = DarkPaletteBackground,
+    background = DarkPaletteBackground,
+    onBackground = DarkPaletteTextPrimary,
+    surface = DarkPaletteCard,
+    onSurface = DarkPaletteTextPrimary,
+    surfaceVariant = DarkPaletteSurfaceVariant,
+    onSurfaceVariant = DarkPaletteTextSecondary,
+    outline = DarkPaletteBorder,
+    outlineVariant = DarkPaletteBorder,
     error = StatusMissing,
     onError = Color.White,
     errorContainer = StatusMissingBg,
@@ -196,11 +253,13 @@ fun FocusFlowTheme(
     val dimensions = focusFlowDimensionsForWidth(LocalConfiguration.current.screenWidthDp)
 
     CompositionLocalProvider(LocalFocusFlowDimensions provides dimensions) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = FocusFlowTypography,
-            shapes = FocusFlowShapes,
-            content = content,
-        )
+        CompositionLocalProvider(LocalFocusFlowDarkTheme provides darkTheme) {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = FocusFlowTypography,
+                shapes = FocusFlowShapes,
+                content = content,
+            )
+        }
     }
 }

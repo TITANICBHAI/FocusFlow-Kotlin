@@ -361,7 +361,7 @@ fun PrivacyPolicyScreen(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BrandPrimary,
-                        disabledContainerColor = Color(0xFF1E283E),
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         disabledContentColor = DarkTextMuted,
                     ),
                     modifier = Modifier

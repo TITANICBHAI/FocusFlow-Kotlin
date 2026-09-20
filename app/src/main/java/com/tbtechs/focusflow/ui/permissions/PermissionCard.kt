@@ -84,7 +84,7 @@ fun PermissionCard(
     val (icon, iconBg, iconTint) = when (permission.id) {
         PermissionId.NOTIFICATIONS -> Triple(
             Icons.Outlined.Notifications,
-            if (status == PermissionStatus.GRANTED) StatusReadyBg else Color(0xFF0F2E28),
+            if (status == PermissionStatus.GRANTED) StatusReadyBg else MaterialTheme.colorScheme.surfaceVariant,
             if (status == PermissionStatus.GRANTED) StatusReadyText else Color(0xFF34D399),
         )
         PermissionId.BATTERY -> Triple(
@@ -146,7 +146,7 @@ fun PermissionCard(
         } else {
             Triple("Missing", StatusMissingBg, StatusMissingText)
         }
-        PermissionStatus.UNKNOWN -> Triple("Checking…", Color(0xFF1E283E), DarkTextSecondary)
+        PermissionStatus.UNKNOWN -> Triple("Checking…", MaterialTheme.colorScheme.surfaceVariant, DarkTextSecondary)
     }
 
     Box(
@@ -251,7 +251,7 @@ fun PermissionCard(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BrandPrimary,
-                        disabledContainerColor = Color(0xFF1E283E),
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     ),
                     modifier = Modifier
                         .fillMaxWidth()

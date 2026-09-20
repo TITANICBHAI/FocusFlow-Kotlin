@@ -1304,7 +1304,7 @@ private fun InlineAllowanceEditor(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF272727))
+            .background(DarkSurfaceVariant)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
