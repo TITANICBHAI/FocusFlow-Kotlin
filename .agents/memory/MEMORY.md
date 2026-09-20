@@ -2,3 +2,4 @@
 - [GitHub Actions APK builds](github-actions-apk-build.md) — GitHub Actions provisions the Java and Android SDK needed for reliable APK verification.
 - [Artifact preview dependencies](artifact-preview-dependency-install.md) — generated artifact workflows may need package installation inside the artifact directory.
 - [Daily allowance visual states](daily-allowance-visual-states.md) — keep allowance apps as a flat list with inline Count, Time Budget, and Interval panels.
+- [Profile usage sheet](profile-usage-sheet.md) — present profile fields as compact icon rows in a full-height dark bottom sheet.

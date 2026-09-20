@@ -24,13 +24,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,8 +68,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
@@ -642,7 +654,10 @@ fun UserProfileScreen(
         ModalBottomSheet(
             onDismissRequest = { usageVisible = false },
             sheetState = sheetState,
-            containerColor = DarkBackground,
+            containerColor = DarkSurfaceVariant,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            dragHandle = null,
         ) {
             Column(
                 modifier = Modifier
@@ -650,32 +665,25 @@ fun UserProfileScreen(
                     .verticalScroll(rememberScrollState())
                     .imePadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = dimensions.modalPadding, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                    .padding(top = 14.dp),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(BrandPrimary.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Outlined.Info,
-                                contentDescription = null,
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
+                        Icon(
+                            Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(22.dp),
+                        )
                         Text(
                             "How your profile is used",
                             fontSize = 18.sp,
@@ -689,66 +697,88 @@ fun UserProfileScreen(
                     }
                 }
 
-                Box(
+                HorizontalDivider(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceVariant)
-                        .padding(14.dp),
-                ) {
-                    Text(
-                        "All profile details are stored locally on your device in SharedPreferences. FocusFlow has no analytics servers, user tracking, or cloud accounts. Nothing leaves your phone.",
-                        fontSize = 12.5.sp,
-                        lineHeight = 18.sp,
-                        color = DarkTextSecondary,
-                    )
-                }
+                        .padding(top = 12.dp),
+                    color = DarkBorder.copy(alpha = 0.9f),
+                    thickness = 1.dp,
+                )
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(14.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    ProfileUsageItem("Daily focus goal", "${dailyGoalHours}h", "Calibrates daily progress rings, streak criteria, and goal targets.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Wake-up time", labelFor(WAKE_TIMES, wakeUpTime).ifBlank { "Not set" }, "Structures your morning digest and earliest suggested focus window.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Occupation", labelFor(OCCUPATION_LABELS, occupation).ifBlank { "Not set" }, "Helps tailor default task templates and suggested focus routines.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Focus goals", if (focusGoals.isEmpty()) "None selected" else "${focusGoals.size} selected", "Tags and clusters your focus sessions in reports.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Sleep time", labelFor(SLEEP_TIMES, sleepTime).ifBlank { "Not set" }, "Defines the active daily boundary so blocks don't interrupt your rest.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Best focus time", labelFor(CHRONOTYPES, chronotype).ifBlank { "Not set" }, "Suggests optimal task placement for high-energy deep work.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Ideal focus block", focusLength?.let { "$it min" } ?: "Not set", "Pre-selects default session length for quick-add sessions.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Break style", labelFor(BREAK_STYLES, breakStyle).ifBlank { "Not set" }, "Sets Pomodoro pause lengths and interval recommendations.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Distraction triggers", if (distractionTriggers.isEmpty()) "None selected" else "${distractionTriggers.size} selected", "Stored for personalized block recommendations.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Motivation style", if (motivationStyle.isEmpty()) "None selected" else "${motivationStyle.size} selected", "Guides motivational quotes and milestone notifications.")
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    ProfileUsageItem("Weekly review day", labelFor(REVIEW_DAYS, weeklyReviewDay).ifBlank { "Not set" }, "Triggers weekly focus performance reviews and summary digests.")
-                }
+            ProfileUsageItem(
+                icon = Icons.Outlined.AccessTime,
+                label = "Daily focus goal",
+                value = "${dailyGoalHours}h",
+                detail = "Tracked on the Stats screen and on your home-screen widget.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.WbSunny,
+                label = "Wake-up time",
+                value = labelFor(WAKE_TIMES, wakeUpTime).ifBlank { "Not set" },
+                detail = "Set a wake-up time to get a morning plan notification.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.WorkOutline,
+                label = "Occupation",
+                value = labelFor(OCCUPATION_LABELS, occupation).ifBlank { "Not set" },
+                detail = "Pick one so we can tailor the app to your routine.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.Flag,
+                label = "Focus goals",
+                value = if (focusGoals.isEmpty()) "None" else "${focusGoals.size} selected",
+                detail = "Add goals so we can group and label your focus time.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.Person,
+                label = "Name",
+                value = name.ifBlank { "Not set" },
+                detail = "Add a name to personalise your morning digest.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.Bedtime,
+                label = "Sleep time",
+                value = labelFor(SLEEP_TIMES, sleepTime).ifBlank { "Not set" },
+                detail = "Add a sleep time to define your day's focus window.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.WbSunny,
+                label = "Best focus time",
+                value = labelFor(CHRONOTYPES, chronotype).ifBlank { "Not set" },
+                detail = "Tell us when you focus best for smarter task scheduling.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.HourglassEmpty,
+                label = "Ideal focus block",
+                value = focusLength?.let { "$it min" } ?: "Not set",
+                detail = "Pick a length and we'll use it as your default for new tasks.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.Info,
+                label = "Break style",
+                value = labelFor(BREAK_STYLES, breakStyle).ifBlank { "Not set" },
+                detail = "Pick a style to set your default Pomodoro break length.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.Block,
+                label = "Distraction triggers",
+                value = if (distractionTriggers.isEmpty()) "None" else "${distractionTriggers.size} selected",
+                detail = "Pick what details you most want the app to adapt over time.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.EmojiEvents,
+                label = "Motivation style",
+                value = if (motivationStyle.isEmpty()) "None" else "${motivationStyle.size} selected",
+                detail = "Pick what motivates you so we can lean into it across the app.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.CalendarToday,
+                label = "Weekly review day",
+                value = labelFor(REVIEW_DAYS, weeklyReviewDay).ifBlank { "Not set" },
+                detail = "Pick a day to receive your weekly recap.",
+            )
 
-                Button(
-                    onClick = { usageVisible = false },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                ) {
-                    Text("Got it", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-
-                Spacer(Modifier.height(16.dp))
-            }
+            Spacer(Modifier.height(18.dp))
         }
     }
 }
@@ -961,17 +991,69 @@ private fun FlowChoiceChips(
 }
 
 @Composable
-private fun ProfileUsageItem(label: String, value: String, detail: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun ProfileUsageItem(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    detail: String,
+) {
+    Column {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-            Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xFFE7E9FF)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Text(
+                    label,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DarkTextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    detail,
+                    fontSize = 13.5.sp,
+                    color = DarkTextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                value,
+                modifier = Modifier.padding(start = 8.dp),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = BrandPrimary,
+                maxLines = 1,
+            )
         }
-        Text(detail, fontSize = 12.sp, color = DarkTextSecondary, lineHeight = 16.sp)
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 16.dp),
+            color = DarkBorder.copy(alpha = 0.85f),
+            thickness = 1.dp,
+        )
     }
 }
 
