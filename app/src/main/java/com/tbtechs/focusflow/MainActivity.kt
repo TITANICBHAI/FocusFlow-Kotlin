@@ -272,7 +272,14 @@ private fun FocusFlowRoot(
             // active Material theme continue behind the clock/status strip
             // and behind both gesture and 3-button navigation.
             window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            // Keep the navigation bar's own surface in sync with the theme.
+            // Transparent bars do not reliably refresh on 3-button navigation
+            // when the user changes Dark Mode while the activity is alive.
+            window.navigationBarColor = if (settings.darkModeEnabled) {
+                android.graphics.Color.rgb(13, 19, 34)
+            } else {
+                android.graphics.Color.rgb(240, 242, 255)
+            }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 window.isStatusBarContrastEnforced = false
                 window.isNavigationBarContrastEnforced = false

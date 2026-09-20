@@ -481,19 +481,21 @@ private fun DeviceUsageCard(
                         .padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(
+                                enabled = app.packageName != null,
+                                onClick = { app.packageName?.let(onOpenQuickBlock) },
+                            )
+                            .padding(vertical = 4.dp),
+                    ) {
                         Text(app.appName, color = DarkTextPrimary, maxLines = 1)
                         Text(
                             "${app.minutes.roundToInt()} minutes foreground",
                             fontSize = 11.sp,
                             color = DarkTextSecondary,
                         )
-                    }
-                    Button(
-                        onClick = { onOpenQuickBlock(app.packageName) },
-                        contentPadding = PaddingValues(horizontal = 10.dp),
-                    ) {
-                        Text("Block", fontSize = 12.sp)
                     }
                 }
             }
@@ -572,19 +574,24 @@ private fun BlockingReport(
             color = DarkTextSecondary,
         )
         snapshot.blocking.topApp?.let { app ->
+            val topPackage = snapshot.blocking.byApp.entries
+                .firstOrNull { (_, entry) -> entry == app }
+                ?.key
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(
+                            enabled = topPackage != null,
+                            onClick = { topPackage?.let(onOpenQuickBlock) },
+                        )
+                        .padding(vertical = 4.dp),
+                ) {
                     Text(app.appName, color = DarkTextPrimary, fontWeight = FontWeight.Medium)
                     Text("${app.count} attempts", fontSize = 11.sp, color = DarkTextSecondary)
-                }
-                Button(
-                    onClick = { onOpenQuickBlock(null) },
-                    contentPadding = PaddingValues(horizontal = 10.dp),
-                ) {
-                    Text("Block")
                 }
             }
         }

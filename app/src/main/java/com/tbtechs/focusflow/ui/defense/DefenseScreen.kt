@@ -132,6 +132,7 @@ fun DefenseScreen(
         settings.standaloneBlockPackages.isNotEmpty() &&
         settings.standaloneBlockUntilMs > System.currentTimeMillis()
     val blockActive = isFocusActive || standaloneActive
+    val allowanceEntries = dailyAllowanceEntriesFromJson(settings.dailyAllowanceConfigJson)
 
     // Auto-dismiss notice after 4.5 seconds
     LaunchedEffect(notice) {
@@ -349,7 +350,7 @@ fun DefenseScreen(
                     SettingSwitch(
                         label = "Always-On Enforcement",
                         description = if (settings.alwaysBlockEnabled) {
-                            "${settings.alwaysBlockPackages.size} app(s) blocked around the clock"
+                            "${settings.alwaysBlockPackages.size} app${if (settings.alwaysBlockPackages.size == 1) "" else "s"} blocked around the clock"
                         } else {
                             "Keep selected apps blocked 24/7"
                         },
@@ -366,14 +367,18 @@ fun DefenseScreen(
                     SettingButton(
                         label = "Manage Always-On App List",
                         description = if (settings.alwaysBlockPackages.isEmpty()) "Choose apps that should stay blocked"
-                        else "${settings.alwaysBlockPackages.size} app(s) selected",
+                        else "${settings.alwaysBlockPackages.size} app${if (settings.alwaysBlockPackages.size == 1) "" else "s"} selected",
                         icon = Icons.Outlined.Apps,
                         onClick = onOpenAlwaysOn,
                     )
                     HorizontalDivider(color = DarkBorder)
                     SettingButton(
                         label = "Daily Allowance",
-                        description = "Set daily count, time, or interval limits per app",
+                        description = if (allowanceEntries.isEmpty()) {
+                            "Set daily count, time, or interval limits per app"
+                        } else {
+                            "${allowanceEntries.size} app${if (allowanceEntries.size == 1) "" else "s"} configured"
+                        },
                         icon = Icons.Outlined.LightMode,
                         onClick = { allowanceVisible = true },
                     )
@@ -390,7 +395,7 @@ fun DefenseScreen(
                     HorizontalDivider(color = DarkBorder)
                     SettingButton(
                         label = "Scheduled Blocks",
-                        description = "Manage recurring time-window blocks",
+                        description = "Manage recurring time-window blocks (formerly Greyout Block)",
                         icon = Icons.Outlined.Schedule,
                         onClick = {
                             if (settings.pinProtectionEnabled) {
@@ -550,7 +555,7 @@ fun DefenseScreen(
                 DefenseSection("NETWORK PROTECTION") {
                     SettingSwitch(
                         label = "Network Blocking (VPN)",
-                        description = "Cut internet access for selected apps through FocusFlow's local VPN",
+                        description = "Cut internet access for selected apps through FocusFlow’s local VPN",
                         checked = settings.networkBlockEnabled,
                         onChange = { enabled ->
                             if (!enabled && blockActive) {

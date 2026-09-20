@@ -70,6 +70,7 @@ import com.tbtechs.focusflow.ui.focus.FocusScreen
 import com.tbtechs.focusflow.ui.home.HomeScreen
 import com.tbtechs.focusflow.ui.keyword.KeywordBlockerScreen
 import com.tbtechs.focusflow.ui.launcher.LauncherSetupScreen
+import com.tbtechs.focusflow.ui.launcher.QuickBlockSheet
 import com.tbtechs.focusflow.ui.launcher.VpnBlockListScreen
 import com.tbtechs.focusflow.ui.legal.PrivacyPolicyScreen
 import com.tbtechs.focusflow.ui.legal.TermsOfServiceScreen
@@ -119,6 +120,8 @@ fun FocusFlowNavGraph(
         androidx.compose.material3.DrawerValue.Closed,
     )
     var pendingQuickBlockPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingQuickBlockAppName by rememberSaveable { mutableStateOf("") }
+    val settings by settingsViewModel.settings.collectAsState()
 
     fun navigate(route: String) {
         if (navController.currentDestination?.route == route) return
@@ -193,8 +196,16 @@ fun FocusFlowNavGraph(
                             },
                             onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
                             onOpenQuickBlock = { packageName ->
-                                pendingQuickBlockPackage = packageName
-                                navigate(Routes.BLOCK_DEFENSE)
+                                if (!packageName.isNullOrBlank()) {
+                                    pendingQuickBlockPackage = packageName
+                                    pendingQuickBlockAppName = runCatching {
+                                        context.packageManager
+                                            .getApplicationLabel(
+                                                context.packageManager.getApplicationInfo(packageName, 0),
+                                            )
+                                            .toString()
+                                    }.getOrDefault(packageName)
+                                }
                             },
                         )
                     }
@@ -276,6 +287,7 @@ fun FocusFlowNavGraph(
                         initialPackage = pendingQuickBlockPackage,
                         onBack = {
                             pendingQuickBlockPackage = null
+                            pendingQuickBlockAppName = ""
                             back()
                         },
                     )
@@ -483,6 +495,29 @@ fun FocusFlowNavGraph(
                     NotFoundScreen(onBack = ::back)
                 }
             }
+        }
+        pendingQuickBlockPackage?.let { packageName ->
+            QuickBlockSheet(
+                visible = true,
+                packageName = packageName,
+                appName = pendingQuickBlockAppName.ifBlank { packageName },
+                settings = settings,
+                settingsRepository = AppModule.settingsRepository,
+                onClose = {
+                    pendingQuickBlockPackage = null
+                    pendingQuickBlockAppName = ""
+                },
+                onOpenActive = {
+                    pendingQuickBlockPackage = null
+                    pendingQuickBlockAppName = ""
+                    navigate(Routes.ACTIVE)
+                },
+                onOpenAlwaysOn = {
+                    pendingQuickBlockPackage = null
+                    pendingQuickBlockAppName = ""
+                    navigate(Routes.ALWAYS_ON)
+                },
+            )
         }
     }
 }

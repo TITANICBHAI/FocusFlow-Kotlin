@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -162,22 +163,19 @@ fun TemptationStats(
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onQuickBlock(packageName) }
+                                    .padding(vertical = 4.dp),
+                            ) {
                                 Text(app.appName)
                                 Text(
                                     "${app.count} attempts",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                            }
-                                Button(
-                                    onClick = { onQuickBlock(packageName) },
-                                    modifier = Modifier.height(40.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                ) {
-                                Text("Block")
                             }
                         }
                     }

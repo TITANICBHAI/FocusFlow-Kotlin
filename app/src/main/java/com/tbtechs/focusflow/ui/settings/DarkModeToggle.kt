@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -40,7 +42,6 @@ fun DarkModeToggle(
         label = "darkModeThumbOffset",
     )
     val activeIcon = if (isDark) Icons.Outlined.DarkMode else Icons.Outlined.WbSunny
-    val inactiveIcon = if (isDark) Icons.Outlined.WbSunny else Icons.Outlined.DarkMode
 
     Box(
         modifier = Modifier
@@ -51,13 +52,40 @@ fun DarkModeToggle(
         contentAlignment = Alignment.CenterStart,
     ) {
         Icon(
-            imageVector = inactiveIcon,
+            imageVector = Icons.Outlined.Cloud,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.58f),
+            tint = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
-                .align(if (isDark) Alignment.CenterStart else Alignment.CenterEnd)
-                .padding(horizontal = 5.dp)
-                .size(12.dp),
+                .align(Alignment.CenterEnd)
+                .offset(x = (-15).dp)
+                .size(9.dp),
+        )
+        Icon(
+            imageVector = Icons.Outlined.WbSunny,
+            contentDescription = null,
+            tint = Color(0xFFFBBF24),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .offset(x = (-5).dp)
+                .size(10.dp),
+        )
+        Icon(
+            imageVector = Icons.Outlined.Star,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.5f),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = 7.dp, y = (-4).dp)
+                .size(6.dp),
+        )
+        Icon(
+            imageVector = Icons.Outlined.Star,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.35f),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = 13.dp, y = 5.dp)
+                .size(4.dp),
         )
         Box(
             modifier = Modifier

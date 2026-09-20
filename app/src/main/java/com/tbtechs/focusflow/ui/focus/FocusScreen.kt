@@ -807,7 +807,7 @@ private fun ReadyToFocusPanel(
                             color = DarkTextPrimary,
                         )
                         Text(
-                            "Start standalone blocking independent of a schedule",
+                            "Start a standalone block or recurring schedule",
                             fontSize = 13.sp,
                             color = DarkTextSecondary,
                         )

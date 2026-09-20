@@ -6,32 +6,35 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Nightlight
 import androidx.compose.material.icons.outlined.OpenInNew
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -59,8 +62,11 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.StatusReady
+import com.tbtechs.focusflow.ui.theme.StatusReadyText
+import com.tbtechs.focusflow.ui.theme.StatusNotSetUp
+import com.tbtechs.focusflow.ui.theme.StatusNotSetUpText
 import kotlinx.coroutines.launch
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -86,6 +92,10 @@ fun QuickBlockSheet(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var protectedWarning by remember { mutableStateOf(false) }
+    val isAlwaysOn = packageName in settings.alwaysBlockPackages
+    val isTemporarilyBlocked = settings.standaloneBlockActive &&
+        packageName in settings.standaloneBlockPackages &&
+        settings.standaloneBlockUntilMs > System.currentTimeMillis()
 
     fun applyTemporary(durationMs: Long) {
         if (isProtectedSystemApp(context, packageName)) {
@@ -111,15 +121,29 @@ fun QuickBlockSheet(
         }
     }
 
+    fun applyUntil(untilMs: Long) {
+        applyTemporary(untilMs - System.currentTimeMillis())
+    }
+
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = DarkBackground,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .width(42.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(DarkTextMuted),
+            )
+        },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -127,16 +151,40 @@ fun QuickBlockSheet(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(BrandPrimary.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.Security,
+                        contentDescription = null,
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "Quick Block",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
+                        "Quick Block $appName",
+                        maxLines = 1,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = DarkTextPrimary,
                     )
                     Text(
-                        appName,
-                        fontSize = 11.sp,
+                        when {
+                            isAlwaysOn && isTemporarilyBlocked ->
+                                "Always-On + temporary block is active"
+                            isAlwaysOn -> "Always-On protection is active"
+                            isTemporarilyBlocked ->
+                                "Blocked until ${formatExpiry(settings.standaloneBlockUntilMs)}"
+                            else -> "Choose how long to protect this app"
+                        },
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -145,127 +193,118 @@ fun QuickBlockSheet(
                 }
             }
 
-            Button(
-                onClick = { applyTemporary(60 * 60 * 1000L) },
-                enabled = !loading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(10.dp),
+            Text(
+                "TEMPORARY BLOCK",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.8.sp,
+                color = DarkTextSecondary,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(Icons.Outlined.AccessTime, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Block for one hour", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                QuickBlockAction(
+                    icon = Icons.Outlined.AccessTime,
+                    label = "1 hour",
+                    onClick = { applyTemporary(60 * 60 * 1000L) },
+                    enabled = !loading,
+                    modifier = Modifier.weight(1f),
+                )
+                QuickBlockAction(
+                    icon = Icons.Outlined.WbSunny,
+                    label = "Until tonight",
+                    onClick = {
+                        val now = LocalDateTime.now()
+                        val tonight = LocalDateTime.of(now.toLocalDate(), LocalTime.of(20, 0))
+                        applyUntil(tonight.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    },
+                    enabled = !loading,
+                    modifier = Modifier.weight(1f),
+                )
             }
-
-            OutlinedButton(
-                onClick = {
-                    val now = LocalDateTime.now()
-                    val tonight = LocalDateTime.of(now.toLocalDate(), LocalTime.of(23, 59))
-                    applyTemporary(Duration.between(now, tonight).toMillis())
-                },
-                enabled = !loading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = DarkCard,
-                    contentColor = DarkTextPrimary,
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder),
-                ),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Until tonight (11:59 PM)", fontSize = 13.sp)
-            }
-
-            OutlinedButton(
-                onClick = {
-                    val tomorrow = LocalDate.now().plusDays(1)
-                    val wakeUp = LocalDateTime.of(tomorrow, LocalTime.of(7, 0))
-                    applyTemporary(Duration.between(LocalDateTime.now(), wakeUp).toMillis())
-                },
-                enabled = !loading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = DarkCard,
-                    contentColor = DarkTextPrimary,
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder),
-                ),
-            ) {
-                Text("Until tomorrow morning (7:00 AM)", fontSize = 13.sp)
-            }
-
-            OutlinedButton(
-                onClick = {
-                    showCustomDateTimePicker(context) { until ->
-                        if (until <= System.currentTimeMillis()) {
-                            error = "Choose a time in the future."
-                        } else {
-                            customExpiry = until
-                            applyTemporary(until - System.currentTimeMillis())
+                QuickBlockAction(
+                    icon = Icons.Outlined.Nightlight,
+                    label = "Tomorrow morning",
+                    onClick = {
+                        val tomorrow = LocalDate.now().plusDays(1)
+                        val wakeUp = LocalDateTime.of(tomorrow, LocalTime.of(7, 0))
+                        applyUntil(wakeUp.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    },
+                    enabled = !loading,
+                    modifier = Modifier.weight(1f),
+                )
+                QuickBlockAction(
+                    icon = Icons.Outlined.CalendarMonth,
+                    label = if (customExpiry == null) "Choose time" else "Time selected",
+                    onClick = {
+                        showCustomDateTimePicker(context) { until ->
+                            if (until <= System.currentTimeMillis()) {
+                                error = "Choose a time in the future."
+                            } else {
+                                customExpiry = until
+                                applyUntil(until)
+                            }
                         }
-                    }
-                },
-                enabled = !loading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 44.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = DarkCard,
-                    contentColor = DarkTextPrimary,
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder),
-                ),
-            ) {
-                Text(
-                    if (customExpiry == null) "Choose custom expiry..." else "Custom expiry selected",
-                    fontSize = 13.sp,
+                    },
+                    enabled = !loading,
+                    modifier = Modifier.weight(1f),
                 )
             }
 
-            // Always-On Option
+            Text(
+                "ALWAYS-ON PROTECTION",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.8.sp,
+                color = DarkTextSecondary,
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DarkCard)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
-                    .padding(8.dp),
+                    .background(
+                        if (isAlwaysOn) DarkSurfaceVariant
+                        else StatusNotSetUp.copy(alpha = 0.10f),
+                    )
+                    .border(
+                        1.dp,
+                        if (isAlwaysOn) DarkBorder else StatusNotSetUp.copy(alpha = 0.35f),
+                        RoundedCornerShape(10.dp),
+                    )
+                    .padding(10.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        Icons.Outlined.Lock,
+                        if (isAlwaysOn) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
                         contentDescription = null,
-                        tint = BrandPrimary,
+                        tint = if (isAlwaysOn) StatusReady else StatusNotSetUp,
                         modifier = Modifier.size(20.dp),
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "Always-On",
+                            if (isAlwaysOn) "Already Always-On" else "Block always",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkTextPrimary,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isAlwaysOn) StatusReadyText else DarkTextPrimary,
                         )
                         Text(
-                            "Keep this app blocked indefinitely",
+                            "Keep this app blocked 24/7 until you remove it from Always-On",
                             fontSize = 11.sp,
+                            lineHeight = 16.sp,
                             color = DarkTextSecondary,
                         )
                     }
+                }
+                if (!isAlwaysOn) {
                     TextButton(
                         onClick = {
                             if (isProtectedSystemApp(context, packageName)) {
@@ -282,25 +321,91 @@ fun QuickBlockSheet(
                             }
                         },
                         shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     ) {
-                        Text("Enable", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                        Text("Block", color = StatusNotSetUpText, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            if (settings.standaloneBlockActive) {
-                Text(
-                    "A standalone block is already active.",
-                    color = Color(0xFFFBBF24),
-                    fontSize = 13.sp,
-                )
-                TextButton(
-                    onClick = onOpenActive,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                ) {
-                    Text("Open Active Dashboard", color = BrandPrimary)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(DarkSurfaceVariant)
+                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                    .padding(10.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.HelpOutline,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                        Text(
+                            "Need to remove this later?",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = DarkTextPrimary,
+                        )
+                    }
+                    Text(
+                        when {
+                            isTemporarilyBlocked && isAlwaysOn ->
+                                "This app has both a timed block and Always-On protection. Manage each one separately:"
+                            isTemporarilyBlocked ->
+                                "This timed block is managed from Active. It expires automatically."
+                            isAlwaysOn ->
+                                "Always-On protection stays until you remove the app from the Always-On list."
+                            else ->
+                                "Temporary blocks expire automatically. Always-On apps are managed from Settings.",
+                        },
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        color = DarkTextSecondary,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (isTemporarilyBlocked) {
+                            TextButton(
+                                onClick = {
+                                    onClose()
+                                    onOpenActive()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.OpenInNew,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text("Open Active", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        if (isAlwaysOn) {
+                            TextButton(
+                                onClick = {
+                                    onClose()
+                                    onOpenAlwaysOn()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.OpenInNew,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text("Open Always-On", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -308,32 +413,91 @@ fun QuickBlockSheet(
                 Text(it, color = Color(0xFFF87171), fontSize = 13.sp)
             }
 
+            if (loading) {
+                Text(
+                    "Updating protection…",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    fontSize = 12.sp,
+                    color = BrandPrimary,
+                )
+            }
+            Text(
+                "Quick Block uses FocusFlow's existing block lists. No separate block history is created.",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontSize = 11.sp,
+                lineHeight = 17.sp,
+                color = DarkTextSecondary,
+            )
             Spacer(Modifier.height(8.dp))
         }
     }
 
-    if (protectedWarning) {
-        AlertDialog(
-            onDismissRequest = { protectedWarning = false },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = DarkCard,
-            titleContentColor = DarkTextPrimary,
-            textContentColor = DarkTextSecondary,
-            title = { Text("Protected system app", fontWeight = FontWeight.Bold) },
-            text = { Text("This system app cannot be blocked because doing so could make the device unusable.") },
-            confirmButton = {
-                Button(
-                    onClick = { protectedWarning = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                ) {
-                    Text("OK")
-                }
-            },
-        )
+    if (protectedWarning) ProtectedSystemAppDialog(onDismiss = { protectedWarning = false })
+}
+
+@Composable
+private fun QuickBlockAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(54.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(DarkSurfaceVariant)
+            .border(
+                width = 1.dp,
+                color = DarkBorder.copy(alpha = if (enabled) 1f else 0.5f),
+                shape = RoundedCornerShape(10.dp),
+            )
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
+            Text(
+                label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkTextPrimary,
+            )
+        }
     }
 }
+
+@Composable
+private fun ProtectedSystemAppDialog(onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = DarkCard,
+        titleContentColor = DarkTextPrimary,
+        textContentColor = DarkTextSecondary,
+        title = { Text("Protected system app", fontWeight = FontWeight.Bold) },
+        text = { Text("This system app cannot be blocked because doing so could make the device unusable.") },
+        confirmButton = {
+            androidx.compose.material3.Button(
+                onClick = onDismiss,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text("OK")
+            }
+        },
+    )
+}
+
+private fun formatExpiry(untilMs: Long): String =
+    java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(untilMs)
 
 private fun isProtectedSystemApp(context: Context, packageName: String): Boolean =
     runCatching {

@@ -244,7 +244,7 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsToggleRow(
                         title = "Dark Mode",
-                        description = "Use a dark theme",
+                        description = "Use a darker color palette throughout FocusFlow",
                     ) {
                         DarkModeToggle(
                             isDark = settings.darkModeEnabled,
