@@ -7,7 +7,9 @@ import androidx.compose.runtime.Composable
 fun StatsScreen(
     statsViewModel: StatsViewModel,
     onOpenUsageAccessSettings: () -> Unit = {},
+    onOpenQuickBlock: (String?) -> Unit = {},
 ) = StatsInsightsExperience(
     statsViewModel = statsViewModel,
     onOpenUsageAccessSettings = onOpenUsageAccessSettings,
+    onOpenQuickBlock = onOpenQuickBlock,
 )

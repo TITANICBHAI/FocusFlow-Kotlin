@@ -106,11 +106,13 @@ data class AnalyticsSnapshot(
         val peakHour: Int?,
         val peakPeriod: String?,
         val heaviestApp: HeaviestApp? = null,
+        val apps: List<HeaviestApp> = emptyList(),
     )
 
     data class HeaviestApp(
         val appName: String,
         val minutes: Double,
+        val packageName: String? = null,
     )
 }
 

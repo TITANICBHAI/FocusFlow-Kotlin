@@ -147,6 +147,7 @@ fun FocusFlowNavGraph(
                             focusSessionViewModel = focusSessionViewModel,
                             appBootViewModel = appBootViewModel,
                             onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                            onOpenQuickBlock = { navigate(Routes.BLOCK_DEFENSE) },
                         )
                     }
                 }

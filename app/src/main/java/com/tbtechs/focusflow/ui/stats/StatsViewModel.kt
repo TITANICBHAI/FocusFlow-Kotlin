@@ -13,6 +13,7 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_THREE_MONTHS
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.InsightCard
 import com.tbtechs.focusflow.analytics.InsightEngine
+import com.tbtechs.focusflow.analytics.LifetimeStats
 import com.tbtechs.focusflow.di.AppModule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -38,6 +39,7 @@ class StatsViewModel(
     private val _insightCards = MutableStateFlow<List<InsightCard>>(emptyList())
     private val _weeklyStandout = MutableStateFlow<InsightCard?>(null)
     private val _achievementState = MutableStateFlow<AchievementState?>(null)
+    private val _lifetimeStats = MutableStateFlow<LifetimeStats?>(null)
     private val _loadState = MutableStateFlow<StatsLoadState>(StatsLoadState.Loading)
     private val _activeWindow = MutableStateFlow<AnalyticsWindow>(ANALYTICS_WEEK)
 
@@ -45,6 +47,7 @@ class StatsViewModel(
     val insightCards: StateFlow<List<InsightCard>> = _insightCards.asStateFlow()
     val weeklyStandout: StateFlow<InsightCard?> = _weeklyStandout.asStateFlow()
     val achievementState: StateFlow<AchievementState?> = _achievementState.asStateFlow()
+    val lifetimeStats: StateFlow<LifetimeStats?> = _lifetimeStats.asStateFlow()
     val loadState: StateFlow<StatsLoadState> = _loadState.asStateFlow()
     val activeWindow: StateFlow<AnalyticsWindow> = _activeWindow.asStateFlow()
 
@@ -92,6 +95,7 @@ class StatsViewModel(
                 // standout recording. A transient weekly-ledger failure
                 // should not prevent newly earned achievements from syncing.
                 _achievementState.value = achievementEngine.syncAchievements(snapshot)
+                _lifetimeStats.value = analyticsProcessor.getLifetimeStats()
                 if (window == ANALYTICS_WEEK) {
                     _weeklyStandout.value = insightEngine.syncWeeklyStandout(snapshot)
                 }

@@ -23,8 +23,10 @@ typealias AnalyticsWindow = String
 typealias AnalyticsSourceState = String
 
 const val ANALYTICS_YESTERDAY: AnalyticsWindow = "yesterday"
+const val ANALYTICS_TODAY: AnalyticsWindow = "today"
 const val ANALYTICS_WEEK: AnalyticsWindow = "week"
 const val ANALYTICS_THREE_MONTHS: AnalyticsWindow = "three_months"
+const val ANALYTICS_ALL_TIME: AnalyticsWindow = "all_time"
 
 const val SOURCE_LOADED: AnalyticsSourceState = "loaded"
 const val SOURCE_UNAVAILABLE: AnalyticsSourceState = "unavailable"
@@ -83,6 +85,31 @@ fun getAnalyticsRange(
                 start = start,
                 end = start.plusDays(1).minusNanos(1),
                 trendWeekAnchor = startOfSundayWeek(start),
+            )
+        }
+
+        ANALYTICS_TODAY -> {
+            val start = now.toLocalDate().atStartOfDay(now.zone)
+            AnalyticsRange(
+                start = start,
+                end = start.plusDays(1).minusNanos(1),
+                trendWeekAnchor = startOfSundayWeek(start),
+            )
+        }
+
+        ANALYTICS_ALL_TIME -> {
+            // FocusFlow's persisted records use ISO timestamps. Epoch is a
+            // stable lower bound that includes all app data without relying on
+            // a made-up "first use" preference.
+            val start = ZonedDateTime.of(
+                java.time.LocalDate.of(1970, 1, 1),
+                java.time.LocalTime.MIDNIGHT,
+                now.zone,
+            )
+            AnalyticsRange(
+                start = start,
+                end = now.toLocalDate().plusDays(1).atStartOfDay(now.zone).minusNanos(1),
+                trendWeekAnchor = startOfSundayWeek(now),
             )
         }
 
@@ -346,12 +373,19 @@ private fun buildPhoneUsageMetrics(
     val peak = byHour.entries.sortedWith(compareByDescending<Map.Entry<Int, Double>> { it.value }.thenBy { it.key })
         .firstOrNull()
     val peakHour = peak?.takeIf { it.value > 0.0 }?.key
-    val app = usageSummary?.apps?.firstOrNull()
+    val apps = usageSummary?.apps.orEmpty().map {
+        AnalyticsSnapshot.HeaviestApp(
+            appName = it.appName.ifBlank { it.packageName },
+            minutes = it.foregroundMinutes.toDouble(),
+            packageName = it.packageName,
+        )
+    }
     return AnalyticsSnapshot.PhoneUsage(
         byHour = byHour,
         peakHour = peakHour,
         peakPeriod = phoneUsagePeriod(peakHour),
-        heaviestApp = app?.let { AnalyticsSnapshot.HeaviestApp(it.appName.ifBlank { it.packageName }, it.foregroundMinutes.toDouble()) },
+        heaviestApp = apps.firstOrNull(),
+        apps = apps,
     )
 }
 
@@ -431,6 +465,8 @@ class AnalyticsProcessor(
 ) {
     suspend fun hasUsageStatsPermission(): Boolean = usageStatsRepository.hasPermission()
 
+    suspend fun getLifetimeStats(): LifetimeStats = focusSessionRepository.getLifetimeStats()
+
     suspend fun buildAnalyticsSnapshot(
         window: AnalyticsWindow,
         options: AnalyticsBuildOptions = AnalyticsBuildOptions(),
@@ -439,7 +475,11 @@ class AnalyticsProcessor(
         val startISO = range.start.toInstant().toString()
         val endISO = range.end.toInstant().toString()
         val previousRange = previousAnalyticsRange(range)
-        val expectedWeekCount = if (window == ANALYTICS_THREE_MONTHS) 12 else 2
+        val expectedWeekCount = when (window) {
+            ANALYTICS_THREE_MONTHS -> 12
+            ANALYTICS_ALL_TIME -> 12
+            else -> 2
+        }
         val weekForSkipComparison = if (window == ANALYTICS_YESTERDAY) {
             getAnalyticsRange(ANALYTICS_WEEK, options.now, options.weekStartDay)
         } else {
