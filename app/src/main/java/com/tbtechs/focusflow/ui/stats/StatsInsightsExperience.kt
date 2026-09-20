@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
@@ -119,11 +120,11 @@ fun StatsInsightsExperience(
                             }
                             ANALYTICS_YESTERDAY -> TaskResultList(loaded)
                             ANALYTICS_THREE_MONTHS -> {
-                                PhoneUsageSummary(loaded, onQuickBlock)
+                                PhoneUsageSummary(loaded, onOpenQuickBlock)
                                 TrendChart(loaded)
                             }
                         }
-                        TemptationStats(loaded, onQuickBlock)
+                        TemptationStats(loaded, onOpenQuickBlock)
                         if (window != ANALYTICS_THREE_MONTHS) {
                             achievements?.let { AchievementRow(it) }
                         }

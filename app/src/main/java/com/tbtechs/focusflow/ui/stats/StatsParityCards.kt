@@ -83,7 +83,7 @@ fun ProductivityHeatmap(snapshot: AnalyticsSnapshot) {
                 days.forEachIndexed { day, label ->
                     val bucket = snapshot.tasks.byDayOfWeek[day]
                     val rate = if ((bucket?.total ?: 0) == 0) 0.0
-                    else (bucket?.completed ?: 0).toDouble() / bucket.total
+                    else (bucket?.completed ?: 0).toDouble() / (bucket?.total ?: 1)
                     Column(
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
