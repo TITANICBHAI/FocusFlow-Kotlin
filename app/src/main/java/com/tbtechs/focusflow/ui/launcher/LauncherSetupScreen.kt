@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -95,6 +96,7 @@ fun LauncherSetupScreen(
     val scope = rememberCoroutineScope()
     val settings by settingsViewModel.settings.collectAsState()
     var installedApps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
+    var appsLoading by remember { mutableStateOf(true) }
     var defaultLauncher by remember { mutableStateOf<Boolean?>(null) }
     var search by remember { mutableStateOf("") }
     var hideWarning by remember { mutableStateOf<String?>(null) }
@@ -105,10 +107,15 @@ fun LauncherSetupScreen(
 
     fun refresh() {
         scope.launch {
-            defaultLauncher = runCatching { settingsRepository.isDefaultLauncher() }.getOrNull()
-            installedApps = runCatching {
-                installedAppsRepository.getInstalledApps().sortedBy { it.appName.lowercase() }
-            }.getOrDefault(emptyList())
+            appsLoading = true
+            try {
+                defaultLauncher = runCatching { settingsRepository.isDefaultLauncher() }.getOrNull()
+                installedApps = runCatching {
+                    installedAppsRepository.getInstalledApps().sortedBy { it.appName.lowercase() }
+                }.getOrDefault(emptyList())
+            } finally {
+                appsLoading = false
+            }
         }
     }
 
@@ -381,6 +388,22 @@ fun LauncherSetupScreen(
 
                 item {
                     AppSearchField(search, { search = it })
+                }
+
+                if (appsLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 20.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                color = BrandPrimary,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                    }
                 }
 
                 items(filteredApps.take(15), key = { "tool-${it.packageName}" }) { app ->

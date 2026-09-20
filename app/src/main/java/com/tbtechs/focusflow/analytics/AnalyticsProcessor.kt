@@ -414,11 +414,7 @@ fun createAnalyticsSnapshot(
             if (window == ANALYTICS_THREE_MONTHS) 12 else 2,
         ),
         sourceHealth = source.health,
-        phoneUsage = if (window == ANALYTICS_THREE_MONTHS) {
-            buildPhoneUsageMetrics(source.usageSummary, source.usageHourly, range)
-        } else {
-            null
-        },
+        phoneUsage = buildPhoneUsageMetrics(source.usageSummary, source.usageHourly, range),
     )
 }
 
@@ -486,12 +482,8 @@ class AnalyticsProcessor(
             null
         }
 
-        val usagePermission = if (window == ANALYTICS_THREE_MONTHS) {
-            options.usageStatsPermission ?: usageStatsRepository.hasPermission()
-        } else {
-            false
-        }
-        val usageReads = if (window == ANALYTICS_THREE_MONTHS && usagePermission) {
+        val usagePermission = options.usageStatsPermission ?: usageStatsRepository.hasPermission()
+        val usageReads = if (usagePermission) {
             coroutineScope {
                 val summary = async { readSource({ usageStatsRepository.getUsageSummary(range.start.toInstant().toEpochMilli(), range.end.toInstant().toEpochMilli()) }, null) }
                 val hourly = async { readSource({ usageStatsRepository.getHourlyUsageSummary(range.start.toInstant().toEpochMilli(), range.end.toInstant().toEpochMilli()) }, null) }

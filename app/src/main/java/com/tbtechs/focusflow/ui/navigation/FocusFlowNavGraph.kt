@@ -46,6 +46,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.navArgument
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.LauncherController
@@ -79,7 +80,7 @@ import com.tbtechs.focusflow.ui.profile.UserProfileScreen
 import com.tbtechs.focusflow.ui.settings.SettingsScreen
 import com.tbtechs.focusflow.ui.stats.ReportScreen
 import com.tbtechs.focusflow.ui.stats.ReportsScreen
-import com.tbtechs.focusflow.ui.stats.StatsInsightsExperience
+import com.tbtechs.focusflow.ui.stats.StatsScreen
 import com.tbtechs.focusflow.ui.support.ChangelogScreen
 import com.tbtechs.focusflow.ui.support.HowToUseScreen
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
@@ -120,10 +121,12 @@ fun FocusFlowNavGraph(
     var pendingQuickBlockPackage by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun navigate(route: String) {
-        if (route == currentRoute) return
+        if (navController.currentDestination?.route == route) return
         if (route in Routes.tabRoutes) {
             navController.navigate(route) {
-                popUpTo(Routes.HOME) { saveState = true }
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
                 launchSingleTop = true
                 restoreState = true
             }
@@ -181,7 +184,7 @@ fun FocusFlowNavGraph(
             composable(Routes.STATS) {
                 MainScaffold(currentRoute, ::navigate) {
                     ScreenBoundary(Routes.STATS) {
-                        StatsInsightsExperience(
+                        StatsScreen(
                             statsViewModel = statsViewModel,
                             onOpenUsageAccessSettings = {
                                 scope.launch {
@@ -329,7 +332,7 @@ fun FocusFlowNavGraph(
                         isOnboarding = isOnboarding,
                         onBack = {
                             if (isOnboarding) {
-                                navController.navigate(Routes.FOCUS) {
+                                navController.navigate(Routes.DEFENSE) {
                                     popUpTo(Routes.HOME) { inclusive = false }
                                 }
                             } else {
@@ -337,7 +340,7 @@ fun FocusFlowNavGraph(
                             }
                         },
                         onGetStarted = {
-                            navController.navigate(Routes.FOCUS) {
+                            navController.navigate(Routes.DEFENSE) {
                                 popUpTo(Routes.HOME) { inclusive = false }
                             }
                         },

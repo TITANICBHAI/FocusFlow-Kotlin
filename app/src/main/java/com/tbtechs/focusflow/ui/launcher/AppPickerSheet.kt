@@ -124,6 +124,7 @@ fun AppPickerSheet(
     val scope = rememberCoroutineScope()
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
     var search by remember { mutableStateOf("") }
     var categoryFilter by remember { mutableStateOf<String?>(null) }
     var warning by remember { mutableStateOf<Pair<String, SensitiveApp>?>(null) }
@@ -144,12 +145,18 @@ fun AppPickerSheet(
 
     LaunchedEffect(Unit) {
         loading = true
-        val loaded = installedAppsRepository.getInstalledApps()
-        apps = loaded
-        if (!initialWasBlockAll && !noneWhenEmpty && initialSelected.isEmpty()) {
-            selected = loaded.mapTo(mutableSetOf()) { it.packageName }
+        loadError = null
+        try {
+            val loaded = installedAppsRepository.getInstalledApps()
+            apps = loaded
+            if (!initialWasBlockAll && !noneWhenEmpty && initialSelected.isEmpty()) {
+                selected = loaded.mapTo(mutableSetOf()) { it.packageName }
+            }
+        } catch (_: Exception) {
+            loadError = "Installed apps could not be loaded. Close and try again."
+        } finally {
+            loading = false
         }
-        loading = false
     }
 
     val filteredApps = remember(apps, search, categoryFilter) {
@@ -506,6 +513,14 @@ fun AppPickerSheet(
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(32.dp))
+                }
+                loadError != null -> Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
                 }
                 filteredApps.isEmpty() -> Column(
                     modifier = Modifier

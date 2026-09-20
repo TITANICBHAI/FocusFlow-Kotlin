@@ -43,7 +43,9 @@ class StatsViewModel(
     private val _achievementState = MutableStateFlow<AchievementState?>(null)
     private val _lifetimeStats = MutableStateFlow<LifetimeStats?>(null)
     private val _loadState = MutableStateFlow<StatsLoadState>(StatsLoadState.Loading)
-    private val _activeWindow = MutableStateFlow<AnalyticsWindow>(ANALYTICS_WEEK)
+    // The archived RN stats screen opens on Today. Keep that same first view
+    // so a fresh install does not land on a denser historical report.
+    private val _activeWindow = MutableStateFlow<AnalyticsWindow>(ANALYTICS_TODAY)
 
     val analyticsSnapshot: StateFlow<AnalyticsSnapshot?> = _analyticsSnapshot.asStateFlow()
     val insightCards: StateFlow<List<InsightCard>> = _insightCards.asStateFlow()
