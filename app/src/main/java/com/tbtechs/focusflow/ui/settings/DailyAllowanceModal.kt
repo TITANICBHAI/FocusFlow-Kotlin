@@ -87,6 +87,8 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.InfoBodyText
 import com.tbtechs.focusflow.ui.theme.InfoSurface
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
 private val SunAmber = Color(0xFFF59E0B)
@@ -145,10 +147,18 @@ fun DailyAllowanceModal(
     LaunchedEffect(visible) {
         if (!visible) return@LaunchedEffect
         appsLoading = true
-        installedApps = runCatching {
-            InstalledAppsRepository(context).getInstalledApps()
-                .sortedBy { it.appName.lowercase() }
-        }.getOrDefault(emptyList())
+        installedApps = emptyList()
+        runCatching {
+            withContext(Dispatchers.IO) {
+                InstalledAppsRepository(context).getInstalledApps { app ->
+                    withContext(Dispatchers.Main.immediate) {
+                        installedApps = (installedApps + app)
+                            .distinctBy { it.packageName }
+                            .sortedBy { it.appName.lowercase() }
+                    }
+                }
+            }
+        }
         appsLoading = false
     }
 
@@ -427,7 +437,7 @@ fun DailyAllowanceModal(
                 }
             }
 
-            if (appsLoading) {
+            if (appsLoading && installedApps.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -579,6 +589,24 @@ fun DailyAllowanceModal(
                         }
                     }
                     HorizontalDivider(color = DarkBorder.copy(alpha = 0.45f))
+                }
+            }
+
+            if (appsLoading && installedApps.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            color = BrandPrimary,
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.sp)
+                    }
                 }
             }
 

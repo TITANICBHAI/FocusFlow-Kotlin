@@ -658,7 +658,7 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
                 )
                 Text(
                     if (nothingActive) "Start Focus or configure a protection layer in Defense."
-                    else "This page updates automatically while it is open.",
+                    else "Protection is active, but this screen remains interactive and updates automatically.",
                     fontSize = 11.sp,
                     color = DarkTextSecondary,
                 )

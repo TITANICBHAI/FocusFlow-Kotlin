@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.ui.defense
 
+import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,6 +72,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.data.repository.VpnRepository
+import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -81,6 +85,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -95,6 +100,8 @@ fun GreyoutScheduleModal(
     windows: List<RecurringBlockSchedule>,
     standaloneActive: Boolean,
     requireDefensePin: ((String, String, () -> Unit) -> Unit)? = null,
+    vpnRepository: VpnRepository? = null,
+    onNetworkProtectionRequired: () -> Unit = {},
     onSave: (List<RecurringBlockSchedule>) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -105,6 +112,8 @@ fun GreyoutScheduleModal(
     var editing by remember { mutableStateOf<ScheduleDraft?>(null) }
     var confirmDelete by remember { mutableStateOf<Int?>(null) }
     var pinPrompt by remember { mutableStateOf<PendingScheduleAction?>(null) }
+    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
+    var appsLoading by remember { mutableStateOf(true) }
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
@@ -224,6 +233,7 @@ fun GreyoutScheduleModal(
                         itemsIndexed(localWindows) { index, schedule ->
                             ScheduleCard(
                                 schedule = schedule,
+                                appNames = apps.associate { it.packageName to it.appName },
                                 onEdit = {
                                     val action = { editing = ScheduleDraft.from(schedule, index) }
                                     if (requireDefensePin != null) {
@@ -270,6 +280,8 @@ fun GreyoutScheduleModal(
             context = context,
             draft = draft,
             requireDefensePin = requireDefensePin,
+            vpnRepository = vpnRepository,
+            onNetworkProtectionRequired = onNetworkProtectionRequired,
             onBack = { editing = null },
             onCommit = { committed ->
                 localWindows = if (committed.index == null) {
@@ -282,6 +294,23 @@ fun GreyoutScheduleModal(
                 editing = null
             },
         )
+    }
+
+    LaunchedEffect(visible) {
+        if (!visible) return@LaunchedEffect
+        appsLoading = true
+        apps = emptyList()
+        runCatching {
+            withContext(Dispatchers.IO) {
+                InstalledAppsRepository(context).getInstalledApps { app ->
+                    withContext(Dispatchers.Main.immediate) {
+                        apps = (apps + app).distinctBy { it.packageName }
+                        appsLoading = false
+                    }
+                }
+            }
+        }
+        appsLoading = false
     }
 
     confirmDelete?.let { index ->
@@ -344,6 +373,7 @@ fun GreyoutScheduleModal(
 @Composable
 private fun ScheduleCard(
     schedule: RecurringBlockSchedule,
+    appNames: Map<String, String>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -361,7 +391,9 @@ private fun ScheduleCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                val appLabel = schedule.packages.firstOrNull() ?: "(no app)"
+                val appLabel = schedule.packages.firstOrNull()?.let { appNames[it] }
+                    ?: schedule.packages.firstOrNull()?.substringAfterLast('.')
+                    ?: "(no app)"
                 Text(
                     text = if (schedule.packages.size > 1) "$appLabel +${schedule.packages.size - 1} more" else appLabel,
                     fontSize = 15.sp,
@@ -509,6 +541,8 @@ private fun ScheduleEditor(
     context: Context,
     draft: ScheduleDraft,
     requireDefensePin: ((String, String, () -> Unit) -> Unit)?,
+    vpnRepository: VpnRepository?,
+    onNetworkProtectionRequired: () -> Unit,
     onBack: () -> Unit,
     onCommit: (ScheduleDraft) -> Unit,
 ) {
@@ -517,9 +551,18 @@ private fun ScheduleEditor(
     var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var search by remember { mutableStateOf("") }
     var validationError by remember(draft) { mutableStateOf<String?>(null) }
+    var vpnConsentVisible by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val activity = context as? Activity
     LaunchedEffect(Unit) {
         apps = withContext(Dispatchers.IO) {
             runCatching { InstalledAppsRepository(context).getInstalledApps() }.getOrDefault(emptyList())
+        }
+        val names = apps.associate { it.packageName to it.appName }
+        if (current.appNames != current.packages.map { it } || current.appNames.isEmpty()) {
+            current = current.copy(
+                appNames = current.packages.map { names[it] ?: it.substringAfterLast('.') },
+            )
         }
     }
     val results = apps.filter {
@@ -772,7 +815,18 @@ private fun ScheduleEditor(
                     }
                     FocusFlowSwitch(
                         checked = current.enabled,
-                        onCheckedChange = { current = current.copy(enabled = it) },
+                        onCheckedChange = { enabled ->
+                            if (current.enabled != enabled && requireDefensePin != null) {
+                                requireDefensePin(
+                                    "Change Window Protection",
+                                    "Enter your defense password to change whether this scheduled window is enabled.",
+                                ) {
+                                    current = current.copy(enabled = enabled)
+                                }
+                            } else {
+                                current = current.copy(enabled = enabled)
+                            }
+                        },
                     )
                 }
 
@@ -790,7 +844,31 @@ private fun ScheduleEditor(
                     }
                     FocusFlowSwitch(
                         checked = current.vpnEnabled,
-                        onCheckedChange = { current = current.copy(vpnEnabled = it) },
+                        onCheckedChange = { enabled ->
+                            if (!enabled) {
+                                val disable = {
+                                    current = current.copy(vpnEnabled = false)
+                                }
+                                if (requireDefensePin != null) {
+                                    requireDefensePin(
+                                        "Disable Network Blocking",
+                                        "Enter your defense password to disable VPN blocking for this window.",
+                                        disable,
+                                    )
+                                } else {
+                                    disable()
+                                }
+                            } else {
+                                scope.launch {
+                                    if (vpnRepository != null && !vpnRepository.isVpnPermissionGranted()) {
+                                        vpnConsentVisible = true
+                                    } else {
+                                        current = current.copy(vpnEnabled = true)
+                                        onNetworkProtectionRequired()
+                                    }
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -862,6 +940,23 @@ private fun ScheduleEditor(
         }
     }
 }
+
+    VpnConsentModal(
+        visible = vpnConsentVisible,
+        onCancel = { vpnConsentVisible = false },
+        onConfirm = {
+            vpnConsentVisible = false
+            scope.launch {
+                try {
+                    vpnRepository?.requestVpnPermission(activity)
+                    current = current.copy(vpnEnabled = true)
+                    onNetworkProtectionRequired()
+                } catch (exception: Exception) {
+                    validationError = exception.message ?: "Could not open VPN consent."
+                }
+            }
+        },
+    )
 
 }
 

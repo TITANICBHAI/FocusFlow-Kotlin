@@ -177,11 +177,11 @@ fun QuickBlockSheet(
                     Text(
                         when {
                             isAlwaysOn && isTemporarilyBlocked ->
-                                "Always-On + temporary block is active"
+                                "Always-On and temporary blocking are both active"
                             isAlwaysOn -> "Always-On protection is active"
                             isTemporarilyBlocked ->
                                 "Blocked until ${formatExpiry(settings.standaloneBlockUntilMs)}"
-                            else -> "Choose how long to protect this app"
+                             else -> "Choose how long to block this app"
                         },
                         fontSize = 12.sp,
                         lineHeight = 17.sp,
@@ -297,7 +297,7 @@ fun QuickBlockSheet(
                             color = if (isAlwaysOn) StatusReadyText else DarkTextPrimary,
                         )
                         Text(
-                            "Keep this app blocked 24/7 until you remove it from Always-On",
+                         "Keep this app blocked until you remove it from the Always-On list",
                             fontSize = 11.sp,
                             lineHeight = 16.sp,
                             color = DarkTextSecondary,
@@ -355,8 +355,8 @@ fun QuickBlockSheet(
                     }
                     Text(
                         when {
-                            isTemporarilyBlocked && isAlwaysOn ->
-                                "This app has both a timed block and Always-On protection. Manage each one separately:"
+                             isTemporarilyBlocked && isAlwaysOn ->
+                                "This app has both a temporary block and Always-On protection. Manage them separately:"
                             isTemporarilyBlocked ->
                                 "This timed block is managed from Active. It expires automatically."
                             isAlwaysOn ->
@@ -423,7 +423,7 @@ fun QuickBlockSheet(
                 )
             }
             Text(
-                "Quick Block uses FocusFlow's existing block lists. No separate block history is created.",
+                 "Quick Block adds a temporary block to FocusFlow's existing protection list. It does not create a separate block history.",
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 fontSize = 11.sp,

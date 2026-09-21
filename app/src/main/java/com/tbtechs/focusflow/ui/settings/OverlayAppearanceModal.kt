@@ -160,8 +160,8 @@ fun OverlayAppearanceModal(
                 }.onFailure {
                     message = OverlayMessage(
                         title = "Could not pick image",
-                        body = "Please grant photo access in device Settings, then try again.",
-                        showSettings = true,
+                        body = "The selected image could not be imported. Try choosing it again from your gallery.",
+                        showSettings = false,
                     )
                 }
             }

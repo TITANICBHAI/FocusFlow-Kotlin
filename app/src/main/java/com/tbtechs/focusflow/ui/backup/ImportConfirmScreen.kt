@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.WarningAmber
@@ -203,7 +204,21 @@ private fun ImportReview(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Outlined.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Text("FocusFlow backup", style = MaterialTheme.typography.headlineSmall)
-                Text("Review what will be brought onto this device before anything changes.")
+                Text("Review the contents and choose what to bring onto this device. Nothing changes until you tap the import button.")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        "Settings and block lists are merged with this device. Tasks can be merged or replaced, depending on the option below.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         Text("This file contains", style = MaterialTheme.typography.titleMedium)
@@ -219,6 +234,22 @@ private fun ImportReview(
             Column {
                 ImportSectionRow("Portable settings and block lists", restoreSettings, onRestoreSettingsChange)
                 ImportSectionRow("Tasks and reminders", restoreTasks, onRestoreTasksChange)
+            }
+        }
+        Card {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    if (replaceTasks) "Replace mode" else "Merge mode",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    if (replaceTasks) {
+                        "Existing tasks are removed first, then the backup tasks are restored. Use this only when the backup should become the task list on this device."
+                    } else {
+                        "Existing tasks stay in place. Backup tasks are added without deleting current tasks, and matching task IDs are skipped."
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         Card {

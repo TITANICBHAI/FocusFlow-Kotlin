@@ -55,6 +55,15 @@ private data class ChangeEntry(val version: String, val date: String, val sectio
  * are retained because they are part of the legacy release history.
  */
 private val CHANGELOG = listOf(
+    ChangeEntry("1.1.4", "September 2026", listOf(
+        ChangeSection("Protection controls", listOf(
+            "Improved app-list loading, scheduled block labels, VPN permission handling, and active-protection guidance.",
+        )),
+        ChangeSection("Backup import", listOf(
+            "Added a clearer review step so you can see what will be merged or replaced before importing.",
+        )),
+        ChangeSection("Release Metadata", listOf("Updated FocusFlow to v1.1.4 (build 13).")),
+    )),
     ChangeEntry("1.1.3", "September 2026", listOf(
         ChangeSection("Home Launcher", listOf(
             "Added Classic and Glassy launcher themes with wallpaper-aware styling, a focused home layout, and configurable app-drawer controls.",

@@ -33,14 +33,17 @@ data class PermissionDefinition(
 )
 
 val permissionDefinitions = listOf(
+    // Core protection paths are first. Overlay is required for the block screen
+    // to appear above the app the user is trying to open.
     PermissionDefinition(PermissionId.ACCESSIBILITY, "Accessibility Service", "Reads the foreground app name only. Data stays on your device.", "Redirects blocked apps before they open.", listOf("App blocking will not work", "Blocked apps can open during focus", "Blocks can be bypassed"), false, "Open Accessibility Settings"),
     PermissionDefinition(PermissionId.USAGE, "Usage Access", "Detects which app is in the foreground.", "Needed to detect blocked apps.", listOf("Foreground app detection fails", "Blocking can silently fail", "Stats may be inaccurate"), false, "Open Usage Access Settings"),
-    PermissionDefinition(PermissionId.NOTIFICATIONS, "Notifications", "Shows reminders and the focus notification.", "Keeps reminders and the service notification visible.", listOf("No task reminders", "The focus notification disappears", "Blocking may stop"), false, "Open Notification Settings"),
+    PermissionDefinition(PermissionId.OVERLAY, "Appear on Top", "Shows the block screen over other apps.", "Prevents blocked apps from flashing first.", listOf("The block screen may open inside FocusFlow", "A blocked app may flash"), false, "Allow Display Over Other Apps"),
+
+    // Helpful but optional protections. Keep Notifications immediately before
+    // Device Admin so the everyday service requirement is easy to find.
     PermissionDefinition(PermissionId.BATTERY, "Battery Optimization", "Helps FocusFlow keep running in the background.", "Some phones stop background services.", listOf("Blocking can stop when the screen turns off", "Focus sessions may stop"), true, "Disable Battery Optimization"),
-    PermissionDefinition(PermissionId.OVERLAY, "Appear on Top", "Shows the block screen over other apps.", "Prevents blocked apps from flashing first.", listOf("The block screen may open inside FocusFlow", "A blocked app may flash"), true, "Allow Display Over Other Apps"),
-    PermissionDefinition(PermissionId.MEDIA, "Media & Files", "Lets you choose a block-screen image.", "The default image works without it.", listOf("Custom block-screen image is unavailable"), true, "Allow Photos and Media"),
-    PermissionDefinition(PermissionId.VPN, "VPN Network Blocking", "Blocks internet for selected apps.", "Android requires one-time consent.", listOf("Selected apps keep internet access", "Network blocking cannot start"), true, "Grant VPN Permission"),
     PermissionDefinition(PermissionId.EXACT_ALARMS, "Exact Alarms", "Fires task reminders on schedule.", "Without it, Android may delay reminders.", listOf("Task reminders may be delayed"), true, "Allow Alarms & Reminders"),
+    PermissionDefinition(PermissionId.NOTIFICATIONS, "Notifications", "Shows reminders and the focus notification.", "Keeps reminders and the foreground service notification visible.", listOf("No task reminders", "The focus notification may be hidden", "You may not see service status"), true, "Open Notification Settings"),
     PermissionDefinition(PermissionId.DEVICE_ADMIN, "Device Admin", "Adds resistance to force-stop controls.", "Some phones expose force-stop paths.", listOf("Stopping FocusFlow may be easier"), true, "Activate Device Admin"),
     PermissionDefinition(PermissionId.LAUNCHER, "Home Launcher", "Intercepts blocked launches before they open.", "Stops blocked apps from flashing.", listOf("Blocked apps may flash first", "Launcher filtering is unavailable"), true, "Set as Home Launcher"),
 )

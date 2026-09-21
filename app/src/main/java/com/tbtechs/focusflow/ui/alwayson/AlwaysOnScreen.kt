@@ -76,7 +76,9 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 
 private val systemNeverBlock = setOf(
@@ -162,11 +164,20 @@ fun AlwaysOnScreen(
         loading = true
         val storedSettings = runCatching { settingsRepository.readAppSettings() }.getOrNull()
         val storedNetwork = runCatching { vpnRepository.getNetworkBlockSettings() }.getOrNull()
-        apps = runCatching {
-            installedAppsRepository.getInstalledApps()
-                .filterNot { it.packageName in systemNeverBlock }
-                .sortedBy { it.appName.lowercase() }
-        }.getOrDefault(emptyList())
+        apps = emptyList()
+        runCatching {
+            withContext(Dispatchers.IO) {
+                installedAppsRepository.getInstalledApps { app ->
+                    if (app.packageName !in systemNeverBlock) {
+                        withContext(Dispatchers.Main.immediate) {
+                            apps = (apps + app)
+                                .distinctBy { it.packageName }
+                                .sortedBy { it.appName.lowercase() }
+                        }
+                    }
+                }
+            }
+        }
         networkSettings = storedNetwork
         selected = storedSettings?.alwaysBlockPackages?.toSet().orEmpty()
         vpnSelected = storedNetwork?.packages?.toSet().orEmpty()
@@ -316,6 +327,43 @@ fun AlwaysOnScreen(
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (blockProtectionActive) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(BrandPrimary.copy(alpha = 0.12f))
+                        .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .padding(12.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Protection is active",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkTextPrimary,
+                            )
+                            Text(
+                                "This screen is not frozen. You can review the lists; removing protected apps is blocked until the active protection ends or is verified.",
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                color = DarkTextSecondary,
+                            )
+                        }
+                    }
+                }
+            }
+
             if (showInfo) {
                 // Explanatory Info Card matching 3e_(3)
                 Box(
@@ -431,7 +479,7 @@ fun AlwaysOnScreen(
             }
 
             when {
-                loading -> Column(
+                loading && apps.isEmpty() -> Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -442,7 +490,7 @@ fun AlwaysOnScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Loading apps…", color = DarkTextSecondary, fontSize = 14.sp)
                 }
-                filteredApps.isEmpty() -> Column(
+                filteredApps.isEmpty() && !loading -> Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -484,6 +532,21 @@ fun AlwaysOnScreen(
                     item {
                         Spacer(modifier = Modifier.height(20.dp))
                     }
+                }
+            }
+            if (loading && apps.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        color = BrandPrimary,
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.sp)
                 }
             }
         }

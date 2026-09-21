@@ -28,7 +28,9 @@ class InstalledAppsRepository(context: Context) {
 
     private val appContext = context.applicationContext
 
-    suspend fun getInstalledApps(): List<InstalledAppInfo> {
+    suspend fun getInstalledApps(
+        onAppLoaded: (suspend (InstalledAppInfo) -> Unit)? = null,
+    ): List<InstalledAppInfo> {
         val packageManager = appContext.packageManager
         val imePackages = try {
             val inputMethodManager = appContext.getSystemService(
@@ -47,7 +49,7 @@ class InstalledAppsRepository(context: Context) {
             PackageManager.GET_META_DATA,
         )
 
-        return buildList {
+        val result = buildList {
             for (application in applications) {
                 if (application.packageName == appContext.packageName) continue
 
@@ -69,15 +71,16 @@ class InstalledAppsRepository(context: Context) {
                     null
                 }
 
-                add(
-                    InstalledAppInfo(
-                        packageName = application.packageName,
-                        appName = appName,
-                        isIme = isIme,
-                        icon = icon,
-                    ),
+                val app = InstalledAppInfo(
+                    packageName = application.packageName,
+                    appName = appName,
+                    isIme = isIme,
+                    icon = icon,
                 )
+                add(app)
+                onAppLoaded?.invoke(app)
             }
         }
+        return result
     }
 }

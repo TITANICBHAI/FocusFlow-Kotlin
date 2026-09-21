@@ -233,6 +233,43 @@ fun DefenseScreen(
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
 
+                if (blockActive) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF064E3B).copy(alpha = 0.45f))
+                            .border(1.dp, Color(0xFF34D399).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            .padding(12.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Shield,
+                                contentDescription = null,
+                                tint = Color(0xFF34D399),
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Protection is active",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkTextPrimary,
+                                )
+                                Text(
+                                    "This screen is still responsive. Settings that could weaken the active block are protected or require your defense password.",
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp,
+                                    color = DarkTextSecondary,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Hint Banner matching 3a.jpg
                 if (showHint) {
                     Box(
@@ -754,6 +791,15 @@ fun DefenseScreen(
                 } else {
                     action()
                 }
+            },
+            vpnRepository = vpnRepository,
+            onNetworkProtectionRequired = {
+                update(
+                    settings.copy(
+                        networkBlockEnabled = true,
+                        vpnSelfHealEnabled = true,
+                    ),
+                )
             },
             onSave = { schedules ->
                 settingsViewModel.setRecurringBlockSchedules(schedules)

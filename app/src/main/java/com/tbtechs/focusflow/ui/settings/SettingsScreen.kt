@@ -556,7 +556,7 @@ fun SettingsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        "FocusFlow v1.4.0 (build 15)",
+                        "FocusFlow v1.1.4 (build 13)",
                         fontSize = 12.5.sp,
                         color = DarkTextMuted,
                         textAlign = TextAlign.Center,

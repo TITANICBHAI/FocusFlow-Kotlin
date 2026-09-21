@@ -125,8 +125,6 @@ fun OnboardingScreen(
             PermissionId.OVERLAY,
             PermissionId.USAGE,
             PermissionId.ACCESSIBILITY,
-            PermissionId.MEDIA,
-            PermissionId.VPN,
             PermissionId.DEVICE_ADMIN,
         ).mapNotNull { definitionsById[it] }
     }

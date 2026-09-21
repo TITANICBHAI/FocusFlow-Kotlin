@@ -25,7 +25,7 @@ import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.MonitorHeart
+ import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
@@ -208,7 +208,7 @@ private fun StatsHeader(window: String) {
             Text(statsSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
         }
         Icon(
-            Icons.Outlined.MonitorHeart,
+            Icons.Outlined.Analytics,
             contentDescription = "Stats",
             tint = DarkTextPrimary,
             modifier = Modifier.size(28.dp),

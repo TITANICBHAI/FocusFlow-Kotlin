@@ -52,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -127,6 +128,13 @@ fun AppPickerSheet(
     var deletePreset by remember { mutableStateOf<AllowedAppPreset?>(null) }
     var showPresetInput by remember { mutableStateOf(false) }
     var presetName by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    var showSensitiveInfo by remember {
+        mutableStateOf(
+            !context.getSharedPreferences("focusflow_ui", android.content.Context.MODE_PRIVATE)
+                .getBoolean("sensitive_picker_info_dismissed", false),
+        )
+    }
 
     val initialWasBlockAll = remember(initialSelected) {
         initialSelected.contains(BLOCK_ALL_SENTINEL)
@@ -143,10 +151,12 @@ fun AppPickerSheet(
         loading = true
         loadError = null
         try {
-            val loaded = installedAppsRepository.getInstalledApps()
-            apps = loaded
-            if (!initialWasBlockAll && !noneWhenEmpty && initialSelected.isEmpty()) {
-                selected = loaded.mapTo(mutableSetOf()) { it.packageName }
+            apps = emptyList()
+            installedAppsRepository.getInstalledApps { app ->
+                apps = (apps + app).distinctBy { it.packageName }
+                if (!initialWasBlockAll && !noneWhenEmpty && initialSelected.isEmpty()) {
+                    selected = apps.mapTo(mutableSetOf()) { it.packageName }
+                }
             }
         } catch (_: Exception) {
             loadError = "Installed apps could not be loaded. Close and try again."
@@ -241,7 +251,7 @@ fun AppPickerSheet(
                     }
                 }
 
-                Column(
+                androidx.compose.foundation.lazy.LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -249,12 +259,14 @@ fun AppPickerSheet(
                         .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
                 ) {
-                    Row(
+                    item {
+                        Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
+                        ) {
                         Text(
                             "PRESETS",
                             fontSize = 13.sp,
@@ -282,19 +294,22 @@ fun AppPickerSheet(
                             Spacer(Modifier.width(5.dp))
                             Text("Save current", fontSize = 12.sp, color = BrandPrimary)
                         }
-                    }
+                        }
 
-                    if (presets.isEmpty() && !showPresetInput) {
-                        Text(
+                        if (presets.isEmpty() && !showPresetInput) {
+                            item {
+                                Text(
                             "No presets yet — save the current selection as a named preset.",
                             fontSize = 12.sp,
                             color = DarkTextMuted,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                        )
-                    } else if (presets.isNotEmpty() && !showPresetInput) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            items(presets, key = { it.id }) { preset ->
-                                Box(
+                                )
+                            }
+                        } else if (presets.isNotEmpty() && !showPresetInput) {
+                            item {
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    items(presets, key = { it.id }) { preset ->
+                                        Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(DarkCard)
@@ -315,8 +330,8 @@ fun AppPickerSheet(
                                             onLongClick = { deletePreset = preset },
                                         )
                                         .padding(horizontal = 12.dp, vertical = 7.dp),
-                                ) {
-                                    Row(
+                                        ) {
+                                            Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
@@ -329,17 +344,19 @@ fun AppPickerSheet(
                                                 .size(13.dp)
                                                 .clickable { deletePreset = preset },
                                         )
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    if (showPresetInput) {
-                        Row(
+                        if (showPresetInput) {
+                            item {
+                                Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                                ) {
                             OutlinedTextField(
                                 value = presetName,
                                 onValueChange = { presetName = it.take(32) },
@@ -383,19 +400,23 @@ fun AppPickerSheet(
                             ) {
                                 Text("Cancel", color = DarkTextSecondary)
                             }
+                                }
+                            }
                         }
-                    }
 
-                    Text(
+                    item {
+                        Text(
                         selectionSummary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextSecondary,
-                    )
+                        )
+                    }
 
-                    Row(
+                    item {
+                        Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                        ) {
                         PickerAction(
                             label = "Select All",
                             enabled = apps.isNotEmpty() && !allAppsSelected,
@@ -411,9 +432,11 @@ fun AppPickerSheet(
                                     .toSet()
                             },
                         )
+                        }
                     }
 
-                    OutlinedTextField(
+                    item {
+                        OutlinedTextField(
                         value = search,
                         onValueChange = { search = it },
                         modifier = Modifier
@@ -450,63 +473,109 @@ fun AppPickerSheet(
                             focusedTextColor = DarkTextPrimary,
                             unfocusedTextColor = DarkTextPrimary,
                         ),
-                    )
+                        )
+                    }
 
-                    Text(
-                        "Checked apps are allowed during Focus. The \"Sensitive\" tag means an app can be blocked but will warn first (e.g. Settings, Wallet). Truly protected apps — your phone dialer, home launcher, and WhatsApp — are kept usable by the system and don't appear here at all.",
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp,
-                        color = DarkTextMuted,
-                    )
+                    if (showSensitiveInfo) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(DarkSurfaceVariant.copy(alpha = 0.55f))
+                                    .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
+                                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Apps,
+                                    contentDescription = null,
+                                    tint = DarkTextMuted,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    "Checked apps are allowed during Focus. Sensitive apps warn before blocking. Phone, launcher, and WhatsApp protections stay usable.",
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                    color = DarkTextMuted,
+                                )
+                                IconButton(
+                                    onClick = {
+                                        showSensitiveInfo = false
+                                        context.getSharedPreferences("focusflow_ui", android.content.Context.MODE_PRIVATE)
+                                            .edit()
+                                            .putBoolean("sensitive_picker_info_dismissed", true)
+                                            .apply()
+                                    },
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Dismiss information",
+                                        tint = DarkTextMuted,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     when {
-                        loading -> Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(30.dp))
+                        loading && apps.isEmpty() -> item {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(30.dp))
+                            }
                         }
-                        loadError != null -> Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
+                        loadError != null -> item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
+                            }
                         }
-                        filteredApps.isEmpty() -> Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(32.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("No matching apps found", fontSize = 14.sp, color = DarkTextSecondary)
+                        filteredApps.isEmpty() && !loading -> item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(32.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("No matching apps found", fontSize = 14.sp, color = DarkTextSecondary)
+                            }
                         }
-                        else -> LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            items(filteredApps, key = { it.packageName }) { app ->
-                                AppPickerRow(
-                                    app = app,
-                                    checked = selected.contains(app.packageName),
-                                    onToggle = { clickedApp ->
-                                        val sensitive = sensitiveApps[clickedApp.packageName]
-                                        if (selected.contains(clickedApp.packageName) && sensitive != null) {
-                                            warning = clickedApp.packageName to sensitive
-                                        } else {
-                                            selected = selected.toggle(clickedApp.packageName)
-                                        }
-                                    },
-                                )
+                        else -> items(filteredApps, key = { it.packageName }) { app ->
+                            AppPickerRow(
+                                app = app,
+                                checked = selected.contains(app.packageName),
+                                onToggle = { clickedApp ->
+                                    val sensitive = sensitiveApps[clickedApp.packageName]
+                                    if (selected.contains(clickedApp.packageName) && sensitive != null) {
+                                        warning = clickedApp.packageName to sensitive
+                                    } else {
+                                        selected = selected.toggle(clickedApp.packageName)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    if (loading && apps.isNotEmpty()) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Loading more apps…", fontSize = 11.sp, color = DarkTextMuted)
                             }
                         }
                     }
