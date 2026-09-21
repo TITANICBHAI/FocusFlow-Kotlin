@@ -49,7 +49,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,6 +72,7 @@ import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.launcher.AppPickerSheet
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
 import com.tbtechs.focusflow.ui.home.FocusFlowModalField
 import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
@@ -87,8 +87,6 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.InfoBodyText
 import com.tbtechs.focusflow.ui.theme.InfoSurface
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
 private val SunAmber = Color(0xFFF59E0B)
@@ -140,27 +138,11 @@ fun DailyAllowanceModal(
     var message by remember { mutableStateOf<AllowanceMessage?>(null) }
     var pendingRemoval by remember { mutableStateOf<PendingAllowanceRemoval?>(null) }
     var pin by remember { mutableStateOf("") }
-    var installedApps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
-    var appsLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
-
-    LaunchedEffect(visible) {
-        if (!visible) return@LaunchedEffect
-        appsLoading = true
-        installedApps = emptyList()
-        runCatching {
-            withContext(Dispatchers.IO) {
-                InstalledAppsRepository(context).getInstalledApps { app ->
-                    withContext(Dispatchers.Main.immediate) {
-                        installedApps = (installedApps + app)
-                            .distinctBy { it.packageName }
-                            .sortedBy { it.appName.lowercase() }
-                    }
-                }
-            }
-        }
-        appsLoading = false
-    }
+    val installedAppsRepository = remember { InstalledAppsRepository(context) }
+    val installedAppsState = rememberInstalledApps(installedAppsRepository)
+    val installedApps = installedAppsState.apps
+    val appsLoading = installedAppsState.loading
 
     fun updateDraft(packageName: String, transform: (DailyAllowanceDraft) -> DailyAllowanceDraft) {
         drafts = drafts.map { draft -> if (draft.packageName == packageName) transform(draft) else draft }

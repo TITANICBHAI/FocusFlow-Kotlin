@@ -53,13 +53,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -69,9 +69,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 
 /**
@@ -93,11 +91,10 @@ fun VpnBlockListScreen(
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val settings by settingsViewModel.settings.collectAsState()
     var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var original by remember { mutableStateOf<Set<String>>(emptySet()) }
     var search by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(true) }
+    var settingsLoading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var pinDialog by remember { mutableStateOf(false) }
@@ -113,28 +110,17 @@ fun VpnBlockListScreen(
             "com.whatsapp",
         )
     }
+    val installedAppsState = rememberInstalledApps(installedAppsRepository)
+    val apps = installedAppsState.apps.filterNot { it.packageName in systemNeverBlock }
+    val loading = settingsLoading || installedAppsState.loading
 
     LaunchedEffect(Unit) {
-        loading = true
+        settingsLoading = true
         val loaded = runCatching { vpnRepository.getNetworkBlockSettings() }.getOrNull()
         networkSettings = loaded
         selected = loaded?.packages?.toSet().orEmpty()
         original = selected
-        apps = emptyList()
-        runCatching {
-            withContext(Dispatchers.IO) {
-                installedAppsRepository.getInstalledApps { app ->
-                    if (app.packageName !in systemNeverBlock) {
-                        withContext(Dispatchers.Main.immediate) {
-                            apps = (apps + app)
-                                .distinctBy { it.packageName }
-                                .sortedBy { it.appName.lowercase() }
-                        }
-                    }
-                }
-            }
-        }
-        loading = false
+        settingsLoading = false
     }
 
     val filtered = remember(apps, search) {

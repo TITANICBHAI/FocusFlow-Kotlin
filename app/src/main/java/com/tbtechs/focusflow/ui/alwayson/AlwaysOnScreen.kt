@@ -66,6 +66,7 @@ import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
@@ -76,9 +77,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 
 private val systemNeverBlock = setOf(
@@ -141,14 +140,13 @@ fun AlwaysOnScreen(
     val settings by settingsViewModel.settings.collectAsState()
     val focusSession by focusSessionViewModel.focusSession.collectAsState()
 
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var vpnSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var originalSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var originalVpnSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var search by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(true) }
+    var settingsLoading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showPin by remember { mutableStateOf(false) }
@@ -159,31 +157,20 @@ fun AlwaysOnScreen(
     var showInfo by remember(settings.alwaysOnInfoDismissed) {
         mutableStateOf(!settings.alwaysOnInfoDismissed)
     }
+    val installedAppsState = rememberInstalledApps(installedAppsRepository)
+    val apps = installedAppsState.apps.filterNot { it.packageName in systemNeverBlock }
+    val loading = settingsLoading || installedAppsState.loading
 
     LaunchedEffect(Unit) {
-        loading = true
+        settingsLoading = true
         val storedSettings = runCatching { settingsRepository.readAppSettings() }.getOrNull()
         val storedNetwork = runCatching { vpnRepository.getNetworkBlockSettings() }.getOrNull()
-        apps = emptyList()
-        runCatching {
-            withContext(Dispatchers.IO) {
-                installedAppsRepository.getInstalledApps { app ->
-                    if (app.packageName !in systemNeverBlock) {
-                        withContext(Dispatchers.Main.immediate) {
-                            apps = (apps + app)
-                                .distinctBy { it.packageName }
-                                .sortedBy { it.appName.lowercase() }
-                        }
-                    }
-                }
-            }
-        }
         networkSettings = storedNetwork
         selected = storedSettings?.alwaysBlockPackages?.toSet().orEmpty()
         vpnSelected = storedNetwork?.packages?.toSet().orEmpty()
         originalSelected = selected
         originalVpnSelected = vpnSelected
-        loading = false
+        settingsLoading = false
     }
 
     val filteredApps = remember(apps, search) {

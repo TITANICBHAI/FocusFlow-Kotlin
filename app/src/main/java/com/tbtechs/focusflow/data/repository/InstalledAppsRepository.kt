@@ -83,4 +83,30 @@ class InstalledAppsRepository(context: Context) {
         }
         return result
     }
+
+    /**
+     * Loads the same app catalog while publishing small batches for progressive UI updates.
+     *
+     * The emitted batches contain only app metadata. Feature-specific selections and settings
+     * remain owned by the caller.
+     */
+    suspend fun getInstalledAppsBatched(
+        batchSize: Int = 24,
+        onBatchLoaded: suspend (List<InstalledAppInfo>) -> Unit,
+    ): List<InstalledAppInfo> {
+        require(batchSize > 0) { "batchSize must be greater than zero" }
+
+        val pending = ArrayList<InstalledAppInfo>(batchSize)
+        val result = getInstalledApps { app ->
+            pending += app
+            if (pending.size >= batchSize) {
+                onBatchLoaded(pending.toList())
+                pending.clear()
+            }
+        }
+        if (pending.isNotEmpty()) {
+            onBatchLoaded(pending.toList())
+        }
+        return result
+    }
 }

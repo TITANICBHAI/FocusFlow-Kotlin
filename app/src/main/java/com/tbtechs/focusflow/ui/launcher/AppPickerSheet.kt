@@ -71,6 +71,7 @@ import com.tbtechs.focusflow.data.model.AllowedAppPreset
 import com.tbtechs.focusflow.data.model.BLOCK_ALL_SENTINEL
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -120,9 +121,6 @@ fun AppPickerSheet(
 ) {
     if (!visible) return
 
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var loadError by remember { mutableStateOf<String?>(null) }
     var search by remember { mutableStateOf("") }
     var warning by remember { mutableStateOf<Pair<String, SensitiveApp>?>(null) }
     var deletePreset by remember { mutableStateOf<AllowedAppPreset?>(null) }
@@ -135,6 +133,10 @@ fun AppPickerSheet(
                 .getBoolean("sensitive_picker_info_dismissed", false),
         )
     }
+    val appsState = rememberInstalledApps(installedAppsRepository)
+    val apps = appsState.apps
+    val loading = appsState.loading
+    val loadError = appsState.error?.let { "Installed apps could not be loaded. Close and try again." }
 
     val initialWasBlockAll = remember(initialSelected) {
         initialSelected.contains(BLOCK_ALL_SENTINEL)
@@ -146,22 +148,13 @@ fun AppPickerSheet(
             else initialSelected.filter { it != BLOCK_ALL_SENTINEL }.toSet(),
         )
     }
+    var autoSelectAll by remember(initialSelected, initialWasBlockAll, noneWhenEmpty) {
+        mutableStateOf(!initialWasBlockAll && !noneWhenEmpty && initialSelected.isEmpty())
+    }
 
-    LaunchedEffect(Unit) {
-        loading = true
-        loadError = null
-        try {
-            apps = emptyList()
-            installedAppsRepository.getInstalledApps { app ->
-                apps = (apps + app).distinctBy { it.packageName }
-                if (!initialWasBlockAll && !noneWhenEmpty && initialSelected.isEmpty()) {
-                    selected = apps.mapTo(mutableSetOf()) { it.packageName }
-                }
-            }
-        } catch (_: Exception) {
-            loadError = "Installed apps could not be loaded. Close and try again."
-        } finally {
-            loading = false
+    LaunchedEffect(apps) {
+        if (autoSelectAll && apps.isNotEmpty()) {
+            selected = apps.mapTo(mutableSetOf()) { it.packageName }
         }
     }
 
@@ -317,6 +310,7 @@ fun AppPickerSheet(
                                         .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                                         .combinedClickable(
                                             onClick = {
+                                                autoSelectAll = false
                                                 selected = when {
                                                     preset.packages.contains(BLOCK_ALL_SENTINEL) ->
                                                         apps.map { it.packageName }.filter { it in sensitiveApps }.toSet()
@@ -421,12 +415,16 @@ fun AppPickerSheet(
                         PickerAction(
                             label = "Select All",
                             enabled = apps.isNotEmpty() && !allAppsSelected,
-                            onClick = { selected = apps.mapTo(mutableSetOf()) { it.packageName } },
+                            onClick = {
+                                autoSelectAll = false
+                                selected = apps.mapTo(mutableSetOf()) { it.packageName }
+                            },
                         )
                         PickerAction(
                             label = "Deselect All",
                             enabled = hasNonSensitiveSelection,
                             onClick = {
+                                autoSelectAll = false
                                 selected = apps
                                     .map { it.packageName }
                                     .filter { it in sensitiveApps }
@@ -561,6 +559,7 @@ fun AppPickerSheet(
                                     if (selected.contains(clickedApp.packageName) && sensitive != null) {
                                         warning = clickedApp.packageName to sensitive
                                     } else {
+                                        autoSelectAll = false
                                         selected = selected.toggle(clickedApp.packageName)
                                     }
                                 },
@@ -602,6 +601,7 @@ fun AppPickerSheet(
             confirmButton = {
                 Button(
                     onClick = {
+                        autoSelectAll = false
                         selected = selected - packageName
                         warning = null
                     },
