@@ -216,16 +216,16 @@ fun AppPickerSheet(
                         .fillMaxWidth()
                         .background(DarkCard)
                         .statusBarsPadding()
-                        .height(52.dp)
-                        .padding(horizontal = 12.dp),
+                        .height(48.dp)
+                        .padding(horizontal = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(
                         onClick = onClose,
-                        modifier = Modifier.width(76.dp),
+                        modifier = Modifier.width(68.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) {
-                        Text("Cancel", fontSize = 16.sp, color = DarkTextSecondary)
+                        Text("Cancel", fontSize = 14.sp, color = DarkTextSecondary)
                     }
                     Box(
                         modifier = Modifier.weight(1f),
@@ -233,7 +233,7 @@ fun AppPickerSheet(
                     ) {
                         Text(
                             title,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                             maxLines = 1,
@@ -244,10 +244,10 @@ fun AppPickerSheet(
                             onSave(selectedPackages())
                             onClose()
                         },
-                        modifier = Modifier.width(76.dp),
+                        modifier = Modifier.width(68.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) {
-                        Text("Save", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                        Text("Save", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
                     }
                 }
 
@@ -257,9 +257,9 @@ fun AppPickerSheet(
                         .weight(1f)
                         .imePadding()
                         .navigationBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 16.dp),
                 ) {
                     item {
                         Row(
@@ -269,7 +269,7 @@ fun AppPickerSheet(
                         ) {
                         Text(
                             "PRESETS",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp,
                             color = DarkTextMuted,
@@ -281,7 +281,7 @@ fun AppPickerSheet(
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(BrandPrimary.copy(alpha = 0.08f)),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 12.dp,
+                                horizontal = 10.dp,
                                 vertical = 0.dp,
                             ),
                         ) {
@@ -289,10 +289,10 @@ fun AppPickerSheet(
                                 Icons.Outlined.BookmarkAdd,
                                 contentDescription = null,
                                 tint = BrandPrimary,
-                                modifier = Modifier.size(15.dp),
+                                modifier = Modifier.size(14.dp),
                             )
-                            Spacer(Modifier.width(5.dp))
-                            Text("Save current", fontSize = 12.sp, color = BrandPrimary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Save current", fontSize = 11.sp, color = BrandPrimary)
                         }
                         }
                     }
@@ -312,7 +312,7 @@ fun AppPickerSheet(
                                     items(presets, key = { it.id }) { preset ->
                                         Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(16.dp))
+                                        .clip(RoundedCornerShape(14.dp))
                                         .background(DarkCard)
                                         .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
                                         .combinedClickable(
@@ -330,19 +330,19 @@ fun AppPickerSheet(
                                             },
                                             onLongClick = { deletePreset = preset },
                                         )
-                                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
                                         ) {
                                             Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                                     ) {
-                                        Text(preset.name, fontSize = 12.sp, color = DarkTextPrimary)
+                                        Text(preset.name, fontSize = 11.sp, color = DarkTextPrimary)
                                         Icon(
                                             Icons.Outlined.Delete,
                                             contentDescription = "Delete preset",
                                             tint = DarkTextMuted,
                                             modifier = Modifier
-                                                .size(13.dp)
+                                                .size(12.dp)
                                                 .clickable { deletePreset = preset },
                                         )
                                             }
@@ -356,15 +356,15 @@ fun AppPickerSheet(
                             item {
                                 Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                             OutlinedTextField(
                                 value = presetName,
                                 onValueChange = { presetName = it.take(32) },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                placeholder = { Text("Preset name", color = DarkTextMuted, fontSize = 12.sp) },
-                                shape = RoundedCornerShape(12.dp),
+                                placeholder = { Text("Preset name", color = DarkTextMuted, fontSize = 11.sp) },
+                                shape = RoundedCornerShape(10.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedContainerColor = DarkCard,
                                     unfocusedContainerColor = DarkCard,
@@ -408,7 +408,7 @@ fun AppPickerSheet(
                     item {
                         Text(
                         selectionSummary,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextSecondary,
                         )
@@ -416,7 +416,7 @@ fun AppPickerSheet(
 
                     item {
                         Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                         PickerAction(
                             label = "Select All",
@@ -442,17 +442,17 @@ fun AppPickerSheet(
                         onValueChange = { search = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(44.dp),
                         singleLine = true,
                         leadingIcon = {
                             Icon(
                                 Icons.Outlined.Search,
                                 contentDescription = null,
                                 tint = DarkTextMuted,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(18.dp),
                             )
                         },
-                        placeholder = { Text("Search by name or package...", color = DarkTextMuted, fontSize = 16.sp) },
+                        placeholder = { Text("Search by name or package...", color = DarkTextMuted, fontSize = 14.sp) },
                         trailingIcon = {
                             if (search.isNotBlank()) {
                                 IconButton(onClick = { search = "" }) {
@@ -460,12 +460,12 @@ fun AppPickerSheet(
                                         Icons.Outlined.Close,
                                         contentDescription = "Clear search",
                                         tint = DarkTextSecondary,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(16.dp),
                                     )
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(22.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = DarkCard,
                             unfocusedContainerColor = DarkCard,
@@ -485,21 +485,21 @@ fun AppPickerSheet(
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(DarkSurfaceVariant.copy(alpha = 0.55f))
                                     .border(1.dp, DarkBorder, RoundedCornerShape(10.dp))
-                                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                                    .padding(start = 10.dp, top = 6.dp, bottom = 6.dp, end = 2.dp),
                                 verticalAlignment = Alignment.Top,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Icon(
                                     Icons.Outlined.Apps,
                                     contentDescription = null,
                                     tint = DarkTextMuted,
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(14.dp),
                                 )
                                 Text(
                                     "Checked apps are allowed during Focus. Sensitive apps warn before blocking. Phone, launcher, and WhatsApp protections stay usable.",
                                     modifier = Modifier.weight(1f),
-                                    fontSize = 11.sp,
-                                    lineHeight = 15.sp,
+                                    fontSize = 10.sp,
+                                    lineHeight = 14.sp,
                                     color = DarkTextMuted,
                                 )
                                 IconButton(
@@ -510,13 +510,13 @@ fun AppPickerSheet(
                                             .putBoolean("sensitive_picker_info_dismissed", true)
                                             .apply()
                                     },
-                                    modifier = Modifier.size(24.dp),
+                                    modifier = Modifier.size(22.dp),
                                 ) {
                                     Icon(
                                         Icons.Outlined.Close,
                                         contentDescription = "Dismiss information",
                                         tint = DarkTextMuted,
-                                        modifier = Modifier.size(15.dp),
+                                        modifier = Modifier.size(14.dp),
                                     )
                                 }
                             }
@@ -528,15 +528,15 @@ fun AppPickerSheet(
                             Box(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 32.dp),
+                                    .padding(vertical = 24.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(30.dp))
+                                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(26.dp))
                             }
                         }
                         loadError != null -> item {
                             Column(
-                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                modifier = Modifier.fillMaxWidth().padding(18.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
@@ -547,9 +547,9 @@ fun AppPickerSheet(
                                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(32.dp))
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("No matching apps found", fontSize = 14.sp, color = DarkTextSecondary)
+                                Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(28.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("No matching apps found", fontSize = 13.sp, color = DarkTextSecondary)
                             }
                         }
                         else -> items(filteredApps, key = { it.packageName }) { app ->
@@ -570,13 +570,13 @@ fun AppPickerSheet(
                     if (loading && apps.isNotEmpty()) {
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Loading more apps…", fontSize = 11.sp, color = DarkTextMuted)
+                                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Loading more apps…", fontSize = 10.sp, color = DarkTextMuted)
                             }
                         }
                     }
@@ -670,11 +670,11 @@ private fun PickerAction(
             .clip(RoundedCornerShape(11.dp))
             .background(if (enabled) BrandPrimary.copy(alpha = 0.08f) else Color.Transparent)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 8.dp),
+            .padding(horizontal = 9.dp, vertical = 6.dp),
     ) {
         Text(
             label,
-            fontSize = 15.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (enabled) BrandPrimary else DarkTextMuted,
         )
@@ -693,23 +693,23 @@ private fun AppPickerRow(
             .clip(RoundedCornerShape(12.dp))
             .background(DarkCard)
             .clickable { onToggle(app) }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            AppIcon(app.icon, size = 44.dp)
+            AppIcon(app.icon, size = 38.dp)
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         app.appName,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                         maxLines = 1,
@@ -720,11 +720,11 @@ private fun AppPickerRow(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(5.dp))
                                 .background(Color(0xFFEDE9FE))
-                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                                .padding(horizontal = 4.dp, vertical = 1.dp),
                         ) {
                             Text(
                                 "Sensitive",
-                                fontSize = 9.sp,
+                                fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF6D5BD0),
                             )
@@ -733,7 +733,7 @@ private fun AppPickerRow(
                 }
                 Text(
                     app.packageName,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     color = DarkTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -742,13 +742,13 @@ private fun AppPickerRow(
 
             Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(7.dp))
+                    .size(21.dp)
+                    .clip(RoundedCornerShape(6.dp))
                     .background(if (checked) BrandPrimary else Color.Transparent)
                     .border(
-                        1.5.dp,
+                        1.dp,
                         if (checked) BrandPrimary else DarkBorder,
-                        RoundedCornerShape(7.dp),
+                        RoundedCornerShape(6.dp),
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -757,7 +757,7 @@ private fun AppPickerRow(
                         Icons.Outlined.Check,
                         contentDescription = "Allowed",
                         tint = Color.White,
-                        modifier = Modifier.size(13.dp),
+                        modifier = Modifier.size(11.dp),
                     )
                 }
             }

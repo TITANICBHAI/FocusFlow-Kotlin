@@ -69,7 +69,9 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 
 /**
@@ -118,11 +120,20 @@ fun VpnBlockListScreen(
         networkSettings = loaded
         selected = loaded?.packages?.toSet().orEmpty()
         original = selected
-        apps = runCatching {
-            installedAppsRepository.getInstalledApps()
-                .filterNot { it.packageName in systemNeverBlock }
-                .sortedBy { it.appName.lowercase() }
-        }.getOrDefault(emptyList())
+        apps = emptyList()
+        runCatching {
+            withContext(Dispatchers.IO) {
+                installedAppsRepository.getInstalledApps { app ->
+                    if (app.packageName !in systemNeverBlock) {
+                        withContext(Dispatchers.Main.immediate) {
+                            apps = (apps + app)
+                                .distinctBy { it.packageName }
+                                .sortedBy { it.appName.lowercase() }
+                        }
+                    }
+                }
+            }
+        }
         loading = false
     }
 
@@ -336,11 +347,11 @@ fun VpnBlockListScreen(
                 Text(it, color = Color(0xFFEF4444), fontSize = 12.sp)
             }
 
-            if (loading) {
+            if (loading && apps.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(32.dp))
                 }
-            } else if (filtered.isEmpty()) {
+            } else if (!loading && filtered.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -424,6 +435,25 @@ fun VpnBlockListScreen(
                                         selected = if (isChecked) selected - app.packageName else selected + app.packageName
                                     },
                                 )
+                            }
+                        }
+                        if (loading) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = BrandPrimary,
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.sp)
+                                }
                             }
                         }
                     }
