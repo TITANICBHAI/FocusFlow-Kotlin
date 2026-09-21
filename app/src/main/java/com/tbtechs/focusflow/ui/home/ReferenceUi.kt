@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,13 +47,20 @@ import androidx.compose.runtime.setValue
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 
-internal val RefBackground = Color(0xFF0F172A)
-internal val RefHeader = Color(0xFF1E293B)
-internal val RefCard = Color(0xFF202B3D)
-internal val RefBorder = Color(0xFF334155)
-internal val RefMuted = Color(0xFF64748B)
-internal val RefSecondary = Color(0xFF94A3B8)
-internal val RefText = Color(0xFFF1F5F9)
+internal val RefBackground: Color
+    @Composable get() = MaterialTheme.colorScheme.background
+internal val RefHeader: Color
+    @Composable get() = MaterialTheme.colorScheme.surface
+internal val RefCard: Color
+    @Composable get() = MaterialTheme.colorScheme.surfaceVariant
+internal val RefBorder: Color
+    @Composable get() = MaterialTheme.colorScheme.outline
+internal val RefMuted: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
+internal val RefSecondary: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+internal val RefText: Color
+    @Composable get() = MaterialTheme.colorScheme.onSurface
 internal val RefGreen = Color(0xFF34D399)
 internal val RefBlue = Color(0xFF3B82F6)
 internal val RefAmber = Color(0xFFF59E0B)
