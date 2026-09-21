@@ -295,6 +295,7 @@ fun AppPickerSheet(
                             Text("Save current", fontSize = 12.sp, color = BrandPrimary)
                         }
                         }
+                    }
 
                         if (presets.isEmpty() && !showPresetInput) {
                             item {
