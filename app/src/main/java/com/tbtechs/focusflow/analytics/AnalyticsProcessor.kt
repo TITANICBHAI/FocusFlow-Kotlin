@@ -18,6 +18,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.round
+import kotlin.math.roundToInt
 
 typealias AnalyticsWindow = String
 typealias AnalyticsSourceState = String
