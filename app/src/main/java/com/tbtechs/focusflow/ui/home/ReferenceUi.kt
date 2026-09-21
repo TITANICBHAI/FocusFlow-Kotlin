@@ -311,7 +311,7 @@ internal fun ReferencePill(
     ) {
         Text(
             text = text,
-            color = RefText,
+            color = if (selected) Color.White else RefText,
              fontSize = fontSize,
             fontWeight = FontWeight.SemiBold,
         )

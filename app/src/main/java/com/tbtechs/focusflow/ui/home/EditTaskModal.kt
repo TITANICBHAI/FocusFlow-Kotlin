@@ -42,6 +42,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -444,7 +445,7 @@ fun EditTaskModal(
             if (showError) {
                 Text(
                     "Enter a title, valid time, and a duration of at least 5 minutes.",
-                    color = Color(0xFFF87171),
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 13.sp,
                 )
             }

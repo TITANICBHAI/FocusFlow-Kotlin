@@ -97,6 +97,10 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.WarningBorder
+import com.tbtechs.focusflow.ui.theme.WarningIcon
+import com.tbtechs.focusflow.ui.theme.WarningSurface
+import com.tbtechs.focusflow.ui.theme.WarningText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -374,8 +378,8 @@ fun FocusScreen(
                         .fillMaxWidth()
                         .padding(horizontal = dimensions.screenPadding, vertical = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                        .background(WarningSurface)
+                        .border(1.dp, WarningBorder, RoundedCornerShape(12.dp))
                         .clickable(onClick = onOpenPermissions)
                         .padding(14.dp),
                 ) {
@@ -386,7 +390,7 @@ fun FocusScreen(
                         Icon(
                             Icons.Outlined.Warning,
                             contentDescription = null,
-                            tint = Color(0xFFFBBF24),
+                            tint = WarningIcon,
                             modifier = Modifier.size(22.dp),
                         )
                         Spacer(Modifier.width(12.dp))
@@ -395,19 +399,19 @@ fun FocusScreen(
                                 "Accessibility permission needed",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFDE68A),
+                                color = WarningText,
                             )
                             Text(
                                 "Focus Mode can't block apps without Accessibility access. Tap to open Settings.",
                                 fontSize = 12.sp,
-                                color = Color(0xFFFDE68A).copy(alpha = 0.85f),
+                                color = WarningText.copy(alpha = 0.88f),
                                 lineHeight = 16.sp,
                             )
                         }
                         Icon(
                             Icons.Outlined.ChevronRight,
                             contentDescription = null,
-                            tint = Color(0xFFFBBF24),
+                            tint = WarningIcon,
                         )
                     }
                 }
@@ -840,13 +844,13 @@ private fun OrphanedFocusPanel(onStop: () -> Unit) {
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFF59E0B).copy(alpha = 0.15f)),
+                .background(WarningSurface),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 Icons.Outlined.Warning,
                 contentDescription = null,
-                tint = Color(0xFFFBBF24),
+                tint = WarningIcon,
                 modifier = Modifier.size(32.dp),
             )
         }

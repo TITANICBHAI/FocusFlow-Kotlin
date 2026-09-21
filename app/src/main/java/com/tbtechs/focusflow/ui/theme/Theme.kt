@@ -97,6 +97,34 @@ val InfoBodyText: Color
         Color(0xFF4338CA)
     }
 
+val WarningSurface: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        Color(0xFFF59E0B).copy(alpha = 0.12f)
+    } else {
+        Color(0xFFFFF4D6)
+    }
+
+val WarningBorder: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        Color(0xFFF59E0B).copy(alpha = 0.35f)
+    } else {
+        Color(0xFFF59E0B).copy(alpha = 0.65f)
+    }
+
+val WarningIcon: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        Color(0xFFFBBF24)
+    } else {
+        Color(0xFFB45309)
+    }
+
+val WarningText: Color
+    @Composable get() = if (LocalFocusFlowDarkTheme.current) {
+        Color(0xFFFDE68A)
+    } else {
+        Color(0xFF92400E)
+    }
+
 // Semantic Status Colors
 val StatusReady = Color(0xFF10B981)
 val StatusReadyBg = Color(0xFF064E3B)

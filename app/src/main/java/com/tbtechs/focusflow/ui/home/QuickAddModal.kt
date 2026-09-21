@@ -431,7 +431,7 @@ fun QuickAddModal(
             if (showError) {
                 Text(
                     "Enter a title and a valid date, time, and duration.",
-                    color = Color(0xFFF87171),
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 13.sp,
                 )
             }
