@@ -47,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -111,153 +112,156 @@ fun GreyoutScheduleModal(
             decorFitsSystemWindows = false,
         ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .fillMaxWidth()
-                .background(DarkBackground)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = DarkBackground,
         ) {
-            // Header matching 3e_8
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onClose) {
-                    Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.CalendarMonth,
-                        contentDescription = null,
-                        tint = BrandPrimary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Text(
-                        text = "Block Schedules",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextPrimary,
-                    )
-                }
-                TextButton(onClick = { onSave(localWindows); onClose() }) {
-                    Text(
-                        text = "Save",
-                        color = BrandPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                    )
-                }
-            }
-
-            // Info Card
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
-                Text(
-                    text = "Scheduled blocks activate automatically at specified hours and days. Configure which apps to block for each window.",
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    color = DarkTextSecondary,
-                )
-            }
-
-            if (localWindows.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(vertical = 28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                // Header matching 3e_8
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(DarkSurfaceVariant),
-                        contentAlignment = Alignment.Center,
+                    TextButton(onClick = onClose) {
+                        Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
                             Icons.Outlined.CalendarMonth,
                             contentDescription = null,
-                            tint = DarkTextMuted,
-                            modifier = Modifier.size(28.dp),
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = "Block Schedules",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkTextPrimary,
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "No schedules yet",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = DarkTextPrimary,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Create recurring time windows to automatically restrict apps.",
-                        fontSize = 12.sp,
-                        color = DarkTextMuted,
-                    )
+                    TextButton(onClick = { onSave(localWindows); onClose() }) {
+                        Text(
+                            text = "Save",
+                            color = BrandPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                        )
+                    }
                 }
-            } else {
-                LazyColumn(
+
+                // Info Card
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkSurfaceVariant)
+                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                        .padding(14.dp),
                 ) {
-                    itemsIndexed(localWindows) { index, schedule ->
-                        ScheduleCard(
-                            schedule = schedule,
-                            onEdit = {
-                                val action = { editing = ScheduleDraft.from(schedule, index) }
-                                if (requireDefensePin != null) {
-                                    requireDefensePin("Edit Block Window", "Enter your defense password to edit this window.", action)
-                                } else action()
-                            },
-                            onDelete = {
-                                if (standaloneActive) {
-                                    pinPrompt = PendingScheduleAction("A standalone block is active; this window cannot be deleted.")
-                                } else {
-                                    val action = { confirmDelete = index }
-                                    if (requireDefensePin != null) {
-                                        requireDefensePin("Delete Block Window", "Enter your defense password to delete this window.", action)
-                                    } else action()
-                                }
-                            },
+                    Text(
+                        text = "Scheduled blocks activate automatically at specified hours and days. Configure which apps to block for each window.",
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = DarkTextSecondary,
+                    )
+                }
+
+                if (localWindows.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(vertical = 28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(DarkSurfaceVariant),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.CalendarMonth,
+                                contentDescription = null,
+                                tint = DarkTextMuted,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "No schedules yet",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkTextPrimary,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Create recurring time windows to automatically restrict apps.",
+                            fontSize = 12.sp,
+                            color = DarkTextMuted,
                         )
                     }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        itemsIndexed(localWindows) { index, schedule ->
+                            ScheduleCard(
+                                schedule = schedule,
+                                onEdit = {
+                                    val action = { editing = ScheduleDraft.from(schedule, index) }
+                                    if (requireDefensePin != null) {
+                                        requireDefensePin("Edit Block Window", "Enter your defense password to edit this window.", action)
+                                    } else action()
+                                },
+                                onDelete = {
+                                    if (standaloneActive) {
+                                        pinPrompt = PendingScheduleAction("A standalone block is active; this window cannot be deleted.")
+                                    } else {
+                                        val action = { confirmDelete = index }
+                                        if (requireDefensePin != null) {
+                                            requireDefensePin("Delete Block Window", "Enter your defense password to delete this window.", action)
+                                        } else action()
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
-            }
 
-            // Add Batch / Window button
-            OutlinedButton(
-                onClick = { editing = ScheduleDraft.empty() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp),
-                shape = RoundedCornerShape(14.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary),
-            ) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Add Schedule Window", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
+                // Add Batch / Window button
+                OutlinedButton(
+                    onClick = { editing = ScheduleDraft.empty() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary),
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add Schedule Window", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 
@@ -531,36 +535,39 @@ private fun ScheduleEditor(
             decorFitsSystemWindows = false,
         ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DarkBackground)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = dimensions.modalPadding, vertical = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = DarkBackground,
         ) {
-            // Header matching 3e_9
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = dimensions.modalPadding, vertical = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
-                TextButton(onClick = onBack) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Back", color = DarkTextSecondary)
+                // Header matching 3e_9
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onBack) {
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Back", color = DarkTextSecondary)
+                    }
+                    Text(
+                        text = if (current.index == null) "Add Schedule Window" else "Edit Schedule Window",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkTextPrimary,
+                    )
+                    Spacer(modifier = Modifier.width(48.dp))
                 }
-                Text(
-                    text = if (current.index == null) "Add Schedule Window" else "Edit Schedule Window",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkTextPrimary,
-                )
-                Spacer(modifier = Modifier.width(48.dp))
-            }
 
             // Target Apps section
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
