@@ -210,8 +210,8 @@ private fun StatsHeader(window: String) {
         Icon(
             Icons.Outlined.Analytics,
             contentDescription = "Stats",
-            tint = DarkTextPrimary,
-            modifier = Modifier.size(28.dp),
+            tint = BrandPrimary,
+            modifier = Modifier.size(22.dp),
         )
     }
 }
