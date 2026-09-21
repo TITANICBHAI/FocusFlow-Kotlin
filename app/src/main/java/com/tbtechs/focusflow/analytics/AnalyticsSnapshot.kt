@@ -39,6 +39,7 @@ data class AnalyticsSnapshot(
         val fastestWindowSampleSize: Int = 0,
         val fastestWindowImprovementPercent: Int? = null,
         val hardestSession: HardestSession? = null,
+        val focusMinutesByDayOfWeek: Map<Int, Double> = emptyMap(),
     )
 
     data class BlockingMetrics(
@@ -107,12 +108,15 @@ data class AnalyticsSnapshot(
         val peakPeriod: String?,
         val heaviestApp: HeaviestApp? = null,
         val apps: List<HeaviestApp> = emptyList(),
+        val totalMinutes: Int = 0,
+        val observedMinutesByDayOfWeek: Map<Int, Double> = emptyMap(),
     )
 
     data class HeaviestApp(
         val appName: String,
         val minutes: Double,
         val packageName: String? = null,
+        val launchCount: Int = 0,
     )
 }
 

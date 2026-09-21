@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.MonitorHeart
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Timer
@@ -68,6 +71,9 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.SunAmber
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -151,19 +157,21 @@ fun ArchivedStatsScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         item {
+                            loaded.phoneUsage?.let { phoneUsage ->
+                                DeviceUsageCard(
+                                    usage = phoneUsage,
+                                    window = window,
+                                    focusMinutesByDayOfWeek = loaded.sessions.focusMinutesByDayOfWeek,
+                                    onOpenQuickBlock = onOpenQuickBlock,
+                                )
+                            }
+                        }
+                        item {
                             when (window) {
                                 ANALYTICS_YESTERDAY -> YesterdayReport(loaded)
                                 ANALYTICS_WEEK -> WeekReport(loaded)
                                 ANALYTICS_ALL_TIME -> AllTimeReport(loaded, lifetime)
                                 else -> TodayReport(loaded)
-                            }
-                        }
-                        item {
-                            loaded.phoneUsage?.let { phoneUsage ->
-                                DeviceUsageCard(
-                                    usage = phoneUsage,
-                                    onOpenQuickBlock = onOpenQuickBlock,
-                                )
                             }
                         }
                         item {
@@ -188,14 +196,23 @@ fun ArchivedStatsScreen(
 
 @Composable
 private fun StatsHeader(window: String) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkBackground)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .background(DarkCard)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Stats", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
-        Text(statsSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Stats", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+            Text(statsSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
+        }
+        Icon(
+            Icons.Outlined.MonitorHeart,
+            contentDescription = "Stats",
+            tint = DarkTextPrimary,
+            modifier = Modifier.size(28.dp),
+        )
     }
 }
 
@@ -437,66 +454,132 @@ private fun UsageAccessCard(
 @Composable
 private fun DeviceUsageCard(
     usage: AnalyticsSnapshot.PhoneUsage,
+    window: String,
+    focusMinutesByDayOfWeek: Map<Int, Double>,
     onOpenQuickBlock: (String?) -> Unit,
 ) {
     ArchivedCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Timer, null, tint = Color(0xFF63A7FF), modifier = Modifier.size(21.dp))
+        val totalMinutes = if (usage.totalMinutes > 0) {
+            usage.totalMinutes
+        } else {
+            usage.byHour.values.sum().roundToInt()
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.PhoneAndroid,
+                null,
+                tint = Color(0xFF63A7FF),
+                modifier = Modifier.size(21.dp),
+            )
             Text(
-                "Observed device time",
+                "Observed Device Time",
                 modifier = Modifier.padding(start = 8.dp),
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
                 color = DarkTextPrimary,
             )
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFF55C98A).copy(alpha = 0.12f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    "On device",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF55C98A),
+                )
+            }
         }
-        val totalMinutes = usage.byHour.values.sum().roundToInt()
         Text(
             formatStatsMinutes(totalMinutes),
-            modifier = Modifier.padding(top = 10.dp),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 12.dp),
+            fontSize = 38.sp,
+            fontWeight = FontWeight.ExtraBold,
             color = Color(0xFF63A7FF),
         )
         Text(
-            "Android app foreground time — FocusFlow home-screen time excluded.",
+            "Android app foreground time — FocusFlow home-screen time excluded",
             fontSize = 12.sp,
             color = DarkTextSecondary,
         )
-        usage.peakPeriod?.let {
-            Text("Heaviest use is around $it.", fontSize = 12.sp, color = DarkTextSecondary)
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+                .height(1.dp)
+                .background(DarkBorder),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            UsageMetric(formatStatsMinutes(focusMinutesByDayOfWeek.values.sum().roundToInt()), "Focus time", BrandPrimary)
+            Box(Modifier.width(1.dp).height(44.dp).background(DarkBorder))
+            val ratio = if (totalMinutes > 0) {
+                (focusMinutesByDayOfWeek.values.sum() * 100 / totalMinutes).roundToInt()
+            } else {
+                0
+            }
+            UsageMetric(if (totalMinutes > 0) "$ratio%" else "0%", "Focus / observed", if (ratio > 0) Color(0xFF55C98A) else DarkTextMuted)
+            Box(Modifier.width(1.dp).height(44.dp).background(DarkBorder))
+            UsageMetric("0", "Blocked attempts", Color(0xFF55C98A))
         }
-        HourlyUsageChart(usage.byHour)
-        if (usage.apps.isNotEmpty()) {
-            Text(
-                "Most-used apps",
-                modifier = Modifier.padding(top = 12.dp),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = DarkTextPrimary,
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(DarkBorder),
+        )
+
+        if (window == ANALYTICS_WEEK) {
+            WeeklyObservationChart(
+                observedMinutesByDayOfWeek = usage.observedMinutesByDayOfWeek,
+                focusMinutesByDayOfWeek = focusMinutesByDayOfWeek,
             )
-            usage.apps.take(5).forEach { app ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
+        }
+
+        if (usage.apps.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Top apps by observed time",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = DarkTextPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("minutes · launches", fontSize = 12.sp, color = DarkTextMuted)
+            }
+            val maxMinutes = usage.apps.firstOrNull()?.minutes?.coerceAtLeast(1.0) ?: 1.0
+            usage.apps.take(5).forEachIndexed { index, app ->
+                UsageAppRow(
+                    app = app,
+                    rank = index + 1,
+                    maxMinutes = maxMinutes,
+                    onOpenQuickBlock = onOpenQuickBlock,
+                )
+                if (index < usage.apps.take(5).lastIndex) {
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .clickable(
-                                enabled = app.packageName != null,
-                                onClick = { app.packageName?.let(onOpenQuickBlock) },
-                            )
-                            .padding(vertical = 4.dp),
-                    ) {
-                        Text(app.appName, color = DarkTextPrimary, maxLines = 1)
-                        Text(
-                            "${app.minutes.roundToInt()} minutes foreground",
-                            fontSize = 11.sp,
-                            color = DarkTextSecondary,
-                        )
-                    }
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(DarkBorder),
+                    )
                 }
             }
         }
@@ -504,55 +587,191 @@ private fun DeviceUsageCard(
 }
 
 @Composable
-private fun HourlyUsageChart(byHour: Map<Int, Double>) {
-    val maxMinutes = byHour.values.maxOrNull()?.coerceAtLeast(0.0) ?: 0.0
+private fun UsageMetric(value: String, label: String, color: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            value,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = color,
+        )
+        Text(label, fontSize = 11.sp, color = DarkTextMuted)
+    }
+}
+
+@Composable
+private fun UsageAppRow(
+    app: AnalyticsSnapshot.HeaviestApp,
+    rank: Int,
+    maxMinutes: Double,
+    onOpenQuickBlock: (String?) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = app.packageName != null,
+                onClick = { app.packageName?.let(onOpenQuickBlock) },
+            )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 30.dp, height = 24.dp)
+                .clip(RoundedCornerShape(50))
+                .background(if (rank == 1) Color(0xFF63A7FF).copy(alpha = 0.14f) else DarkSurfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "#$rank",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (rank == 1) Color(0xFF63A7FF) else DarkTextMuted,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                app.appName,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = DarkTextPrimary,
+                maxLines = 1,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 5.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(DarkBorder),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth((app.minutes / maxMinutes).toFloat().coerceIn(0f, 1f))
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0xFF63A7FF)),
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${app.minutes.roundToInt()}m · ${app.launchCount}",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = DarkTextPrimary,
+        )
+    }
+}
+
+@Composable
+private fun WeeklyObservationChart(
+    observedMinutesByDayOfWeek: Map<Int, Double>,
+    focusMinutesByDayOfWeek: Map<Int, Double>,
+) {
+    val labels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val maxMinutes = (0..6)
+        .maxOf { day ->
+            maxOf(
+                observedMinutesByDayOfWeek[day] ?: 0.0,
+                focusMinutesByDayOfWeek[day] ?: 0.0,
+            )
+        }
+        .coerceAtLeast(1.0)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            "Observed time by hour",
+            "WEEKLY OBSERVATION",
             fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = DarkTextPrimary,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = DarkTextMuted,
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(82.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                .height(112.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.Bottom,
         ) {
-            (0..23).forEach { hour ->
-                val minutes = byHour[hour] ?: 0.0
-                val fraction = if (maxMinutes > 0.0) {
-                    (minutes / maxMinutes).toFloat().coerceIn(0f, 1f)
-                } else {
-                    0f
+            labels.forEachIndexed { index, label ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.height(88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        WeeklyUsageBar(
+                            value = observedMinutesByDayOfWeek[index] ?: 0.0,
+                            maxMinutes = maxMinutes,
+                            color = Color(0xFF63A7FF),
+                        )
+                        WeeklyUsageBar(
+                            value = focusMinutesByDayOfWeek[index] ?: 0.0,
+                            maxMinutes = maxMinutes,
+                            color = BrandPrimary,
+                        )
+                    }
+                    Text(label, fontSize = 10.sp, color = DarkTextMuted)
                 }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height((4f + 58f * fraction).dp)
-                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                        .background(
-                            if (minutes > 0.0) Color(0xFF63A7FF)
-                            else DarkBorder.copy(alpha = 0.7f),
-                        ),
-                )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Center,
         ) {
-            listOf("12a", "4a", "8a", "12p", "4p", "8p").forEach { label ->
-                Text(label, fontSize = 10.sp, color = DarkTextMuted)
-            }
+            UsageLegend(Color(0xFF63A7FF), "Observed device time")
+            Spacer(Modifier.width(16.dp))
+            UsageLegend(BrandPrimary, "Focus time")
         }
+    }
+}
+
+@Composable
+private fun WeeklyUsageBar(value: Double, maxMinutes: Double, color: Color) {
+    Box(
+        modifier = Modifier
+            .width(9.dp)
+            .height(88.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(DarkSurfaceVariant),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight((value / maxMinutes).toFloat().coerceIn(0f, 1f))
+                .clip(RoundedCornerShape(5.dp))
+                .background(color),
+        )
+    }
+}
+
+@Composable
+private fun UsageLegend(color: Color, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(RoundedCornerShape(50))
+                .background(color),
+        )
+        Text(label, fontSize = 11.sp, color = DarkTextMuted)
     }
 }
 
