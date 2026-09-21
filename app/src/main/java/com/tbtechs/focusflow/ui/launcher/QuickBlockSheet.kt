@@ -362,7 +362,7 @@ fun QuickBlockSheet(
                             isAlwaysOn ->
                                 "Always-On protection stays until you remove the app from the Always-On list."
                             else ->
-                                "Temporary blocks expire automatically. Always-On apps are managed from Settings.",
+                                "Temporary blocks expire automatically. Always-On apps are managed from Settings."
                         },
                         fontSize = 12.sp,
                         lineHeight = 17.sp,

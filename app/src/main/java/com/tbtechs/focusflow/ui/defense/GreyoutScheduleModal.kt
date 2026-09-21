@@ -863,6 +863,8 @@ private fun ScheduleEditor(
     }
 }
 
+}
+
 @Composable
 private fun TimeStepperRow(
     label: String,

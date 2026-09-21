@@ -366,7 +366,7 @@ internal fun ReferenceField(
                     innerTextField()
                 }
             }
-        ),
+        },
     )
 }
 
