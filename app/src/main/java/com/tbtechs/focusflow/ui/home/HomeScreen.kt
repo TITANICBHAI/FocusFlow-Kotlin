@@ -137,8 +137,13 @@ fun HomeScreen(
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = if (todayTasks.isEmpty()) "No tasks today"
-                            else "${todayTasks.count { it.status == "completed" }}/${todayTasks.size} tasks done",
+                            text = if (todayTasks.isEmpty()) {
+                                "No tasks today"
+                            } else {
+                                val completed = todayTasks.count { it.status == "completed" }
+                                val skipped = todayTasks.count { it.status == "skipped" }
+                                "$completed/${todayTasks.size} tasks done · $skipped skipped"
+                            },
                             fontSize = 13.sp,
                             color = RefSecondary,
                         )

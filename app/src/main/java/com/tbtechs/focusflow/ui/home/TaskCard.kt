@@ -117,6 +117,28 @@ fun TaskCard(
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
+                    if (closed) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (task.status == "skipped") {
+                                        DarkTextMuted.copy(alpha = 0.16f)
+                                    } else {
+                                        Color(0xFF34D399).copy(alpha = 0.14f)
+                                    },
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = if (task.status == "skipped") "Skipped" else "Completed",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (task.status == "skipped") DarkTextSecondary else Color(0xFF34D399),
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                    }
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))

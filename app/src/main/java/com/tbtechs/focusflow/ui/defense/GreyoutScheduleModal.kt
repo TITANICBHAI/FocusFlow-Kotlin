@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -111,7 +113,10 @@ fun GreyoutScheduleModal(
     ) {
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .fillMaxWidth()
+                .background(DarkBackground)
+                .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -174,6 +179,7 @@ fun GreyoutScheduleModal(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .padding(vertical = 28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -209,7 +215,7 @@ fun GreyoutScheduleModal(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false),
+                        .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     itemsIndexed(localWindows) { index, schedule ->
@@ -437,6 +443,7 @@ private data class ScheduleDraft(
     val enabled: Boolean,
     val vpnEnabled: Boolean,
     val originalDurationMinutes: Int?,
+    val id: String = "",
 ) {
     companion object {
         fun empty() = ScheduleDraft(
@@ -466,11 +473,12 @@ private data class ScheduleDraft(
             schedule.enabled,
             schedule.vpnEnabled,
             schedule.durationMinutes(),
+            schedule.id,
         )
     }
 
     fun toSchedule() = RecurringBlockSchedule(
-        id = "schedule-${index ?: System.currentTimeMillis()}",
+        id = id.ifBlank { "schedule-${System.currentTimeMillis()}" },
         packages = packages,
         startHour = startHour.coerceIn(0, 23),
         startMinute = startMinute.coerceIn(0, 59),
@@ -525,9 +533,11 @@ private fun ScheduleEditor(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
+                .fillMaxSize()
+                .background(DarkBackground)
+                .statusBarsPadding()
                 .navigationBarsPadding()
+                .imePadding()
                 .padding(horizontal = dimensions.modalPadding, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
