@@ -1,0 +1,168 @@
+Now I have everything I need. Let me compile the full diagnosis.Alright, I have a complete picture. Here's the full diagnosis.
+
+---
+
+**Answer:**
+
+There are **four stacked bugs** all contributing to this frozen state. Let me go through them in order.
+
+---
+
+### Bug 1 — `ACTION_TASK_ENDED` is sent but never received (Room session never ends)
+
+**This is the root cause of the "timer stuck on overdue" problem.**
+
+In `ForegroundTaskService.tickRunnable`, when the task's end time hits zero:
+```kotlin
+clearFocusActive()     // only writes focus_active=false to SharedPrefs
+sendBroadcast(Intent(ACTION_TASK_ENDED)...)
+triggerTaskAlarm(...)
+goIdle()               // only clears service in-memory state
+```
+
+`clearFocusActive()` and `goIdle()` touch SharedPrefs and service memory — but **nobody updates Room**. I grepped every file in the zip: `ACTION_TASK_ENDED` is defined once, broadcast in two places, and **received nowhere**. No component — not `FocusSessionViewModel`, not `MainActivity`, nobody — registers a `BroadcastReceiver` for it.
+
+The consequence:
+- `focusSessionDao.observeActiveSession()` still returns the session (its `ended_at` is still null in Room)
+- `FocusSessionViewModel`'s collect loop re-emits it → `_focusSession.value` stays non-null
+- `isFocusing = session?.isActive == true` → **true forever**
+- The Focus screen's timer, "Focus Mode Active" header, and Stop/Done/Extend buttons all remain visible and the timer keeps counting into overdue
+
+---
+
+### Bug 2 — `keepFocusActiveUntilTaskEnd` defaults to `true`, so Done never calls `stopFocusMode()`
+
+When you clicked Done on the Focus screen at 5:33 (1:26 remaining), the confirmation dialog's OK handler did this:
+
+```kotlin
+taskViewModel.completeTask(task.id)              // ✅ works — task → "completed", count → 4/4
+if (!settings.keepFocusActiveUntilTaskEnd) {     // default = true → condition is FALSE
+    focusSessionViewModel.stopFocusMode()        // ← NEVER CALLED
+}
+```
+
+So the task was marked complete (that's why the Schedule tab shows "4/4 done"), but the focus session was intentionally left running. When 5:35 hit, the service went idle (SharedPrefs cleared, handler stopped, app blocking lifted), but the Room row was never touched — Bug 1 kicks in.
+
+---
+
+### Bug 3 — `activeTask` in `HomeScreen` doesn't filter by task status, so the banner shows "TIME'S UP" for an already-completed task
+
+```kotlin
+// HomeScreen.kt
+val activeTask = remember(todayTasks, focusSession) {
+    todayTasks.firstOrNull { it.id == focusSession?.taskId }  // ← no status check
+        ?: todayTasks.firstOrNull(Task::isRunningNow)
+}
+val bannerTask = activeTask ?: todayTasks.filter(Task::isAwaitingDecision).maxByOrNull { it.endTime }
+```
+
+After you marked "mf" complete, `todayTasks` updated (task status = "completed"), but the session was still active. So `activeTask` still found "mf" — because the `firstOrNull` matches on `taskId` with no status guard.
+
+Then in `ActiveTaskBanner`:
+```kotlin
+val isRunning = task.isRunningNow()
+// isRunningNow() checks status !in {completed, skipped} → returns false
+// So banner shows "TIME'S UP" instead of "NOW"
+```
+
+And the banner's ✓ button calls:
+```kotlin
+taskViewModel.completeTask(bannerTask.id)   // task is already "completed" → silent no-op
+if (!keepFocusActiveUntilTaskEnd) { stopFocusMode() }   // condition false → skipped
+```
+
+**Every button on that banner becomes a no-op.** Task is already done. Stop is gated. Nothing changes. The banner is frozen there as long as the focus session exists in Room.
+
+---
+
+### Bug 4 — The overdue timer renders regardless of task status
+
+In `FocusTaskPanel`:
+```kotlin
+text = task.remainingLabel(now)    // → "+3m" when past end time
+text = if (overdue) "overdue" else "remaining"
+```
+
+There is no `task.status` check before rendering the overdue display. So even though "mf" is "completed", the focus screen blissfully shows "+3m overdue" because the math on `endTime - now` is negative and the session is still active.
+
+The overdue action box does have a status guard:
+```kotlin
+if (overdue && task.status !in setOf("completed", "skipped")) { ... }
+```
+So the Done/Extend/Skip action box inside the card correctly disappears when task is completed. But the timer label at the top of the card has no such guard — it always shows overdue if `remaining < 0`.
+
+---
+
+### Immediate escape
+
+**Use the "Stop Focus" button**, not Done. `requestStop()` → (no-PIN path) shows a confirmation → `stopFocusModeAwait()` → properly ends the Room session, clears SharedPrefs, stops the service, sets `_focusSession.value = null`. That's the only button in the current codebase that correctly calls the full shutdown sequence regardless of task status or `keepFocusActiveUntilTaskEnd`.
+
+Done/✓/Skip are all gated by settings or are no-ops on a completed task. "Stop Focus" is not.
+
+---
+
+### Fixes
+
+**Fix 1 — Handle `ACTION_TASK_ENDED` to end the Room session**
+
+In `FocusSessionViewModel.init`, register a receiver:
+```kotlin
+private val taskEndedReceiver = object : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        viewModelScope.launch {
+            focusSessionRepository.getActiveFocusSession()?.let { session ->
+                focusSessionRepository.endFocusSession(session.taskId)
+            }
+            _focusSession.value = null
+        }
+    }
+}
+// init: context.registerReceiver(taskEndedReceiver, IntentFilter(ForegroundTaskService.ACTION_TASK_ENDED), RECEIVER_NOT_EXPORTED)
+// onCleared: context.unregisterReceiver(taskEndedReceiver)
+```
+This is the most important fix. It closes the gap between service going idle and Room/UI knowing about it.
+
+**Fix 2 — Filter completed tasks from `activeTask` in HomeScreen**
+
+```kotlin
+val activeTask = remember(todayTasks, focusSession) {
+    todayTasks
+        .filter { it.status !in setOf("completed", "skipped") }   // ← add this
+        .firstOrNull { it.id == focusSession?.taskId }
+        ?: todayTasks.firstOrNull(Task::isRunningNow)
+}
+```
+Once the task is complete, the banner disappears from Schedule even if the session is still technically alive.
+
+**Fix 3 — In overdue state, Done should always stop focus regardless of `keepFocusActiveUntilTaskEnd`**
+
+In the completion confirmation handler in FocusScreen:
+```kotlin
+onClick = {
+    taskViewModel.completeTask(task.id)
+    if (!settings.keepFocusActiveUntilTaskEnd || overdue) {  // ← add || overdue
+        focusSessionViewModel.stopFocusMode()
+    }
+    showCompleteConfirmation = false
+}
+```
+Same logic in HomeScreen's `onComplete` for the banner. `keepFocusActiveUntilTaskEnd` only makes sense when you mark a task done early — past end time it makes no sense.
+
+**Fix 4 — Guard the overdue timer label by task status**
+
+In `FocusTaskPanel`, wrap the overdue display:
+```kotlin
+val displayOverdue = overdue && task.status !in setOf("completed", "skipped")
+
+text = task.remainingLabel(now)           // still shows, but:
+text = if (displayOverdue) "overdue" else "remaining"
+```
+Or, simpler: don't render the overdue state at all for completed tasks.
+
+---
+
+**Confidence: 0.92**
+
+High because the code traces are all concrete: `clearFocusActive()` provably doesn't touch Room, `ACTION_TASK_ENDED` has zero receivers in the codebase, and the `keepFocusActiveUntilTaskEnd` default of `true` plus its placement as a gate on `stopFocusMode()` directly explains the observed 4/4 done + stuck timer state.
+
+**Caveats:** I can't confirm whether you have a focus session PIN set (which would add a secondary failure mode in `stopFocusModeAwait` via `SessionPinRequiredException`). Also, the precise order of user actions at 5:33 is inferred from the screenshots, not directly observed.
