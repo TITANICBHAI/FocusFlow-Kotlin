@@ -14,6 +14,13 @@ import com.tbtechs.focusflow.data.local.dao.FocusSessionDao
 import com.tbtechs.focusflow.data.local.dao.TaskDao
 import com.tbtechs.focusflow.data.local.dao.WeeklyInsightDao
 import com.tbtechs.focusflow.data.local.dao.ReportNotesDao
+import com.tbtechs.focusflow.data.local.dao.DailyAppUsageDao
+import com.tbtechs.focusflow.data.local.dao.AppSessionDao
+import com.tbtechs.focusflow.data.local.dao.DayRatingDao
+import com.tbtechs.focusflow.data.local.dao.FindingDao
+import com.tbtechs.focusflow.data.local.dao.FindingAcknowledgementDao
+import com.tbtechs.focusflow.data.local.dao.BehaviouralHypothesisDao
+import com.tbtechs.focusflow.data.local.dao.ClarifyingQuestionDao
 import com.tbtechs.focusflow.data.local.entity.DailyCompletionEntity
 import com.tbtechs.focusflow.data.local.entity.AchievementEntity
 import com.tbtechs.focusflow.data.local.entity.FocusOverrideEntity
@@ -21,6 +28,13 @@ import com.tbtechs.focusflow.data.local.entity.FocusSessionEntity
 import com.tbtechs.focusflow.data.local.entity.TaskEntity
 import com.tbtechs.focusflow.data.local.entity.WeeklyInsightEntity
 import com.tbtechs.focusflow.data.local.entity.ReportNoteEntity
+import com.tbtechs.focusflow.data.local.entity.DailyAppUsageEntity
+import com.tbtechs.focusflow.data.local.entity.AppSessionEntity
+import com.tbtechs.focusflow.data.local.entity.DayRatingEntity
+import com.tbtechs.focusflow.data.local.entity.FindingEntity
+import com.tbtechs.focusflow.data.local.entity.FindingAcknowledgementEntity
+import com.tbtechs.focusflow.data.local.entity.BehaviouralHypothesisEntity
+import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
 
 /**
  * Room database for FocusFlow.
@@ -96,8 +110,15 @@ import com.tbtechs.focusflow.data.local.entity.ReportNoteEntity
         AchievementEntity::class,
         WeeklyInsightEntity::class,
         ReportNoteEntity::class,
+        DailyAppUsageEntity::class,
+        AppSessionEntity::class,
+        DayRatingEntity::class,
+        FindingEntity::class,
+        FindingAcknowledgementEntity::class,
+        BehaviouralHypothesisEntity::class,
+        ClarifyingQuestionEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -109,6 +130,13 @@ abstract class FocusFlowDatabase : RoomDatabase() {
     abstract fun achievementDao(): AchievementDao
     abstract fun weeklyInsightDao(): WeeklyInsightDao
     abstract fun reportNotesDao(): ReportNotesDao
+    abstract fun dailyAppUsageDao(): DailyAppUsageDao
+    abstract fun appSessionDao(): AppSessionDao
+    abstract fun dayRatingDao(): DayRatingDao
+    abstract fun findingDao(): FindingDao
+    abstract fun findingAcknowledgementDao(): FindingAcknowledgementDao
+    abstract fun behaviouralHypothesisDao(): BehaviouralHypothesisDao
+    abstract fun clarifyingQuestionDao(): ClarifyingQuestionDao
 
     companion object {
 
@@ -308,6 +336,130 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `idx_focus_sessions_active` " +
                         "ON `focus_sessions` (`is_active`, `id`)",
+                )
+            }
+        }
+
+        /** Adds the Phase 1 behavioural-intelligence tables. */
+        val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `daily_app_usage` (
+                        `date` TEXT NOT NULL,
+                        `package_name` TEXT NOT NULL,
+                        `app_name` TEXT NOT NULL,
+                        `category` TEXT,
+                        `foreground_ms` INTEGER NOT NULL DEFAULT 0,
+                        `hourly_ms` TEXT NOT NULL DEFAULT '',
+                        `launch_count` INTEGER NOT NULL DEFAULT 0,
+                        `last_used_at` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`date`, `package_name`)
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_dau_package_date` " +
+                        "ON `daily_app_usage` (`package_name`, `date`)",
+                )
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `app_sessions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `package_name` TEXT NOT NULL,
+                        `app_name` TEXT NOT NULL,
+                        `started_at` INTEGER NOT NULL,
+                        `ended_at` INTEGER NOT NULL,
+                        `duration_ms` INTEGER NOT NULL,
+                        `local_date` TEXT NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_as_package_date` " +
+                        "ON `app_sessions` (`package_name`, `local_date`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_as_started_at` " +
+                        "ON `app_sessions` (`started_at`)",
+                )
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `day_ratings` (
+                        `date` TEXT NOT NULL,
+                        `rating` INTEGER NOT NULL,
+                        `context_tag` TEXT,
+                        `note` TEXT,
+                        `app_tags` TEXT NOT NULL DEFAULT '[]',
+                        `word_tags` TEXT NOT NULL DEFAULT '[]',
+                        `created_at` TEXT NOT NULL,
+                        `updated_at` TEXT NOT NULL,
+                        PRIMARY KEY(`date`)
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `findings` (
+                        `id` TEXT NOT NULL,
+                        `detection_type` TEXT NOT NULL,
+                        `subject_package` TEXT,
+                        `subject_app_name` TEXT,
+                        `state` TEXT NOT NULL DEFAULT 'detected',
+                        `evidence_fingerprint` TEXT NOT NULL,
+                        `evidence_json` TEXT NOT NULL,
+                        `headline` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `evidence_line` TEXT NOT NULL,
+                        `first_detected_at` TEXT NOT NULL,
+                        `last_updated_at` TEXT NOT NULL,
+                        `seen_at` TEXT,
+                        `resolved_at` TEXT,
+                        `suppressed_until` TEXT,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_findings_state` ON `findings` (`state`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_findings_package` ON `findings` (`subject_package`)")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `finding_acknowledgements` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `finding_id` TEXT NOT NULL,
+                        `response` TEXT NOT NULL,
+                        `evidence_fingerprint` TEXT NOT NULL,
+                        `created_at` TEXT NOT NULL,
+                        `note` TEXT,
+                        FOREIGN KEY(`finding_id`) REFERENCES `findings`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_finding_ack_finding_id` " +
+                        "ON `finding_acknowledgements` (`finding_id`)",
+                )
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `behavioural_hypotheses` (
+                        `id` TEXT NOT NULL,
+                        `question_id` TEXT NOT NULL,
+                        `answer_text` TEXT NOT NULL,
+                        `answer_package` TEXT,
+                        `created_at` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `clarifying_questions` (
+                        `id` TEXT NOT NULL,
+                        `question_type` TEXT NOT NULL,
+                        `date_of_concern` TEXT NOT NULL,
+                        `context_json` TEXT NOT NULL,
+                        `asked_at` TEXT NOT NULL,
+                        `response` TEXT,
+                        `responded_at` TEXT,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_cq_asked_at` " +
+                        "ON `clarifying_questions` (`asked_at`)",
                 )
             }
         }

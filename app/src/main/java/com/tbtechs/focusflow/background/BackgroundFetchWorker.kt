@@ -74,6 +74,18 @@ class BackgroundFetchWorker(
                 }
             }
 
+            val prunePrefs = applicationContext.getSharedPreferences(
+                "focusday_prefs",
+                Context.MODE_PRIVATE,
+            )
+            val todayString = java.time.LocalDate.now().toString()
+            val lastPruned = prunePrefs.getString("last_prune_date", "") ?: ""
+            if (lastPruned != todayString) {
+                runCatching { prunePhase1Tables() }
+                    .onSuccess { prunePrefs.edit().putString("last_prune_date", todayString).apply() }
+                    .onFailure { Log.w(TAG, "Phase 1 prune failed", it) }
+            }
+
             Result.success(
                 workDataOf("rearmedCount" to tasksToRearm.size),
             )
@@ -92,6 +104,18 @@ class BackgroundFetchWorker(
         runCatching { java.time.Instant.parse(value) }.getOrElse {
             java.time.OffsetDateTime.parse(value).toInstant()
         }
+
+    private suspend fun prunePhase1Tables() {
+        val database = com.tbtechs.focusflow.di.AppModule.database
+        val cutoffDate = java.time.LocalDate.now().minusDays(90).toString()
+        val cutoffIso = java.time.Instant.now()
+            .minus(90, java.time.temporal.ChronoUnit.DAYS)
+            .toString()
+        database.dailyAppUsageDao().deleteOlderThan(cutoffDate)
+        database.appSessionDao().deleteOlderThan(cutoffDate)
+        database.findingDao().deleteOldResolved(cutoffIso)
+        database.clarifyingQuestionDao().deleteAnsweredBefore(cutoffIso)
+    }
 
     companion object {
         private const val TAG = "BackgroundFetchWorker"

@@ -5,6 +5,7 @@ import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.notifications.NotificationChannels
+import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 
 /**
  * Application subclass for FocusFlow.
@@ -56,6 +57,7 @@ class FocusFlowApp : Application() {
         // 4. Register app-level notification channels.
         StartupLogger.info("Notifications", "Creating application notification channels")
         NotificationChannels.createAll(this)
+        DayRatingNotificationScheduler.ensureScheduled(this)
         StartupLogger.info("FocusFlowApp", "Application startup completed")
     }
 }

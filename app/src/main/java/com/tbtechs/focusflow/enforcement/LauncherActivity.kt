@@ -71,6 +71,7 @@ import java.util.Locale
 class LauncherActivity : Activity() {
 
     companion object {
+        const val ACTION_OPEN_DAY_RATING = "com.tbtechs.focusflow.action.OPEN_DAY_RATING"
         private const val PREFS_NAME = AppBlockerAccessibilityService.PREFS_NAME
         private const val PREF_LAUNCHER_HIDDEN = "launcher_hidden_packages"
         private const val PREF_LAUNCHER_PINNED = "launcher_pinned_packages"
@@ -388,6 +389,11 @@ class LauncherActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.action == ACTION_OPEN_DAY_RATING) {
+            // IMPL_2 will focus the rating control in the Stats experience.
+            // Keep the action explicit now so notifications have a stable deep link.
+            intent.action = null
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         window.statusBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(window, false)

@@ -92,6 +92,17 @@ interface TaskDao {
     suspend fun getTasksForDate(localDate: String): List<TaskEntity>
 
     /**
+     * Returns distinct local calendar dates represented by scheduled tasks.
+     * The Kotlin schema stores ISO timestamps in start_time, not epoch scheduled_time.
+     */
+    @Query("""
+        SELECT DISTINCT date(datetime(start_time, 'localtime'))
+        FROM tasks
+        WHERE date(datetime(start_time, 'localtime')) BETWEEN :startDate AND :endDate
+    """)
+    suspend fun getTaskDatesInRange(startDate: String, endDate: String): List<String>
+
+    /**
      * Minimal start_time/status projection for tasks starting on or after [cutoff].
      * Used exclusively by [FocusSessionRepository.backfillDayCompletions] to
      * rebuild the daily_completions ledger without loading full task rows.

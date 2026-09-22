@@ -162,6 +162,14 @@
             android:exported="false" />
 
         <receiver
+            android:name=".enforcement.receivers.DayRatingReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.tbtechs.focusflow.alarm.DAY_RATING_REMIND" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".enforcement.receivers.FocusDayDeviceAdminReceiver"
             android:exported="true"
             android:permission="android.permission.BIND_DEVICE_ADMIN">

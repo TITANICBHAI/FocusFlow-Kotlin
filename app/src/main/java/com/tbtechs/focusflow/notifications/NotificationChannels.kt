@@ -20,6 +20,7 @@ object NotificationChannels {
     const val ACHIEVEMENTS = "achievements"
     const val INSIGHTS = "insights"
     const val RESISTANCE = "resistance"
+    const val DAY_RATING = "day-rating"
 
     const val TASK_REMINDERS_NAME = "Task Reminders"
     const val MORNING_DIGEST_NAME = "Morning Digest"
@@ -119,6 +120,16 @@ object NotificationChannels {
                 description = "Opt-in blocked-app resistance alerts."
                 setShowBadge(true)
                 enableVibration(true)
+            },
+            NotificationChannel(
+                DAY_RATING,
+                "Day rating",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Daily prompt to rate your day"
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
             },
         )
 

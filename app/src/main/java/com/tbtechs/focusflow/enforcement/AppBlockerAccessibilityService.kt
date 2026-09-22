@@ -30,6 +30,7 @@ import android.net.VpnService
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.content.pm.PackageManager
 import android.provider.Settings
 import android.view.Gravity
@@ -42,6 +43,8 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import com.tbtechs.focusflow.data.repository.BlockOverlayController
+import com.tbtechs.focusflow.analytics.AppUsageAndSessionTracker
+import com.tbtechs.focusflow.di.AppModule
 // import com.tbtechs.focusflow.enforcement.BlockOverlayActivity (same package)
 // import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService (same package)
 import org.json.JSONArray
@@ -539,6 +542,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     private var currentTimedSessionEndMs: Long = 0L
     private var timedExpireRunnable: Runnable? = null
     private var screenStateReceiver: BroadcastReceiver? = null
+    private lateinit var usageSessionTracker: AppUsageAndSessionTracker
     private val allowanceCheckpointRunnable: Runnable = object : Runnable {
         override fun run() {
             checkpointActiveTimedSession()
@@ -565,6 +569,11 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         // 10 s so we don't run anything during the cold-start window.
         vpnHealthHandler.postDelayed(vpnHealthRunnable, 10_000L)
         startForegroundWatchdog()
+        usageSessionTracker = AppUsageAndSessionTracker(
+            context = this,
+            dailyUsageDao = AppModule.database.dailyAppUsageDao(),
+            sessionDao = AppModule.database.appSessionDao(),
+        )
     }
 
     /**
@@ -863,6 +872,21 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     stopTimedAllowanceTracking()
                     return
                 }
+                when (intent.action) {
+                    Intent.ACTION_SCREEN_OFF -> {
+                        if (::usageSessionTracker.isInitialized) {
+                            usageSessionTracker.onScreenOff(
+                                nowMs = System.currentTimeMillis(),
+                                nowElapsed = SystemClock.elapsedRealtime(),
+                            )
+                        }
+                    }
+                    Intent.ACTION_USER_PRESENT -> {
+                        if (::usageSessionTracker.isInitialized) {
+                            usageSessionTracker.onUserPresent()
+                        }
+                    }
+                }
                 val pkg = currentTimedPkg ?: return
                 val entry = findAllowanceEntry(pkg) ?: return
                 if (entry.mode != "time_budget" && entry.mode != "interval") return
@@ -1034,6 +1058,14 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             .putString("current_foreground_pkg", pkg)
             .putString("current_foreground_cls", cls)
             .apply()
+
+        if (::usageSessionTracker.isInitialized) {
+            usageSessionTracker.onWindowStateChanged(
+                pkg = pkg,
+                nowMs = now,
+                nowElapsed = SystemClock.elapsedRealtime(),
+            )
+        }
 
         // ── Recents screen block ─────────────────────────────────────────────
         // During task-based focus only: the overview screen shows thumbnails of
@@ -1575,6 +1607,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
+        if (::usageSessionTracker.isInitialized) {
+            usageSessionTracker.destroy()
+        }
         // Flush the active session through the last checkpoint and leave its
         // identity in SharedPreferences for reconnect recovery. We intentionally
         // do not charge the entire service-down gap.

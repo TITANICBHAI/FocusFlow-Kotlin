@@ -17,6 +17,10 @@ import com.tbtechs.focusflow.analytics.AnalyticsProcessor
 import com.tbtechs.focusflow.analytics.AchievementEngine
 import com.tbtechs.focusflow.analytics.InsightEngine
 import com.tbtechs.focusflow.domain.PinManager
+import com.tbtechs.focusflow.data.repository.DayRatingRepository
+import com.tbtechs.focusflow.data.repository.FindingRepository
+import com.tbtechs.focusflow.data.repository.BehaviouralHypothesisRepository
+import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
 
 /**
  * Manual DI singleton — the single source of truth for every repository
@@ -114,6 +118,18 @@ object AppModule {
     lateinit var achievementEngine: AchievementEngine
         private set
 
+    lateinit var dayRatingRepository: DayRatingRepository
+        private set
+
+    lateinit var findingRepository: FindingRepository
+        private set
+
+    lateinit var behaviouralHypothesisRepository: BehaviouralHypothesisRepository
+        private set
+
+    lateinit var clarifyingQuestionRepository: ClarifyingQuestionRepository
+        private set
+
     // ─── Init ─────────────────────────────────────────────────────────────────
 
     /**
@@ -141,6 +157,7 @@ object AppModule {
                 FocusFlowDatabase.MIGRATION_2_3,
                 FocusFlowDatabase.MIGRATION_3_4,
                 FocusFlowDatabase.MIGRATION_4_5,
+                FocusFlowDatabase.MIGRATION_5_6,
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -183,6 +200,18 @@ object AppModule {
         achievementEngine = AchievementEngine(
             focusSessionRepository = focusSessionRepository,
             achievementDao = database.achievementDao(),
+        )
+
+        dayRatingRepository = DayRatingRepository(database.dayRatingDao())
+        findingRepository = FindingRepository(
+            findingDao = database.findingDao(),
+            ackDao = database.findingAcknowledgementDao(),
+        )
+        behaviouralHypothesisRepository = BehaviouralHypothesisRepository(
+            database.behaviouralHypothesisDao(),
+        )
+        clarifyingQuestionRepository = ClarifyingQuestionRepository(
+            database.clarifyingQuestionDao(),
         )
     }
 }

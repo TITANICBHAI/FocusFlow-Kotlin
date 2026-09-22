@@ -3,6 +3,7 @@ package com.tbtechs.focusflow.enforcement.receivers
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
+import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -94,6 +95,9 @@ class BootReceiver : BroadcastReceiver() {
         if (persistentVpn && netBlockEnabled && isUserUnlocked(context)) {
             NetworkBlockerVpnService.requestRecoverySync(context)
         }
+
+        // AlarmManager alarms are cleared by reboot.
+        DayRatingNotificationScheduler.ensureScheduled(context)
 
         if (sessionValid && endTimeMs > 0L) {
             // ── Restart in ACTIVE focus mode ──────────────────────────────────
