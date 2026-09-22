@@ -34,6 +34,7 @@ import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
+import com.tbtechs.focusflow.enforcement.LauncherActivity
 import com.tbtechs.focusflow.enforcement.receivers.NotificationActionReceiver
 import com.tbtechs.focusflow.ui.AppBootViewModel
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
@@ -62,17 +63,20 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val vpnRepository by lazy { VpnRepository(applicationContext) }
     private var requestedRoute by mutableStateOf(Routes.HOME)
+    private var focusDayRating by mutableStateOf(false)
     private var notificationEventNonce by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StartupLogger.info("MainActivity", "Main activity created")
         requestedRoute = routeFromIntent(intent)
+        focusDayRating = intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING
         setTheme(R.style.Theme_FocusFlow)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             FocusFlowRoot(
                 requestedRoute = requestedRoute,
+                focusDayRating = focusDayRating,
                 notificationEventNonce = notificationEventNonce,
                 vpnRepository = vpnRepository,
             )
@@ -84,16 +88,22 @@ class MainActivity : ComponentActivity() {
         StartupLogger.info("MainActivity", "Main activity received a new intent")
         setIntent(intent)
         requestedRoute = routeFromIntent(intent)
+        focusDayRating = intent.action == LauncherActivity.ACTION_OPEN_DAY_RATING
         notificationEventNonce++
     }
 
     private fun routeFromIntent(intent: Intent?): String =
-        Routes.fromPath(intent?.data?.path)
+        if (intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING) {
+            Routes.STATS
+        } else {
+            Routes.fromPath(intent?.data?.path)
+        }
 }
 
 @Composable
 private fun FocusFlowRoot(
     requestedRoute: String,
+    focusDayRating: Boolean,
     notificationEventNonce: Int,
     vpnRepository: VpnRepository,
 ) {
@@ -141,6 +151,10 @@ private fun FocusFlowRoot(
             analyticsProcessor = AppModule.analyticsProcessor,
             insightEngine = AppModule.insightEngine,
             achievementEngine = AppModule.achievementEngine,
+            dayRatingRepository = AppModule.dayRatingRepository,
+            findingRepository = AppModule.findingRepository,
+            hypothesisRepository = AppModule.behaviouralHypothesisRepository,
+            clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
         )
     }
     val backupCoordinator = remember {
@@ -323,6 +337,7 @@ private fun FocusFlowRoot(
                         replaceTasksOnImport = false
                         navController.popBackStack()
                     },
+                    focusDayRating = focusDayRating,
                 )
             }
             FocusFlowSplashOverlay(

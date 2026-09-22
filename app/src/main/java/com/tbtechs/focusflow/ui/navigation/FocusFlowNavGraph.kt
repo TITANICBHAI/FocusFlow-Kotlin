@@ -108,6 +108,7 @@ fun FocusFlowNavGraph(
     pendingImportUri: android.net.Uri? = null,
     initialReplaceTasks: Boolean = false,
     onImportFinished: () -> Unit = {},
+    focusDayRating: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -207,6 +208,7 @@ fun FocusFlowNavGraph(
                                     }.getOrDefault(packageName)
                                 }
                             },
+                            focusDayRating = focusDayRating,
                         )
                     }
                 }

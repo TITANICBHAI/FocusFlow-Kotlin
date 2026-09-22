@@ -51,6 +51,7 @@ fun StatsInsightsExperience(
     onOpenUsageAccessSettings: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
     onOpenQuickBlock: (String?) -> Unit = {},
+    focusDayRating: Boolean = false,
 ) {
     val snapshot by statsViewModel.analyticsSnapshot.collectAsState()
     val insights by statsViewModel.insightCards.collectAsState()
@@ -59,10 +60,21 @@ fun StatsInsightsExperience(
     val lifetime by statsViewModel.lifetimeStats.collectAsState()
     val state by statsViewModel.loadState.collectAsState()
     val window by statsViewModel.activeWindow.collectAsState()
+    val selectedDate by statsViewModel.selectedRatingDate.collectAsState()
+    val currentRating by statsViewModel.currentRating.collectAsState()
+    val ratableDates by statsViewModel.ratableDates.collectAsState()
+    val suggestedChips by statsViewModel.suggestedChips.collectAsState()
+    val activeFindings by statsViewModel.activeFindings.collectAsState()
+    val pendingQuestion by statsViewModel.pendingQuestion.collectAsState()
+    val needsColdStart by statsViewModel.needsColdStart.collectAsState()
     val settingsRepository = remember { AppModule.settingsRepository }
     val scope = rememberCoroutineScope()
     var localNoticeDismissed by remember {
         mutableStateOf(settingsRepository.getString("local_analytics_notice_dismissed") == "true")
+    }
+
+    if (needsColdStart) {
+        ColdStartSheet(onComplete = statsViewModel::saveColdStartAnswers)
     }
 
     Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
@@ -82,6 +94,16 @@ fun StatsInsightsExperience(
             )
         }
         AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
+        DayRatingBar(
+            selectedDate = selectedDate,
+            currentRating = currentRating,
+            ratableDates = ratableDates,
+            suggestedChips = suggestedChips,
+            onSelectDate = statsViewModel::selectRatingDate,
+            onLoadChips = statsViewModel::loadChipsForDate,
+            requestFocus = focusDayRating,
+            onSubmit = statsViewModel::submitRating,
+        )
         if (window == ANALYTICS_THREE_MONTHS && !localNoticeDismissed) {
             LocalOnlyNotice(onDismiss = {
                 scope.launch {
@@ -142,6 +164,16 @@ fun StatsInsightsExperience(
                         if (window != ANALYTICS_THREE_MONTHS) {
                             achievements?.let { AchievementRow(it) }
                         }
+                        FindingsSection(
+                            activeFindings = activeFindings,
+                            pendingQuestion = pendingQuestion,
+                            dayCount = statsViewModel.dataHealthDayCount,
+                            ratingCount = statsViewModel.totalRatingCount,
+                            onMarkSeen = statsViewModel::markFindingSeen,
+                            onIntentional = statsViewModel::acknowledgeFindingIntentional,
+                            onAware = statsViewModel::acknowledgeFindingAware,
+                            onAnswerQuestion = statsViewModel::answerClarifyingQuestion,
+                        )
                     }
                 }
             } ?: LoadingStats()

@@ -2,10 +2,11 @@
 
 Source briefs:
 
-- `attached_assets/IMPL_1A_1790065764705.md` — data layer
-- `attached_assets/IMPL_1B_1790065764704.md` — services layer
+- `attached_assets/IMPL_1A_1790066660444.md` — data layer
+- `attached_assets/IMPL_1B_1790066660443.md` — services layer
+- `attached_assets/IMPL_2_1790066660441.md` — Stats UI layer
 
-This tracker is the shared status record for IMPL_1A and IMPL_1B. Update it after
+This tracker is the shared status record for IMPL_1A, IMPL_1B, and IMPL_2. Update it after
 each meaningful implementation, reconciliation, or verification step. The
 attached briefs remain the source material; the Kotlin codebase is authoritative
 when a brief's name, schema, or lifecycle differs from the current project.
@@ -18,7 +19,7 @@ when a brief's name, schema, or lifecycle differs from the current project.
 - Keep `UsageStatsRepository.getUsageSummary` unchanged.
 - Adapt queries to the actual schema (`tasks.start_time` and `tasks.end_time`).
 - Do not run an Android build in Replit. Verify Kotlin/Android changes with GitHub Actions.
-- Read both briefs and inspect the real code before implementing or reviewing changes.
+- Read all three briefs and inspect the real code before implementing or reviewing changes.
 
 ## IMPL_1A — data layer
 
@@ -49,6 +50,18 @@ when a brief's name, schema, or lifecycle differs from the current project.
 - [x] Add daily-gated 90-day pruning to `BackgroundFetchWorker`.
 - [x] Add `LauncherActivity.ACTION_OPEN_DAY_RATING` as the stable IMPL_2 deep-link stub.
 
+## IMPL_2 — Stats UI layer
+
+- [x] Extend `StatsViewModel` with rating, finding, clarifying-question, and cold-start state.
+- [x] Add `StatsViewModel` rating/finding/cold-start actions and repository wiring.
+- [x] Add `DayRatingBar` with rating, retroactive date, context, suggested chips, and note controls.
+- [x] Add `FindingCardView` with finding states and acknowledgement actions.
+- [x] Add `FindingsSection` with baseline, clarifying question, active, watching, and clean states.
+- [x] Add `ColdStartSheet` with three skippable seed questions.
+- [x] Integrate Phase 1 state, cold-start sheet, day rating, and findings into `StatsInsightsExperience`.
+- [x] Route `ACTION_OPEN_DAY_RATING` to the Stats experience and focus the rating control.
+- [x] Verify IMPL_2 with direct source consistency checks; Android build remains delegated to the existing GitHub Actions workflow per project constraints.
+
 ## Verification
 
 - [x] Run the repository's GitHub Actions Android build.
@@ -59,6 +72,5 @@ when a brief's name, schema, or lifecycle differs from the current project.
 
 ## Follow-up scope
 
-IMPL_2 owns the Stats UI integration: the day-rating bar, findings cards,
-cold-start sheet, clarifying-question UI, and routing the deep-link action to
-the focused Stats control.
+IMPL_3 owns the detection engine that generates the first `FindingEntity` rows
+from the data now held in the database.

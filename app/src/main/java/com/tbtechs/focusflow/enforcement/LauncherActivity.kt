@@ -390,9 +390,9 @@ class LauncherActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (intent?.action == ACTION_OPEN_DAY_RATING) {
-            // IMPL_2 will focus the rating control in the Stats experience.
-            // Keep the action explicit now so notifications have a stable deep link.
-            intent.action = null
+            openDayRatingInMainActivity()
+            finish()
+            return
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         window.statusBarColor = Color.TRANSPARENT
@@ -402,6 +402,23 @@ class LauncherActivity : Activity() {
         setContentView(rootFrame)
         buildHomeLayout()
         startClock()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == ACTION_OPEN_DAY_RATING) {
+            openDayRatingInMainActivity()
+        }
+    }
+
+    private fun openDayRatingInMainActivity() {
+        startActivity(
+            Intent(this, com.tbtechs.focusflow.MainActivity::class.java).apply {
+                action = ACTION_OPEN_DAY_RATING
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            },
+        )
     }
 
     override fun onResume() {

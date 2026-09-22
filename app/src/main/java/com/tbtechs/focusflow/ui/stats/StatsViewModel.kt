@@ -16,6 +16,15 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.InsightCard
 import com.tbtechs.focusflow.analytics.InsightEngine
 import com.tbtechs.focusflow.analytics.LifetimeStats
+import com.tbtechs.focusflow.data.local.entity.BehaviouralHypothesisEntity
+import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
+import com.tbtechs.focusflow.data.local.entity.DayRatingEntity
+import com.tbtechs.focusflow.data.local.entity.FindingEntity
+import com.tbtechs.focusflow.data.repository.BehaviouralHypothesisRepository
+import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
+import com.tbtechs.focusflow.data.repository.DayRatingRepository
+import com.tbtechs.focusflow.data.repository.FindingRepository
+import com.tbtechs.focusflow.data.repository.DayRatingRepository.RatableDateEntry
 import com.tbtechs.focusflow.di.AppModule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -36,6 +45,10 @@ class StatsViewModel(
     private val analyticsProcessor: AnalyticsProcessor,
     private val insightEngine: InsightEngine,
     private val achievementEngine: AchievementEngine,
+    private val dayRatingRepository: DayRatingRepository,
+    private val findingRepository: FindingRepository,
+    private val hypothesisRepository: BehaviouralHypothesisRepository,
+    private val clarifyingQuestionRepository: ClarifyingQuestionRepository,
 ) : ViewModel() {
     private val _analyticsSnapshot = MutableStateFlow<AnalyticsSnapshot?>(null)
     private val _insightCards = MutableStateFlow<List<InsightCard>>(emptyList())
@@ -54,6 +67,26 @@ class StatsViewModel(
     val lifetimeStats: StateFlow<LifetimeStats?> = _lifetimeStats.asStateFlow()
     val loadState: StateFlow<StatsLoadState> = _loadState.asStateFlow()
     val activeWindow: StateFlow<AnalyticsWindow> = _activeWindow.asStateFlow()
+
+    private val _selectedRatingDate = MutableStateFlow(todayLocalDate())
+    private val _currentRating = MutableStateFlow<DayRatingEntity?>(null)
+    private val _ratableDates = MutableStateFlow<List<RatableDateEntry>>(emptyList())
+    private val _suggestedChips = MutableStateFlow<List<SuggestedChip>>(emptyList())
+    private val _activeFindings = MutableStateFlow<List<FindingEntity>>(emptyList())
+    private val _pendingQuestion = MutableStateFlow<ClarifyingQuestionEntity?>(null)
+    private val _needsColdStart = MutableStateFlow(false)
+    var dataHealthDayCount: Int = 0
+        private set
+    var totalRatingCount: Int = 0
+        private set
+
+    val selectedRatingDate: StateFlow<String> = _selectedRatingDate.asStateFlow()
+    val currentRating: StateFlow<DayRatingEntity?> = _currentRating.asStateFlow()
+    val ratableDates: StateFlow<List<RatableDateEntry>> = _ratableDates.asStateFlow()
+    val suggestedChips: StateFlow<List<SuggestedChip>> = _suggestedChips.asStateFlow()
+    val activeFindings: StateFlow<List<FindingEntity>> = _activeFindings.asStateFlow()
+    val pendingQuestion: StateFlow<ClarifyingQuestionEntity?> = _pendingQuestion.asStateFlow()
+    val needsColdStart: StateFlow<Boolean> = _needsColdStart.asStateFlow()
 
     private var loadJob: Job? = null
 
@@ -84,6 +117,8 @@ class StatsViewModel(
                     _insightCards.value = emptyList()
                     _achievementState.value = null
                     _loadState.value = StatsLoadState.PermissionNeeded
+                    launch { loadRatingData() }
+                    launch { loadFindingData() }
                     return@launch
                 }
 
@@ -108,6 +143,12 @@ class StatsViewModel(
                 } else {
                     StatsLoadState.Unavailable
                 }
+                launch {
+                    loadRatingData()
+                }
+                launch {
+                    loadFindingData()
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
@@ -125,6 +166,145 @@ class StatsViewModel(
         return hasRecords
     }
 
+    fun selectRatingDate(date: String) {
+        _selectedRatingDate.value = date
+        viewModelScope.launch {
+            _currentRating.value = dayRatingRepository.getForDate(date)
+            _suggestedChips.value = buildSuggestedChips(date)
+        }
+    }
+
+    fun loadChipsForDate(date: String) {
+        viewModelScope.launch {
+            _suggestedChips.value = buildSuggestedChips(date)
+        }
+    }
+
+    fun submitRating(
+        date: String,
+        rating: Int,
+        contextTag: String?,
+        note: String?,
+        appTags: List<String>,
+        wordTags: List<String>,
+    ) {
+        val safeRating = rating.coerceIn(1, 10)
+        viewModelScope.launch {
+            val now = java.time.Instant.now().toString()
+            val existing = dayRatingRepository.getForDate(date)
+            val entity = existing?.copy(
+                rating = safeRating,
+                contextTag = contextTag,
+                note = note?.take(200),
+                appTags = appTags.toStorageValue(),
+                wordTags = wordTags.toStorageValue(),
+                updatedAt = now,
+            ) ?: DayRatingEntity(
+                date = date,
+                rating = safeRating,
+                contextTag = contextTag,
+                note = note?.take(200),
+                appTags = appTags.toStorageValue(),
+                wordTags = wordTags.toStorageValue(),
+                createdAt = now,
+                updatedAt = now,
+            )
+            dayRatingRepository.upsert(entity)
+            if (date == _selectedRatingDate.value) {
+                _currentRating.value = entity
+            }
+            totalRatingCount = dayRatingRepository.count()
+        }
+    }
+
+    fun markFindingSeen(id: String) {
+        viewModelScope.launch {
+            findingRepository.markSeen(id)
+            _activeFindings.value = findingRepository.getActiveFindings()
+        }
+    }
+
+    fun acknowledgeFindingIntentional(id: String, fingerprint: String) {
+        viewModelScope.launch {
+            findingRepository.acknowledgeIntentional(id, fingerprint, null)
+            _activeFindings.value = findingRepository.getActiveFindings()
+        }
+    }
+
+    fun acknowledgeFindingAware(id: String, fingerprint: String) {
+        viewModelScope.launch {
+            findingRepository.acknowledgeAware(id, fingerprint)
+            _activeFindings.value = findingRepository.getActiveFindings()
+        }
+    }
+
+    fun answerClarifyingQuestion(id: String, response: String) {
+        viewModelScope.launch {
+            clarifyingQuestionRepository.answer(id, response)
+            _pendingQuestion.value = clarifyingQuestionRepository.getPending()
+        }
+    }
+
+    fun saveColdStartAnswers(answers: List<BehaviouralHypothesisEntity>) {
+        viewModelScope.launch {
+            answers.forEach { hypothesisRepository.save(it) }
+            _needsColdStart.value = false
+        }
+    }
+
+    private suspend fun loadRatingData() {
+        val db = AppModule.database
+        _currentRating.value = dayRatingRepository.getForDate(_selectedRatingDate.value)
+        _ratableDates.value = dayRatingRepository.getRatableDates(
+            dailyAppUsageDao = db.dailyAppUsageDao(),
+            taskDao = db.taskDao(),
+        )
+        totalRatingCount = dayRatingRepository.count()
+        dataHealthDayCount = runCatching {
+            db.dailyAppUsageDao().countDistinctDates()
+        }.getOrDefault(0)
+    }
+
+    private suspend fun loadFindingData() {
+        _activeFindings.value = findingRepository.getActiveFindings()
+        _pendingQuestion.value = clarifyingQuestionRepository.getPending()
+        _needsColdStart.value = hypothesisRepository.needsColdStart()
+    }
+
+    private suspend fun buildSuggestedChips(date: String): List<SuggestedChip> {
+        val chips = mutableListOf<SuggestedChip>()
+        runCatching {
+            AppModule.database.dailyAppUsageDao()
+                .getForDateRange(date, date)
+                .filter { it.foregroundMs >= 20 * 60_000L }
+                .sortedByDescending { it.foregroundMs }
+                .take(3)
+                .forEach { row ->
+                    chips += SuggestedChip(ChipType.APP, row.appName, row.packageName)
+                }
+        }
+        _analyticsSnapshot.value?.let { snapshot ->
+            if (snapshot.blocking.totalAttempts > 10) {
+                chips += SuggestedChip(ChipType.WORD, "distracted")
+            }
+            val completionRate = if (snapshot.tasks.total > 0) {
+                snapshot.tasks.completed.toFloat() / snapshot.tasks.total
+            } else {
+                1f
+            }
+            if (completionRate < 0.3f && snapshot.tasks.total >= 2) {
+                chips += SuggestedChip(ChipType.WORD, "low energy")
+            }
+            if (completionRate > 0.85f && snapshot.tasks.total >= 3) {
+                chips += SuggestedChip(ChipType.WORD, "on track")
+            }
+        }
+        return chips
+    }
+
+    private fun todayLocalDate(): String =
+        java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+
     companion object {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -133,6 +313,10 @@ class StatsViewModel(
                     analyticsProcessor = AppModule.analyticsProcessor,
                     insightEngine = AppModule.insightEngine,
                     achievementEngine = AppModule.achievementEngine,
+                    dayRatingRepository = AppModule.dayRatingRepository,
+                    findingRepository = AppModule.findingRepository,
+                    hypothesisRepository = AppModule.behaviouralHypothesisRepository,
+                    clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
                 ) as T
             }
 
@@ -142,8 +326,15 @@ class StatsViewModel(
                     analyticsProcessor = AppModule.analyticsProcessor,
                     insightEngine = AppModule.insightEngine,
                     achievementEngine = AppModule.achievementEngine,
+                    dayRatingRepository = AppModule.dayRatingRepository,
+                    findingRepository = AppModule.findingRepository,
+                    hypothesisRepository = AppModule.behaviouralHypothesisRepository,
+                    clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
                 ) as T
             }
         }
     }
 }
+
+private fun List<String>.toStorageValue(): String =
+    kotlinx.serialization.json.Json.encodeToString(this)

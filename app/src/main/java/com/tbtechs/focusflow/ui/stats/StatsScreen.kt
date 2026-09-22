@@ -3,12 +3,8 @@ package com.tbtechs.focusflow.ui.stats
 import androidx.compose.runtime.Composable
 
 /**
- * The visible stats route follows the archived RN screen's simpler model:
- * Today, Yesterday, Week, and All Time.
- *
- * The newer analytics experience is intentionally kept below as
- * [CurrentStatsScreen] instead of being deleted, so it remains available for
- * a later comparison or reintroduction.
+ * The visible stats route includes the behavioral-intelligence experience.
+ * The archived RN layout remains available below for comparison.
  */
 @Composable
 fun StatsScreen(
@@ -16,11 +12,13 @@ fun StatsScreen(
     onOpenUsageAccessSettings: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
     onOpenQuickBlock: (String?) -> Unit = {},
-) = ArchivedStatsScreen(
+    focusDayRating: Boolean = false,
+) = StatsInsightsExperience(
     statsViewModel = statsViewModel,
     onOpenUsageAccessSettings = onOpenUsageAccessSettings,
     onOpenActiveBlocks = onOpenActiveBlocks,
     onOpenQuickBlock = onOpenQuickBlock,
+    focusDayRating = focusDayRating,
 )
 
 /** Preserved current analytics implementation, isolated from the RN-style route. */
