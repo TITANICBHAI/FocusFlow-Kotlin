@@ -658,7 +658,9 @@ fun FocusScreen(
                 Button(
                     onClick = {
                         taskViewModel.completeTask(task.id)
-                        if (!settings.keepFocusActiveUntilTaskEnd) {
+                        if ((!settings.keepFocusActiveUntilTaskEnd || task.remainingMillis(now) < 0L) &&
+                            focusSessionViewModel.focusSession.value?.taskId == task.id
+                        ) {
                             focusSessionViewModel.stopFocusMode()
                         }
                         showCompleteConfirmation = false
@@ -687,7 +689,9 @@ fun FocusScreen(
                 Button(
                     onClick = {
                         taskViewModel.skipTask(task.id)
-                        if (!settings.keepFocusActiveUntilTaskEnd) {
+                        if ((!settings.keepFocusActiveUntilTaskEnd || task.remainingMillis(now) < 0L) &&
+                            focusSessionViewModel.focusSession.value?.taskId == task.id
+                        ) {
                             focusSessionViewModel.stopFocusMode()
                         }
                         showSkipConfirmation = false
@@ -907,6 +911,7 @@ private fun TaskFocusPanel(
     val remaining = task.remainingMillis(now)
     val progress = task.progressNow(now)
     val overdue = remaining < 0
+    val displayOverdue = overdue && task.status !in setOf("completed", "skipped")
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -928,7 +933,7 @@ private fun TaskFocusPanel(
                         .clip(CircleShape)
                         .background(
                             if (isFocusing) Color(0xFF10B981)
-                            else if (overdue) Color(0xFFEF4444)
+                            else if (displayOverdue) Color(0xFFEF4444)
                             else DarkTextSecondary,
                         ),
                 )
@@ -940,12 +945,12 @@ private fun TaskFocusPanel(
                             else "Focus Mode Active · Work"
                         }
                         isFocusing -> "Focus Mode Active"
-                        overdue -> "Task ended — choose next action"
+                        displayOverdue -> "Task ended — choose next action"
                         else -> "Task scheduled"
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isFocusing) Color(0xFF34D399) else if (overdue) Color(0xFFF87171) else DarkTextSecondary,
+                    color = if (isFocusing) Color(0xFF34D399) else if (displayOverdue) Color(0xFFF87171) else DarkTextSecondary,
                 )
             }
         }
@@ -971,10 +976,10 @@ private fun TaskFocusPanel(
                         fontSize = 46.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-1).sp,
-                        color = if (overdue) Color(0xFFF87171) else BrandPrimary,
+                        color = if (displayOverdue) Color(0xFFF87171) else BrandPrimary,
                     )
                     Text(
-                        text = if (overdue) "overdue" else "remaining",
+                        text = if (displayOverdue) "overdue" else "remaining",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextMuted,
@@ -998,7 +1003,7 @@ private fun TaskFocusPanel(
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = if (overdue) Color(0xFFEF4444) else BrandPrimary,
+                         color = if (displayOverdue) Color(0xFFEF4444) else BrandPrimary,
                         trackColor = DarkSurfaceVariant,
                     )
                     Row(
@@ -1006,7 +1011,7 @@ private fun TaskFocusPanel(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = if (overdue) "Overdue" else "${(progress * 100).toInt()}% complete",
+                             text = if (displayOverdue) "Overdue" else "${(progress * 100).toInt()}% complete",
                             fontSize = 12.sp,
                             color = DarkTextSecondary,
                         )
@@ -1054,7 +1059,7 @@ private fun TaskFocusPanel(
         }
 
         // Overdue Action Box
-        if (overdue && task.status !in setOf("completed", "skipped")) {
+        if (displayOverdue) {
             item {
                 Box(
                     modifier = Modifier

@@ -94,6 +94,7 @@ class TaskEndAlarmReceiver : BroadcastReceiver() {
                 context.sendBroadcast(
                     Intent(ForegroundTaskService.ACTION_TASK_ENDED).apply {
                         `package` = context.packageName
+                        putExtra(ForegroundTaskService.EXTRA_TASK_ID, taskId)
                     }
                 )
             } catch (e: Exception) {

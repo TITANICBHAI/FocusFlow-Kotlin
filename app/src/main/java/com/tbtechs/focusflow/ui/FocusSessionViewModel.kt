@@ -1,7 +1,11 @@
 package com.tbtechs.focusflow.ui
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,6 +17,7 @@ import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
+import com.tbtechs.focusflow.enforcement.ForegroundTaskService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -80,12 +85,14 @@ class FocusSessionViewModel(
     context: Context,
 ) : ViewModel() {
 
+    private val appContext = context.applicationContext
     // FLAG-3: not in AppModule — instantiated with applicationContext directly.
-    private val foregroundServiceController = ForegroundServiceController(context.applicationContext)
-    private val prefs = context.applicationContext.getSharedPreferences(
+    private val foregroundServiceController = ForegroundServiceController(appContext)
+    private val prefs = appContext.getSharedPreferences(
         AppBlockerAccessibilityService.PREFS_NAME,
         Context.MODE_PRIVATE,
     )
+    private var taskEndedReceiverRegistered = false
 
     // ─── State ────────────────────────────────────────────────────────────────
 
@@ -157,6 +164,26 @@ class FocusSessionViewModel(
             }
         }
 
+    private val taskEndedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != ForegroundTaskService.ACTION_TASK_ENDED) return
+            val taskId = intent
+                .getStringExtra(ForegroundTaskService.EXTRA_TASK_ID)
+                ?.takeIf { it.isNotBlank() }
+                ?: return
+
+            viewModelScope.launch {
+                val activeSession = focusSessionRepository.getActiveFocusSession()
+                if (activeSession?.taskId != taskId) return@launch
+
+                focusSessionRepository.endFocusSession(taskId)
+                settingsRepository.clearActiveTask()
+                _focusSession.value = null
+                _focusViolationApp.value = null
+            }
+        }
+    }
+
     // ─── Init ─────────────────────────────────────────────────────────────────
 
     init {
@@ -165,6 +192,18 @@ class FocusSessionViewModel(
             AppBlockerAccessibilityService.PREF_CURRENT_VIOLATION_APP,
             null,
         )
+        val taskEndedFilter = IntentFilter(ForegroundTaskService.ACTION_TASK_ENDED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            appContext.registerReceiver(
+                taskEndedReceiver,
+                taskEndedFilter,
+                Context.RECEIVER_NOT_EXPORTED,
+            )
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            appContext.registerReceiver(taskEndedReceiver, taskEndedFilter)
+        }
+        taskEndedReceiverRegistered = true
         viewModelScope.launch {
             focusSessionRepository.observeActiveFocusSession().collect { session ->
                 _focusSession.value = session
@@ -174,6 +213,10 @@ class FocusSessionViewModel(
 
     override fun onCleared() {
         prefs.unregisterOnSharedPreferenceChangeListener(violationPreferenceListener)
+        if (taskEndedReceiverRegistered) {
+            runCatching { appContext.unregisterReceiver(taskEndedReceiver) }
+            taskEndedReceiverRegistered = false
+        }
         super.onCleared()
     }
 

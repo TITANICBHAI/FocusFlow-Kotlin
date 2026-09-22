@@ -89,7 +89,9 @@ fun HomeScreen(
     val isDbUnrecoverable by appBootViewModel.isDbUnrecoverable.collectAsState()
     val todayTasks = remember(tasks) { tasks.filter(Task::isToday) }
     val activeTask = remember(todayTasks, focusSession) {
-        todayTasks.firstOrNull { it.id == focusSession?.taskId }
+        todayTasks
+            .filter { it.status !in setOf("completed", "skipped") }
+            .firstOrNull { it.id == focusSession?.taskId }
             ?: todayTasks.firstOrNull(Task::isRunningNow)
     }
     val bannerTask = activeTask
@@ -103,6 +105,24 @@ fun HomeScreen(
     var extendTask by remember { mutableStateOf<Task?>(null) }
     var deleteTask by remember { mutableStateOf<Task?>(null) }
     var skipTask by remember { mutableStateOf<Task?>(null) }
+
+    fun completeAndMaybeStop(task: Task) {
+        taskViewModel.completeTask(task.id)
+        if ((!settings.keepFocusActiveUntilTaskEnd || task.isAwaitingDecision()) &&
+            focusSessionViewModel.focusSession.value?.taskId == task.id
+        ) {
+            focusSessionViewModel.stopFocusMode()
+        }
+    }
+
+    fun skipAndMaybeStop(task: Task) {
+        taskViewModel.skipTask(task.id)
+        if ((!settings.keepFocusActiveUntilTaskEnd || task.isAwaitingDecision()) &&
+            focusSessionViewModel.focusSession.value?.taskId == task.id
+        ) {
+            focusSessionViewModel.stopFocusMode()
+        }
+    }
 
     when {
         isDbUnrecoverable -> DatabaseUnavailable(onRetry = appBootViewModel::retry)
@@ -171,12 +191,7 @@ fun HomeScreen(
                     ActiveTaskBanner(
                         task = bannerTask,
                         onOpen = { detailTask = bannerTask },
-                        onComplete = {
-                            taskViewModel.completeTask(bannerTask.id)
-                            if (!settingsViewModel.settings.value.keepFocusActiveUntilTaskEnd) {
-                                focusSessionViewModel.stopFocusMode()
-                            }
-                        },
+                        onComplete = { completeAndMaybeStop(bannerTask) },
                         onExtend = { extendTask = bannerTask },
                         onSkip = { skipTask = bannerTask },
                         onStartFocus = { focusSessionViewModel.startFocusMode(bannerTask.id) },
@@ -196,13 +211,10 @@ fun HomeScreen(
                                 task = task,
                                 isActive = task.id == activeTask?.id,
                                 onOpen = { detailTask = task },
-                                onComplete = {
-                                    taskViewModel.completeTask(it)
-                                    if (!settingsViewModel.settings.value.keepFocusActiveUntilTaskEnd &&
-                                        focusSessionViewModel.focusSession.value?.taskId == it
-                                    ) {
-                                        focusSessionViewModel.stopFocusMode()
-                                    }
+                                onComplete = { taskId ->
+                                    todayTasks.firstOrNull { it.id == taskId }
+                                        ?.let(::completeAndMaybeStop)
+                                        ?: taskViewModel.completeTask(taskId)
                                 },
                                 onSkip = { skipTask = task },
                                 onExtend = { extendTask = task },
@@ -225,7 +237,7 @@ fun HomeScreen(
         TaskDetailModal(
             task = task,
             onDismiss = { detailTask = null },
-            onComplete = { taskViewModel.completeTask(task.id); detailTask = null },
+            onComplete = { completeAndMaybeStop(task); detailTask = null },
             onSkip = { detailTask = null; skipTask = task },
             onExtend = { detailTask = null; extendTask = task },
             onStartFocus = { focusSessionViewModel.startFocusMode(task.id); detailTask = null },
@@ -279,7 +291,7 @@ fun HomeScreen(
             text = { Text("Skip “${task.title}”?") },
             confirmButton = {
                 Button(
-                    onClick = { taskViewModel.skipTask(task.id); skipTask = null },
+                    onClick = { skipAndMaybeStop(task); skipTask = null },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
              shape = RoundedCornerShape(14.dp),
                 ) { Text("Skip") }
