@@ -51,10 +51,11 @@ when a brief's name, schema, or lifecycle differs from the current project.
 
 ## Verification
 
-- [ ] Run the repository's GitHub Actions Android build.
-- [ ] Confirm Room schema generation and migration validation pass.
-- [ ] Confirm the debug APK artifact is uploaded.
-- [ ] Update this section with the GitHub Actions run URL and result.
+- [x] Run the repository's GitHub Actions Android build.
+- [x] Confirm Room schema generation and migration validation pass.
+- [x] Confirm the debug APK artifact is uploaded.
+- [x] GitHub Actions run `35705729749` passed:
+  `https://github.com/TITANICBHAI/FocusFlow-Kotlin/actions/runs/35705729749`
 
 ## Follow-up scope
 
