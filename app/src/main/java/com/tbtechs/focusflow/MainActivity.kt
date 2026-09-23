@@ -118,6 +118,7 @@ private fun FocusFlowRoot(
             taskRepository = AppModule.taskRepository,
             settingsRepository = AppModule.settingsRepository,
             context = context,
+            foregroundServiceController = AppModule.foregroundServiceController,
         )
     }
     val taskViewModel = remember {

@@ -131,6 +131,9 @@ class FocusSessionRepository(
      * their end point, matching the JS `const end = row.ended_at ? … : now`.
      */
     suspend fun getTodayFocusMinutes(): Int {
+        // Keep statistics from counting stale active rows when this method is
+        // called independently of the app boot/session Flow.
+        repairOrphanedSessions()
         val startOfDay = LocalDate.now(ZoneId.systemDefault())
             .atStartOfDay(ZoneId.systemDefault())
             .toInstant()
@@ -357,6 +360,10 @@ class FocusSessionRepository(
 
     /** Returns bounded lifetime aggregates for Stats and AchievementEngine. */
     suspend fun getLifetimeStats(): LifetimeStats {
+        // Lifetime aggregates include active rows, so repair stale rows before
+        // calculating them even when the profile/stats screen is opened
+        // independently of the normal app boot sequence.
+        repairOrphanedSessions()
         val aggregate = focusSessionDao.getLifetimeStatsAggregate(Instant.now().toString())
             ?: LifetimeStatsRow(0, 0, 0, 0.0, 0, null)
         return LifetimeStats(

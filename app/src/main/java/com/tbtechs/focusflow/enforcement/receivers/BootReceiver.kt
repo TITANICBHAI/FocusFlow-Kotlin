@@ -50,6 +50,9 @@ class BootReceiver : BroadcastReceiver() {
             AppBlockerAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE
         )
 
+        // Boot recovery only restores the enforcement preferences and service.
+        // Room orphan-session repair belongs to AppBootViewModel and the
+        // FocusSessionRepository flow once the user's database is available.
         val focusActive   = prefs.getBoolean("focus_active", false)
         val endTimeMs     = prefs.getLong("task_end_ms", 0L)
         val startTimeMs   = prefs.getLong("task_start_ms", 0L)

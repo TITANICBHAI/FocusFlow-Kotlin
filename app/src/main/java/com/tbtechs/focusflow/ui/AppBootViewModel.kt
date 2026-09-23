@@ -140,7 +140,6 @@ class AppBootViewModel(
                 // This is the first Room query; if the DB is corrupt or the schema
                 // migration in FocusFlowDatabase failed, it will throw here.
                 taskRepository.getRecentUnresolvedTasks()
-                _isDbReady.value = true
 
                 // ── Step 3: Active session recovery ───────────────────────────
                 focusSessionRepository.repairOrphanedSessions()
@@ -148,6 +147,9 @@ class AppBootViewModel(
                 if (activeSession != null) {
                     onSessionRecovered?.invoke()
                 }
+                // Do not expose the database to the main UI until orphan repair
+                // and active-session recovery have completed.
+                _isDbReady.value = true
 
             } catch (e: Exception) {
                 // DB open / migration failure — unrecoverable.

@@ -7,7 +7,7 @@ implementation details change.
 ## Status legend
 
 - `[ ]` Open
-- `[~]` In progress
+- `[~]` Implementation present; runtime verification pending
 - `[x]` Fixed and verified
 - `[-]` Won't fix or not a bug
 - `[?]` Verify only / informational
@@ -29,7 +29,8 @@ TF1, T1, T2, T3, F7.
 
 This batch keeps Room task times, AlarmManager alarms, foreground-service
 timers, and app-blocking state synchronized during creation, editing, and
-extension. An optional “keep the idle service running” setting is intentionally
+extension. The implementation is present; runtime verification remains
+pending. An optional “keep the idle service running” setting is intentionally
 deferred because it would change battery and notification behavior beyond the
 bug fix.
 
@@ -39,7 +40,8 @@ F6, TF5, TF6, T4, T5.
 
 This batch repairs stale sessions, closes task/focus races, protects the
 preserved task during bulk deletion, avoids full-table lookups, and rejects
-invalid time ranges.
+invalid time ranges. The implementation is present; runtime verification
+remains pending.
 
 ### Batch 4 — Enforcement and notification edge cases
 
@@ -47,6 +49,7 @@ AB1, AB2, AB3, AB4, AB6.
 
 This batch makes retry blocking, reminders, notification actions, expiry
 feedback, and session preference cleanup use one consistent end-time model.
+The implementation is present; runtime verification remains pending.
 
 ### Batch 5 — Cleanup and verification-only findings
 
@@ -54,7 +57,8 @@ F2, T6, AB5, AB7.
 
 This batch removes stale coordination comments, resolves or documents the
 unreachable scheduler type, records the reboot limitation, and preserves the
-allow-list behavior that is confirmed to be by design.
+allow-list behavior that is confirmed to be by design. The cleanup is complete;
+AB5 remains informational rather than a code fix.
 
 ## Recommended fix order
 
@@ -63,7 +67,7 @@ AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 �
 
 ## Tracker
 
-| Done | ID | Severity | Area | Batch | Work item | Verification |
+| Status | ID | Severity | Area | Batch | Work item | Verification |
 |---|---|---|---|---|---|---|
 | [~] | F1 | Critical | Focus | 1 | Receive `ACTION_TASK_ENDED` and end the active Room session | Timer completion clears the Room session and Focus UI |
 | [~] | TF2 | Critical | Both | 1 | Ensure Done ends overdue Focus Mode even with keep-alive enabled | Completed task cannot leave an active Focus session |

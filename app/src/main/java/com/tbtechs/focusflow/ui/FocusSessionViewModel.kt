@@ -54,17 +54,13 @@ import java.time.Instant
  *         refreshed when Room changes, including external writes and boot
  *         recovery. This former limitation has been resolved.
  *
- * FLAG-2  [focusViolationApp] has no backing source in any repository.
- *         AppBlockerAccessibilityService detects violations in a separate process.
- *         There is no bridge (SharedPreferences key, broadcast, ContentProvider)
- *         to propagate the violated package name to this ViewModel.
- *         Fix: write violated package to a SharedPreferences key (e.g.
- *         "current_violation_app") from AppBlockerAccessibilityService, then
- *         listen for it here via SharedPreferences.OnSharedPreferenceChangeListener.
+ * FLAG-2  [focusViolationApp] is bridged through the shared
+ *         PREF_CURRENT_VIOLATION_APP SharedPreferences key. The accessibility
+ *         service writes the package name and this ViewModel observes changes
+ *         through SharedPreferences.OnSharedPreferenceChangeListener.
  *
- * FLAG-3  [ForegroundServiceController] is not in AppModule. Instantiated here
- *         directly with applicationContext. Once AppModule registers it, replace
- *         the inline instantiation with AppModule.foregroundServiceController.
+ * FLAG-3  [ForegroundServiceController] is provided by AppModule and injected
+ *         into this ViewModel so focus lifecycle operations share one controller.
  *
  * FLAG-4  [startFocusMode] resolves the task via TaskRepository.getTaskById().
  *         No-op if taskId is not found. Requires the tasks Flow to have emitted
@@ -82,11 +78,10 @@ class FocusSessionViewModel(
     private val taskRepository: TaskRepository,
     private val settingsRepository: SettingsRepository,
     context: Context,
+    private val foregroundServiceController: ForegroundServiceController,
 ) : ViewModel() {
 
     private val appContext = context.applicationContext
-    // FLAG-3: not in AppModule — instantiated with applicationContext directly.
-    private val foregroundServiceController = ForegroundServiceController(appContext)
     private val prefs = appContext.getSharedPreferences(
         AppBlockerAccessibilityService.PREFS_NAME,
         Context.MODE_PRIVATE,
@@ -152,7 +147,7 @@ class FocusSessionViewModel(
     /**
      * Package name of the app that most recently triggered a focus violation,
      * or null if no violation has been detected this session.
-     * See FLAG-2 — updated only via [onViolationDetected]; no enforcement bridge yet.
+     * The enforcement bridge also updates this value through SharedPreferences.
      */
     private val _focusViolationApp = MutableStateFlow<String?>(null)
     val focusViolationApp: StateFlow<String?> = _focusViolationApp.asStateFlow()
@@ -415,8 +410,8 @@ class FocusSessionViewModel(
      * Updates [focusViolationApp] when the enforcement layer detects a blocked-app
      * access during a focus session.
      *
-     * See FLAG-2 — wire this to a BroadcastReceiver or SharedPreferences listener
-     * once the enforcement bridge is implemented in AppBlockerAccessibilityService.
+     * The SharedPreferences listener is the primary cross-process bridge; this
+     * method remains available for direct callers and tests.
      */
     fun onViolationDetected(packageName: String) {
         _focusViolationApp.value = packageName
@@ -477,6 +472,7 @@ class FocusSessionViewModel(
                     taskRepository = AppModule.taskRepository,
                     settingsRepository = AppModule.settingsRepository,
                     context = ctx,
+                    foregroundServiceController = AppModule.foregroundServiceController,
                 ) as T
             }
 
@@ -489,6 +485,7 @@ class FocusSessionViewModel(
                     taskRepository = AppModule.taskRepository,
                     settingsRepository = AppModule.settingsRepository,
                     context = ctx,
+                    foregroundServiceController = AppModule.foregroundServiceController,
                 ) as T
             }
         }
