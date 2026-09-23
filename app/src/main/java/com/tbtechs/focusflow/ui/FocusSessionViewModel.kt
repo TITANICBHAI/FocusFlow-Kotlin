@@ -63,8 +63,8 @@ import java.time.Instant
  *         into this ViewModel so focus lifecycle operations share one controller.
  *
  * FLAG-4  [startFocusMode] resolves the task via TaskRepository.getTaskById().
- *         No-op if taskId is not found. Requires the tasks Flow to have emitted
- *         at least once (guaranteed after TaskViewModel.init completes).
+ *         No-op if taskId is not found. The direct Room lookup does not depend
+ *         on the task-list Flow having emitted first.
  *
  * FLAG-5  The "use global allowed_packages" fallback (when task.focusAllowedPackages
  *         is null) reads the raw SharedPreferences key "allowed_packages" through
@@ -222,7 +222,7 @@ class FocusSessionViewModel(
      *
      * Sequence (fulfils the Track C TODO comments in FocusSessionRepository and
      * Risk 9 in ARCHITECTURE.md):
-     *   1. Look up the task from TaskRepository (FLAG-4).
+     *   1. Look up the task from TaskRepository.getTaskById() (FLAG-4).
      *   2. Insert a new FocusSession row in Room.
      *   3. Start the ForegroundTaskService so its notification is visible before
      *      blocking is enabled.
@@ -232,7 +232,7 @@ class FocusSessionViewModel(
      *   5. Update [focusSession] StateFlow.
      *
      * Backing calls:
-     *   [TaskRepository.observeAllTasks] (.first() — one-shot)
+     *   [TaskRepository.getTaskById] (direct primary-key lookup)
      *   [FocusSessionRepository.startFocusSession]
      *   [SettingsRepository.setFocusActive]
      *   [SettingsRepository.setActiveTask]
@@ -243,7 +243,7 @@ class FocusSessionViewModel(
         viewModelScope.launch {
             focusOperationMutex.withLock {
                 taskRepository.withTaskOperationLock {
-                    // Step 1 — resolve task (FLAG-4)
+                    // Step 1 — resolve task by primary key (FLAG-4)
                     val task = taskRepository.getTaskById(taskId)
                         ?: return@withTaskOperationLock
                     if (task.status == "completed" || task.status == "skipped") {
