@@ -6,15 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.repository.AlarmRepository
+import com.tbtechs.focusflow.data.repository.FocusSessionRepository
+import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import java.time.Instant
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Manages the task list and exposes CRUD operations backed by Room.
@@ -42,6 +43,8 @@ import kotlinx.coroutines.sync.withLock
 class TaskViewModel(
     private val taskRepository: TaskRepository,
     private val alarmRepository: AlarmRepository,
+    private val focusSessionRepository: FocusSessionRepository,
+    private val foregroundServiceController: ForegroundServiceController,
     private val beforeTaskDelete: suspend (taskId: String, pinHash: String?) -> Unit = { _, _ -> },
     private val beforeClearTasks: suspend (pinHash: String?) -> Unit = { _ -> },
 ) : ViewModel() {
@@ -71,12 +74,6 @@ class TaskViewModel(
 
     // ─── Mutating methods ─────────────────────────────────────────────────────
     //
-    // Room serializes individual writes, but that is not enough to protect the
-    // UI snapshot: a refresh can read before a mutation commits and publish an
-    // older list after the mutation. Keep reads and writes behind the same
-    // boundary and resolve each action from the latest persisted snapshot.
-    private val taskOperationMutex = Mutex()
-
     /**
      * Inserts [task] into the database. Duplicate IDs are silently ignored
      * (INSERT OR IGNORE semantics from [TaskRepository.insertTask]).
@@ -85,12 +82,20 @@ class TaskViewModel(
      */
     fun addTask(task: Task) {
         viewModelScope.launch {
-            taskOperationMutex.withLock { taskRepository.insertTask(task) }
-            val endMs = runCatching {
-                Instant.parse(task.endTime).toEpochMilli()
-            }.getOrNull() ?: return@launch
-            if (endMs > System.currentTimeMillis()) {
-                alarmRepository.scheduleAlarm(task.id, task.title, endMs)
+            taskRepository.withTaskOperationLock {
+                if (!hasValidTimeRange(task)) {
+                    reportInvalidTimeRange()
+                    return@withTaskOperationLock
+                }
+                taskRepository.insertTask(task)
+                val endMs = runCatching {
+                    Instant.parse(task.endTime).toEpochMilli()
+                }.getOrNull() ?: return@withTaskOperationLock
+                if (endMs > System.currentTimeMillis() &&
+                    task.status !in setOf("completed", "skipped")
+                ) {
+                    alarmRepository.scheduleAlarm(task.id, task.title, endMs)
+                }
             }
         }
     }
@@ -102,14 +107,23 @@ class TaskViewModel(
      */
     fun updateTask(task: Task) {
         viewModelScope.launch {
-            taskOperationMutex.withLock { taskRepository.updateTask(task) }
-            // Cancel old alarm then reschedule for updated end time
-            alarmRepository.cancelAlarm(task.id)
-            val endMs = runCatching {
-                Instant.parse(task.endTime).toEpochMilli()
-            }.getOrNull() ?: return@launch
-            if (endMs > System.currentTimeMillis()) {
-                alarmRepository.scheduleAlarm(task.id, task.title, endMs)
+            taskRepository.withTaskOperationLock {
+                if (!hasValidTimeRange(task)) {
+                    reportInvalidTimeRange()
+                    return@withTaskOperationLock
+                }
+                taskRepository.updateTask(task)
+                // Cancel old alarm then reschedule for updated end time while
+                // holding the same mutex as the Room write.
+                alarmRepository.cancelAlarm(task.id)
+                val endMs = runCatching {
+                    Instant.parse(task.endTime).toEpochMilli()
+                }.getOrNull() ?: return@withTaskOperationLock
+                if (endMs > System.currentTimeMillis() &&
+                    task.status !in setOf("completed", "skipped")
+                ) {
+                    alarmRepository.scheduleAlarm(task.id, task.title, endMs)
+                }
             }
         }
     }
@@ -124,7 +138,7 @@ class TaskViewModel(
      */
     fun deleteTask(taskId: String, pinHash: String? = null) {
         viewModelScope.launch {
-            taskOperationMutex.withLock {
+            taskRepository.withTaskOperationLock {
                 beforeTaskDelete(taskId, pinHash)
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
@@ -143,7 +157,7 @@ class TaskViewModel(
      */
     fun clearAllTasks(pinHash: String? = null) {
         viewModelScope.launch {
-            taskOperationMutex.withLock {
+            taskRepository.withTaskOperationLock {
                 beforeClearTasks(pinHash)
                 val allTasks = taskRepository.getAllTasks()
                 allTasks.forEach {
@@ -161,8 +175,11 @@ class TaskViewModel(
      */
     fun clearAllTasksExcept(excludedTaskId: String, pinHash: String? = null) {
         viewModelScope.launch {
-            taskOperationMutex.withLock {
-                beforeClearTasks(pinHash)
+            taskRepository.withTaskOperationLock {
+                val activeSession = focusSessionRepository.getActiveFocusSession()
+                if (activeSession?.taskId != excludedTaskId) {
+                    beforeClearTasks(pinHash)
+                }
                 val allTasks = taskRepository.getAllTasks()
                 allTasks.filter { it.id != excludedTaskId }.forEach {
                     alarmRepository.cancelAlarm(it.id)
@@ -181,9 +198,9 @@ class TaskViewModel(
      */
     fun completeTask(taskId: String) {
         viewModelScope.launch {
-            taskOperationMutex.withLock {
-                val task = taskRepository.getAllTasks().firstOrNull { it.id == taskId } ?: return@withLock
-                if (task.status == "completed" || task.status == "skipped") return@withLock
+            taskRepository.withTaskOperationLock {
+                val task = taskRepository.getTaskById(taskId) ?: return@withTaskOperationLock
+                if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
                 taskRepository.updateTask(task.copy(status = "completed", updatedAt = Instant.now().toString()))
@@ -199,9 +216,9 @@ class TaskViewModel(
      */
     fun skipTask(taskId: String) {
         viewModelScope.launch {
-            taskOperationMutex.withLock {
-                val task = taskRepository.getAllTasks().firstOrNull { it.id == taskId } ?: return@withLock
-                if (task.status == "completed" || task.status == "skipped") return@withLock
+            taskRepository.withTaskOperationLock {
+                val task = taskRepository.getTaskById(taskId) ?: return@withTaskOperationLock
+                if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
                 taskRepository.updateTask(task.copy(status = "skipped", updatedAt = Instant.now().toString()))
@@ -217,8 +234,11 @@ class TaskViewModel(
      */
     fun extendTaskTime(taskId: String, minutes: Int) {
         viewModelScope.launch {
-            taskOperationMutex.withLock {
-                val task = taskRepository.getAllTasks().firstOrNull { it.id == taskId } ?: return@withLock
+            taskRepository.withTaskOperationLock {
+                val task = taskRepository.getTaskById(taskId) ?: return@withTaskOperationLock
+                if (task.status == "completed" || task.status == "skipped") {
+                    return@withTaskOperationLock
+                }
                 val newEnd = Instant.parse(task.endTime).plusMillis(minutes * 60_000L)
                 taskRepository.updateTask(
                     task.copy(
@@ -233,8 +253,27 @@ class TaskViewModel(
                 if (newEndMs > System.currentTimeMillis()) {
                     alarmRepository.scheduleAlarm(taskId, task.title, newEndMs)
                 }
+                if (focusSessionRepository.getActiveFocusSession()?.taskId == taskId) {
+                    foregroundServiceController.updateNotification(
+                        taskId = taskId,
+                        taskName = task.title,
+                        endTimeMs = newEndMs,
+                        nextName = null,
+                    )
+                }
             }
         }
+    }
+
+    private fun hasValidTimeRange(task: Task): Boolean = runCatching {
+        Instant.parse(task.endTime).isAfter(Instant.parse(task.startTime))
+    }.getOrDefault(false)
+
+    private fun reportInvalidTimeRange() {
+        AppErrorEvents.report(
+            tag = "Tasks",
+            message = "A task's end time must be after its start time.",
+        )
     }
 
     companion object {
@@ -244,6 +283,8 @@ class TaskViewModel(
                 return TaskViewModel(
                     taskRepository = AppModule.taskRepository,
                     alarmRepository = AppModule.alarmRepository,
+                    focusSessionRepository = AppModule.focusSessionRepository,
+                    foregroundServiceController = AppModule.foregroundServiceController,
                 ) as T
             }
 
@@ -252,6 +293,8 @@ class TaskViewModel(
                 return TaskViewModel(
                     taskRepository = AppModule.taskRepository,
                     alarmRepository = AppModule.alarmRepository,
+                    focusSessionRepository = AppModule.focusSessionRepository,
+                    foregroundServiceController = AppModule.foregroundServiceController,
                 ) as T
             }
         }

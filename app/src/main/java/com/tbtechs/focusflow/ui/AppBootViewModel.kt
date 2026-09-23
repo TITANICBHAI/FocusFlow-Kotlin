@@ -143,6 +143,7 @@ class AppBootViewModel(
                 _isDbReady.value = true
 
                 // ── Step 3: Active session recovery ───────────────────────────
+                focusSessionRepository.repairOrphanedSessions()
                 val activeSession = focusSessionRepository.getActiveFocusSession()
                 if (activeSession != null) {
                     onSessionRecovered?.invoke()

@@ -14,6 +14,8 @@ import com.tbtechs.focusflow.data.local.entity.FocusSessionEntity
 import com.tbtechs.focusflow.data.model.FocusSession
 import com.tbtechs.focusflow.analytics.LifetimeStats
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -98,9 +100,24 @@ class FocusSessionRepository(
     suspend fun getActiveFocusSession(): FocusSession? =
         focusSessionDao.getActiveSession()?.toDomain()
 
-    /** Emits the active session whenever Room observes a lifecycle change. */
-    fun observeActiveFocusSession(): Flow<FocusSession?> =
-        focusSessionDao.observeActiveSession().map { it?.toDomain() }
+    /**
+     * Ends stale active rows before the next session read can expose them as
+     * current. A 12-hour cutoff preserves genuinely long-running sessions.
+     */
+    suspend fun repairOrphanedSessions(): Int {
+        val now = Instant.now()
+        val cutoff = now.minus(12, ChronoUnit.HOURS)
+        return focusSessionDao.endOrphanedSessions(
+            cutoff = cutoff.toString(),
+            now = now.toString(),
+        )
+    }
+
+    /** Repairs stale rows, then emits the active session on Room changes. */
+    fun observeActiveFocusSession(): Flow<FocusSession?> = flow {
+        repairOrphanedSessions()
+        emitAll(focusSessionDao.observeActiveSession().map { it?.toDomain() })
+    }
 
     /**
      * Returns the total focus minutes logged today (local calendar day).

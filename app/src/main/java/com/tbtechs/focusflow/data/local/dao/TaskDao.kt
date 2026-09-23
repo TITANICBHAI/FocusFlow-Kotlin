@@ -48,6 +48,10 @@ interface TaskDao {
 
     // ── One-shot lookups ──────────────────────────────────────────────────────
 
+    /** Returns one task by primary key without loading the full task table. */
+    @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+    suspend fun getTaskById(taskId: String): TaskEntity?
+
     /**
      * Tasks that ended within [cutoff, now) but are still unresolved
      * (status ≠ 'completed' or 'skipped'). Maps to `dbGetRecentUnresolvedTasks`.

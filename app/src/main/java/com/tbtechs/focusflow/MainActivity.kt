@@ -124,6 +124,8 @@ private fun FocusFlowRoot(
         TaskViewModel(
             taskRepository = AppModule.taskRepository,
             alarmRepository = AppModule.alarmRepository,
+            focusSessionRepository = AppModule.focusSessionRepository,
+            foregroundServiceController = AppModule.foregroundServiceController,
             beforeTaskDelete = { taskId, pinHash ->
                 AppModule.alarmRepository.cancelAlarm(taskId)
                 AppModule.alarmRepository.dismissAlarm(taskId)
@@ -251,9 +253,23 @@ private fun FocusFlowRoot(
         val taskId = prefs.getString(NotificationActionReceiver.PREF_PENDING_TASK_ID, null)
         val minutes = prefs.getInt(NotificationActionReceiver.PREF_PENDING_MINUTES, 15)
         val timestamp = prefs.getLong(NotificationActionReceiver.PREF_PENDING_TIME_MS, 0L)
-        if (action.isNullOrBlank() || taskId.isNullOrBlank() ||
+        if (action.isNullOrBlank() || taskId.isNullOrBlank()) {
+            return@LaunchedEffect
+        }
+        val expired = timestamp <= 0L ||
             System.currentTimeMillis() - timestamp > 5 * 60 * 1_000L
-        ) {
+        if (expired) {
+            prefs.edit()
+                .remove(NotificationActionReceiver.PREF_PENDING_ACTION)
+                .remove(NotificationActionReceiver.PREF_PENDING_TASK_ID)
+                .remove(NotificationActionReceiver.PREF_PENDING_MINUTES)
+                .remove(NotificationActionReceiver.PREF_PENDING_TIME_MS)
+                .apply()
+            Toast.makeText(
+                context,
+                "That action expired — open the task to try again.",
+                Toast.LENGTH_LONG,
+            ).show()
             return@LaunchedEffect
         }
         prefs.edit()

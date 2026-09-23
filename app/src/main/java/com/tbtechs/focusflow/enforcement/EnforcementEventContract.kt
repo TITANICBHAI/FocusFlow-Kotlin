@@ -3,13 +3,12 @@ package com.tbtechs.focusflow.enforcement
 /**
  * Application-local broadcast contract shared by native enforcement components.
  *
- * This replaces the historical React Native bridge constants. The broadcasts
- * remain intentionally explicit because receivers and the UI may be running
- * in different process lifetimes.
+ * This contains the native enforcement broadcasts that have active consumers.
+ * Notification actions use the persisted replay path in
+ * [receivers.NotificationActionReceiver] and are intentionally not duplicated
+ * as an unreceived bridge broadcast.
  */
 object EnforcementEventContract {
     const val ACTION_APP_BLOCKED = "com.tbtechs.focusflow.APP_BLOCKED"
     const val EXTRA_BLOCKED_PKG = "blockedPackage"
-    const val ACTION_NOTIF_ACTION = "com.tbtechs.focusflow.NOTIF_ACTION"
-    const val EXTRA_NOTIF_ACTION_TYPE = "notifActionType"
 }

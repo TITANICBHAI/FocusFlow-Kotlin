@@ -91,6 +91,20 @@ interface FocusSessionDao {
     fun observeActiveSession(): Flow<FocusSessionEntity?>
 
     /**
+     * Ends active sessions that have no end timestamp and predate [cutoff].
+     * These are stale rows left by a killed process or an interrupted lifecycle
+     * transition, not currently running focus sessions.
+     */
+    @Query("""
+        UPDATE focus_sessions
+        SET is_active = 0, ended_at = :now
+        WHERE is_active = 1
+          AND ended_at IS NULL
+          AND started_at < :cutoff
+    """)
+    suspend fun endOrphanedSessions(cutoff: String, now: String): Int
+
+    /**
      * Returns all sessions that started on or after [startOfDay] (ISO timestamp).
      * Used by [FocusSessionRepository.getTodayFocusMinutes] to load the raw rows;
      * the 6-hour-per-session cap and summation are applied in the repository

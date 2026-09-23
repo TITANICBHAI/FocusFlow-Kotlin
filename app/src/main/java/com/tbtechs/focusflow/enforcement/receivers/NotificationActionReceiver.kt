@@ -1,7 +1,6 @@
 package com.tbtechs.focusflow.enforcement.receivers
 
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
-import com.tbtechs.focusflow.enforcement.EnforcementEventContract
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -21,8 +20,8 @@ import android.content.Intent
  *     1. Writes a "pending_notif_action" entry to SharedPrefs as a fallback
  *        in case the app process is not yet alive.
  *     2. Launches MainActivity so the UI process starts (if not already alive).
- *     3. Sends an application-local broadcast for immediate handling when the
- *        app process is already active.
+ *     3. Brings MainActivity to the foreground; its onNewIntent path replays
+ *        the persisted action immediately when the app process is active.
  */
 class NotificationActionReceiver : BroadcastReceiver() {
 
@@ -57,19 +56,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .putLong(PREF_PENDING_TIME_MS,   System.currentTimeMillis())
             .apply()
 
-        // 2. Launch MainActivity to wake up the React instance (no-op if already foreground).
+        // 2. Launch MainActivity to wake up the UI process (no-op if already foreground).
         val launchIntent = context.packageManager
             .getLaunchIntentForPackage(context.packageName)
             ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP }
         launchIntent?.let { context.startActivity(it) }
-
-        // 3. Send broadcast for immediate handling if React is already alive.
-        val bridgeIntent = Intent(EnforcementEventContract.ACTION_NOTIF_ACTION).apply {
-            `package` = context.packageName
-            putExtra(EnforcementEventContract.EXTRA_NOTIF_ACTION_TYPE, action)
-            putExtra(EXTRA_TASK_ID, taskId)
-            putExtra(EXTRA_MINUTES, minutes)
-        }
-        context.sendBroadcast(bridgeIntent)
     }
 }

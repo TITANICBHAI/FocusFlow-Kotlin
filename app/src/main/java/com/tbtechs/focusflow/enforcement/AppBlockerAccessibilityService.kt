@@ -631,10 +631,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             return
         }
 
-        val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false).let { on ->
-            if (!on) false
-            else prefs.getLong("task_end_ms", 0L).let { end -> end <= 0L || now < end }
-        }
+        val focusActive = isFocusActiveNow(now)
         val saActive = prefs.getBoolean(PREF_SA_ACTIVE, false).let { on ->
             if (!on) false
             else prefs.getLong(PREF_SA_UNTIL, 0L).let { until -> until <= 0L || now < until }
@@ -789,10 +786,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             return
         }
 
-        val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false).let { on ->
-            if (!on) false
-            else prefs.getLong("task_end_ms", 0L).let { end -> end <= 0L || now <= end }
-        }
+        val focusActive = isFocusActiveNow(now)
         val saActive = prefs.getBoolean(PREF_SA_ACTIVE, false).let { on ->
             if (!on) false
             else prefs.getLong(PREF_SA_UNTIL, 0L).let { until -> until <= 0L || now <= until }
@@ -997,15 +991,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val wasFocusActive = prefs.getBoolean(PREF_FOCUS_ON, false)
         val wasSaActive = prefs.getBoolean(PREF_SA_ACTIVE, false)
         val alwaysBlockActive = prefs.getBoolean(PREF_ALWAYS_BLOCK, false)
-        var focusActive = wasFocusActive
-        if (focusActive) {
-            val endMs = prefs.getLong("task_end_ms", 0L)
-            if (endMs > 0L && now > endMs) {
-                prefs.edit().putBoolean(PREF_FOCUS_ON, false).apply()
-                focusActive = false
-                lastBlockedPkg = null
-            }
-        }
+        val focusActive = wasFocusActive
 
         // ── Standalone block state ────────────────────────────────────────────
         var saActive = prefs.getBoolean(PREF_SA_ACTIVE, false)
@@ -1077,9 +1063,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         if (focusActive) {
             if (isRecentsScreen(pkg, cls, ev)) {
                 handler.post {
-                    val stillFocused = prefs.getBoolean(PREF_FOCUS_ON, false)
-                    val endMs = prefs.getLong("task_end_ms", 0L)
-                    if (stillFocused && (endMs <= 0L || System.currentTimeMillis() <= endMs)) {
+                    if (isFocusActiveNow()) {
                         performGlobalAction(GLOBAL_ACTION_HOME)
                     }
                 }
@@ -1663,13 +1647,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         if (NetworkBlockerVpnService.isRunning) return
 
         val now = System.currentTimeMillis()
-        val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false).let { on ->
-            if (!on) false
-            else {
-                val endMs = prefs.getLong("task_end_ms", 0L)
-                endMs <= 0L || now < endMs
-            }
-        }
+        val focusActive = isFocusActiveNow(now)
         val saActive = prefs.getBoolean(PREF_SA_ACTIVE, false).let { on ->
             if (!on) false
             else {
@@ -1721,7 +1699,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     ) {
         if (attempt > MAX_RETRY_ATTEMPTS) return
         handler.postDelayed({
-            val focusActive  = prefs.getBoolean(PREF_FOCUS_ON, false)
+            val focusActive  = isFocusActiveNow()
             val saActive     = prefs.getBoolean(PREF_SA_ACTIVE, false)
             val alwaysBlock  = prefs.getBoolean(PREF_ALWAYS_BLOCK, false)
             if (!focusActive && !saActive && !alwaysBlock) return@postDelayed
@@ -2941,10 +2919,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun hasActiveEnforcementSession(now: Long = System.currentTimeMillis()): Boolean {
-        val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false).let { on ->
-            if (!on) false
-            else prefs.getLong("task_end_ms", 0L).let { end -> end <= 0L || now <= end }
-        }
+        val focusActive = isFocusActiveNow(now)
         val saActive = prefs.getBoolean(PREF_SA_ACTIVE, false).let { on ->
             if (!on) false
             else prefs.getLong(PREF_SA_UNTIL, 0L).let { until -> until <= 0L || now <= until }
@@ -2952,6 +2927,23 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         return focusActive ||
             saActive ||
             prefs.getBoolean(PREF_ALWAYS_BLOCK, false)
+    }
+
+    /**
+     * Returns the effective task-focus state, not just the persisted flag.
+     * Expired sessions are cleared here so delayed enforcement paths cannot
+     * re-block an app or post a stale reminder after the task ended.
+     */
+    private fun isFocusActiveNow(now: Long = System.currentTimeMillis()): Boolean {
+        if (!prefs.getBoolean(PREF_FOCUS_ON, false)) return false
+        val endMs = prefs.getLong("task_end_ms", 0L)
+        if (endMs > 0L && now >= endMs) {
+            prefs.edit().putBoolean(PREF_FOCUS_ON, false).apply()
+            lastBlockedPkg = null
+            lastBlockedAtMs = 0L
+            return false
+        }
+        return true
     }
 
     private fun loadUsedObject(): org.json.JSONObject {
@@ -3718,17 +3710,15 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
 
         // 1. Focus mode (task-based session)
-        val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false)
+        val focusActive = isFocusActiveNow(now)
         if (focusActive) {
             val endMs = prefs.getLong("task_end_ms", 0L)
-            if (endMs <= 0L || now < endMs) {
-                val taskName = prefs.getString("task_name", "") ?: ""
-                val timeStr  = if (endMs > 0L) " (until ${formatBlockTime(endMs)})" else ""
-                parts += if (taskName.isNotBlank()) {
-                    "Focus Mode active for “$taskName”$timeStr"
-                } else {
-                    "Focus Mode active$timeStr"
-                }
+            val taskName = prefs.getString("task_name", "") ?: ""
+            val timeStr  = if (endMs > 0L) " (until ${formatBlockTime(endMs)})" else ""
+            parts += if (taskName.isNotBlank()) {
+                "Focus Mode active for “$taskName”$timeStr"
+            } else {
+                "Focus Mode active$timeStr"
             }
         }
 
@@ -3854,12 +3844,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 getBlockedWords().isNotEmpty()
             else -> {
                 val now = System.currentTimeMillis()
-                val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false).let { active ->
-                    if (!active) false
-                    else prefs.getLong("task_end_ms", 0L).let { endMs ->
-                        endMs <= 0L || now <= endMs
-                    }
-                }
+                val focusActive = isFocusActiveNow(now)
                 val saActive = isStandaloneBlockActiveNow()
                 val alwaysBlockActive = prefs.getBoolean(PREF_ALWAYS_BLOCK, false)
                 val sessionActive = focusActive || saActive || alwaysBlockActive
@@ -3934,7 +3919,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
      * a new channel that the user would need to configure.
      */
     private fun postHomeScreenReminder() {
-        val focusActive      = prefs.getBoolean(PREF_FOCUS_ON, false)
+        val focusActive      = isFocusActiveNow()
         val saActive         = prefs.getBoolean(PREF_SA_ACTIVE, false)
         val alwaysBlockActive = prefs.getBoolean(PREF_ALWAYS_BLOCK, false)
         if (!focusActive && !saActive && !alwaysBlockActive) return

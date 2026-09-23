@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.domain
 
+import com.tbtechs.focusflow.data.model.Task as AppTask
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -91,6 +92,8 @@ class SchedulerEngine(
         allTasks: List<Task>,
         options: RebalanceOptions = RebalanceOptions(),
     ): OverrunResult {
+        // `skipped` is a proposal for the caller to review. This pure engine
+        // never persists the returned schedule or silently mutates Room.
         val updatedSchedule = mutableListOf<Task>()
         val skipped = mutableListOf<Task>()
         val shifted = mutableListOf<Task>()
@@ -109,14 +112,14 @@ class SchedulerEngine(
         var cumulativeShift = overrunMinutes
 
         for (task in subsequent) {
-            val priority = task.priority.rank
+            val priority = TaskPriority.rank(task.priority)
 
             if (cumulativeShift <= 0) {
                 updatedSchedule += task
                 continue
             }
 
-            if (priority == TaskPriority.CRITICAL.rank) {
+            if (priority == TaskPriority.CRITICAL) {
                 needsUserConfirm += task
                 updatedSchedule += task
                 cumulativeShift = 0
@@ -124,7 +127,7 @@ class SchedulerEngine(
             }
 
             if (cumulativeShift > options.maxAutoShiftMinutes &&
-                priority <= TaskPriority.MEDIUM.rank
+                TaskPriority.rank(priority) <= TaskPriority.rank(TaskPriority.MEDIUM)
             ) {
                 val skippedTask = task.copy(
                     status = TaskStatus.SKIPPED,
@@ -181,7 +184,7 @@ class SchedulerEngine(
                 continue
             }
 
-            if (task.priority.rank < newTask.priority.rank) {
+            if (TaskPriority.rank(task.priority) < TaskPriority.rank(newTask.priority)) {
                 val shiftedStart = occupiedUntil.plusSeconds(5 * 60L)
                 val durationMinutes = Duration.between(taskStart, taskEnd).toMinutes()
                 val shiftedTask = task.copy(
@@ -351,51 +354,36 @@ class SchedulerEngine(
     private fun formatInstant(value: Instant): String = isoFormatter.format(value)
 }
 
-data class Task(
-    val id: String,
-    val title: String,
-    val startTime: String,
-    val endTime: String,
-    val durationMinutes: Int,
-    val status: TaskStatus,
-    val priority: TaskPriority,
-    val description: String? = null,
-    val tags: List<String> = emptyList(),
-    val reminders: List<Reminder> = emptyList(),
-    val color: String = "#6366f1",
-    val focusMode: Boolean = false,
-    val focusAllowedPackages: List<String>? = null,
-    val createdAt: String = "",
-    val updatedAt: String = "",
-)
+/**
+ * Compatibility alias for callers that historically imported
+ * [com.tbtechs.focusflow.domain.Task]. SchedulerEngine now accepts the real
+ * persisted task model directly.
+ */
+typealias Task = AppTask
 
-data class Reminder(
-    val id: String,
-    val taskId: String,
-    val offsetMinutes: Int,
-    val type: ReminderType,
-    val notifId: String? = null,
-)
-
-enum class ReminderType {
-    PRE_START,
-    AT_START,
-    POST_START,
+/** String constants matching the persisted task status values. */
+object TaskStatus {
+    const val SCHEDULED = "scheduled"
+    const val ACTIVE = "active"
+    const val COMPLETED = "completed"
+    const val SKIPPED = "skipped"
+    const val OVERDUE = "overdue"
 }
 
-enum class TaskStatus {
-    SCHEDULED,
-    ACTIVE,
-    COMPLETED,
-    SKIPPED,
-    OVERDUE,
-}
+/** String constants and ordering for the persisted task priority values. */
+object TaskPriority {
+    const val LOW = "low"
+    const val MEDIUM = "medium"
+    const val HIGH = "high"
+    const val CRITICAL = "critical"
 
-enum class TaskPriority(val rank: Int) {
-    LOW(1),
-    MEDIUM(2),
-    HIGH(3),
-    CRITICAL(4),
+    fun rank(priority: String): Int = when (priority.lowercase()) {
+        LOW -> 1
+        MEDIUM -> 2
+        HIGH -> 3
+        CRITICAL -> 4
+        else -> 1
+    }
 }
 
 data class ConflictResult(

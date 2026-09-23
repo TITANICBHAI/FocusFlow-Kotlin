@@ -1396,6 +1396,15 @@ class ForegroundTaskService : Service() {
         getSharedPreferences(AppBlockerAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean("focus_active", false)
+            .remove("task_id")
+            .remove("task_name")
+            .remove("task_start_ms")
+            .remove("task_end_ms")
+            .remove("task_color")
+            .remove("next_task_name")
+            .remove("task_duration_ms")
+            .remove("task_last_written_ms")
+            .remove("focus_break_until_ms")
             .apply()
     }
 
