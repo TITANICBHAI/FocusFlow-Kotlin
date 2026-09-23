@@ -21,37 +21,25 @@ changing the toggle does not stop Focus Mode.
 
 ## Current verification status
 
-The latest source comparison confirms that **23 findings have an
+The latest source comparison confirms that **24 findings have an
 implementation present and are source-verified**. Runtime verification is
 still pending for those items, so they remain tracked as implementation
 present rather than fully verified.
 
-### Remaining functional bug
+### T6 — `SchedulerEngine` is now wired; runtime verification pending
 
-### T6 — `SchedulerEngine` is type-correct but unwired
-
-- **Severity:** High
+- **Severity:** High — fixed in source
 - **Files:** `SchedulerEngine.kt`, `DefenseScreen.kt`, `TaskViewModel.kt`,
   `AppModule.kt`
 
-The original type-mismatch finding is fixed. `SchedulerEngine` now aliases the
-real persisted `data.model.Task`, and its status and priority constants match
-the app's lowercase string values.
+`SchedulerEngine` is now instantiated through `AppModule` and injected into
+`TaskViewModel`. When `autoRescheduleEnabled` is on, task completion uses
+`compressSchedule()`, while skipping and deleting use
+`compressDeletedTaskGap()`. Changed task windows and their alarms are persisted
+under the existing task-operation lock.
 
-The engine is still never instantiated or called. The only references outside
-its own file are comments describing an intended dependency. The Defense
-screen persists `autoRescheduleEnabled`, but task completion, skipping, and
-deletion never read that setting or invoke the engine. Therefore the toggle's
-promise that freeing time moves later tasks is currently a placebo.
-
-`compressSchedule()` and `compressDeletedTaskGap()` exist. There is no
-dedicated skip-gap operation; deciding whether skipping should use the delete
-gap behavior is a product decision that must be made before wiring it.
-
-The fix requires injecting/instantiating the engine and calling it from the
-relevant task mutation paths while retaining the existing task-operation lock.
-The overrun path's returned auto-skip proposals should also remain subject to
-user confirmation rather than silently removing tasks.
+Skip behavior is now explicitly defined: skipping frees the task's full
+scheduled slot, matching deletion. Runtime verification is still pending.
 
 ### Informational and non-bug findings
 
@@ -62,10 +50,10 @@ user confirmation rather than silently removing tasks.
   daily allowance rule exists. This is the documented least-strict behavior,
   not a bug.
 
-The 23 source-verified implementation fixes are: T1–T5, F1–F7, TF1–TF6,
-AB1–AB4, AB6, and the FLAG-1/2/3 comment cleanup represented by F2 and the
-related coordination notes. They should not be counted as remaining code bugs
-unless runtime verification finds a regression.
+The 24 source-verified implementation fixes are: T1–T6, F1–F7, TF1–TF6,
+AB1–AB4, and AB6, including the FLAG-1/2/3 comment cleanup represented by F2
+and the related coordination notes. They should not be counted as remaining
+code bugs unless runtime verification finds a regression.
 
 ## Priority order
 
@@ -178,23 +166,19 @@ val end = Instant.parse(task.endTime)
 if (!end.isAfter(start)) return
 ```
 
-### T6 — `SchedulerEngine` is type-correct but unwired
+### T6 — `SchedulerEngine` is wired into task mutations
 
-- **Severity:** High
+- **Severity:** High — fixed in source
 - **Files:** `SchedulerEngine.kt`, `DefenseScreen.kt`, `TaskViewModel.kt`,
   `AppModule.kt`
 
-The original type mismatch is fixed: the engine now aliases the real domain
-`Task`, and its string status/priority constants match the persisted model.
-However, the engine is still never instantiated or called anywhere.
+The original type mismatch is fixed, and the engine is now instantiated through
+`AppModule` and injected into `TaskViewModel`.
 
-`autoRescheduleEnabled` is persisted by Settings but never read by task
-completion, skipping, or deletion. The Defense screen therefore exposes a
-user-facing toggle whose promised behavior does nothing.
-
-`compressSchedule()` and `compressDeletedTaskGap()` exist, but no dedicated
-skip-gap operation exists. The skip behavior must be decided before wiring
-the engine into task mutations.
+When enabled, completion calls `compressSchedule()`. Skipping and deletion
+call `compressDeletedTaskGap()`, with skipping explicitly treated as freeing
+the full scheduled slot. Changed task windows and alarms are persisted under
+the task-operation lock.
 
 There is also a safety concern: `rebalanceAfterOverrun()` can automatically
 skip medium-priority tasks when `cumulativeShift` exceeds
@@ -653,7 +637,7 @@ gap. Clean up FLAG-1 and FLAG-2 while working in this file.
 | T3 | Medium | Tasks | Alarm operations outside the mutex create a crash gap and race |
 | T4 | Medium | Tasks | Status mutations scan the full table instead of using `getTaskById` |
 | T5 | Low | Tasks | No `endTime > startTime` validation on insert |
-| T6 | High | Tasks | `SchedulerEngine` is type-correct but unwired; Auto-reschedule is a placebo |
+| T6 | High | Tasks | `SchedulerEngine` is wired; runtime verification is pending |
 | F1 | Critical | Focus | `ACTION_TASK_ENDED` has no receiver, so the Room session never ends |
 | F2 | Low | Focus | FLAG-1 incorrectly says the session flow is non-reactive |
 | F3 | Critical | Focus | PIN exceptions silently abort `stopFocusModeAwait` |

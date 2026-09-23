@@ -17,6 +17,7 @@ import com.tbtechs.focusflow.analytics.AnalyticsProcessor
 import com.tbtechs.focusflow.analytics.AchievementEngine
 import com.tbtechs.focusflow.analytics.InsightEngine
 import com.tbtechs.focusflow.domain.PinManager
+import com.tbtechs.focusflow.domain.SchedulerEngine
 import com.tbtechs.focusflow.data.repository.DayRatingRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
 import com.tbtechs.focusflow.data.repository.BehaviouralHypothesisRepository
@@ -88,6 +89,10 @@ object AppModule {
      * Also consumed by [SchedulerEngine] for conflict detection.
      */
     lateinit var taskRepository: TaskRepository
+        private set
+
+    /** Pure schedule transformation engine used by task mutations. */
+    lateinit var schedulerEngine: SchedulerEngine
         private set
 
     /**
@@ -180,6 +185,7 @@ object AppModule {
         taskRepository = TaskRepository(
             taskDao = database.taskDao(),
         )
+        schedulerEngine = SchedulerEngine()
 
         focusSessionRepository = FocusSessionRepository(
             focusSessionDao  = database.focusSessionDao(),

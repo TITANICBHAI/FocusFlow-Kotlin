@@ -127,6 +127,8 @@ private fun FocusFlowRoot(
             alarmRepository = AppModule.alarmRepository,
             focusSessionRepository = AppModule.focusSessionRepository,
             foregroundServiceController = AppModule.foregroundServiceController,
+            settingsRepository = AppModule.settingsRepository,
+            schedulerEngine = AppModule.schedulerEngine,
             beforeTaskDelete = { taskId, pinHash ->
                 AppModule.alarmRepository.cancelAlarm(taskId)
                 AppModule.alarmRepository.dismissAlarm(taskId)

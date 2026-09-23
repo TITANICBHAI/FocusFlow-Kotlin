@@ -56,10 +56,11 @@ The implementation is present; runtime verification remains pending.
 F2, T6, AB5, AB7.
 
 This batch removes stale coordination comments, records the reboot limitation,
-and preserves the allow-list behavior that is confirmed to be by design. The
-type mismatch in `SchedulerEngine` is fixed, but T6 remains open because the
-engine is not wired to task mutations and the Defense toggle is nonfunctional.
-AB5 remains informational rather than a code fix.
+and preserves the allow-list behavior that is confirmed to be by design. T6 is
+implemented: the type-correct engine is wired to completion, skipping, and
+deletion, with skipping explicitly treated as freeing its full slot. AB5
+remains informational rather than a code fix. Runtime verification remains
+pending.
 
 ## Recommended fix order
 
@@ -93,7 +94,7 @@ AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 �
 | [~] | T5 | Low | Tasks | 3 | Validate `endTime` is after `startTime` before insert | Invalid time ranges are rejected with UI feedback |
 | [~] | F2 | Low | Focus | 5 | Rewrite or remove the stale FLAG-1 comment | Comment matches the reactive Room implementation |
 | [~] | AB3 | Low | Both | 4 | Remove or formalize the unused notification bridge broadcast | Notification action path has one documented, tested route |
-| [ ] | T6 | High | Tasks | 5 | Wire the type-correct `SchedulerEngine` into completion/deletion and decide skip-gap behavior | Auto-reschedule changes later tasks only when enabled; skip semantics and auto-skip confirmation are explicit |
+| [~] | T6 | High | Tasks | 5 | Use `SchedulerEngine` for completion, skipping, and deletion when Auto-reschedule is enabled | Later task windows and alarms move together; skip uses the full freed slot |
 | [?] | AB5 | Info | Focus | 5 | Confirm reboot is not treated as the orphan-session fix | Boot only recovers preferences; AppBoot/session-flow repair handles Room rows |
 | [-] | AB7 | N/A | Focus | 5 | Keep empty allow-list behavior as documented by design | Empty list allows all apps when no allowance rule exists |
 
@@ -113,12 +114,11 @@ AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 �
 
 ## Notes
 
-- The latest source pass found 23 implementation fixes with direct code
+- The latest source pass found 24 implementation fixes with direct code
   evidence, but did not perform runtime verification. Those items use `[~]`
   rather than `[x]` deliberately.
-- T6 is the only remaining functional bug. Its original type mismatch is fixed;
-  the remaining defect is that the engine is never instantiated or called, so
-  `autoRescheduleEnabled` has no effect.
+- T6 is implemented in source. `autoRescheduleEnabled` now controls schedule
+  compression during completion, skipping, and deletion.
 - AB5 is informational only: reboot does not repair Room by itself, while
   `AppBootViewModel` now repairs stale sessions during app startup.
 - AB7 is not a bug and remains documented as intentional behavior.

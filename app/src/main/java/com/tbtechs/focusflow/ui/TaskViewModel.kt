@@ -8,8 +8,10 @@ import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.repository.AlarmRepository
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
+import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.domain.SchedulerEngine
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import java.time.Instant
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,6 +47,8 @@ class TaskViewModel(
     private val alarmRepository: AlarmRepository,
     private val focusSessionRepository: FocusSessionRepository,
     private val foregroundServiceController: ForegroundServiceController,
+    private val settingsRepository: SettingsRepository,
+    private val schedulerEngine: SchedulerEngine,
     private val beforeTaskDelete: suspend (taskId: String, pinHash: String?) -> Unit = { _, _ -> },
     private val beforeClearTasks: suspend (pinHash: String?) -> Unit = { _ -> },
 ) : ViewModel() {
@@ -143,6 +147,13 @@ class TaskViewModel(
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
                 taskRepository.deleteTask(taskId)
+                if (shouldAutoReschedule() && task.status !in COMPLETED_STATUSES) {
+                    val rescheduled = schedulerEngine.compressDeletedTaskGap(
+                        deletedTask = task,
+                        allTasks = taskRepository.getAllTasks(),
+                    )
+                    persistRescheduledTasks(rescheduled, excludedTaskId = task.id)
+                }
             }
         }
     }
@@ -203,7 +214,18 @@ class TaskViewModel(
                 if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
-                taskRepository.updateTask(task.copy(status = "completed", updatedAt = Instant.now().toString()))
+                val completedAt = Instant.now()
+                taskRepository.updateTask(
+                    task.copy(status = "completed", updatedAt = completedAt.toString()),
+                )
+                if (shouldAutoReschedule()) {
+                    val rescheduled = schedulerEngine.compressSchedule(
+                        completedTask = task,
+                        completedAt = completedAt.toString(),
+                        allTasks = taskRepository.getAllTasks(),
+                    )
+                    persistRescheduledTasks(rescheduled, excludedTaskId = task.id)
+                }
             }
         }
     }
@@ -221,7 +243,18 @@ class TaskViewModel(
                 if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
-                taskRepository.updateTask(task.copy(status = "skipped", updatedAt = Instant.now().toString()))
+                taskRepository.updateTask(
+                    task.copy(status = "skipped", updatedAt = Instant.now().toString()),
+                )
+                if (shouldAutoReschedule()) {
+                    // Skipping frees the task's full scheduled slot. Treat it
+                    // like deletion so later scheduled tasks move forward.
+                    val rescheduled = schedulerEngine.compressDeletedTaskGap(
+                        deletedTask = task,
+                        allTasks = taskRepository.getAllTasks(),
+                    )
+                    persistRescheduledTasks(rescheduled, excludedTaskId = task.id)
+                }
             }
         }
     }
@@ -276,7 +309,43 @@ class TaskViewModel(
         )
     }
 
+    private suspend fun shouldAutoReschedule(): Boolean =
+        settingsRepository.readAppSettings().autoRescheduleEnabled
+
+    /**
+     * Persists only schedule rows whose time window changed and keeps their
+     * AlarmManager entries synchronized with the new end times.
+     *
+     * Callers already hold [TaskRepository.withTaskOperationLock], so the
+     * Room writes and alarm changes cannot interleave with another task edit.
+     */
+    private suspend fun persistRescheduledTasks(
+        transformedTasks: List<Task>,
+        excludedTaskId: String,
+    ) {
+        val currentTasks = taskRepository.getAllTasks().associateBy(Task::id)
+        val changedTasks = transformedTasks
+            .filter { it.id != excludedTaskId }
+            .filter { currentTasks[it.id] != it }
+        if (changedTasks.isEmpty()) return
+
+        taskRepository.updateTasksBatch(changedTasks)
+        changedTasks.forEach { task ->
+            alarmRepository.cancelAlarm(task.id)
+            val endMs = runCatching {
+                Instant.parse(task.endTime).toEpochMilli()
+            }.getOrNull() ?: return@forEach
+            if (endMs > System.currentTimeMillis() &&
+                task.status !in COMPLETED_STATUSES
+            ) {
+                alarmRepository.scheduleAlarm(task.id, task.title, endMs)
+            }
+        }
+    }
+
     companion object {
+        private val COMPLETED_STATUSES = setOf("completed", "skipped")
+
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -285,6 +354,8 @@ class TaskViewModel(
                     alarmRepository = AppModule.alarmRepository,
                     focusSessionRepository = AppModule.focusSessionRepository,
                     foregroundServiceController = AppModule.foregroundServiceController,
+                    settingsRepository = AppModule.settingsRepository,
+                    schedulerEngine = AppModule.schedulerEngine,
                 ) as T
             }
 
@@ -295,6 +366,8 @@ class TaskViewModel(
                     alarmRepository = AppModule.alarmRepository,
                     focusSessionRepository = AppModule.focusSessionRepository,
                     foregroundServiceController = AppModule.foregroundServiceController,
+                    settingsRepository = AppModule.settingsRepository,
+                    schedulerEngine = AppModule.schedulerEngine,
                 ) as T
             }
         }
