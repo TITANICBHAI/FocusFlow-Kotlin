@@ -13,11 +13,13 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.model.FocusSession
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
+import com.tbtechs.focusflow.data.repository.SessionPinRequiredException
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
+import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +30,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import java.time.Instant
 
@@ -93,6 +97,7 @@ class FocusSessionViewModel(
         Context.MODE_PRIVATE,
     )
     private var taskEndedReceiverRegistered = false
+    private val focusOperationMutex = Mutex()
 
     // ─── State ────────────────────────────────────────────────────────────────
 
@@ -245,81 +250,89 @@ class FocusSessionViewModel(
      */
     fun startFocusMode(taskId: String) {
         viewModelScope.launch {
-            // Step 1 — resolve task (FLAG-4)
-            val task = taskRepository.observeAllTasks().first()
-                .firstOrNull { it.id == taskId } ?: return@launch
-
-            // Resolve allowed packages:
-            //   task.focusAllowedPackages != null → use task-specific list
-            //   null                              → use global "allowed_packages" key (FLAG-5)
-            val allowedPackages: List<String> = task.focusAllowedPackages
-                ?: run {
-                    val configured = settingsRepository.readAppSettings().allowedFocusPackages
-                    if (configured.isNotEmpty()) return@run configured
-                    val raw = settingsRepository.getString("allowed_packages")
-                    if (raw.isNullOrBlank()) emptyList()
-                    else runCatching {
-                        JSONArray(raw).let { arr -> (0 until arr.length()).map { arr.getString(it) } }
-                    }.getOrDefault(emptyList())
+            focusOperationMutex.withLock {
+                // Step 1 — resolve task (FLAG-4)
+                val task = taskRepository.observeAllTasks().first()
+                    .firstOrNull { it.id == taskId } ?: return@withLock
+                if (task.status == "completed" || task.status == "skipped") {
+                    return@withLock
+                }
+                if (focusSessionRepository.getActiveFocusSession() != null) {
+                    return@withLock
                 }
 
-            val scheduledStartMs = Instant.parse(task.startTime).toEpochMilli()
-            val scheduledEndMs = Instant.parse(task.endTime).toEpochMilli()
-            val now = Instant.now()
-            val nowMs = now.toEpochMilli()
-            val shouldStartNow = scheduledStartMs > nowMs || scheduledEndMs <= nowMs
-            val startMs = if (shouldStartNow) nowMs else scheduledStartMs
-            val endMs = if (shouldStartNow) {
-                nowMs + (scheduledEndMs - scheduledStartMs).coerceAtLeast(60_000L)
-            } else {
-                scheduledEndMs
-            }
+                // Resolve allowed packages:
+                //   task.focusAllowedPackages != null → use task-specific list
+                //   null                              → use global "allowed_packages" key (FLAG-5)
+                val allowedPackages: List<String> = task.focusAllowedPackages
+                    ?: run {
+                        val configured = settingsRepository.readAppSettings().allowedFocusPackages
+                        if (configured.isNotEmpty()) return@run configured
+                        val raw = settingsRepository.getString("allowed_packages")
+                        if (raw.isNullOrBlank()) emptyList()
+                        else runCatching {
+                            JSONArray(raw).let { arr -> (0 until arr.length()).map { arr.getString(it) } }
+                        }.getOrDefault(emptyList())
+                    }
 
-            if (shouldStartNow) {
-                taskRepository.updateTask(
-                    task.copy(
-                        startTime = Instant.ofEpochMilli(startMs).toString(),
-                        endTime = Instant.ofEpochMilli(endMs).toString(),
-                        status = "active",
-                        updatedAt = now.toString(),
-                    ),
+                val scheduledStartMs = Instant.parse(task.startTime).toEpochMilli()
+                val scheduledEndMs = Instant.parse(task.endTime).toEpochMilli()
+                val now = Instant.now()
+                val nowMs = now.toEpochMilli()
+                val shouldStartNow = scheduledStartMs > nowMs || scheduledEndMs <= nowMs
+                val startMs = if (shouldStartNow) nowMs else scheduledStartMs
+                val endMs = if (shouldStartNow) {
+                    nowMs + (scheduledEndMs - scheduledStartMs).coerceAtLeast(60_000L)
+                } else {
+                    scheduledEndMs
+                }
+
+                if (shouldStartNow) {
+                    taskRepository.updateTask(
+                        task.copy(
+                            startTime = Instant.ofEpochMilli(startMs).toString(),
+                            endTime = Instant.ofEpochMilli(endMs).toString(),
+                            status = "active",
+                            updatedAt = now.toString(),
+                        ),
+                    )
+                }
+
+                val session = FocusSession(
+                    taskId          = task.id,
+                    startedAt       = Instant.now().toString(),
+                    isActive        = true,
+                    allowedPackages = allowedPackages,
                 )
+
+                // Step 2 — Room write
+                focusSessionRepository.startFocusSession(session)
+
+                // Step 3 — mirror to enforcement SharedPreferences
+                // setFocusActive(true) is not PIN-gated when starting.
+                settingsRepository.setFocusActive(active = true)
+                settingsRepository.setActiveTask(
+                    taskId = task.id,
+                    name = task.title,
+                    endMs = endMs,
+                    nextName = null,
+                )
+                settingsRepository.setActiveTaskColor(task.color)
+                settingsRepository.setActiveTaskStartMs(task.id, startMs)
+                settingsRepository.setAllowedPackages(allowedPackages)
+
+                // Step 4 — start the foreground service
+                foregroundServiceController.startService(
+                    taskId      = task.id,
+                    taskName    = task.title,
+                    startTimeMs = startMs,
+                    endTimeMs   = endMs,
+                    nextName    = null,
+                )
+
+                // Step 5 — update UI state
+                _focusSession.value = session
             }
-
-            val session = FocusSession(
-                taskId          = task.id,
-                startedAt       = Instant.now().toString(),
-                isActive        = true,
-                allowedPackages = allowedPackages,
-            )
-
-            // Step 2 — Room write
-            focusSessionRepository.startFocusSession(session)
-
-            // Step 3 — mirror to enforcement SharedPreferences
-            // setFocusActive(true) is not PIN-gated when starting.
-            settingsRepository.setFocusActive(active = true)
-            settingsRepository.setActiveTask(
-                taskId = task.id,
-                name = task.title,
-                endMs = endMs,
-                nextName = null,
-            )
-            settingsRepository.setActiveTaskColor(task.color)
-            settingsRepository.setActiveTaskStartMs(task.id, startMs)
-            settingsRepository.setAllowedPackages(allowedPackages)
-
-            // Step 4 — start the foreground service
-            foregroundServiceController.startService(
-                taskId      = task.id,
-                taskName    = task.title,
-                startTimeMs = startMs,
-                endTimeMs   = endMs,
-                nextName    = null,
-            )
-
-            // Step 5 — update UI state
-            _focusSession.value = session
         }
     }
 
@@ -343,7 +356,17 @@ class FocusSessionViewModel(
      *   [ForegroundServiceController.stopServiceInternal]
      */
     fun stopFocusMode(pinHash: String? = null) {
-        viewModelScope.launch { stopFocusModeAwait(pinHash) }
+        viewModelScope.launch {
+            try {
+                stopFocusModeAwait(pinHash)
+            } catch (error: SessionPinRequiredException) {
+                AppErrorEvents.report(
+                    tag = "FocusSession",
+                    message = "A focus session password is required to stop Focus Mode.",
+                    throwable = error,
+                )
+            }
+        }
     }
 
     /**

@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Nf--PV6BERUwB_0gZicxZ"
+uri = "file://docs/focus-bugs.md"
+type = "text"
+title = "Focus Bugs audit"
+description = "Markdown version of the verified FocusFlow Tasks and Focus Mode bug audit."
+logical_id = "535fb387-eca1-4de0-a4c3-97ed3acec314"
+content_hash = "sha256:7ee4ad707e558934795917b59403cc17f59834e19eb0f4d6aa3e7f970ae5e41f"
+size = 22325
+mtime_ms = 1790144066723
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:d4f34917-4b09-40d5-b1d5-6781f579faa1/535fb387-eca1-4de0-a4c3-97ed3acec314/86b1897d-f27a-4bf7-95e3-2d741fe55dc6"
+storage_version_token = "1790144114132430"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "62vqatsTTpTZ9vmEG6e6U"
+uri = "file://docs/focus-bugs-tracker.md"
+type = "text"
+title = "Focus Bugs tracker"
+description = "Status tracker covering all 26 audit findings, recommended fix order, and verification checks."
+logical_id = "7e87aaa4-256a-4d8e-9514-39f26c5fa8ce"
+content_hash = "sha256:17c0d597b3fffa777634df90c32d12f1df839d6dafe7f3ce0eae1530ff4949b9"
+size = 5492
+mtime_ms = 1790144086055
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:d4f34917-4b09-40d5-b1d5-6781f579faa1/7e87aaa4-256a-4d8e-9514-39f26c5fa8ce/4c039595-b7b8-4c7c-a795-e4ce759e2580"
+storage_version_token = "1790144115472731"
+content_type = "text/markdown"
