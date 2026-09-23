@@ -1,0 +1,24 @@
+**Answer:**
+
+T6 is now a sharp, concrete finding rather than a loose end.
+
+**The good news:** the original type-mismatch is genuinely fixed. `SchedulerEngine.kt` now has `import com.tbtechs.focusflow.data.model.Task as AppTask` + `typealias Task = AppTask` — every function in the file operates on the real domain `Task`, and `TaskStatus`/`TaskPriority` are lowercase string constants (`"completed"`, `"skipped"`, `"scheduled"`, etc.) matching the rest of the app exactly. It's a clean, correct, dependency-free "pure Kotlin port" (its own doc comment's phrase).
+
+**The bug:** it's still never called from anywhere. Grepped the whole codebase — `SchedulerEngine` shows up in exactly two places: its own file, and one comment on `AppModule.taskRepository` ("Also consumed by SchedulerEngine for conflict detection") that describes an intended relationship, not a real one. No instantiation, no injection, nothing.
+
+**This is why your Defense screen toggle does nothing.** "Auto-reschedule freed time" persists correctly and its description makes a specific promise —
+
+> "On — completing, skipping, or deleting a future task moves later tasks forward"
+
+— but `autoRescheduleEnabled` is never *read* anywhere except that one persistence round-trip. `TaskViewModel`'s `completeTask`, `skipTask`, `deleteTask`, and `clearAllTasksExcept` have zero awareness of it or of `SchedulerEngine`. Toggling it on or off currently changes nothing about what happens to your schedule.
+
+Mapped the promise against the actual functions:
+- **"completing… moves tasks forward"** → `compressSchedule()` — exists, correct, unwired.
+- **"deleting… moves tasks forward"** → `compressDeletedTaskGap()` — exists, correct, unwired.
+- **"skipping… moves tasks forward"** → **no function for this exists.** The only skip-adjacent logic (`rebalanceAfterOverrun`) handles the opposite case — a task running long, not a task being skipped early. Whether "skip" should reuse the delete-gap logic is a call you need to make; the port doesn't make it for you.
+
+Full trace, the exact toggle code, and a fix sketch (with the same status-guard/mutex discipline T1/T3/T4 needed, so the new call site doesn't reintroduce those bugs) are in the artifact — upgraded T6 from Low to High since this is a user-facing broken promise, not just dead code: https://claude.ai/artifact/5hgK8GjuxdjMoJtwCjMAa8
+
+**Confidence: 0.95** — every claim is a direct grep/read against the actual `bugsfix.zip` source, not inference from behavior or documentation.
+
+**Caveats:** I haven't traced the original `schedulerEngine.ts` this was ported from, so I can't say whether "skip" was ever handled there and got dropped in the port, or was never handled at all — that's a real gap in what I can verify from this codebase alone.
