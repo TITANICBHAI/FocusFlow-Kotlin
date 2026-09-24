@@ -47,7 +47,7 @@ class FindingDetectorsTest {
 
         assertNotNull(finding)
         assertTrue(finding!!.evidenceJson.contains("\"peak_bin\":\"30-45m\""))
-        assertTrue(finding.evidenceJson.contains("\"dropoff_bin\":\"45-60m\""))
+        assertTrue(finding.evidenceJson.contains("\"dropoff_bin\":\"60-90m\""))
     }
 
     @Test

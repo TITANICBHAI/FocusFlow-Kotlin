@@ -31,7 +31,7 @@ when a brief's name, schema, or lifecycle differs from the current project.
 | IMPL_1A | `docs/IMPL_1A.md` | Tracker data, entities, DAOs, migration, usage/session tracking | Complete |
 | IMPL_1B | `docs/IMPL_1B.md` | Repositories, services, notifications, pruning | Complete |
 | IMPL_2 | `docs/IMPL_2.md` | Stats UI, ratings, findings, cold start | Complete; review fixes applied |
-| IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Planned |
+| IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; CI pending |
 | IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Planned |
 | IMPL_5 | — | Adaptive allowance | Planned |
 
@@ -94,12 +94,14 @@ when a brief's name, schema, or lifecycle differs from the current project.
 
 ## IMPL_3 — detection engine using existing data
 
-- [ ] Add the four pure detectors: post-failure cascade, session sweet spot,
+- [x] Add the four pure detectors: post-failure cascade, session sweet spot,
   estimation drift, and day-of-week outlier.
-- [ ] Add the detection runner and daily-gated background worker invocation.
-- [ ] Surface generated findings through the existing repository/UI path.
-- [ ] Verify detector thresholds and evidence fingerprints with source checks
-  and GitHub Actions.
+- [x] Add the detection runner and daily-gated background worker invocation.
+- [x] Surface generated findings through the existing repository/UI path.
+- [x] Verify detector thresholds and evidence fingerprints with focused JVM
+  tests and source checks.
+- [ ] Verify the Android build through GitHub Actions after the latest test and
+  tracker changes are pushed.
 
 ## IMPL_4 — manipulation-pattern detection
 
