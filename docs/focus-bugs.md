@@ -21,7 +21,7 @@ changing the toggle does not stop Focus Mode.
 
 ## Current verification status
 
-The latest source comparison confirms that **24 findings have an
+The latest source comparison confirms that **25 findings have an
 implementation present and are source-verified**. Runtime verification is
 still pending for those items, so they remain tracked as implementation
 present rather than fully verified.
@@ -50,10 +50,24 @@ scheduled slot, matching deletion. Runtime verification is still pending.
   daily allowance rule exists. This is the documented least-strict behavior,
   not a bug.
 
-The 24 source-verified implementation fixes are: T1–T6, F1–F7, TF1–TF6,
+The 25 source-verified implementation fixes are: T1–T6, F1–F7, TF1–TF6,
 AB1–AB4, and AB6, including the FLAG-1/2/3 comment cleanup represented by F2
 and the related coordination notes. They should not be counted as remaining
 code bugs unless runtime verification finds a regression.
+
+### NAV1 — First-launch onboarding navigation now uses the shared tab path
+
+- **Severity:** High — fixed in source
+- **File:** `FocusFlowNavGraph.kt`
+
+The onboarding How-To-Use screen had separate `onBack` and `onGetStarted`
+callbacks that navigated directly to Defense with a bespoke
+`popUpTo(Routes.HOME)` operation. Every normal tab tap uses the shared
+`navigate()` helper with `saveState`, `launchSingleTop`, and `restoreState`.
+
+Both onboarding callbacks now call `navigate(Routes.DEFENSE)`, so the first
+transition follows the same back-stack contract as later tab navigation.
+Fresh-install verification is still pending.
 
 ## Priority order
 
@@ -628,7 +642,7 @@ Stale coordination comments can cause later work to re-implement fixes that
 already shipped or add a manual reload that masks the real F1 session-ending
 gap. Clean up FLAG-1 and FLAG-2 while working in this file.
 
-## Summary table
+## Original audit summary table
 
 | ID | Severity | Area | Finding |
 |---|---|---|---|
@@ -638,6 +652,7 @@ gap. Clean up FLAG-1 and FLAG-2 while working in this file.
 | T4 | Medium | Tasks | Status mutations scan the full table instead of using `getTaskById` |
 | T5 | Low | Tasks | No `endTime > startTime` validation on insert |
 | T6 | High | Tasks | `SchedulerEngine` is wired; runtime verification is pending |
+| NAV1 | High | Nav | Onboarding finish/back uses shared tab navigation; runtime verification is pending |
 | F1 | Critical | Focus | `ACTION_TASK_ENDED` has no receiver, so the Room session never ends |
 | F2 | Low | Focus | FLAG-1 incorrectly says the session flow is non-reactive |
 | F3 | Critical | Focus | PIN exceptions silently abort `stopFocusModeAwait` |

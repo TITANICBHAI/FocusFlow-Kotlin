@@ -62,10 +62,18 @@ deletion, with skipping explicitly treated as freeing its full slot. AB5
 remains informational rather than a code fix. Runtime verification remains
 pending.
 
+### Batch 6 — First-launch navigation
+
+NAV1.
+
+The onboarding How-To-Use exit now uses the same tab-navigation helper as every
+other tab transition. The source fix is present; fresh-install runtime
+verification remains pending.
+
 ## Recommended fix order
 
-F1 → TF2 → TF1 → F3 → TF3 → F4 → F5 → TF4 → AB4 → T1 → T3 → F6 → TF5 →
-AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 → AB5
+NAV1 → F1 → TF2 → TF1 → F3 → TF3 → F4 → F5 → TF4 → AB4 → T1 → T3 → F6 →
+TF5 → AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 → AB5
 
 ## Tracker
 
@@ -95,6 +103,7 @@ AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 �
 | [~] | F2 | Low | Focus | 5 | Rewrite or remove the stale FLAG-1 comment | Comment matches the reactive Room implementation |
 | [~] | AB3 | Low | Both | 4 | Remove or formalize the unused notification bridge broadcast | Notification action path has one documented, tested route |
 | [~] | T6 | High | Tasks | 5 | Use `SchedulerEngine` for completion, skipping, and deletion when Auto-reschedule is enabled | Later task windows and alarms move together; skip uses the full freed slot |
+| [~] | NAV1 | High | Nav | 6 | Use shared tab navigation when onboarding How-To-Use exits to Defense | Fresh install: Schedule, Focus, Stats, Settings, and Defense tabs all open their own screens |
 | [?] | AB5 | Info | Focus | 5 | Confirm reboot is not treated as the orphan-session fix | Boot only recovers preferences; AppBoot/session-flow repair handles Room rows |
 | [-] | AB7 | N/A | Focus | 5 | Keep empty allow-list behavior as documented by design | Empty list allows all apps when no allowance rule exists |
 
@@ -114,11 +123,13 @@ AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 �
 
 ## Notes
 
-- The latest source pass found 24 implementation fixes with direct code
+- The latest source pass found 25 implementation fixes with direct code
   evidence, but did not perform runtime verification. Those items use `[~]`
   rather than `[x]` deliberately.
 - T6 is implemented in source. `autoRescheduleEnabled` now controls schedule
   compression during completion, skipping, and deletion.
+- NAV1 is implemented in source. Both onboarding exits now use the shared
+  `navigate(Routes.DEFENSE)` tab path instead of a bespoke back-stack mutation.
 - AB5 is informational only: reboot does not repair Room by itself, while
   `AppBootViewModel` now repairs stale sessions during app startup.
 - AB7 is not a bug and remains documented as intentional behavior.
@@ -128,3 +139,7 @@ AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 �
   Mode and should not be coupled to the fixes above.
 - The uploaded audit remains available at
   `attached_assets/Pasted-FocusFlow-Bug-Audit-Tasks-Focus-Mode-All-findings-verif_1790184629415.txt`.
+- The first-launch navigation audit is recorded in
+  `attached_assets/Pasted-FocusFlow-Bug-First-Launch-Only-Every-Tab-Tap-Lands-on-_1790213975282.txt`.
+- The accompanying verification pass is recorded in
+  `attached_assets/Pasted-FocusFlow-Bug-Audit-Tasks-Focus-Mode-All-findings-verif_1790214006993.txt`.

@@ -1,0 +1,598 @@
+FocusFlow Bug Audit — Tasks & Focus Mode
+All findings verified against uploaded source. Every code reference is real.
+
+Want out of the stuck state right now, before any fix is deployed? "Emergency Override" on the Focus screen is safe to use — traced it end to end. It calls the exact same PIN-gated stopFocusMode(hash) chain as "Stop Focus," correctly ends the Room session, and its button visibility is gated only on isFocusing (which is true in the exact stuck state), so it's on-screen right now if you need it. Confirmed separately: your standalone "Block apps while I work" toggle runs on entirely independent SharedPrefs state — stopping focus mode will not touch it, and vice versa.
+
+Part 1 — Task-Only Bugs
+T1 · extendTaskTime has no task-status guard — extends completed/skipped tasks
+Severity: High File: TaskViewModel.kt
+
+fun extendTaskTime(taskId: String, minutes: Int) {
+    viewModelScope.launch {
+        taskOperationMutex.withLock {
+            val task = taskRepository.getAllTasks()
+                .firstOrNull { it.id == taskId } ?: return@withLock
+            // ← NO status check here
+            val newEnd = Instant.parse(task.endTime).plusMillis(minutes * 60_000L)
+            taskRepository.updateTask(task.copy(endTime = newEnd.toString(), ...))
+            alarmRepository.scheduleAlarm(taskId, task.title, newEndMs)
+        }
+    }
+}
+completeTask() and skipTask() both have this guard at lines 186 and 204:
+
+if (task.status == "completed" || task.status == "skipped") return@withLock
+extendTaskTime() does not. So you can call it on a completed task, which:
+
+Moves its endTime forward in Room
+Schedules a new AlarmManager alarm for the extended end time
+When that alarm fires, TaskEndAlarmReceiver posts a "Time's Up" notification for a task that was already marked done days ago
+Fix: Add the same two-line guard at the top of the taskOperationMutex.withLock block.
+
+T2 · updateTask reschedules alarms for any task regardless of status
+Severity: Medium File: TaskViewModel.kt
+
+fun updateTask(task: Task) {
+    viewModelScope.launch {
+        taskOperationMutex.withLock { taskRepository.updateTask(task) }
+        alarmRepository.cancelAlarm(task.id)
+        val endMs = Instant.parse(task.endTime).toEpochMilli()
+        if (endMs > System.currentTimeMillis()) {
+            alarmRepository.scheduleAlarm(task.id, task.title, endMs)  // no status check
+        }
+    }
+}
+If the Edit Task sheet is opened on a completed task and saved with a future end time, a real alarm is scheduled. At that end time, TaskEndAlarmReceiver fires the "Time's Up" notification for a completed task. No crash, but a confusing ghost notification.
+
+Fix: After the mutex block, check task.status before scheduling:
+
+if (endMs > System.currentTimeMillis() &&
+    task.status !in setOf("completed", "skipped")) {
+    alarmRepository.scheduleAlarm(...)
+}
+T3 · Alarm operations are outside the mutex in addTask and updateTask
+Severity: Medium File: TaskViewModel.kt
+
+fun addTask(task: Task) {
+    viewModelScope.launch {
+        taskOperationMutex.withLock { taskRepository.insertTask(task) }  // lock released
+        // ↓ alarm scheduled after the lock is gone
+        alarmRepository.scheduleAlarm(task.id, task.title, endMs)
+    }
+}
+The mutex protects the Room write but not the alarm scheduling. This creates two problems:
+
+Crash window: If the process is killed between the Room insert and scheduleAlarm(), the task exists in the DB with no alarm. There is no boot-time alarm recovery that checks for tasks with missing alarms — AppBootViewModel only recovers focus sessions, not task alarms.
+
+Race on rapid edits: updateTask cancels and reschedules the alarm outside the mutex. Two rapid updateTask calls can interleave: call-1 cancels alarm, call-2 cancels (nothing), call-2 schedules alarm for its end time, call-1 schedules alarm for its end time. Final alarm is whichever ran last, not the one from the most recent Room write.
+
+Fix: Move alarm operations inside taskOperationMutex.withLock in both methods.
+
+T4 · Every single-task lookup loads the entire tasks table
+Severity: Medium File: TaskViewModel.kt, TaskDao.kt
+
+TaskDao has no getTaskById(). Every status mutation does:
+
+val task = taskRepository.getAllTasks().firstOrNull { it.id == taskId }
+// getAllTasks() = observeAllTasks().first() = full table emit
+Three functions do this: completeTask, skipTask, extendTaskTime. On a schedule with 50+ tasks this loads all rows from Room on every status change.
+
+Fix:
+
+// TaskDao.kt
+@Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+suspend fun getTaskById(taskId: String): TaskEntity?
+Then replace getAllTasks().firstOrNull { it.id == taskId } with getTaskById(taskId) in all three callers.
+
+T5 · addTask doesn't validate endTime > startTime
+Severity: Low File: TaskViewModel.kt
+
+A task created with endTime <= startTime inserts fine, is immediately in an "overdue" display state from birth, and gets no alarm (endMs <= currentTimeMillis → scheduleAlarm is skipped). The Schedule screen's isRunningNow() returns false (no time window active), isAwaitingDecision() returns true immediately (endTime already past), so the "Time's Up" banner appears the moment the task is created.
+
+Fix: Validate before insert:
+
+val start = Instant.parse(task.startTime)
+val end = Instant.parse(task.endTime)
+if (!end.isAfter(start)) return  // or show a UI error
+T6 · SchedulerEngine is now type-correct but still 100% unwired — the Defense screen's "Auto-reschedule freed time" toggle does nothing
+Severity: High (upgraded — this is a user-facing broken promise, not just dead code) File: SchedulerEngine.kt, DefenseScreen.kt, TaskViewModel.kt, AppModule.kt
+
+The type-mismatch part of the original T6 finding is fixed. SchedulerEngine.kt now has import com.tbtechs.focusflow.data.model.Task as AppTask and typealias Task = AppTask — every function in the file (detectConflicts, findNextAvailableSlot, rebalanceAfterOverrun, insertTaskSafe, compressSchedule, compressDeletedTaskGap, getUnfinishedOverdueTasks, analyzeScheduleHealth) now genuinely operates on the real domain Task. TaskStatus/TaskPriority are objects with lowercase string constants ("completed", "skipped", "scheduled", "active", "low"/"medium"/"high"/"critical") that match the rest of the app's convention exactly — no silent string-case mismatch. This is a clean, correct, framework-free "pure Kotlin port" (its own doc comment's words) — it's good code.
+
+But it's still never called from anywhere. Grepped the entire codebase for SchedulerEngine: it appears in exactly two files — its own definition, and one doc comment on AppModule.taskRepository ("Also consumed by [SchedulerEngine] for conflict detection") that describes an intended relationship, not an actual one. There is no SchedulerEngine(...) instantiation anywhere, not in AppModule, not in TaskViewModel, not in any background worker. TaskViewModel.kt's completeTask, skipTask, deleteTask, and clearAllTasksExcept — the exact four actions the Defense screen's toggle description names — have zero reference to SchedulerEngine or to settings.autoRescheduleEnabled.
+
+This makes the toggle itself the concrete, user-visible bug. In DefenseScreen.kt:
+
+SettingSwitch(
+    label = "Auto-reschedule freed time",
+    description = if (settings.autoRescheduleEnabled) {
+        "On — completing, skipping, or deleting a future task moves later tasks forward"
+    } else {
+        "Off — task times stay unchanged when time is freed"
+    },
+    checked = settings.autoRescheduleEnabled,
+    onChange = { enabled -> update(settings.copy(autoRescheduleEnabled = enabled)) },
+)
+Toggling this on makes an explicit behavioral promise to the user. autoRescheduleEnabled is persisted correctly (confirmed in SettingsViewModel/SettingsRepository/AppSettings) but is never read anywhere except that one persistence round-trip. Completing, skipping, or deleting a task never moves anything, regardless of what this switch is set to — it's currently a placebo control.
+
+What each part of the promise maps to, concretely (verified against the actual function bodies):
+
+"completing... moves later tasks forward" → compressSchedule(completedTask, completedAt, allTasks). Confirmed: if a task finishes before its planned endTime, this shifts every later scheduled task earlier by the minutes saved.
+"deleting... moves later tasks forward" → compressDeletedTaskGap(deletedTask, allTasks). Confirmed: shifts every later task whose status is still TaskStatus.SCHEDULED earlier by the deleted task's duration.
+"skipping... moves later tasks forward" → no dedicated function exists for this case. The only skip-adjacent logic is inside rebalanceAfterOverrun, which does the opposite (pushes later tasks back, or auto-skips medium/low-priority ones) — that function is for a task running over its time, not for a manual skip freeing time up. Whether "skip" should reuse compressDeletedTaskGap's logic (treat the skipped slot like a deleted one) is a product decision the port doesn't make for you — worth deciding explicitly rather than assuming.
+Fix sketch (shape only — this needs your judgment on the "skip" gap above, not a paste-in patch):
+
+// AppModule.kt — instantiate it like every other singleton
+lateinit var schedulerEngine: SchedulerEngine
+// ... schedulerEngine = SchedulerEngine()
+
+// TaskViewModel.kt — inside completeTask, after the status write, inside the same lock:
+if (settingsRepository.readAppSettings().autoRescheduleEnabled) {
+    val updated = schedulerEngine.compressSchedule(task, nowIso(), taskRepository.getAllTasks())
+    updated.filter { it.id != task.id }.forEach { taskRepository.updateTask(it) }
+}
+// deleteTask: same idea with compressDeletedTaskGap instead
+Note this would need its own status-guard and mutex discipline (per T1/T3/T4 above) to avoid reintroducing those same classes of bug in the new call site.
+
+Also worth knowing independent of the wiring gap: rebalanceAfterOverrun will auto-skip medium-or-lower-priority tasks without asking, once the cumulative shift exceeds options.maxAutoShiftMinutes. If you wire this one up too (for the overrun case, separate from the toggle above), that auto-skip behavior deserves a confirmation dialog rather than firing silently — tasks disappearing from someone's schedule without them clicking anything is a rough experience.
+
+Part 2 — Focus Mode-Only Bugs
+F1 · ACTION_TASK_ENDED is broadcast but received by nobody — Room session never ends
+Severity: Critical File: ForegroundTaskService.kt lines 724, 752; searched entire codebase
+
+When the focus timer reaches zero, tickRunnable fires:
+
+clearFocusActive()     // writes focus_active=false to SharedPrefs
+sendBroadcast(Intent(ACTION_TASK_ENDED)...)
+triggerTaskAlarm(...)  // posts the "Time's Up" notification
+goIdle()               // clears service in-memory state
+clearFocusActive() only writes to SharedPrefs. It does not call focusSessionDao.endSession(). ACTION_TASK_ENDED is searched in every extracted file:
+
+Defined once: ForegroundTaskService line 76
+Sent twice: lines 724 and 752
+Received: zero times
+No component — not FocusSessionViewModel, not MainActivity, not any BroadcastReceiver — registers for this action. The consequence:
+
+Room's focus_sessions.is_active stays 1 indefinitely
+FocusSessionRepository.observeActiveFocusSession() → FocusSessionDao.observeActiveSession() keeps emitting the live session
+FocusSessionViewModel.init collects it → _focusSession.value never becomes null
+isFocusing = session?.isActive == true stays true forever
+The Focus screen shows "Focus Mode Active" with an ever-growing overdue timer
+App blocking stops (SharedPrefs cleared) but the UI says focus is active
+This is the architectural root cause of the bug from the screenshots.
+
+This gap was anticipated, not just missed. ForegroundServiceController.stopServiceInternal()'s own doc comment reads: "Authorized system transition... task completion, skipping, and orphan-session reconciliation use this path" — and it's deliberately PIN-free for exactly that reason. But grepping every call site: it has exactly one caller, inside the manual stopFocusModeAwait() path. No automatic orphan-reconciliation trigger was ever built to use it. The authorization primitive for fixing F1 already exists in the codebase — it's just never invoked automatically.
+
+Fix: In FocusSessionViewModel.init, register a receiver:
+
+private val taskEndedReceiver = object : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        viewModelScope.launch {
+            focusSessionRepository.getActiveFocusSession()?.let { s ->
+                focusSessionRepository.endFocusSession(s.taskId)
+            }
+            _focusSession.value = null
+        }
+    }
+}
+// in init:
+ContextCompat.registerReceiver(
+    context, taskEndedReceiver,
+    IntentFilter(ForegroundTaskService.ACTION_TASK_ENDED),
+    ContextCompat.RECEIVER_NOT_EXPORTED,
+)
+// in onCleared:
+context.unregisterReceiver(taskEndedReceiver)
+F2 · FLAG-1 comment in FocusSessionViewModel is factually wrong — misleads future devs
+Severity: Low (documentation) File: FocusSessionViewModel.kt lines 43–50
+
+The Kotlin doc says:
+
+[focusSession] is backed by a MutableStateFlow, NOT a reactive Room Flow.
+FocusSessionDao has no @Query returning Flow<FocusSessionEntity?> for the active session.
+
+But the init block, right below this comment, does exactly that:
+
+viewModelScope.launch {
+    focusSessionRepository.observeActiveFocusSession().collect { session ->
+        _focusSession.value = session
+    }
+}
+And FocusSessionDao does have:
+
+@Query("SELECT * FROM focus_sessions WHERE is_active = 1 ORDER BY id DESC LIMIT 1")
+fun observeActiveSession(): Flow<FocusSessionEntity?>
+The comment describes a previous implementation that was fixed. Any developer reading FLAG-1 would incorrectly conclude that _focusSession is only updated by explicit calls to loadActiveSession() and would miss that Room emissions drive it. The fix for F1 above (registering a receiver) ends the session in Room, which will automatically null out _focusSession through this reactive chain — which is correct and important to understand.
+
+Fix: Delete or rewrite FLAG-1 to reflect the actual reactive implementation.
+
+F3 · stopFocusModeAwait has no try-catch — SessionPinRequiredException kills the coroutine silently
+Severity: Critical File: FocusSessionViewModel.kt
+
+suspend fun stopFocusModeAwait(pinHash: String? = null) {
+    val current = _focusSession.value
+        ?: focusSessionRepository.getActiveFocusSession() ?: return
+
+    settingsRepository.setFocusActive(active = false, pinHash = pinHash)
+    // ↑ throws SessionPinRequiredException if PIN set and pinHash == null
+
+    focusSessionRepository.endFocusSession(current.taskId)  // never reached
+    settingsRepository.clearActiveTask()                     // never reached
+    foregroundServiceController.stopServiceInternal()        // never reached
+    _focusSession.value = null                               // never reached
+}
+stopFocusMode() calls this via viewModelScope.launch { stopFocusModeAwait(pinHash) }. There is no try-catch anywhere in the chain. SessionPinRequiredException propagates into the coroutine scope and is swallowed silently. The result:
+
+Room session stays active (is_active = 1)
+SharedPrefs unchanged (setFocusActive throws before writing)
+Service still running
+_focusSession.value still non-null
+User sees no error, no feedback, nothing changes
+This triggers whenever stopFocusMode(null) is called and a session PIN is configured. This call path is used by: the Done button's conditional branch, the schedule screen's ✓ button, and stopAfterConfirmation(). Only requestStop() (the "Stop Focus" button) correctly gates on PIN before calling.
+
+Fix:
+
+fun stopFocusMode(pinHash: String? = null) {
+    viewModelScope.launch {
+        try {
+            stopFocusModeAwait(pinHash)
+        } catch (e: SessionPinRequiredException) {
+            _stopRequiresPinEvent.emit(Unit)  // tell UI to show PIN dialog
+        }
+    }
+}
+F4 · startFocusMode allows starting focus on a completed or skipped task
+Severity: High File: FocusSessionViewModel.kt line 203
+
+fun startFocusMode(taskId: String) {
+    viewModelScope.launch {
+        val task = taskRepository.observeAllTasks().first()
+            .firstOrNull { it.id == taskId } ?: return@launch
+        // ← no status check
+
+        focusSessionRepository.startFocusSession(session)
+        settingsRepository.setFocusActive(active = true)
+        ...
+    }
+}
+Starting focus on a completed task creates an active Room session for it. Since keepFocusActiveUntilTaskEnd = true (default), the Done button won't call stopFocusMode(). And since taskViewModel.completeTask() is a no-op on an already-completed task, clicking Done on Focus screen does nothing at all. The session is only escapable via "Stop Focus" (PIN-gated if set).
+
+Fix: After the task lookup, add:
+
+if (task.status in setOf("completed", "skipped")) return@launch
+F5 · startFocusMode has no guard against double-session creation
+Severity: High File: FocusSessionViewModel.kt line 203
+
+startFocusMode runs in an unguarded coroutine. It does not check _focusSession.value or call getActiveFocusSession() before creating a new session. Two rapid taps on "Activate Focus" for different tasks call focusSessionRepository.startFocusSession() twice, creating two rows with is_active = 1 for different task_id values.
+
+FocusSessionDao.getActiveSession() returns ORDER BY id DESC LIMIT 1 — only the newer row. endSession(taskId) filters by task_id, so ending the newer session leaves the older one permanently orphaned with is_active = 1.
+
+Fix: Add an early return if a session is already active:
+
+fun startFocusMode(taskId: String) {
+    viewModelScope.launch {
+        if (_focusSession.value != null) return@launch  // session already running
+        val existing = focusSessionRepository.getActiveFocusSession()
+        if (existing != null) return@launch
+        ...
+    }
+}
+F6 · Orphaned sessions inflate getTodayFocusMinutes() stats by up to 6 hours each
+Severity: High File: FocusSessionRepository.kt lines 122–127
+
+val maxSessionMs = 6L * 60 * 60 * 1_000
+for (s in sessions) {
+    val start = Instant.parse(s.startedAt).toEpochMilli()
+    val end   = s.endedAt?.let { Instant.parse(it).toEpochMilli() } ?: now  // ← orphan uses "now"
+    totalMs  += minOf(maxOf(0L, end - start), maxSessionMs)
+}
+Every session where endedAt is null (caused by F1, F5, or any crash before endFocusSession() is called) counts as currently running, capped at 6 hours. Three orphaned sessions from three days of use = up to 18 fake focus hours in today's stats. The stats screen has no way to distinguish these from real sessions.
+
+FocusSessionDao.getLifetimeStatsAggregate() also counts orphaned sessions in total_sessions without corresponding total_focus_minutes, so the per-session average drops below what it should be.
+
+Fix: Add a repair step on boot and when the session list is loaded:
+
+suspend fun repairOrphanedSessions() {
+    val cutoff = Instant.now().minus(12, ChronoUnit.HOURS).toString()
+    focusSessionDao.endOrphanedSessions(cutoff, Instant.now().toString())
+}
+// TaskDao
+@Query("""
+    UPDATE focus_sessions SET is_active = 0, ended_at = :now
+    WHERE is_active = 1 AND ended_at IS NULL AND started_at < :cutoff
+""")
+suspend fun endOrphanedSessions(cutoff: String, now: String)
+F7 · startFocusMode sets SharedPrefs to focus_active=true before the service starts
+Severity: Low File: FocusSessionViewModel.kt steps 3 and 4
+
+// Step 3 — SharedPrefs written first
+settingsRepository.setFocusActive(active = true)
+settingsRepository.setActiveTask(...)
+settingsRepository.setAllowedPackages(allowedPackages)
+
+// Step 4 — service starts after
+foregroundServiceController.startService(...)
+AppBlockerAccessibilityService polls SharedPrefs on every app-foreground event. Between Steps 3 and 4, it sees focus_active=true and starts blocking apps — but the foreground service (with its required notification) hasn't started yet. On Android 12+, starting a background service without the notification appearing quickly can trigger ForegroundServiceStartNotAllowedException or cause a user-visible delay where an app is blocked with no UI context shown.
+
+Fix: Start the service first (Step 4 before Step 3), so the notification appears before blocking begins.
+
+Part 3 — Intertwined Bugs (Tasks × Focus Mode)
+TF1 · extendTaskTime never notifies ForegroundTaskService of the new end time
+Severity: Critical File: TaskViewModel.kt — confirmed: zero foregroundServiceController references
+
+fun extendTaskTime(taskId: String, minutes: Int) {
+    taskOperationMutex.withLock {
+        taskRepository.updateTask(task.copy(endTime = newEnd.toString(), ...))
+        alarmRepository.cancelAlarm(taskId)
+        alarmRepository.scheduleAlarm(taskId, task.title, newEndMs)
+        // ← NO call to foregroundServiceController.updateNotification(...)
+    }
+}
+ForegroundServiceController has an updateNotification(taskId, taskName, endTimeMs, nextName) method. It is never called from extendTaskTime. The service's in-memory endTimeMs field retains the original value.
+
+What happens after extending a task that has an active focus session:
+
+At original end time: tickRunnable fires (it polls against the stale in-memory endTimeMs) → clearFocusActive() → blocking stops → triggerTaskAlarm() → "Time's Up" notification fires → goIdle() → service goes idle
+At new extended end time: TaskEndAlarmReceiver fires (AlarmManager was correctly rescheduled) → posts another "Time's Up" notification
+Result: two alarm events, app blocking stops at the original end time even though the session was extended, and the Focus screen shows the timer going past zero at the wrong moment.
+
+Fix: Add after alarmRepository.scheduleAlarm(...):
+
+foregroundServiceController.updateNotification(
+    taskId = taskId,
+    taskName = task.title,
+    endTimeMs = newEndMs,
+    nextName = null,
+)
+TF2 · keepFocusActiveUntilTaskEnd=true (the default) × F1 = permanent stuck state
+Severity: Critical File: Multiple
+
+This is the sequence that produced the screenshots. The two bugs amplify each other:
+
+5:33 PM  User clicks Done on Focus screen
+         → taskViewModel.completeTask("mf") ✓  (task → "completed", count → 4/4)
+         → if (!keepFocusActiveUntilTaskEnd) stopFocusMode()
+           keepFocusActiveUntilTaskEnd = true (default) → stopFocusMode() NOT called
+
+5:35 PM  tickRunnable fires (remaining = 0)
+         → clearFocusActive()    SharedPrefs: focus_active = false → blocking stops
+         → triggerTaskAlarm()    "Time's Up" notification fires
+         → goIdle()              Service clears in-memory state
+         → endFocusSession() NOT called → Room: is_active = 1 still (F1)
+
+5:35 PM+ observeActiveFocusSession() still emits session → _focusSession non-null
+         isFocusing = true → Focus screen: "+Xm overdue" shown
+         Schedule screen: activeTask = "mf" (matches session.taskId, no status filter)
+         isRunning = task.isRunningNow() = false (task is "completed")
+         → banner shows "TIME'S UP" badge
+
+         ✓ button: taskViewModel.completeTask() → no-op (already completed)
+                   stopFocusMode() gated → not called
+         → nothing changes, user is stuck
+The only working escape is "Stop Focus" which calls requestStop() → PIN-aware path → stopFocusModeAwait() → properly ends Room session.
+
+Fixes needed (all three):
+
+Fix F1 (receive ACTION_TASK_ENDED, end Room session)
+When task is overdue: Done should always call stopFocusMode() regardless of keepFocusActiveUntilTaskEnd
+Fix TF3 below (banner status filter)
+TF3 · activeTask in HomeScreen has no status filter — banner persists for completed tasks
+Severity: High File: HomeScreen.kt lines 91–98
+
+val activeTask = remember(todayTasks, focusSession) {
+    todayTasks.firstOrNull { it.id == focusSession?.taskId }
+    // ↑ returns a completed task if its id matches the session — no status guard
+        ?: todayTasks.firstOrNull(Task::isRunningNow)
+}
+val bannerTask = activeTask
+    ?: todayTasks.filter(Task::isAwaitingDecision).maxByOrNull { it.endTime }
+As long as any focus session is active in Room (including orphaned ones from F1), activeTask finds the session's task regardless of whether it is "completed" or "skipped". ActiveTaskBanner then renders with:
+
+val isRunning = task.isRunningNow()  // false for completed task
+// → shows "TIME'S UP" badge instead of "NOW"
+All three banner buttons (✓, +, ✗) either call completeTask() (no-op on completed) or skipTask() (no-op on completed or skipped) or open the extend dialog (T1 — no guard). None of them end the session. The banner is permanently frozen.
+
+Fix:
+
+val activeTask = remember(todayTasks, focusSession) {
+    todayTasks
+        .filter { it.status !in setOf("completed", "skipped") }  // add this
+        .firstOrNull { it.id == focusSession?.taskId }
+        ?: todayTasks.firstOrNull(Task::isRunningNow)
+}
+TF4 · completeTask/skipTask don't notify ForegroundTaskService — alarm fires anyway at end time
+Severity: High File: TaskViewModel.kt
+
+completeTask() calls alarmRepository.dismissAlarm(taskId) which cancels the alarm notification activity and posts ACTION_DISMISS_ALARM. But it does not cancel the AlarmManager alarm entry itself (that is done separately by alarmRepository.cancelAlarm()).
+
+Looking at the full completeTask body: cancelAlarm is NOT called. Only dismissAlarm is called. The AlarmManager alarm is still pending. At the task's scheduled end time, TaskEndAlarmReceiver fires, which calls ForegroundTaskService.postTaskEndAlarmNotification() — showing "Time's Up" for a task the user already marked done.
+
+Similarly, if keepFocusActiveUntilTaskEnd = true and the user marks Done while the session is running, the service has no way to know the task was completed. When the end time hits, tickRunnable fires → triggerTaskAlarm() → another alarm notification for a completed task.
+
+Fix: Add alarmRepository.cancelAlarm(taskId) in completeTask and skipTask inside the mutex block.
+
+TF5 · startFocusMode races against completeTask — can start focus on a task being deleted
+Severity: Medium File: FocusSessionViewModel.kt, TaskViewModel.kt
+
+startFocusMode resolves the task via:
+
+val task = taskRepository.observeAllTasks().first()
+    .firstOrNull { it.id == taskId } ?: return@launch
+This is not behind taskOperationMutex. completeTask and skipTask ARE behind it. If completeTask holds the mutex and has updated Room (task is now "completed") but the StateFlow hasn't re-emitted yet, observeAllTasks().first() in startFocusMode could return the pre-update snapshot — finding the task with status "scheduled" — and start a focus session for it. The session then references a task that is "completed" in Room immediately after. Done on the focus screen → no-op (already completed) → session stuck (TF2 pattern).
+
+Fix: Check status after task lookup (F4 fix covers this), and/or move startFocusMode behind a dedicated mutex.
+
+TF6 · clearAllTasksExcept stops the active focus session even when the preserved task owns it
+Severity: Medium File: TaskViewModel.kt line 165
+
+fun clearAllTasksExcept(excludedTaskId: String, pinHash: String? = null) {
+    taskOperationMutex.withLock {
+        beforeClearTasks(pinHash)  // ← calls stopFocusModeAwait() for ANY active session
+        ...
+        taskRepository.deleteAllTasksExcept(excludedTaskId)
+    }
+}
+beforeClearTasks calls focusSessionViewModel.stopFocusModeAwait(pinHash) unconditionally. If the active session's taskId equals excludedTaskId (the task the user wants to keep), the focus session is stopped even though the preserved task is still in the database. After the clear, the kept task has no active focus session. The user intended to keep working on it.
+
+Fix:
+
+beforeClearTasks = { pinHash ->
+    val active = focusSessionViewModel.focusSession.value
+    if (active != null && active.taskId != excludedTaskId) {
+        focusSessionViewModel.stopFocusModeAwait(pinHash)
+    }
+}
+Part 4 — Second Pass: Enforcement Layer, Boot, and Notification-Action Chain
+AB1 · Retry-check reads raw focus_active — skips the task_end_ms cutoff the main path uses
+Severity: Medium File: AppBlockerAccessibilityService.kt — scheduleRetryCheck, ~line 1689
+
+The main enforcement path computes focusActive with an end-time check:
+
+// line 625 — main event path
+val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false).let { on ->
+    if (!on) false
+    else prefs.getLong("task_end_ms", 0L).let { end -> end <= 0L || now < end }
+}
+The retry re-check (fires up to 5 times, at 150ms × attempt, so up to 750ms after the initial block) does not:
+
+// line 1689 — retry path
+val focusActive  = prefs.getBoolean(PREF_FOCUS_ON, false)   // raw flag, no end-time check
+In the narrow window between a task's actual end time and ForegroundTaskService.tickRunnable next polling and calling clearFocusActive(), focus_active is still true in SharedPrefs. The main path would correctly treat this as "not focused" already; a retry firing in that same window won't, and will re-block/re-kick an app for a session whose time has technically already run out.
+
+Fix: Extract the end-time-aware focusActive computation into one shared helper and use it in both places.
+
+AB2 · postHomeScreenReminder has the same raw-flag gap
+Severity: Low File: AppBlockerAccessibilityService.kt, ~line 3902
+
+val focusActive = prefs.getBoolean(PREF_FOCUS_ON, false)   // no task_end_ms check
+Same mechanism as AB1: in that same narrow race window, a "Focus session is running" reminder can post for a task whose end time has already passed.
+
+AB3 · ACTION_NOTIF_ACTION bridge broadcast is dead code — same disease as F1
+Severity: Low (maintenance risk) File: NotificationActionReceiver.kt
+
+Step 3 of the receiver's own doc comment says it sends this broadcast "for immediate handling when the app process is already active." Recursive grep across every extracted file: it's sent once, received nowhere. The actual replay path is entirely the SharedPrefs pending_notif_action write + MainActivity's LaunchedEffect(isDbReady, notificationEventNonce), gated on onNewIntent firing via FLAG_ACTIVITY_SINGLE_TOP. That path currently works on its own — the broadcast isn't load-bearing today — but it's vestigial, and it reads as if it's the "already alive" handler when it isn't. A future refactor that trusts this comment and removes the SharedPrefs fallback would silently break Done/Extend/Skip everywhere.
+
+AB4 · Pending notification action silently expires after 5 minutes — no feedback to the user
+Severity: High File: MainActivity.kt, ~line 236
+
+if (action.isNullOrBlank() || taskId.isNullOrBlank() ||
+    System.currentTimeMillis() - timestamp > 5 * 60 * 1_000L
+) {
+    return@LaunchedEffect   // dropped — no toast, no retry, no log the user can see
+}
+If cold start takes longer than 5 minutes — aggressive OEM battery/doze restrictions, or the user was slow to unlock after tapping a notification action — the tap is discarded with zero feedback. The task stays stuck in its overdue state and the user has no way to know their tap from the notification shade never took effect. This directly matches the "I still cannot seem to be able to do anything" part of your original report, for the notification-tap path specifically (as opposed to the in-app buttons, which is TF2/TF3).
+
+Fix: On expiry, at minimum log it, and consider surfacing a toast ("That action expired — open the task to try again") instead of a silent no-op.
+
+AB5 · A phone reboot will NOT clear an F1-orphaned session
+Severity: Informational (confirms a workaround does not work) File: BootReceiver.kt
+
+Traced the exact screenshot scenario through BootReceiver. By the time the stuck "+3m overdue" state exists, clearFocusActive() has already run, so focus_active = false in SharedPrefs. BootReceiver's sessionValid = focusActive && (...) is therefore already false, so a reboot correctly starts the service in IDLE mode — consistent with the "blocking becomes ineffective" half of your report.
+
+But BootReceiver only ever reads SharedPrefs. It never touches Room. So the orphaned focus_sessions row from F1 survives a reboot untouched — FocusSessionViewModel will pick it right back up on next launch and the "Focus Mode Active / overdue" screen will still be there. Worth knowing before you try it as a workaround: it won't work until F1 itself is fixed.
+
+AB6 · clearFocusActive() only clears one of ~7 session-related SharedPrefs keys
+Severity: Low (self-healing, but explains AB1/AB2's timing) File: ForegroundTaskService.kt, ~line 1395
+
+private fun clearFocusActive() {
+    getSharedPreferences(AppBlockerAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean("focus_active", false)   // ← only this key
+        .apply()
+}
+task_end_ms, task_name, next_task_name, task_duration_ms, task_last_written_ms are all left stale after a session ends. Confirmed this self-heals: session start (!isActiveMode branch, ~line 924-932) rewrites task_start_ms fresh on every new session, and the equivalent applies to task_end_ms/name fields passed in via the start intent. So this isn't independently harmful — but it's the reason AB1/AB2 read stale-but-real data rather than garbage: task_end_ms from the just-ended task is still sitting there, correctly pointing at a time in the past, during that narrow gap before focus_active flips.
+
+Fix (optional cleanup): Have clearFocusActive() clear the full set of session keys, purely for hygiene — not required for correctness given the self-heal, but removes the AB1/AB2 race window's data source entirely if combined with the AB1 fix.
+
+AB7 · Empty per-task allow-list = blocks nothing — confirmed BY DESIGN, not a bug
+Severity: N/A — matches established arbitration rule
+
+isPackageBlocked: when task.focusAllowedPackages is empty/null and no daily-allowance entries are configured, nothing is added to the block list. This matches the already-established rule for this project: empty focusAllowedPackages on a task = all apps allowed (least-strict default). Not a bug — the code correctly implements the documented behavior. Included here only because it surfaced during the audit and is worth having in the same document as everything else that touches isPackageBlocked.
+
+Part 5 — FLAG Comment Audit (cross-pipeline-stage coordination risk)
+FocusSessionViewModel.kt's header carries a FLAG-1 through FLAG-5 block ending in "GPT Terra: treat the public API here as the stable contract" — these are explicitly cross-agent coordination notes in your pipeline, not casual dev comments. Checked all five against current code. Three are stale — describing gaps that were already fixed elsewhere without the comment being updated:
+
+FLAG-1 — STALE. Claims focusSession isn't backed by a reactive Room Flow and proposes adding observeActiveSession(): Flow<FocusSessionEntity?> to the DAO as the fix. That DAO method already exists, FocusSessionRepository already exposes it, and init already collects it — this is the same code F2 (earlier in this report) flagged as stale, now with the full picture: the comment's own proposed fix has already shipped. loadActiveSession(), the manual-reload workaround the comment says is needed "until the fix," is confirmed dead code — zero callers anywhere in the codebase.
+
+FLAG-2 — STALE. Claims focusViolationApp has no backing source and proposes a SharedPrefs bridge + OnSharedPreferenceChangeListener as the fix. Checked: AppBlockerAccessibilityService already writes PREF_CURRENT_VIOLATION_APP, and FocusSessionViewModel already registers exactly the listener described, seeds the initial value on init, and clears it on session end. Fully implemented; comment never updated.
+
+FLAG-3 — STALE, with a small real side effect. Claims ForegroundServiceController isn't in AppModule and should be, once registered there. Checked AppModule.kt: it now has lateinit var foregroundServiceController: ForegroundServiceController, fully initialized. But FocusSessionViewModel still does its own separate ForegroundServiceController(context.applicationContext) instead of using AppModule's instance — so there are two live instances. Confirmed harmless: read the full class, it's stateless (one constructor-injected Context, every method a pure intent-send). Worth converging for consistency, not for correctness.
+
+FLAG-4 — accurate, still correctly describes current startFocusMode behavior (task resolution via observeAllTasks().first()). Doesn't cover the mutex race in TF5, but doesn't claim to.
+
+FLAG-5 — accurate, still correctly describes the allowed_packages fallback path. Minor cleanup suggestion, not a bug.
+
+Why this matters for your workflow specifically: these flags are read and acted on by later pipeline stages per the "GPT Terra" note. A stale FLAG-1/2 risks a future stage re-implementing an already-shipped fix, or worse, adding a loadActiveSession() call somewhere to "solve" a sync bug that isn't the real one (F1) — masking F1 instead of fixing it. Worth a one-line comment cleanup pass when you're in this file for the F1 fix anyway.
+
+Part 6 — Verification Pass Against bugsfix.zip
+Checked every item from Parts 1–5 against the new upload, plus fully traced the new Pomodoro-break feature since it touches focus/blocking directly. 23 of the 26 tracked items are confirmed fixed with direct code evidence. One item's severity is now moot rather than fixed; one is unchecked this pass.
+
+Confirmed fixed
+ID	Evidence
+T1	extendTaskTime now has if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
+T2	updateTask's alarm reschedule now gated on task.status !in setOf("completed", "skipped")
+T3	Alarm ops moved inside taskRepository.withTaskOperationLock { } in addTask/updateTask — a new repository-level mutex
+T4	TaskDao.getTaskById() added; completeTask/skipTask/extendTaskTime all use it instead of scanning getAllTasks()
+T5	New hasValidTimeRange() check in addTask/updateTask, with a user-facing reportInvalidTimeRange() error via AppErrorEvents
+F1	FocusSessionViewModel now registers taskEndedReceiver for ACTION_TASK_ENDED in init (SDK-version-correct RECEIVER_NOT_EXPORTED branching), matches on taskId, calls endFocusSession + clears _focusSession/_focusViolationApp
+F3	stopFocusMode() now wraps stopFocusModeAwait(pinHash) in try/catch for SessionPinRequiredException, reports via AppErrorEvents instead of dying silently
+F4	startFocusMode now checks task.status == "completed" || task.status == "skipped" before proceeding
+F5	startFocusMode now checks focusSessionRepository.getActiveFocusSession() != null before creating a new session
+F6	New FocusSessionRepository.repairOrphanedSessions() → FocusSessionDao.endOrphanedSessions(cutoff, now), called from AppBootViewModel before the DB is exposed to the UI, and defensively at three more call sites inside the repository itself
+F7	startFocusMode now starts the foreground service (Step 3) before writing focus_active=true to SharedPrefs (Step 4) — comment explicitly explains why
+TF1	extendTaskTime now calls foregroundServiceController.updateNotification(...) when the extended task owns the active session
+TF2	New completeAndMaybeStop/skipAndMaybeStop in HomeScreen, and the equivalent inline in FocusScreen (both places, two call sites each) — condition is now (!settings.keepFocusActiveUntilTaskEnd || task.isAwaitingDecision()), so an overdue task always stops focus regardless of the setting
+TF3	activeTask in HomeScreen now filters it.status !in setOf("completed", "skipped") before matching on focusSession?.taskId
+TF4	completeTask/skipTask now call alarmRepository.cancelAlarm(taskId) + dismissAlarm(taskId) before the Room status write
+TF5	startFocusMode now wraps its body in focusOperationMutex.withLock { taskRepository.withTaskOperationLock { ... } } — the same lock completeTask/skipTask use, closing the race
+TF6	clearAllTasksExcept now only calls beforeClearTasks (which stops focus) when activeSession?.taskId != excludedTaskId
+AB1	New shared isFocusActiveNow() helper (checks task_end_ms, and self-heals focus_active=false the moment it detects expiry) — used at the retry-check call site
+AB2	Same isFocusActiveNow() helper used at the postHomeScreenReminder call site
+AB3	ACTION_NOTIF_ACTION/EXTRA_NOTIF_ACTION_TYPE removed entirely from EnforcementEventContract — comment explains the persisted-replay path is the real mechanism, so the dead bridge broadcast isn't kept around to confuse anyone
+AB4	Expired pending action now shows Toast.makeText(context, "That action expired — open the task to try again.", ...) instead of a silent drop
+AB6	clearFocusActive() now clears all nine session-related keys (task_id, task_name, task_start_ms, task_end_ms, task_color, next_task_name, task_duration_ms, task_last_written_ms, focus_break_until_ms), not just the one boolean
+FLAG-1/2/3	All three comment blocks in FocusSessionViewModel.kt rewritten to describe the current (fixed) architecture — FLAG-1 says "This former limitation has been resolved," FLAG-3 confirms ForegroundServiceController is now injected from AppModule instead of self-instantiated
+Not fixed / not applicable
+T6 — rechecked this pass, and it's now a sharper finding, not a loose end: the type-mismatch is genuinely fixed (typealias Task = AppTask), but the engine is still never instantiated or called anywhere, which means the Defense screen's "Auto-reschedule freed time" toggle is currently non-functional — see the rewritten T6 entry in Part 1 for the full trace and fix sketch.
+AB5 (BootReceiver never touches Room) — technically still true (BootReceiver.kt has a comment: "Room orphan-session repair belongs to AppBootViewModel and the..."), but this is now a non-issue by design: F6's repairOrphanedSessions() runs from AppBootViewModel on every app start — a better hook than device-boot-only anyway, since orphans can happen without a reboot (plain process death). Nothing to fix here.
+New: Pomodoro break — fully traced, no bugs found
+Since startPomodoroBreak/endPomodoroBreak are new, I traced the whole mechanism given it's squarely focus-mode territory:
+
+Blocking correctly pauses during break. enterBreak() sets focus_active=false in the same shared prefs file the accessibility service reads — so break time is genuinely unblocked, not just cosmetically "on break."
+Blocking correctly resumes. resumeFromBreak() sets focus_active=true, restarts the normal tick loop, rebuilds the active notification with the correct remaining time.
+A break can't swallow the task's real end. breakTickRunnable checks endTimeMs before checking whether the break itself has expired — if the task's actual end time arrives mid-break, it fires the full ACTION_TASK_ENDED sequence instead of silently continuing the break past it. There's a comment calling this out explicitly as an intentional guard.
+Stopping focus mid-break is clean. ACTION_SET_IDLE's handler cancels breakTickRunnable and calls goIdle(), which now clears focus_break_until_ms too (per the AB6 fix above).
+One harmless, sub-second timing overlap: the ViewModel's own 1-second break-expiry poll and the service's independent breakTickRunnable can both notice expiry within ~1s of each other and both write the same (idempotent) prefs values. Not worth fixing — it's not visible to the user and doesn't produce inconsistent state, just slightly redundant writes.
+Part 7 — First-Launch-Only Navigation Bug
+Split out into its own document since it's a different category of bug (navigation/onboarding, not tasks or focus mode): see the separate FocusFlow Bug — First-Launch-Only: Every Tab Tap Lands on Defense Instead report. Tracked here as NAV1 in the summary table below for completeness.
+
+Summary Table
+ID	Severity	Area	One-line
+T1	High	Tasks	extendTaskTime no status guard → alarms on completed tasks
+T2	Medium	Tasks	updateTask reschedules alarm regardless of status
+T3	Medium	Tasks	Alarm ops outside mutex → crash gap + race on rapid edits
+T4	Medium	Tasks	Full table scan on every status mutation (no getTaskById)
+T5	Low	Tasks	No endTime > startTime validation on insert
+T6	High	Tasks	SchedulerEngine type-fixed but unwired — Defense screen's "Auto-reschedule" toggle is a placebo
+F1	Critical	Focus	ACTION_TASK_ENDED received nowhere — Room session never ends
+F2	Low	Focus	FLAG-1 comment says non-reactive but code is reactive
+F3	Critical	Focus	stopFocusModeAwait no try-catch → PIN exception kills coroutine silently
+F4	High	Focus	startFocusMode allows focus on completed/skipped task
+F5	High	Focus	No double-session guard in startFocusMode → orphaned sessions
+F6	High	Focus	Orphaned sessions inflate today's focus minutes by up to 6h each
+F7	Low	Focus	SharedPrefs written before service starts → blocking before notification
+TF1	Critical	Both	extendTaskTime never updates service endTimeMs → double alarm
+TF2	Critical	Both	keepFocusActiveUntilTaskEnd=true + F1 = permanent stuck state
+TF3	High	Both	activeTask no status filter → banner frozen on completed task
+TF4	High	Both	completeTask/skipTask don't cancel AlarmManager → ghost alarm at end time
+TF5	Medium	Both	startFocusMode races against completeTask (no shared mutex)
+TF6	Medium	Both	clearAllTasksExcept stops focus even for the preserved task
+AB1	Medium	Focus	Retry-check skips task_end_ms cutoff — narrow re-block race
+AB2	Low	Focus	postHomeScreenReminder same raw-flag gap
+AB3	Low	Both	ACTION_NOTIF_ACTION broadcast dead code — vestigial, maintenance risk
+AB4	High	Both	Pending notif action silently expires after 5 min, no feedback
+AB5	Info	Focus	Reboot does NOT clear an F1-orphaned session — confirmed, not a workaround
+AB6	Low	Focus	clearFocusActive() only clears 1 of ~7 keys (self-heals on next session)
+AB7	N/A	Focus	Empty allow-list = blocks nothing — confirmed by design, not a bug
+NAV1	High	Nav	Onboarding-finish→Defense navigation skips saveState/restoreState convention — locks up Schedule tab, first launch only
+Fix order if prioritizing by blast radius: NAV1 → F1 → TF2 → TF1 → F3 → TF3 → F4 → F5 → TF4 → AB4 → T1 → T3 → F6 → TF5 → AB1 → T2 → T4 → TF6 → F7 → AB2 → AB6 → T5 → F2 → AB3 → T6 → AB5 (verify only)

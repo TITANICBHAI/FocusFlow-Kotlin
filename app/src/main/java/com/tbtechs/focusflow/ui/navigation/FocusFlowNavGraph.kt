@@ -348,17 +348,13 @@ fun FocusFlowNavGraph(
                         isOnboarding = isOnboarding,
                         onBack = {
                             if (isOnboarding) {
-                                navController.navigate(Routes.DEFENSE) {
-                                    popUpTo(Routes.HOME) { inclusive = false }
-                                }
+                                navigate(Routes.DEFENSE)
                             } else {
                                 back()
                             }
                         },
                         onGetStarted = {
-                            navController.navigate(Routes.DEFENSE) {
-                                popUpTo(Routes.HOME) { inclusive = false }
-                            }
+                            navigate(Routes.DEFENSE)
                         },
                     )
                 }

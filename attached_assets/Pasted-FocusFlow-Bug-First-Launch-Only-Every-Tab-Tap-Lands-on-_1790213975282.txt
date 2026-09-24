@@ -1,0 +1,57 @@
+FocusFlow Bug — First-Launch-Only: Every Tab Tap Lands on Defense Instead
+Symptom reported: fresh install only — tapping "Schedule" in the bottom nav, or any "open schedule" link from the Focus screen, opens Defense instead. Repeats no matter how many times it's tapped.
+
+Ruled out, with evidence, before landing on the real cause
+Not routeFromIntent — for a plain launcher-icon tap (no deep link), intent?.data is null, Routes.fromPath(null) hits if (normalized.isBlank()) return HOME. Cold-start requestedRoute is correctly Routes.HOME.
+Not MainActivity's privacy/onboarding guard (LaunchedEffect(requestedRoute, isDbReady, privacyAccepted, onboardingComplete)) — confirmed OnboardingScreen.kt calls setupPersistence.setOnboardingComplete(true) before onFinished(), so by the time the user reaches the post-onboarding How-To-Use screen, both privacyAccepted and onboardingComplete are already true. The guard's else -> requestedRoute branch applies, and since requestedRoute was never mutated from its cold-start value of Routes.HOME, guardedRoute == Routes.HOME — the guard's own condition (guardedRoute != Routes.HOME) never fires. This mechanism is provably inert by the time the bug occurs.
+Not the bottom nav itself — every tab (MainScaffold(currentRoute, ::navigate), 5 call sites) routes through the exact same shared navigate() function. No divergent wiring.
+What's actually different, and the leading candidate
+The one-time end of onboarding. In FocusFlowNavGraph.kt, finishing the post-onboarding How-To-Use screen navigates like this:
+
+onGetStarted = {
+    navController.navigate(Routes.DEFENSE) {
+        popUpTo(Routes.HOME) { inclusive = false }
+    }
+},
+This is a raw navController.navigate() call, bypassing the graph's own shared helper entirely. Compare that shared helper — used for literally every other navigation in the app, including every bottom-nav tap:
+
+fun navigate(route: String) {
+    if (navController.currentDestination?.route == route) return
+    if (route in Routes.tabRoutes) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    } else {
+        navController.navigate(route) { launchSingleTop = true }
+    }
+}
+Routes.HOME is both the app's NavHost(startDestination = Routes.HOME) and a regular tab route (tabRoutes = setOf(HOME, FOCUS, STATS, SETTINGS, DEFENSE)). The onboarding-finish navigation reaches Defense by popping up to HOME without saveState, without launchSingleTop, without restoreState — a different back-stack contract than the one every subsequent tab tap assumes. The very next thing that happens is the user tapping Schedule, which calls navigate(Routes.HOME) — using popUpTo(startDestination.id) { saveState = true } + restoreState = true, specifically while navigating to the start destination itself, immediately after that destination was left in an unsaved state by a different code path.
+
+Why this is the leading candidate, and what I can't confirm from here
+This is a known-tricky combination in Jetpack Navigation Compose: re-entering the graph's start destination via the save/restore-state tab pattern, when that destination's most recent exit didn't go through the matching saveState convention, is a documented source of "navigating to X silently does nothing" bugs.
+
+I traced the exact code asymmetry through static reading, and it's consistent with every reported symptom:
+
+First-launch-only — this handoff only happens once per install.
+Persists across repeated taps — the back stack corruption doesn't self-heal; it needs a fresh process.
+What I can't do from here is attach a debugger and watch the live NavController back stack to confirm the exact internal state — that would need a device/emulator test.
+
+Fix
+Make the onboarding-finish navigation match the convention every tab already uses, rather than a bespoke pop:
+
+onGetStarted = {
+    navController.navigate(Routes.DEFENSE) {
+        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+},
+And the same for the onBack branch just above it, which has the identical pattern.
+
+This doesn't require understanding the exact internal failure mode to be confident it's the right fix — it just removes the inconsistency, which is the one concrete thing distinguishing this transition from every other navigation call in the app that doesn't have this problem.
+
+Confidence: 0.8 — the code asymmetry itself is 100% verified by direct reading, and it's the only structural difference found between this transition and every other working one. What isn't verified statically is the exact internal NavController back-stack state at the moment of failure — that requires running the app on a device/emulator with a debugger.
+
+Caveats: if the fix above doesn't resolve it, the next diagnostic step would be Logcat output from a fresh-install repro, showing the actual back-stack transitions to confirm or rule this out directly.
