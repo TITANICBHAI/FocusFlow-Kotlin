@@ -30,6 +30,8 @@ class BackgroundFetchWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
+        runDailyFindingDetection()
+
         val gateway = BackgroundFetchDependencies.create(applicationContext)
             ?: return Result.failure(
                 workDataOf("error" to "BackgroundFetchGateway is not configured"),
@@ -115,6 +117,32 @@ class BackgroundFetchWorker(
         database.appSessionDao().deleteOlderThan(cutoffDate)
         database.findingDao().deleteOldResolved(cutoffIso)
         database.clarifyingQuestionDao().deleteAnsweredBefore(cutoffIso)
+    }
+
+    /**
+     * Detection is independent of the legacy background-fetch gateway. Run it
+     * before that adapter check so findings can still be generated while the
+     * primary task-sync adapter is unavailable.
+     */
+    private suspend fun runDailyFindingDetection() {
+        val detectionPrefs = applicationContext.getSharedPreferences(
+            "focusday_prefs",
+            Context.MODE_PRIVATE,
+        )
+        val todayForDetection = java.time.LocalDate.now().toString()
+        val lastDetectionRun =
+            detectionPrefs.getString("last_detection_run_date", "") ?: ""
+        if (lastDetectionRun == todayForDetection) return
+
+        runCatching {
+            com.tbtechs.focusflow.di.AppModule.findingDetectionRunner.runAll()
+        }.onSuccess {
+            detectionPrefs.edit()
+                .putString("last_detection_run_date", todayForDetection)
+                .apply()
+        }.onFailure {
+            Log.w(TAG, "Finding detection failed", it)
+        }
     }
 
     companion object {

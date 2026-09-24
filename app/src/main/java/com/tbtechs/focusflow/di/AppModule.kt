@@ -16,6 +16,7 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.analytics.AnalyticsProcessor
 import com.tbtechs.focusflow.analytics.AchievementEngine
 import com.tbtechs.focusflow.analytics.InsightEngine
+import com.tbtechs.focusflow.analytics.detection.FindingDetectionRunner
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.SchedulerEngine
 import com.tbtechs.focusflow.data.repository.DayRatingRepository
@@ -135,6 +136,9 @@ object AppModule {
     lateinit var clarifyingQuestionRepository: ClarifyingQuestionRepository
         private set
 
+    lateinit var findingDetectionRunner: FindingDetectionRunner
+        private set
+
     // ─── Init ─────────────────────────────────────────────────────────────────
 
     /**
@@ -218,6 +222,11 @@ object AppModule {
         )
         clarifyingQuestionRepository = ClarifyingQuestionRepository(
             database.clarifyingQuestionDao(),
+        )
+        findingDetectionRunner = FindingDetectionRunner(
+            taskDao = database.taskDao(),
+            focusSessionDao = database.focusSessionDao(),
+            findingRepository = findingRepository,
         )
     }
 }
