@@ -3,9 +3,8 @@
 You are implementing or reviewing the FocusFlow behavioral-intelligence work.
 Before changing code, you MUST:
 
-1. Read the complete contents of:
-   - `attached_assets/IMPL_1A_1790065764705.md`
-   - `attached_assets/IMPL_1B_1790065764704.md`
+1. Read the complete phase specification in `docs/` (for example,
+   `docs/IMPL_5.md`) and any upstream phase briefs it depends on.
 2. Read `docs/behavioral-intelligence-implementation-tracker.md`.
 3. Inspect the real Kotlin codebase and verify package names, Room schema
    version, migration chain, DAO names, preference keys, service lifecycle,
@@ -16,8 +15,8 @@ Before changing code, you MUST:
    - record adaptations when the real code differs from the brief;
    - record blockers and verification results immediately;
    - leave no completed item implied only by a plan.
-5. Before finishing, re-read both briefs, inspect the final diff, and reconcile
-   every explicit requirement against the tracker.
+5. Before finishing, re-read the applicable phase brief(s), inspect the final
+   diff, and reconcile every explicit requirement against the tracker.
 
 Non-negotiable project constraints:
 
@@ -39,4 +38,6 @@ Implementation expectations:
   UsageEvents retention window.
 - Keep screen-off/unlock and accessibility lifecycle hooks compatible with the
   existing allowance-tracking behavior.
+- Keep allowance suggestions advisory unless a verified allowance-setting
+  integration and an explicit enforcement design are in scope.
 - Fail explicitly for configuration problems; do not add silent no-op fallbacks.

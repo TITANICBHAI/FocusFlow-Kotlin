@@ -7,11 +7,13 @@ Source briefs:
 - `docs/IMPL_2.md` — Stats UI layer
 - `docs/IMPL_3.md` — detection engine using existing task/session history
 - `docs/IMPL_4.md` — detection engine using daily usage/session history
+- `docs/IMPL_5.md` — substitution detection and data-derived allowance suggestion
 
 This tracker is the shared status record for IMPL_1A through IMPL_5. Update it after
 each meaningful implementation, reconciliation, or verification step. The
-attached briefs remain the source material; the Kotlin codebase is authoritative
-when a brief's name, schema, or lifecycle differs from the current project.
+phase briefs in `docs/` are the implementation specifications; the Kotlin
+codebase is authoritative when a brief's name, schema, or lifecycle differs
+from the current project.
 
 ## Working constraints
 
@@ -33,7 +35,7 @@ when a brief's name, schema, or lifecycle differs from the current project.
 | IMPL_2 | `docs/IMPL_2.md` | Stats UI, ratings, findings, cold start | Complete; review fixes applied |
 | IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; source complete; hosted build blocked |
 | IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Implemented; source complete; hosted build blocked |
-| IMPL_5 | — | Adaptive allowance | Planned |
+| IMPL_5 | `docs/IMPL_5.md` | Substitution and data-derived allowance suggestion | Spec added; implementation pending |
 
 ## IMPL_1A — data layer
 
@@ -138,12 +140,24 @@ explicitly deferred until the per-day, per-hour, per-package blocking-attempt
 source and DAO are verified. The shared IMPL_3 detector helpers are already
 `internal` and are reused by IMPL_4.
 
-## IMPL_5 — adaptive allowance
+## IMPL_5 — substitution and allowance suggestion
 
-- [ ] Define the adaptive allowance inputs, safety limits, and user override.
-- [ ] Implement allowance recommendations only after the detection/history
-  pipeline has accumulated enough data.
-- [ ] Add persistence, UI controls, and explicit opt-in before enforcement.
+- [x] Add the IMPL_5 specification at `docs/IMPL_5.md`.
+- [ ] Extract the shared four-week averages helper and refactor
+  `detectEscalatingCapture` without changing its behavior.
+- [ ] Implement Substitution detection using the existing daily-usage history.
+- [ ] Implement the data-derived Allowance Suggestion as an informational
+  Finding, using rated-day usage comparisons and the brief's sample thresholds.
+- [ ] Update `FindingCardView` with the allowance-specific category and without
+  response actions for that finding type.
+- [ ] Add both detections to the existing daily `FindingDetectionRunner`.
+- [ ] Add focused detector and UI/runner coverage for thresholds, winner
+  selection, and allowance-specific presentation.
+- [ ] Verify the IMPL_5 implementation and Android build through GitHub Actions.
+
+The allowance suggestion is advisory and appears as a Finding. This phase does
+not enforce a limit or add limit-setting UI, limit persistence, or an opt-in
+flow; those require a verified allowance settings integration point.
 
 ## Verification
 
@@ -156,10 +170,13 @@ source and DAO are verified. The shared IMPL_3 detector helpers are already
 - [ ] Run a new GitHub Actions build after the current review fixes.
 - [ ] Run a new GitHub Actions build after the IMPL_4 source changes; the
   existing hosted build is currently blocked by unrelated Kotlin errors.
+- [ ] Run a new GitHub Actions build after the IMPL_5 implementation.
 
 ## Follow-up scope
 
 IMPL_3 owns the detection engine that generates the first `FindingEntity` rows
 from existing task and focus-session data. IMPL_4 adds detectors that depend on
-the new daily usage/session history. IMPL_5 owns adaptive allowance after those
-signals are mature.
+the new daily usage/session history. IMPL_5 adds substitution detection and an
+advisory allowance suggestion after those signals are mature. Notification
+Conditioning remains separately deferred until its blocking-attempt source and
+DAO are verified.
