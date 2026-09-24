@@ -8,7 +8,7 @@ Source briefs:
 - `docs/IMPL_3.md` — detection engine using existing task/session history
 - `docs/IMPL_4.md` — detection engine using daily usage/session history
 
-This tracker is the shared status record for IMPL_1A, IMPL_1B, and IMPL_2. Update it after
+This tracker is the shared status record for IMPL_1A through IMPL_5. Update it after
 each meaningful implementation, reconciliation, or verification step. The
 attached briefs remain the source material; the Kotlin codebase is authoritative
 when a brief's name, schema, or lifecycle differs from the current project.
@@ -131,8 +131,8 @@ the planned `daily_app_usage` and `app_sessions` data:
 - Streak Lock-in
 
 This is design validation, not a shipped-source claim: the current workspace
-does not yet contain the IMPL_3/IMPL_4 detection engine files, so these items
-remain planned. Notification Conditioning stays explicitly deferred until the
+does not yet contain the IMPL_4 detection engine files, so these items remain
+planned. Notification Conditioning stays explicitly deferred until the
 per-day, per-hour, per-package blocking-attempt source and DAO are verified.
 When IMPL_3 is implemented, widen the shared detector helpers to `internal`
 before IMPL_4 imports them from the second detector file.
