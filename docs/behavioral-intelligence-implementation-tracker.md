@@ -32,7 +32,7 @@ when a brief's name, schema, or lifecycle differs from the current project.
 | IMPL_1B | `docs/IMPL_1B.md` | Repositories, services, notifications, pruning | Complete |
 | IMPL_2 | `docs/IMPL_2.md` | Stats UI, ratings, findings, cold start | Complete; review fixes applied |
 | IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; source complete; hosted build blocked |
-| IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Planned |
+| IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Implemented; source complete; hosted build blocked |
 | IMPL_5 | — | Adaptive allowance | Planned |
 
 ## IMPL_1A — data layer
@@ -107,17 +107,19 @@ when a brief's name, schema, or lifecycle differs from the current project.
 
 ## IMPL_4 — manipulation-pattern detection
 
-- [ ] Add the raw app-session query required by the manipulation detectors.
-- [ ] Add variable reward loop, infinite-session design, morning hijack,
+- [x] Add the raw app-session query required by the manipulation detectors.
+- [x] Add variable reward loop, infinite-session design, morning hijack,
   escalating capture, and streak lock-in detectors.
-- [ ] Keep notification conditioning deferred until the verified per-day,
+- [x] Keep notification conditioning deferred until the verified per-day,
   per-hour, per-package blocking-attempt source and DAO are identified.
-- [ ] Have each detector return only its strongest qualifying match per run;
+- [x] Have each detector return only its strongest qualifying match per run;
   the finding cooldown would otherwise silently discard multiple submissions
   from the same detection pass.
-- [ ] Extend the runner and dependency wiring without changing Phase 3
+- [x] Extend the runner and dependency wiring without changing Phase 3
   detector behavior.
-- [ ] Verify that all detectors remain best-effort and do not block app startup.
+- [x] Verify that all detectors remain best-effort and do not block app startup.
+- [x] Add focused detector tests for thresholds, positive matches, candidate
+  selection, and Morning Hijack evidence.
 
 ### IMPL_4 review reconciliation
 
@@ -130,12 +132,11 @@ the planned `daily_app_usage` and `app_sessions` data:
 - Escalating Capture
 - Streak Lock-in
 
-This is design validation, not a shipped-source claim: the current workspace
-does not yet contain the IMPL_4 detection engine files, so these items remain
-planned. Notification Conditioning stays explicitly deferred until the
-per-day, per-hour, per-package blocking-attempt source and DAO are verified.
-When IMPL_3 is implemented, widen the shared detector helpers to `internal`
-before IMPL_4 imports them from the second detector file.
+The five detectors are now implemented against the verified
+`daily_app_usage` and `app_sessions` sources. Notification Conditioning stays
+explicitly deferred until the per-day, per-hour, per-package blocking-attempt
+source and DAO are verified. The shared IMPL_3 detector helpers are already
+`internal` and are reused by IMPL_4.
 
 ## IMPL_5 — adaptive allowance
 
@@ -153,6 +154,8 @@ before IMPL_4 imports them from the second detector file.
 - [x] Existing GitHub Actions run `35705729749` passed:
   `https://github.com/TITANICBHAI/FocusFlow-Kotlin/actions/runs/35705729749`
 - [ ] Run a new GitHub Actions build after the current review fixes.
+- [ ] Run a new GitHub Actions build after the IMPL_4 source changes; the
+  existing hosted build is currently blocked by unrelated Kotlin errors.
 
 ## Follow-up scope
 

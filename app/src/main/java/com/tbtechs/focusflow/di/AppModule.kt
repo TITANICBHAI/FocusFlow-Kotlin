@@ -227,6 +227,10 @@ object AppModule {
             taskDao = database.taskDao(),
             focusSessionDao = database.focusSessionDao(),
             findingRepository = findingRepository,
+            dailyAppUsageDao = database.dailyAppUsageDao(),
+            appSessionDao = database.appSessionDao(),
+            dayRatingDao = database.dayRatingDao(),
+            clarifyingQuestionRepository = clarifyingQuestionRepository,
         )
     }
 }

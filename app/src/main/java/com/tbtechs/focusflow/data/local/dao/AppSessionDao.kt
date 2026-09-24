@@ -49,6 +49,24 @@ interface AppSessionDao {
     """)
     suspend fun getFirstSessionEachDay(startDate: String, endDate: String): List<FirstSessionRow>
 
+    /**
+     * Raw closed sessions for one package in a date range. The detection
+     * runner calls this only for packages that pass the cheap aggregate
+     * shortlist, keeping variance calculations bounded.
+     */
+    @Query("""
+        SELECT * FROM app_sessions
+        WHERE package_name = :packageName
+          AND local_date BETWEEN :startDate AND :endDate
+          AND duration_ms > 0
+        ORDER BY started_at ASC
+    """)
+    suspend fun getSessionsForPackageInRange(
+        packageName: String,
+        startDate: String,
+        endDate: String,
+    ): List<AppSessionEntity>
+
     @Query("DELETE FROM app_sessions WHERE local_date < :cutoffDate")
     suspend fun deleteOlderThan(cutoffDate: String)
 

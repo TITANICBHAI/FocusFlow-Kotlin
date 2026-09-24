@@ -22,14 +22,14 @@ ships without it.
 
 ---
 
-## Step 0 — Widen two visibility modifiers in `FindingDetectors.kt` (IMPL_3)
+## Step 0 — Confirm shared helper visibility from IMPL_3
 
 `evidenceFingerprint`, `newFinding`, `localDateOf`, `localHourOf`, and
-`LOCAL_DATE_FMT` are `private` in `FindingDetectors.kt` — file-private in
-Kotlin, not package-private. This new file is in the same package
-(`analytics.detection`) but cannot see them without this change.
+`LOCAL_DATE_FMT` are `internal` in the current `FindingDetectors.kt`. This new
+file is in the same package (`analytics.detection`) and can reuse them
+directly. No additional visibility change is required.
 
-In `analytics/detection/FindingDetectors.kt`, change:
+If starting from an older IMPL_3 revision, change:
 
 ```kotlin
 private val LOCAL_DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE
@@ -39,13 +39,13 @@ to:
 internal val LOCAL_DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE
 ```
 
-And change these four `private fun` declarations to `internal fun`:
+ And change these four `private fun` declarations to `internal fun`:
 - `evidenceFingerprint`
 - `localDateOf`
 - `localHourOf`
 - `newFinding`
 
-No other changes to that file. Everything else stays `private` as written.
+ No other changes to that file. Everything else stays `private` as written.
 
 ---
 
@@ -586,9 +586,7 @@ private suspend fun runVariableRewardLoop() {
         .filter { (_, days) -> days.size >= 10 && (days.sumOf { it.sessionCount }.toDouble() / days.size) >= 5.0 }
         .keys
 
-    val rawByPackage = roughCandidates.associateWith { pkg ->
-        appSessionDao.getSessionsForPackageInRange(pkg, start, end)
-    }
+    val rawByPackage = loadRawSessions(roughCandidates, start, end)
 
     detectVariableRewardLoop(dailyStats, rawByPackage, names)?.let { findingRepository.submit(it) }
 }
@@ -608,9 +606,7 @@ private suspend fun runInfiniteSessionDesign() {
         .filter { (pkg, days) -> categories[pkg] != "utility" && days.size >= 14 }
         .keys
 
-    val rawByPackage = roughCandidates.associateWith { pkg ->
-        appSessionDao.getSessionsForPackageInRange(pkg, start, end)
-    }
+    val rawByPackage = loadRawSessions(roughCandidates, start, end)
 
     detectInfiniteSessionDesign(dailyStats, rawByPackage, names, categories)
         ?.let { findingRepository.submit(it) }
@@ -632,6 +628,19 @@ private suspend fun runStreakLockIn() {
     if (usageRows.isEmpty()) return
     val ratings = dayRatingDao.getForDateRange(start, end)
     detectStreakLockIn(usageRows, ratings, windowDays)?.let { findingRepository.submit(it) }
+}
+
+private suspend fun loadRawSessions(
+    packages: Set<String>,
+    startDate: String,
+    endDate: String,
+): Map<String, List<AppSessionEntity>> {
+    val sessionsByPackage = mutableMapOf<String, List<AppSessionEntity>>()
+    for (packageName in packages) {
+        sessionsByPackage[packageName] =
+            appSessionDao.getSessionsForPackageInRange(packageName, startDate, endDate)
+    }
+    return sessionsByPackage
 }
 ```
 
