@@ -4,7 +4,8 @@
 **This is the last document in the originally planned sequence**
 (1A → 1B → 2 → 3 → 4 → 5). Notification Conditioning remains a separate,
 deferred detection because its blocking-attempt source has not been verified.
-This brief specifies IMPL_5; the work described here is not yet implemented.
+The IMPL_5 implementation and focused test sources are now present; hosted
+Android verification remains pending.
 
 Both detectors here reuse `daily_app_usage` and `day_ratings` — no new
 tables, no new DAO methods beyond what IMPL_4 already wired into
@@ -421,9 +422,10 @@ already threaded through the runner's constructor in IMPL_4.
 | IMPL_2 | DayRatingBar, FindingCardView, FindingsSection, ColdStartSheet | Complete; review fixes applied |
 | IMPL_3 | Post-failure cascade, session sweet spot, estimation drift, day-of-week outlier | Implemented; source complete; hosted build blocked |
 | IMPL_4 | Variable reward loop, infinite session design, morning hijack, escalating capture, streak lock-in | Implemented; source complete; hosted build blocked |
-| IMPL_5 | Substitution, allowance suggestion | Spec added; implementation and verification pending |
+| IMPL_5 | Substitution, allowance suggestion | Implemented; focused tests added; GitHub Actions verification pending |
 
-The tracker records nine detectors implemented across IMPL_3 and IMPL_4.
-IMPL_5 specifies two additional findings, neither implemented yet.
+The nine detections from IMPL_3 and IMPL_4 plus both IMPL_5 findings are
+implemented in source. Focused IMPL_5 test coverage is present; run the
+Android checks through GitHub Actions to verify it.
 Notification Conditioning remains separately deferred pending verification of
 `TemptationLogManager.kt` and the DAO or table behind `blocking.byHour`.

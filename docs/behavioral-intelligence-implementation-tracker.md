@@ -35,7 +35,7 @@ from the current project.
 | IMPL_2 | `docs/IMPL_2.md` | Stats UI, ratings, findings, cold start | Complete; review fixes applied |
 | IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; source complete; hosted build blocked |
 | IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Implemented; source complete; hosted build blocked |
-| IMPL_5 | `docs/IMPL_5.md` | Substitution and data-derived allowance suggestion | Spec added; implementation pending |
+| IMPL_5 | `docs/IMPL_5.md` | Substitution and data-derived allowance suggestion | Implemented; focused tests added; GitHub Actions verification pending |
 
 ## IMPL_1A — data layer
 
@@ -143,15 +143,15 @@ source and DAO are verified. The shared IMPL_3 detector helpers are already
 ## IMPL_5 — substitution and allowance suggestion
 
 - [x] Add the IMPL_5 specification at `docs/IMPL_5.md`.
-- [ ] Extract the shared four-week averages helper and refactor
+- [x] Extract the shared four-week averages helper and refactor
   `detectEscalatingCapture` without changing its behavior.
-- [ ] Implement Substitution detection using the existing daily-usage history.
-- [ ] Implement the data-derived Allowance Suggestion as an informational
+- [x] Implement Substitution detection using the existing daily-usage history.
+- [x] Implement the data-derived Allowance Suggestion as an informational
   Finding, using rated-day usage comparisons and the brief's sample thresholds.
-- [ ] Update `FindingCardView` with the allowance-specific category and without
+- [x] Update `FindingCardView` with the allowance-specific category and without
   response actions for that finding type.
-- [ ] Add both detections to the existing daily `FindingDetectionRunner`.
-- [ ] Add focused detector and UI/runner coverage for thresholds, winner
+- [x] Add both detections to the existing daily `FindingDetectionRunner`.
+- [x] Add focused detector and UI/runner test coverage for thresholds, winner
   selection, and allowance-specific presentation.
 - [ ] Verify the IMPL_5 implementation and Android build through GitHub Actions.
 
@@ -171,6 +171,10 @@ flow; those require a verified allowance settings integration point.
 - [ ] Run a new GitHub Actions build after the IMPL_4 source changes; the
   existing hosted build is currently blocked by unrelated Kotlin errors.
 - [ ] Run a new GitHub Actions build after the IMPL_5 implementation.
+
+Android unit and instrumentation tests were added for IMPL_5 but were not run
+in Replit; use the GitHub Actions Android environment for compilation and
+verification.
 
 ## Follow-up scope
 

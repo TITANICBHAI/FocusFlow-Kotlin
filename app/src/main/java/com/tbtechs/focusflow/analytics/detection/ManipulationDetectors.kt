@@ -6,10 +6,13 @@ import com.tbtechs.focusflow.data.local.dao.SessionStatRow
 import com.tbtechs.focusflow.data.local.entity.AppSessionEntity
 import com.tbtechs.focusflow.data.local.entity.DayRatingEntity
 import com.tbtechs.focusflow.data.local.entity.FindingEntity
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import kotlin.math.round
 import kotlin.math.sqrt
 
 private const val MS_PER_MIN = 60_000.0
+private const val MIN_DAYS_PER_WEEK = 4
 
 private data class DurationStats(
     val mean: Double,
@@ -33,6 +36,58 @@ private fun durationStats(sessions: List<AppSessionEntity>): DurationStats? {
 
 private val STREAK_ELIGIBLE_CATEGORIES =
     setOf("social", "entertainment", "communication")
+private val ALLOWANCE_ELIGIBLE_CATEGORIES = setOf("social", "entertainment")
+
+internal data class WeeklyAverages(
+    val appName: String,
+    val week1: Double,
+    val week2: Double,
+    val week3: Double,
+    val week4: Double,
+)
+
+/**
+ * Buckets usage into four seven-day periods relative to [today], with week 4
+ * being most recent. Packages with fewer than four days in any week are
+ * excluded so sparse data cannot masquerade as a trend.
+ */
+internal fun computeWeeklyAverages(
+    usageRows: List<AppUsageRangeRow>,
+    today: LocalDate,
+): Map<String, WeeklyAverages> {
+    fun weekOf(date: LocalDate): Int {
+        val daysAgo = ChronoUnit.DAYS.between(date, today)
+        return when {
+            daysAgo < 7 -> 4
+            daysAgo < 14 -> 3
+            daysAgo < 21 -> 2
+            daysAgo < 28 -> 1
+            else -> 0
+        }
+    }
+
+    return usageRows.groupBy { it.packageName }.mapNotNull { (packageName, rows) ->
+        val byWeek = rows.mapNotNull { row ->
+            val date = runCatching { LocalDate.parse(row.date) }.getOrNull()
+                ?: return@mapNotNull null
+            val week = weekOf(date)
+            if (week == 0) null else week to row.foregroundMs
+        }.groupBy({ it.first }, { it.second })
+
+        if ((1..4).any { (byWeek[it]?.size ?: 0) < MIN_DAYS_PER_WEEK }) {
+            return@mapNotNull null
+        }
+
+        val averages = (1..4).associateWith { week -> byWeek.getValue(week).average() }
+        packageName to WeeklyAverages(
+            appName = rows.first().appName,
+            week1 = averages.getValue(1),
+            week2 = averages.getValue(2),
+            week3 = averages.getValue(3),
+            week4 = averages.getValue(4),
+        )
+    }.toMap()
+}
 
 /**
  * Finds a high-frequency app with short, highly variable sessions.
@@ -263,19 +318,8 @@ fun detectMorningHijack(
  */
 fun detectEscalatingCapture(
     usageRows: List<AppUsageRangeRow>,
-    today: java.time.LocalDate,
+    today: LocalDate,
 ): FindingEntity? {
-    val weekOf = { date: java.time.LocalDate ->
-        val daysAgo = java.time.temporal.ChronoUnit.DAYS.between(date, today)
-        when {
-            daysAgo < 7 -> 4
-            daysAgo < 14 -> 3
-            daysAgo < 21 -> 2
-            daysAgo < 28 -> 1
-            else -> 0
-        }
-    }
-
     data class Candidate(
         val packageName: String,
         val appName: String,
@@ -284,46 +328,26 @@ fun detectEscalatingCapture(
         val week4Minutes: Double,
     )
 
-    val candidates = usageRows
-        .groupBy { it.packageName }
-        .mapNotNull { (packageName, rows) ->
-            val byWeek = rows
-                .mapNotNull { row ->
-                    val date = runCatching {
-                        java.time.LocalDate.parse(row.date)
-                    }.getOrNull() ?: return@mapNotNull null
-                    val week = weekOf(date)
-                    if (week == 0) null else week to row.foregroundMs
-                }
-                .groupBy({ it.first }, { it.second })
-
-            if ((1..4).any { (byWeek[it]?.size ?: 0) < 4 }) {
-                return@mapNotNull null
-            }
-
-            val weekAverage = (1..4).associateWith { week ->
-                byWeek.getValue(week).average()
-            }
-            val week1 = weekAverage.getValue(1)
-            val week2 = weekAverage.getValue(2)
-            val week3 = weekAverage.getValue(3)
-            val week4 = weekAverage.getValue(4)
-            if (!(week2 > week1 && week3 > week2 && week4 > week3)) {
-                return@mapNotNull null
-            }
-            if (week1 <= 5 * MS_PER_MIN) return@mapNotNull null
-
-            val growth = (week4 - week1) / week1
-            if (growth < 0.40) return@mapNotNull null
-
-            Candidate(
-                packageName = packageName,
-                appName = rows.first().appName,
-                growth = growth,
-                week1Minutes = week1 / MS_PER_MIN,
-                week4Minutes = week4 / MS_PER_MIN,
-            )
+    val candidates = computeWeeklyAverages(usageRows, today).mapNotNull { (packageName, weeks) ->
+        if (!(weeks.week2 > weeks.week1 &&
+                weeks.week3 > weeks.week2 &&
+                weeks.week4 > weeks.week3)
+        ) {
+            return@mapNotNull null
         }
+        if (weeks.week1 <= 5 * MS_PER_MIN) return@mapNotNull null
+
+        val growth = (weeks.week4 - weeks.week1) / weeks.week1
+        if (growth < 0.40) return@mapNotNull null
+
+        Candidate(
+            packageName = packageName,
+            appName = weeks.appName,
+            growth = growth,
+            week1Minutes = weeks.week1 / MS_PER_MIN,
+            week4Minutes = weeks.week4 / MS_PER_MIN,
+        )
+    }
 
     val winner = candidates.maxByOrNull { it.growth } ?: return null
     val growthPercentage = round(winner.growth * 100).toInt()
@@ -350,6 +374,185 @@ fun detectEscalatingCapture(
         subjectPackage = winner.packageName,
         subjectAppName = winner.appName,
     )
+}
+
+/**
+ * Finds a pair of apps where a substantial drop in one is offset by a rise in
+ * another while their combined daily usage remains nearly flat.
+ */
+fun detectSubstitution(
+    usageRows: List<AppUsageRangeRow>,
+    today: LocalDate,
+): FindingEntity? {
+    val weekly = computeWeeklyAverages(usageRows, today)
+    if (weekly.size < 2) return null
+
+    data class Candidate(
+        val downPackage: String,
+        val downName: String,
+        val downPercent: Int,
+        val upPackage: String,
+        val upName: String,
+        val upPercent: Int,
+        val combinedShift: Int,
+    )
+
+    val entries = weekly.entries.toList()
+    val candidates = buildList {
+        for (downIndex in entries.indices) {
+            for (upIndex in entries.indices) {
+                if (downIndex == upIndex) continue
+                val (downPackage, down) = entries[downIndex]
+                val (upPackage, up) = entries[upIndex]
+                if (down.week1 <= 0.0 || up.week1 <= 0.0) continue
+
+                val downChange = (down.week4 - down.week1) / down.week1
+                val upChange = (up.week4 - up.week1) / up.week1
+                if (downChange > -0.30 || upChange < 0.30) continue
+
+                val initialCombined = down.week1 + up.week1
+                val recentCombined = down.week4 + up.week4
+                val combinedShift =
+                    kotlin.math.abs(recentCombined - initialCombined) / initialCombined
+                if (combinedShift >= 0.15) continue
+
+                val downPercent = round(-downChange * 100).toInt()
+                val upPercent = round(upChange * 100).toInt()
+                add(
+                    Candidate(
+                        downPackage = downPackage,
+                        downName = down.appName,
+                        downPercent = downPercent,
+                        upPackage = upPackage,
+                        upName = up.appName,
+                        upPercent = upPercent,
+                        combinedShift = downPercent + upPercent,
+                    ),
+                )
+            }
+        }
+    }
+
+    val winner = candidates.maxByOrNull { it.combinedShift } ?: return null
+    val pairKey = "${winner.downPackage}|${winner.upPackage}"
+    val fingerprint = evidenceFingerprint(
+        detectionType = "SUBSTITUTION",
+        subjectPackage = pairKey,
+        sampleSize = 28,
+        keyMetric = winner.combinedShift.toDouble(),
+        metricUnit = 10.0,
+    )
+
+    return newFinding(
+        detectionType = "SUBSTITUTION",
+        headline = "Same time, different destination",
+        body = "Your combined time across these two apps has barely changed over the last " +
+            "4 weeks. What shifted: ${winner.downName} is down ${winner.downPercent}% while " +
+            "${winner.upName} is up ${winner.upPercent}%. The time budget stayed the same — " +
+            "the destination moved.",
+        evidenceLine = "Compared over 4 weeks",
+        fingerprint = fingerprint,
+        evidenceJson = """{"down_app":${jsonString(winner.downName)},"down_pct":${winner.downPercent},"up_app":${jsonString(winner.upName)},"up_pct":${winner.upPercent}}""",
+    )
+}
+
+/**
+ * Compares discretionary-app usage on high-rated and low-rated days and
+ * surfaces a personalized, advisory daily allowance suggestion.
+ */
+fun detectAllowanceSuggestion(
+    usageRows: List<AppUsageRangeRow>,
+    ratings: List<DayRatingEntity>,
+): FindingEntity? {
+    if (ratings.size < 7) return null
+    val ratingByDate = ratings.associateBy { it.date }
+    val byPackage = usageRows
+        .filter { it.category in ALLOWANCE_ELIGIBLE_CATEGORIES }
+        .groupBy { it.packageName }
+
+    data class Candidate(
+        val packageName: String,
+        val appName: String,
+        val highAverageMinutes: Double,
+        val lowAverageMinutes: Double,
+        val highDayCount: Int,
+        val lowDayCount: Int,
+        val suggestedMinutes: Int,
+    )
+
+    val candidates = byPackage.mapNotNull { (packageName, rows) ->
+        val highDays = rows.filter { (ratingByDate[it.date]?.rating ?: -1) >= 7 }
+        val lowDays = rows.filter { (ratingByDate[it.date]?.rating ?: 99) <= 4 }
+        if (highDays.size < 5 || lowDays.size < 3) return@mapNotNull null
+
+        val highAverageMinutes =
+            highDays.map { it.foregroundMs }.average() / MS_PER_MIN
+        val lowAverageMinutes =
+            lowDays.map { it.foregroundMs }.average() / MS_PER_MIN
+        if (highAverageMinutes >= lowAverageMinutes - 15.0) return@mapNotNull null
+
+        val suggestedMinutes =
+            (round(highAverageMinutes * 1.1 / 5.0) * 5.0).toInt().coerceAtLeast(5)
+        Candidate(
+            packageName = packageName,
+            appName = rows.first().appName,
+            highAverageMinutes = highAverageMinutes,
+            lowAverageMinutes = lowAverageMinutes,
+            highDayCount = highDays.size,
+            lowDayCount = lowDays.size,
+            suggestedMinutes = suggestedMinutes,
+        )
+    }
+
+    val winner = candidates.maxByOrNull {
+        it.lowAverageMinutes - it.highAverageMinutes
+    } ?: return null
+
+    val gap = winner.lowAverageMinutes - winner.highAverageMinutes
+    val fingerprint = evidenceFingerprint(
+        detectionType = "ALLOWANCE_SUGGESTION",
+        subjectPackage = winner.packageName,
+        sampleSize = winner.highDayCount + winner.lowDayCount,
+        keyMetric = gap,
+        metricUnit = 5.0,
+    )
+
+    return newFinding(
+        detectionType = "ALLOWANCE_SUGGESTION",
+        headline = "Based on your own data",
+        body = "On days you rate 7 or higher, your ${winner.appName} use averages " +
+            "${round(winner.highAverageMinutes).toInt()}m. On days you rate 4 or below, it " +
+            "averages ${round(winner.lowAverageMinutes).toInt()}m. Your data suggests a " +
+            "${winner.suggestedMinutes}m daily limit — close to what your best days already look like.",
+        evidenceLine = "Based on ${winner.highDayCount} high-rated and " +
+            "${winner.lowDayCount} low-rated days",
+        fingerprint = fingerprint,
+        evidenceJson = """{"high_avg_min":${round(winner.highAverageMinutes).toInt()},"low_avg_min":${round(winner.lowAverageMinutes).toInt()},"suggested_min":${winner.suggestedMinutes}}""",
+    ).copy(
+        subjectPackage = winner.packageName,
+        subjectAppName = winner.appName,
+    )
+}
+
+private fun jsonString(value: String): String = buildString {
+    append('"')
+    value.forEach { character ->
+        when (character) {
+            '\\' -> append("\\\\")
+            '"' -> append("\\\"")
+            '\b' -> append("\\b")
+            '\u000C' -> append("\\f")
+            '\n' -> append("\\n")
+            '\r' -> append("\\r")
+            '\t' -> append("\\t")
+            else -> if (character < ' ') {
+                append("\\u%04x".format(character.code))
+            } else {
+                append(character)
+            }
+        }
+    }
+    append('"')
 }
 
 /**

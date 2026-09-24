@@ -112,6 +112,112 @@ class ManipulationDetectorsTest {
         assertNotNull(finding)
         assertEquals("capture", finding!!.subjectPackage)
         assertTrue(finding.evidenceJson.contains("\"growth_pct\":300"))
+        assertNull(computeWeeklyAverages(rows.drop(7), today)["capture"])
+    }
+
+    @Test
+    fun substitutionFindsOpposingChangesWithStableCombinedTimeAndChoosesStrongestPair() {
+        val today = LocalDate.of(2026, 5, 28)
+        val rows = buildList {
+            addAll(weeklyRows("down-strong", today, listOf(100, 80, 65, 50)))
+            addAll(weeklyRows("up-strong", today, listOf(100, 120, 140, 150)))
+            addAll(weeklyRows("down-mild", today, listOf(10, 9, 8, 7)))
+            addAll(weeklyRows("up-mild", today, listOf(10, 11, 12, 13)))
+        }
+
+        val finding = detectSubstitution(rows, today)
+
+        assertNotNull(finding)
+        assertEquals("SUBSTITUTION", finding!!.detectionType)
+        assertNull(finding.subjectPackage)
+        assertTrue(finding.evidenceJson.contains("\"down_app\":\"down-strong\""))
+        assertTrue(finding.evidenceJson.contains("\"up_app\":\"up-strong\""))
+    }
+
+    @Test
+    fun substitutionRejectsWeakTrendsAndPairsWhoseCombinedTimeShiftsTooMuch() {
+        val today = LocalDate.of(2026, 5, 28)
+        val weakRows = buildList {
+            addAll(weeklyRows("down", today, listOf(100, 90, 80, 71)))
+            addAll(weeklyRows("up", today, listOf(100, 110, 120, 129)))
+        }
+        val largeShiftRows = buildList {
+            addAll(weeklyRows("down", today, listOf(100, 90, 80, 70)))
+            addAll(weeklyRows("up", today, listOf(10, 11, 12, 13)))
+        }
+
+        assertNull(detectSubstitution(weakRows, today))
+        assertNull(detectSubstitution(largeShiftRows, today))
+    }
+
+    @Test
+    fun allowanceSuggestionUsesRatedDaysEligibilityThresholdsAndStrongestGap() {
+        val today = LocalDate.of(2026, 6, 28)
+        val ratedDays = (0..7).map { today.minusDays(it.toLong()) }
+        val ratings = ratedDays.mapIndexed { index, date ->
+            rating(date, if (index < 5) 8 else 3)
+        }
+        val rows = buildList {
+            ratedDays.forEachIndexed { index, date ->
+                val highDay = index < 5
+                add(
+                    usageRow(
+                        packageName = "small-gap",
+                        date = date,
+                        foregroundMs = (if (highDay) 20 else 40) * 60_000L,
+                        category = "social",
+                        appName = "Small Gap",
+                    ),
+                )
+                add(
+                    usageRow(
+                        packageName = "best-gap",
+                        date = date,
+                        foregroundMs = (if (highDay) 15 else 55) * 60_000L,
+                        category = "entertainment",
+                        appName = "Best Gap",
+                    ),
+                )
+                add(
+                    usageRow(
+                        packageName = "utility",
+                        date = date,
+                        foregroundMs = (if (highDay) 1 else 90) * 60_000L,
+                        category = "utility",
+                    ),
+                )
+            }
+        }
+
+        val finding = detectAllowanceSuggestion(rows, ratings)
+
+        assertNotNull(finding)
+        assertEquals("ALLOWANCE_SUGGESTION", finding!!.detectionType)
+        assertEquals("best-gap", finding.subjectPackage)
+        assertEquals("Best Gap", finding.subjectAppName)
+        assertTrue(finding.evidenceJson.contains("\"high_avg_min\":15"))
+        assertTrue(finding.evidenceJson.contains("\"low_avg_min\":55"))
+        assertTrue(finding.evidenceJson.contains("\"suggested_min\":15"))
+        assertNull(detectAllowanceSuggestion(rows, ratings.take(6)))
+    }
+
+    @Test
+    fun allowanceSuggestionRequiresMoreThanFifteenMinutesOfDifference() {
+        val today = LocalDate.of(2026, 6, 28)
+        val ratedDays = (0..7).map { today.minusDays(it.toLong()) }
+        val ratings = ratedDays.mapIndexed { index, date ->
+            rating(date, if (index < 5) 7 else 4)
+        }
+        val rows = ratedDays.mapIndexed { index, date ->
+            usageRow(
+                packageName = "social",
+                date = date,
+                foregroundMs = (if (index < 5) 20 else 35) * 60_000L,
+                category = "social",
+            )
+        }
+
+        assertNull(detectAllowanceSuggestion(rows, ratings))
     }
 
     @Test
@@ -154,9 +260,10 @@ class ManipulationDetectorsTest {
         foregroundMs: Long,
         category: String? = "social",
         launchCount: Int = 1,
+        appName: String = packageName,
     ) = AppUsageRangeRow(
         packageName = packageName,
-        appName = packageName,
+        appName = appName,
         category = category,
         date = date.toString(),
         foregroundMs = foregroundMs,
@@ -164,6 +271,22 @@ class ManipulationDetectorsTest {
         launchCount = launchCount,
         lastUsedAt = 0L,
     )
+
+    private fun weeklyRows(
+        packageName: String,
+        today: LocalDate,
+        weeklyMinutes: List<Int>,
+        category: String? = "social",
+    ): List<AppUsageRangeRow> =
+        (0 until 28).map { daysAgo ->
+            val weekNumber = 4 - daysAgo / 7
+            usageRow(
+                packageName = packageName,
+                date = today.minusDays(daysAgo.toLong()),
+                foregroundMs = weeklyMinutes[weekNumber - 1] * 60_000L,
+                category = category,
+            )
+        }
 
     private fun rating(date: LocalDate, value: Int) =
         DayRatingEntity(

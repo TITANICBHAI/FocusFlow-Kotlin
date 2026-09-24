@@ -29,6 +29,7 @@ private val MANIPULATION_TYPES = setOf(
     "STREAK_LOCK_IN",
     "NOTIFICATION_CONDITIONING",
 )
+private val NO_RESPONSE_TYPES = setOf("ALLOWANCE_SUGGESTION")
 
 @Composable
 fun FindingCardView(
@@ -38,7 +39,8 @@ fun FindingCardView(
     onAware: (String, String) -> Unit,
 ) {
     val isNew = finding.state == "detected"
-    val showReply = finding.state == "seen"
+    val showReply =
+        finding.state == "seen" && finding.detectionType !in NO_RESPONSE_TYPES
     val isAware = finding.state == "aware"
     val accentColor = when {
         isNew -> BrandPrimary
@@ -105,9 +107,9 @@ fun FindingCardView(
     }
 }
 
-private fun findingCategoryLabel(finding: FindingEntity): String =
-    if (finding.detectionType in MANIPULATION_TYPES && finding.subjectAppName != null) {
+private fun findingCategoryLabel(finding: FindingEntity): String = when {
+    finding.detectionType == "ALLOWANCE_SUGGESTION" -> "BASED ON YOUR DATA"
+    finding.detectionType in MANIPULATION_TYPES && finding.subjectAppName != null ->
         "WHAT ${finding.subjectAppName.uppercase()} IS DOING"
-    } else {
-        "FINDING"
-    }
+    else -> "FINDING"
+}

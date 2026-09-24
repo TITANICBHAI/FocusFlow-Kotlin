@@ -10,11 +10,11 @@ import com.tbtechs.focusflow.data.local.entity.AppSessionEntity
 import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
 import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.time.Instant
 import java.util.UUID
 
 /**
@@ -56,6 +56,10 @@ class FindingDetectionRunner(
             .onFailure { Log.e(TAG, "streakLockIn failed", it) }
         runCatching { runInfiniteSessionDesign() }
             .onFailure { Log.e(TAG, "infiniteSessionDesign failed", it) }
+        runCatching { runSubstitution() }
+            .onFailure { Log.e(TAG, "substitution failed", it) }
+        runCatching { runAllowanceSuggestion() }
+            .onFailure { Log.e(TAG, "allowanceSuggestion failed", it) }
     }
 
     private suspend fun runPostFailureCascade() {
@@ -198,6 +202,27 @@ class FindingDetectionRunner(
 
         val ratings = dayRatingDao.getForDateRange(start, end)
         detectStreakLockIn(usageRows, ratings, windowDays)
+            ?.let { findingRepository.submit(it) }
+    }
+
+    private suspend fun runSubstitution() {
+        val start = dateRangeStart(28)
+        val end = dateRangeEnd()
+        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
+        if (usageRows.isEmpty()) return
+
+        detectSubstitution(usageRows, LocalDate.now())
+            ?.let { findingRepository.submit(it) }
+    }
+
+    private suspend fun runAllowanceSuggestion() {
+        val start = dateRangeStart(30)
+        val end = dateRangeEnd()
+        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
+        if (usageRows.isEmpty()) return
+
+        val ratings = dayRatingDao.getForDateRange(start, end)
+        detectAllowanceSuggestion(usageRows, ratings)
             ?.let { findingRepository.submit(it) }
     }
 
