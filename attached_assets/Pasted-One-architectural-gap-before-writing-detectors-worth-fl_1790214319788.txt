@@ -1,0 +1,22 @@
+One architectural gap before writing detectors — worth flagging directly.
+
+**The cold-start gate in IMPL_2 will block Phase 3 findings that don't need to be blocked.**
+
+`FindingsSection` gates on `dataHealthDayCount` = distinct `daily_app_usage` dates. But the four Phase 3 detectors (post-failure cascade, session sweet spot, estimation drift, day-of-week outlier) only need `tasks` and `focus_sessions` — tables that likely already hold weeks or months of history from before this feature existed. Gating them behind 14 days of the *new* tracker's data means a long-time user sees "Building your baseline" for two weeks despite having 6 months of task history sitting right there.
+
+**Fix:** two independent gates. Let me check task/session history depth, then write the detectors and the corrected gate.The document is above. Summary of what's in it:
+
+**The gate fix (do this first, it's one function):** `dataHealthDayCount` becomes `max(daily_app_usage days, task history days over last 90)`. Without this, a long-time user sees "Building your baseline" for two weeks despite months of task data already sitting in the DB.
+
+**Four detectors, all pure functions with no side effects** — each takes DAO rows, returns `FindingEntity?`:
+
+- **Post-failure cascade** — groups tasks by day, compares rest-of-day completion when the first task fails vs succeeds. Needs 6+ days of each to fire, 20+ point gap.
+- **Session sweet spot** — bins closed focus sessions into duration buckets (0-15m, 15-30m, ... 90m+), finds the peak clean-rate bin, finds where it drops below 60% of peak. Needs 20+ closed sessions.
+- **Estimation drift** — compares actual-vs-planned minutes for tasks starting before noon vs after 2pm. Needs 5+ samples each side, 10+ minute gap.
+- **Day-of-week outlier** — completion rate per weekday vs the user's own mean, not a fixed threshold. Needs 5+ weekdays represented, 20+ point gap from personal baseline.
+
+**The runner** goes into `BackgroundFetchWorker` using the exact same daily-gate SharedPrefs pattern already established for pruning in IMPL_1B — a separate key so they don't collide, both best-effort and non-blocking.
+
+**Deliberately not fixed here:** the `evidenceJson` fields are hand-built JSON strings rather than using `kotlinx.serialization` — since `FindingEntity.evidenceJson` isn't parsed anywhere yet (only `ClarifyingQuestionCard` parses JSON, and that's a different field), manual string building avoids pulling serialization into a new file for no current benefit. If IMPL_4 or a future debug view needs to parse it back, that's a one-line swap to `buildJsonObject`.
+
+Everything from IMPL_4 onward (variable reward loop, morning hijack, escalating capture, and the rest) waits on `daily_app_usage`/`app_sessions` actually accumulating — which is now running in production per IMPL_1A, just needs time to build history.

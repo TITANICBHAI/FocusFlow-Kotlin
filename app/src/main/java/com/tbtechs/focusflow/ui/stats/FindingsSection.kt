@@ -45,12 +45,12 @@ fun FindingsSection(
                 Text("Building your baseline", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Behavioural findings appear after 14 days of usage data.",
+                    "Behavioural findings appear after 14 days of history.",
                     fontSize = 13.sp,
                     color = DarkTextSecondary,
                 )
                 Spacer(Modifier.height(8.dp))
-                BaselineRow("Days of data", dayCount, 14)
+                BaselineRow("Days of history", dayCount, 14)
                 BaselineRow("Days rated", ratingCount, 7)
             }
         }

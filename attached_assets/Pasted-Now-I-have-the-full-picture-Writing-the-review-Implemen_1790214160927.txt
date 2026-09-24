@@ -1,0 +1,117 @@
+Now I have the full picture. Writing the review:
+
+---
+
+## Implementation Review — IMPL 1A · 1B · 2
+
+**Overall: solid.** Three things to address before moving to IMPL_3.
+
+---
+
+### Issue 1 — Real bug: `focusRequester` will crash when notification opens Stats
+
+**File:** `DayRatingBar.kt`
+
+The `focusRequester` is attached to the note `OutlinedTextField`, which lives inside `AnimatedVisibility(visible = tappedRating != null)`. When the daily notification fires and the user opens Stats with no rating set yet, `AnimatedVisibility` has removed the note field from the composition. Calling `focusRequester.requestFocus()` on a composable not in the composition throws `FocusRequester not initialized`.
+
+**Fix** — move `focusRequester` to the rating row (always in composition):
+
+```kotlin
+Row(
+    modifier = Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .focusRequester(focusRequester),   // ← was on OutlinedTextField
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+) {
+    (1..10).forEach { ... }
+}
+```
+
+Remove `.focusRequester(focusRequester)` from the `OutlinedTextField`. The `LaunchedEffect(requestFocus)` stays as-is — it now scrolls and focuses the number row, which is always present.
+
+---
+
+### Issue 2 — Note text lost when user navigates away without pressing Done
+
+**File:** `DayRatingBar.kt`
+
+The note field only saves on `ImeAction.Done`. If the user types a note and switches tabs or navigates away without pressing Done, the note is discarded.
+
+**Fix** — add a `DisposableEffect` inside the `AnimatedVisibility` block, after the `OutlinedTextField`:
+
+```kotlin
+DisposableEffect(Unit) {
+    onDispose {
+        val r = tappedRating ?: return@onDispose
+        if (noteText.isNotBlank()) {
+            onSubmit(
+                selectedDate, r, contextTag,
+                noteText, appTags.toList(), wordTags.toList(),
+            )
+        }
+    }
+}
+```
+
+This runs when the composable leaves the composition — catching back press, tab switch, and any other navigation away.
+
+---
+
+### Issue 3 — Two things can't be verified from the zip (need manual check)
+
+**a) AndroidManifest.xml**
+
+Confirm both are present:
+
+```xml
+<!-- DayRatingReminderReceiver declared with correct intent-filter -->
+<receiver
+    android:name=".enforcement.receivers.DayRatingReminderReceiver"
+    android:exported="false">
+    <intent-filter>
+        <action android:name="com.tbtechs.focusflow.alarm.DAY_RATING_REMIND" />
+    </intent-filter>
+</receiver>
+
+<!-- API 34+ foreground service type permission -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+```
+
+If `DayRatingReminderReceiver` isn't declared, the alarm fires but the broadcast is silently dropped — no notification, no error.
+
+**b) `kotlinx-serialization-json` dependency**
+
+`toStorageValue()` uses `kotlinx.serialization.json.Json.encodeToString` and `decodeStorageList` uses `decodeFromString<List<String>>`. Confirm `build.gradle.kts` has:
+
+```kotlin
+implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+```
+
+And the plugin:
+```kotlin
+plugins {
+    kotlin("plugin.serialization") version "<kotlin_version>"
+}
+```
+
+If missing, the build fails with `Unresolved reference: serialization`. Given it's a Compose app it may already be present — check to be sure.
+
+---
+
+### Good additions you made that weren't in the spec
+
+These are correct and should stay:
+
+- **`::usageSessionTracker.isInitialized` guard** in all three service call sites — prevents crash if `onAccessibilityEvent` fires before `onServiceConnected` completes (real edge case on some OEMs)
+- **`hour !in 0..23` guard** in `addForegroundTime` — defensive against any edge case in `splitIntoHourlySegments`
+- **`requestFocus: Boolean` parameter** on `DayRatingBar` passed through from `focusDayRating` in `StatsInsightsExperience` — the notification deep-link focus path is properly wired end-to-end: `DayRatingReminderReceiver → LauncherActivity → MainActivity → StatsInsightsExperience → DayRatingBar`
+- **`FocusRequester`** implementation is correct in principle — just needs to move off the note field as above
+
+---
+
+### Everything confirmed correct
+
+DB version 6 ✓ — MIGRATION_5_6 complete with all 7 tables ✓ — all entities match spec ✓ — `DailyAppUsageDao` is `abstract class` ✓ — tracker hook location is correct ✓ — screen-off/user-present hooked ✓ — all repositories follow `runCatching + Log.e` pattern ✓ — `AppModule` has all 4 new repos with `private set` ✓ — `FocusFlowApp` calls `ensureScheduled` ✓ — `BootReceiver` reschedules ✓ — `NotificationChannels.DAY_RATING` added ✓ — scheduler uses `sleep_time − 30 min` with zone conversion ✓ — `BackgroundFetchWorker` prune gated by daily SharedPrefs check ✓ — `StatsViewModel` Factory updated ✓ — `getTaskDatesInRange` added to `TaskDao` ✓ — `LauncherActivity` and `MainActivity` handle `ACTION_OPEN_DAY_RATING` ✓
+
+Fix Issue 1 (the crash) first — that's the only thing that will cause a hard failure. Issue 2 and 3 are correctness improvements. Once those three are done, IMPL_3 is ready.

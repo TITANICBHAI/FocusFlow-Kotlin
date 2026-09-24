@@ -260,9 +260,18 @@ class StatsViewModel(
             taskDao = db.taskDao(),
         )
         totalRatingCount = dayRatingRepository.count()
-        dataHealthDayCount = runCatching {
+        val usageDays = runCatching {
             db.dailyAppUsageDao().countDistinctDates()
         }.getOrDefault(0)
+        val taskDays = runCatching {
+            val cutoff = java.time.LocalDate.now()
+                .minusDays(90)
+                .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            val today = java.time.LocalDate.now()
+                .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            db.taskDao().getTaskDatesInRange(cutoff, today).size
+        }.getOrDefault(0)
+        dataHealthDayCount = maxOf(usageDays, taskDays)
     }
 
     private suspend fun loadFindingData() {

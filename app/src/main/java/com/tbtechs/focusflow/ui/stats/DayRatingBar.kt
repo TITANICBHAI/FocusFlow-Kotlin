@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -132,9 +133,7 @@ fun DayRatingBar(
     }
 
     StatsCard(
-        modifier = Modifier
-            .focusRequester(focusRequester)
-            .focusable(),
+        modifier = Modifier,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
@@ -192,7 +191,9 @@ fun DayRatingBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .horizontalScroll(rememberScrollState())
+                    .focusRequester(focusRequester)
+                    .focusable(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 (1..10).forEach { number ->
@@ -330,6 +331,11 @@ fun DayRatingBar(
                             },
                         ),
                     )
+                    DisposableEffect(selectedDate) {
+                        onDispose {
+                            save()
+                        }
+                    }
                 }
             }
         }

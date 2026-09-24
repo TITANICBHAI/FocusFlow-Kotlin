@@ -1,0 +1,580 @@
+# IMPL_3 — Detection Engine (Existing Data)
+## Post-Failure Cascade · Session Sweet Spot · Estimation Drift · Day-of-Week Outlier
+### Based on actual codebase (app.zip + done.zip)
+
+These four detectors need **only `tasks` and `focus_sessions`** — tables that
+predate Phase 1 and likely already hold months of history. They do **not**
+depend on `daily_app_usage` or `app_sessions`.
+
+---
+
+## Gate fix applied before this phase
+
+The baseline gate fix described below is now applied in the source code. Keep
+the two data sources combined when implementing the detection engine.
+
+`StatsViewModel.loadRatingData()` (from IMPL_2) currently computes
+`dataHealthDayCount` from `daily_app_usage` alone:
+
+```kotlin
+dataHealthDayCount = runCatching {
+    db.dailyAppUsageDao().countDistinctDates()
+}.getOrDefault(0)
+```
+
+`FindingsSection` gates ALL findings behind `dataHealthDayCount < 14`. A user
+with 6 months of task history but 2 days on the new tracker would see
+"Building your baseline" for 12 days despite having enough history for these
+four detectors to fire today.
+
+**Fix — replace the block above with:**
+
+```kotlin
+val usageDays = runCatching {
+    db.dailyAppUsageDao().countDistinctDates()
+}.getOrDefault(0)
+val taskDays = runCatching {
+    val cutoff = java.time.LocalDate.now().minusDays(90)
+        .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+    val today  = java.time.LocalDate.now()
+        .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+    db.taskDao().getTaskDatesInRange(cutoff, today).size
+}.getOrDefault(0)
+dataHealthDayCount = maxOf(usageDays, taskDays)
+```
+
+This is the only change to IMPL_2's code. Everything else in this document
+is new.
+
+---
+
+## File 1 — `FindingDetectors.kt`
+
+`analytics/detection/FindingDetectors.kt`
+
+Four pure functions. Each takes DAO query results and returns a `FindingEntity?`
+— null when the condition doesn't hold. No side effects, no DB writes — the
+runner (File 2) handles submission.
+
+```kotlin
+package com.tbtechs.focusflow.analytics.detection
+
+import com.tbtechs.focusflow.data.local.dao.EstimationErrorRow
+import com.tbtechs.focusflow.data.local.dao.SessionOverrideCountRow
+import com.tbtechs.focusflow.data.local.entity.FindingEntity
+import com.tbtechs.focusflow.data.local.entity.TaskEntity
+import java.security.MessageDigest
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.UUID
+import kotlin.math.abs
+import kotlin.math.round
+
+private val LOCAL_DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE
+
+/**
+ * SHA-1 fingerprint of a finding's key evidence parameters.
+ *
+ * Bucketing (sampleSize / 5, metric / unit) means the fingerprint only
+ * changes when evidence shifts materially — this is what lets
+ * [com.tbtechs.focusflow.data.repository.FindingRepository] decide whether
+ * an 'intentional' finding should stay suppressed or resurface.
+ */
+fun evidenceFingerprint(
+    detectionType: String,
+    subjectPackage: String?,
+    sampleSize: Int,
+    keyMetric: Double,
+    metricUnit: Double,
+): String {
+    val bucketedSample = sampleSize / 5
+    val bucketedMetric = if (metricUnit == 0.0) 0 else (keyMetric / metricUnit).toInt()
+    val raw = "$detectionType|${subjectPackage ?: ""}|$bucketedSample|$bucketedMetric"
+    return MessageDigest.getInstance("SHA-1").digest(raw.toByteArray())
+        .joinToString("") { "%02x".format(it) }
+}
+
+private fun localDateOf(isoTimestamp: String): LocalDate =
+    runCatching {
+        LocalDateTime.parse(isoTimestamp).toLocalDate()
+    }.getOrElse {
+        Instant.parse(isoTimestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+    }
+
+private fun localHourOf(isoTimestamp: String): Int =
+    runCatching {
+        LocalDateTime.parse(isoTimestamp).hour
+    }.getOrElse {
+        Instant.parse(isoTimestamp).atZone(ZoneId.systemDefault()).hour
+    }
+
+private fun newFinding(
+    detectionType: String,
+    headline: String,
+    body: String,
+    evidenceLine: String,
+    fingerprint: String,
+    evidenceJson: String,
+): FindingEntity {
+    val now = Instant.now().toString()
+    return FindingEntity(
+        id                  = UUID.randomUUID().toString(),
+        detectionType       = detectionType,
+        subjectPackage      = null,
+        subjectAppName      = null,
+        state               = "detected",
+        evidenceFingerprint = fingerprint,
+        evidenceJson        = evidenceJson,
+        headline            = headline,
+        body                = body,
+        evidenceLine        = evidenceLine,
+        firstDetectedAt     = now,
+        lastUpdatedAt       = now,
+        seenAt              = null,
+        resolvedAt          = null,
+        suppressedUntil     = null,
+    )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 1 — Post-failure cascade
+// ═════════════════════════════════════════════════════════════════════════════
+
+private val UNRESOLVED_STATUSES = setOf("scheduled", "active")
+private val FAILED_STATUSES     = setOf("skipped", "overdue")
+
+/**
+ * Detects whether a missed/skipped first task predicts a worse rest-of-day
+ * completion rate than a completed first task does.
+ *
+ * Minimum evidence: 6 days where the first task of the day failed.
+ * Fires when the completion-rate gap is at least 20 percentage points.
+ */
+fun detectPostFailureCascade(tasks: List<TaskEntity>): FindingEntity? {
+    val byDate = tasks
+        .filter { it.status !in UNRESOLVED_STATUSES || true } // keep all; filtered per-day below
+        .groupBy { localDateOf(it.startTime) }
+        .filterValues { it.size >= 3 }   // need at least 3 tasks that day to be meaningful
+        .mapValues { (_, dayTasks) -> dayTasks.sortedBy { it.startTime } }
+
+    if (byDate.size < 8) return null   // need enough days total to find 6+ first-miss days
+
+    val missedFirstRates = mutableListOf<Double>()
+    val okFirstRates     = mutableListOf<Double>()
+
+    byDate.values.forEach { dayTasks ->
+        val first = dayTasks.first()
+        val rest  = dayTasks.drop(1).filter { it.status !in UNRESOLVED_STATUSES }
+        if (rest.isEmpty()) return@forEach
+        val restRate = rest.count { it.status == "completed" }.toDouble() / rest.size
+
+        when (first.status) {
+            in FAILED_STATUSES -> missedFirstRates.add(restRate)
+            "completed"        -> okFirstRates.add(restRate)
+        }
+    }
+
+    if (missedFirstRates.size < 6 || okFirstRates.size < 6) return null
+
+    val missedAvg = missedFirstRates.average()
+    val okAvg     = okFirstRates.average()
+    val gap       = okAvg - missedAvg
+
+    if (gap < 0.20) return null
+
+    val missedPct = round(missedAvg * 100).toInt()
+    val okPct     = round(okAvg * 100).toInt()
+    val gapPct    = round(gap * 100).toInt()
+
+    val fingerprint = evidenceFingerprint(
+        "POST_FAILURE_CASCADE", null,
+        sampleSize = missedFirstRates.size, keyMetric = gap, metricUnit = 0.05,
+    )
+
+    return newFinding(
+        detectionType = "POST_FAILURE_CASCADE",
+        headline      = "First task predicts the rest",
+        body          = "When your first task of the day is missed or skipped, the rest of " +
+                         "the day completes at $missedPct% on average. When the first task " +
+                         "lands, that rises to $okPct% — a $gapPct point gap.",
+        evidenceLine  = "Observed across ${missedFirstRates.size} low-start days and " +
+                         "${okFirstRates.size} on-track days",
+        fingerprint   = fingerprint,
+        evidenceJson  = """{"missed_first_days":${missedFirstRates.size},"ok_first_days":${okFirstRates.size},"gap_pct":$gapPct}""",
+    )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 2 — Session sweet spot
+// ═════════════════════════════════════════════════════════════════════════════
+
+private data class DurationBin(val label: String, val rangeMin: Int, val rangeMaxExclusive: Int)
+
+private val DURATION_BINS = listOf(
+    DurationBin("0-15m",   0,  15),
+    DurationBin("15-30m",  15, 30),
+    DurationBin("30-45m",  30, 45),
+    DurationBin("45-60m",  45, 60),
+    DurationBin("60-90m",  60, 90),
+    DurationBin("90m+",    90, Int.MAX_VALUE),
+)
+
+/**
+ * Bins closed focus sessions by duration and finds the bin with the highest
+ * clean rate (zero override attempts), then finds where clean rate drops off
+ * by more than 40% relative to that peak.
+ *
+ * Minimum evidence: 20 closed sessions total, each bin needs >= 3 samples
+ * to be considered.
+ */
+fun detectSessionSweetSpot(sessions: List<SessionOverrideCountRow>): FindingEntity? {
+    val closed = sessions.filter { it.endedAt != null }
+    if (closed.size < 20) return null
+
+    data class BinStat(var total: Int = 0, var clean: Int = 0)
+    val stats = DURATION_BINS.associateWith { BinStat() }
+
+    closed.forEach { row ->
+        val start = runCatching { LocalDateTime.parse(row.startedAt) }.getOrNull()
+        val end   = runCatching { LocalDateTime.parse(row.endedAt) }.getOrNull()
+        if (start == null || end == null) return@forEach
+        val minutes = java.time.Duration.between(start, end).toMinutes().toInt()
+        val bin = DURATION_BINS.firstOrNull { minutes >= it.rangeMin && minutes < it.rangeMaxExclusive }
+            ?: return@forEach
+        val stat = stats.getValue(bin)
+        stat.total += 1
+        if (row.overrideCount == 0) stat.clean += 1
+    }
+
+    val eligible = stats.filter { (_, s) -> s.total >= 3 }
+    if (eligible.size < 2) return null
+
+    val peakEntry = eligible.maxByOrNull { (_, s) -> s.clean.toDouble() / s.total } ?: return null
+    val peakBin   = peakEntry.key
+    val peakRate  = peakEntry.value.clean.toDouble() / peakEntry.value.total
+
+    val peakIndex = DURATION_BINS.indexOf(peakBin)
+    val dropOff = DURATION_BINS.drop(peakIndex + 1)
+        .firstOrNull { bin ->
+            val s = stats.getValue(bin)
+            s.total >= 3 && (s.clean.toDouble() / s.total) < peakRate * 0.6
+        } ?: return null
+
+    val dropStat = stats.getValue(dropOff)
+    val dropRate = dropStat.clean.toDouble() / dropStat.total
+
+    val fingerprint = evidenceFingerprint(
+        "SESSION_SWEET_SPOT", null,
+        sampleSize = closed.size, keyMetric = peakRate - dropRate, metricUnit = 0.1,
+    )
+
+    return newFinding(
+        detectionType = "SESSION_SWEET_SPOT",
+        headline      = "Your effective focus window",
+        body          = "Sessions you run for ${peakBin.label} are clean ${round(peakRate * 100).toInt()}% " +
+                         "of the time. Beyond that, at ${dropOff.label}, clean sessions drop to " +
+                         "${round(dropRate * 100).toInt()}%. Your schedule may have sessions longer " +
+                         "than your data supports.",
+        evidenceLine  = "Observed across ${closed.size} sessions",
+        fingerprint   = fingerprint,
+        evidenceJson  = """{"peak_bin":"${peakBin.label}","peak_rate_pct":${round(peakRate * 100).toInt()},"dropoff_bin":"${dropOff.label}","dropoff_rate_pct":${round(dropRate * 100).toInt()}}""",
+    )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 3 — Estimation drift by time of day
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Compares (actual − planned) minutes for tasks started before noon vs after
+ * 2pm. Fires when both periods have at least 5 samples and the means differ
+ * by more than 10 minutes.
+ */
+fun detectEstimationDrift(errors: List<EstimationErrorRow>): FindingEntity? {
+    val morning   = errors.filter { it.startHour < 12 }
+    val afternoon = errors.filter { it.startHour >= 14 }
+
+    if (morning.size < 5 || afternoon.size < 5) return null
+
+    val morningError   = morning.map { it.actualMinutes - it.plannedMinutes }.average()
+    val afternoonError = afternoon.map { it.actualMinutes - it.plannedMinutes }.average()
+    val gap = abs(morningError - afternoonError)
+
+    if (gap < 10.0) return null
+
+    val mLabel = signedMinutes(morningError)
+    val aLabel = signedMinutes(afternoonError)
+
+    val fingerprint = evidenceFingerprint(
+        "ESTIMATION_DRIFT", null,
+        sampleSize = morning.size + afternoon.size, keyMetric = gap, metricUnit = 5.0,
+    )
+
+    return newFinding(
+        detectionType = "ESTIMATION_DRIFT",
+        headline      = "Your estimates shift through the day",
+        body          = "Tasks you start before noon run $mLabel vs planned, on average. " +
+                         "Tasks starting after 2pm run $aLabel. That's a consistent pattern, " +
+                         "not a one-off week.",
+        evidenceLine  = "Observed across ${morning.size} morning and ${afternoon.size} afternoon sessions",
+        fingerprint   = fingerprint,
+        evidenceJson  = """{"morning_error_min":${round(morningError).toInt()},"afternoon_error_min":${round(afternoonError).toInt()},"morning_n":${morning.size},"afternoon_n":${afternoon.size}}""",
+    )
+}
+
+private fun signedMinutes(v: Double): String {
+    val r = round(abs(v)).toInt()
+    return if (v >= 0) "${r}m over" else "${r}m under"
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 4 — Day-of-week outlier
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Computes completion rate per day-of-week over the supplied task history and
+ * finds the day furthest below the user's own mean.
+ *
+ * Minimum evidence: each weekday needs >= 3 resolved tasks; fires when the
+ * worst day sits at least 20 percentage points below the personal mean.
+ */
+fun detectDayOfWeekOutlier(tasks: List<TaskEntity>): FindingEntity? {
+    val resolved = tasks.filter { it.status !in UNRESOLVED_STATUSES }
+    val byDow = resolved.groupBy { localDateOf(it.startTime).dayOfWeek }
+
+    val rates = byDow
+        .filterValues { it.size >= 3 }
+        .mapValues { (_, dayTasks) -> dayTasks.count { it.status == "completed" }.toDouble() / dayTasks.size }
+
+    if (rates.size < 5) return null   // need most weekdays represented
+
+    val mean = rates.values.average()
+    val (worstDay, worstRate) = rates.minByOrNull { it.value } ?: return null
+    val gap = mean - worstRate
+
+    if (gap < 0.20) return null
+
+    val dayName = worstDay.getDisplayName(
+        java.time.format.TextStyle.FULL, java.util.Locale.getDefault(),
+    )
+    val meanPct  = round(mean * 100).toInt()
+    val worstPct = round(worstRate * 100).toInt()
+    val gapPct   = round(gap * 100).toInt()
+
+    val fingerprint = evidenceFingerprint(
+        "DAY_OF_WEEK_OUTLIER", null,
+        sampleSize = byDow.values.sumOf { it.size }, keyMetric = gap, metricUnit = 0.05,
+    )
+
+    return newFinding(
+        detectionType = "DAY_OF_WEEK_OUTLIER",
+        headline      = "$dayName is your outlier",
+        body          = "Your average completion rate is $meanPct%. $dayName sits at $worstPct% " +
+                         "— $gapPct points below your own baseline. Not occasionally. Consistently.",
+        evidenceLine  = "Observed across ${byDow.getValue(worstDay).size} ${dayName}s",
+        fingerprint   = fingerprint,
+        evidenceJson  = """{"day":"$dayName","mean_pct":$meanPct,"worst_pct":$worstPct,"gap_pct":$gapPct}""",
+    )
+}
+```
+
+---
+
+## File 2 — `FindingDetectionRunner.kt`
+
+`analytics/detection/FindingDetectionRunner.kt`
+
+Orchestrates all four detectors against the correct rolling windows and
+submits results through `FindingRepository`, which enforces the one-per-week
+surface rule.
+
+```kotlin
+package com.tbtechs.focusflow.analytics.detection
+
+import android.util.Log
+import com.tbtechs.focusflow.data.local.dao.FocusSessionDao
+import com.tbtechs.focusflow.data.local.dao.TaskDao
+import com.tbtechs.focusflow.data.repository.FindingRepository
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+
+/**
+ * Runs the four existing-data detectors (post-failure cascade, session sweet
+ * spot, estimation drift, day-of-week outlier) and submits any findings via
+ * [findingRepository].
+ *
+ * Called once per day from [com.tbtechs.focusflow.background.BackgroundFetchWorker] —
+ * detection is a passive-observation concern, not tied to when the user opens
+ * Stats. A finding should be waiting for them, not computed on their tap.
+ *
+ * All four detectors query directly via [taskDao] / [focusSessionDao] rather
+ * than through [com.tbtechs.focusflow.analytics.AnalyticsSnapshot], because
+ * the snapshot is scoped to yesterday/week/three_months while these detections
+ * need their own rolling windows (42–90 days).
+ */
+class FindingDetectionRunner(
+    private val taskDao: TaskDao,
+    private val focusSessionDao: FocusSessionDao,
+    private val findingRepository: FindingRepository,
+) {
+
+    private companion object {
+        private const val TAG = "FindingDetectionRunner"
+        private val ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE
+    }
+
+    suspend fun runAll() {
+        runCatching { runPostFailureCascade() }
+            .onFailure { Log.e(TAG, "postFailureCascade failed: ${it.message}", it) }
+        runCatching { runSessionSweetSpot() }
+            .onFailure { Log.e(TAG, "sessionSweetSpot failed: ${it.message}", it) }
+        runCatching { runEstimationDrift() }
+            .onFailure { Log.e(TAG, "estimationDrift failed: ${it.message}", it) }
+        runCatching { runDayOfWeekOutlier() }
+            .onFailure { Log.e(TAG, "dayOfWeekOutlier failed: ${it.message}", it) }
+    }
+
+    private suspend fun runPostFailureCascade() {
+        val tasks = taskDao.getTasksInDateRange(dateRangeStart(60), dateRangeEnd())
+        detectPostFailureCascade(tasks)?.let { findingRepository.submit(it) }
+    }
+
+    private suspend fun runSessionSweetSpot() {
+        val sessions = focusSessionDao.getSessionsWithOverrideCount(
+            startISO = isoRangeStart(90), endISO = isoRangeEnd(),
+        )
+        detectSessionSweetSpot(sessions)?.let { findingRepository.submit(it) }
+    }
+
+    private suspend fun runEstimationDrift() {
+        val errors = focusSessionDao.getEstimationErrors(
+            startISO = isoRangeStart(60), endISO = isoRangeEnd(),
+        )
+        detectEstimationDrift(errors)?.let { findingRepository.submit(it) }
+    }
+
+    private suspend fun runDayOfWeekOutlier() {
+        val tasks = taskDao.getTasksInDateRange(dateRangeStart(42), dateRangeEnd())
+        detectDayOfWeekOutlier(tasks)?.let { findingRepository.submit(it) }
+    }
+
+    // ── Window helpers ───────────────────────────────────────────────────────
+
+    private fun dateRangeStart(days: Long): String =
+        LocalDate.now().minusDays(days).format(ISO_DATE)
+
+    private fun dateRangeEnd(): String =
+        LocalDate.now().format(ISO_DATE)
+
+    private fun isoRangeStart(days: Long): String =
+        LocalDateTime.of(LocalDate.now().minusDays(days), LocalTime.MIDNIGHT).toString()
+
+    private fun isoRangeEnd(): String =
+        LocalDateTime.now().toString()
+}
+```
+
+---
+
+## File 3 — `AppModule.kt` addition
+
+Add alongside the other Phase 1 repositories:
+
+```kotlin
+lateinit var findingDetectionRunner: FindingDetectionRunner
+    private set
+```
+
+In `init(app: Application)`, after `clarifyingQuestionRepository = ...`:
+
+```kotlin
+findingDetectionRunner = FindingDetectionRunner(
+    taskDao          = database.taskDao(),
+    focusSessionDao  = database.focusSessionDao(),
+    findingRepository = findingRepository,
+)
+```
+
+---
+
+## File 4 — `BackgroundFetchWorker.kt` addition
+
+Add alongside the existing daily-gated prune block from IMPL_1B — same
+SharedPrefs-date-check idiom, separate key so the two don't interfere:
+
+```kotlin
+// ── Daily finding detection — runs once per calendar day ─────────────────────
+val detectionPrefs = applicationContext.getSharedPreferences("focusday_prefs", Context.MODE_PRIVATE)
+val todayForDetection = java.time.LocalDate.now().toString()
+val lastDetectionRun  = detectionPrefs.getString("last_detection_run_date", "") ?: ""
+if (lastDetectionRun != todayForDetection) {
+    runCatching { com.tbtechs.focusflow.di.AppModule.findingDetectionRunner.runAll() }
+        .onSuccess {
+            detectionPrefs.edit().putString("last_detection_run_date", todayForDetection).apply()
+        }
+        .onFailure { Log.w("BackgroundFetch", "Finding detection failed: ${it.message}") }
+}
+```
+
+Place this block near the prune block added in IMPL_1B — both run once daily,
+both are best-effort, neither should block the worker's primary task sync work.
+
+---
+
+## File 5 — `StatsViewModel.kt` — the gate fix
+
+Replace the `dataHealthDayCount` computation inside `loadRatingData()`
+(added in IMPL_2) with the dual-source version described at the top of
+this document. Full corrected function:
+
+```kotlin
+private suspend fun loadRatingData() {
+    val db = AppModule.database
+    _currentRating.value = dayRatingRepository.getForDate(_selectedRatingDate.value)
+    _ratableDates.value  = dayRatingRepository.getRatableDates(
+        dailyAppUsageDao = db.dailyAppUsageDao(),
+        taskDao          = db.taskDao(),
+    )
+    totalRatingCount = dayRatingRepository.count()
+
+    val usageDays = runCatching { db.dailyAppUsageDao().countDistinctDates() }.getOrDefault(0)
+    val taskDays  = runCatching {
+        val cutoff = java.time.LocalDate.now().minusDays(90)
+            .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+        val today  = java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+        db.taskDao().getTaskDatesInRange(cutoff, today).size
+    }.getOrDefault(0)
+    dataHealthDayCount = maxOf(usageDays, taskDays)
+}
+```
+
+---
+
+## What IMPL_3 delivers
+
+- Four detectors running against `tasks` and `focus_sessions` — data that
+  predates this feature entirely
+- A daily-gated runner in `BackgroundFetchWorker`, matching the existing
+  prune idiom exactly (SharedPrefs date-check key, best-effort, non-blocking)
+- Findings surface via the existing `FindingRepository.submit()` — the
+  one-per-week cooldown and intentional/aware lifecycle from IMPL_1B apply
+  automatically, no new logic needed there
+- The cold-start gate now reflects whichever data source is actually ready,
+  so long-time users see findings immediately rather than waiting 14 days
+  for the new tracker to catch up
+
+## What IMPL_3 does not cover
+
+The six manipulation detections (variable reward loop, infinite session
+design, morning hijack, escalating capture, streak lock-in, notification
+conditioning) and the two remaining behavioural patterns (substitution,
+day-rating correlation) all require `daily_app_usage` and `app_sessions` —
+the tables IMPL_1A's tracker is still accumulating. Those are **IMPL_4**,
+gated behind their own 14–28 day data-readiness checks, separate from the
+gate fixed here.
