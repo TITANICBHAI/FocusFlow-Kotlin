@@ -356,6 +356,12 @@ private fun FocusFlowRoot(
                         replaceTasksOnImport = false
                         navController.popBackStack()
                     },
+                    onOnboardingTourFinished = {
+                        // A normal cold launch starts on Schedule, but the
+                        // first post-onboarding handoff intentionally lands on
+                        // Defense. Keep that distinction explicit.
+                        requestedRoute = Routes.DEFENSE
+                    },
                     focusDayRating = focusDayRating,
                 )
             }

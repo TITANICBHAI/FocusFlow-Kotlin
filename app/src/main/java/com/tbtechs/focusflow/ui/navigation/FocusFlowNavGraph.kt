@@ -108,6 +108,7 @@ fun FocusFlowNavGraph(
     pendingImportUri: android.net.Uri? = null,
     initialReplaceTasks: Boolean = false,
     onImportFinished: () -> Unit = {},
+    onOnboardingTourFinished: () -> Unit = {},
     focusDayRating: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -126,7 +127,18 @@ fun FocusFlowNavGraph(
 
     fun navigate(route: String) {
         if (navController.currentDestination?.route == route) return
-        if (route in Routes.tabRoutes) {
+        if (route == Routes.HOME) {
+            // Schedule is also the NavHost start destination. Re-enter it by
+            // keeping the root entry and discarding everything above it;
+            // restoring saved state here can resurrect the onboarding stack
+            // during the first post-onboarding session.
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = false
+                }
+                launchSingleTop = true
+            }
+        } else if (route in Routes.tabRoutes) {
             navController.navigate(route) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
@@ -354,6 +366,7 @@ fun FocusFlowNavGraph(
                             }
                         },
                         onGetStarted = {
+                            onOnboardingTourFinished()
                             navigate(Routes.DEFENSE)
                         },
                     )
