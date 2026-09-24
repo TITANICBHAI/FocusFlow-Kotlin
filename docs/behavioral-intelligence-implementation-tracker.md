@@ -31,7 +31,7 @@ when a brief's name, schema, or lifecycle differs from the current project.
 | IMPL_1A | `docs/IMPL_1A.md` | Tracker data, entities, DAOs, migration, usage/session tracking | Complete |
 | IMPL_1B | `docs/IMPL_1B.md` | Repositories, services, notifications, pruning | Complete |
 | IMPL_2 | `docs/IMPL_2.md` | Stats UI, ratings, findings, cold start | Complete; review fixes applied |
-| IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; CI pending |
+| IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; source complete; hosted build blocked |
 | IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Planned |
 | IMPL_5 | — | Adaptive allowance | Planned |
 
@@ -100,8 +100,10 @@ when a brief's name, schema, or lifecycle differs from the current project.
 - [x] Surface generated findings through the existing repository/UI path.
 - [x] Verify detector thresholds and evidence fingerprints with focused JVM
   tests and source checks.
-- [ ] Verify the Android build through GitHub Actions after the latest test and
-  tracker changes are pushed.
+- [ ] Verify the Android build through GitHub Actions after unrelated existing
+  Kotlin compilation errors are resolved. The latest hosted run reached the
+  compiler but failed in `TaskRepository`, `SchedulerEngine`, `TaskViewModel`,
+  `DayRatingBar`, and `StatsViewModel`; no IMPL_3 detector diagnostics appeared.
 
 ## IMPL_4 — manipulation-pattern detection
 
