@@ -144,6 +144,8 @@ class TaskViewModel(
         viewModelScope.launch {
             taskRepository.withTaskOperationLock {
                 beforeTaskDelete(taskId, pinHash)
+                val task = taskRepository.getTaskById(taskId)
+                    ?: return@withTaskOperationLock
                 alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
                 taskRepository.deleteTask(taskId)

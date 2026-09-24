@@ -35,7 +35,7 @@ from the current project.
 | IMPL_2 | `docs/IMPL_2.md` | Stats UI, ratings, findings, cold start | Complete; review fixes applied |
 | IMPL_3 | `docs/IMPL_3.md` | Detectors using existing task/focus-session data | Implemented; source complete; hosted build blocked |
 | IMPL_4 | `docs/IMPL_4.md` | Manipulation-pattern detectors using daily history/session data | Implemented; source complete; hosted build blocked |
-| IMPL_5 | `docs/IMPL_5.md` | Substitution and data-derived allowance suggestion | Implemented; focused tests added; GitHub Actions verification pending |
+| IMPL_5 | `docs/IMPL_5.md` | Substitution and data-derived allowance suggestion | Implemented; all checklist items reviewed; APK build blocked by unrelated Kotlin errors |
 
 ## IMPL_1A — data layer
 
@@ -153,6 +153,8 @@ source and DAO are verified. The shared IMPL_3 detector helpers are already
 - [x] Add both detections to the existing daily `FindingDetectionRunner`.
 - [x] Add focused detector and UI/runner test coverage for thresholds, winner
   selection, and allowance-specific presentation.
+- [x] Review all six IMPL_5 implementation and test-coverage items against the
+  source and focused test cases.
 - [ ] Verify the IMPL_5 implementation and Android build through GitHub Actions.
 
 The allowance suggestion is advisory and appears as a Finding. This phase does
@@ -167,14 +169,19 @@ flow; those require a verified allowance settings integration point.
 - [x] The debug APK artifact was uploaded in that run.
 - [x] Existing GitHub Actions run `35705729749` passed:
   `https://github.com/TITANICBHAI/FocusFlow-Kotlin/actions/runs/35705729749`
+- [x] Triggered the APK workflow after the IMPL_5 push:
+  `https://github.com/TITANICBHAI/FocusFlow-Kotlin/actions/runs/35965040084`.
+  It failed in `compileDebugKotlin` on `TaskRepository`, `SchedulerEngine`,
+  `TaskViewModel`, `DayRatingBar`, and `StatsViewModel`; the log reported no
+  errors in the IMPL_5 detector, runner, or card files.
 - [ ] Run a new GitHub Actions build after the current review fixes.
 - [ ] Run a new GitHub Actions build after the IMPL_4 source changes; the
   existing hosted build is currently blocked by unrelated Kotlin errors.
-- [ ] Run a new GitHub Actions build after the IMPL_5 implementation.
+- [ ] Re-run the APK workflow after resolving the compiler errors above.
 
-Android unit and instrumentation tests were added for IMPL_5 but were not run
-in Replit; use the GitHub Actions Android environment for compilation and
-verification.
+IMPL_5 detector unit tests and Compose instrumentation tests are present but
+remain unexecuted. The current APK workflow only runs `assembleDebug`; test
+execution requires a hosted workflow that invokes those test tasks.
 
 ## Follow-up scope
 

@@ -112,14 +112,14 @@ class SchedulerEngine(
         var cumulativeShift = overrunMinutes
 
         for (task in subsequent) {
-            val priority = TaskPriority.rank(task.priority)
+            val priorityRank = TaskPriority.rank(task.priority)
 
             if (cumulativeShift <= 0) {
                 updatedSchedule += task
                 continue
             }
 
-            if (priority == TaskPriority.CRITICAL) {
+            if (priorityRank == TaskPriority.rank(TaskPriority.CRITICAL)) {
                 needsUserConfirm += task
                 updatedSchedule += task
                 cumulativeShift = 0
@@ -127,7 +127,7 @@ class SchedulerEngine(
             }
 
             if (cumulativeShift > options.maxAutoShiftMinutes &&
-                TaskPriority.rank(priority) <= TaskPriority.rank(TaskPriority.MEDIUM)
+                priorityRank <= TaskPriority.rank(TaskPriority.MEDIUM)
             ) {
                 val skippedTask = task.copy(
                     status = TaskStatus.SKIPPED,

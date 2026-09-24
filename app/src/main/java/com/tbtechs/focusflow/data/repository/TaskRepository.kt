@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
@@ -47,8 +46,14 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Serializes task mutations with focus-session creation so a task cannot be
      * completed between the eligibility check and the session insert.
      */
-    suspend fun <T> withTaskOperationLock(block: suspend () -> T): T =
-        taskOperationMutex.withLock(action = block)
+    suspend fun <T> withTaskOperationLock(block: suspend () -> T): T {
+        taskOperationMutex.lock()
+        try {
+            return block()
+        } finally {
+            taskOperationMutex.unlock()
+        }
+    }
 
     // ─── Public API (called by TaskViewModel) ─────────────────────────────────
 
