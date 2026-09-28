@@ -1,8 +1,10 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -199,13 +201,25 @@ private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (Analyt
     Row(
         modifier = androidx.compose.ui.Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         windows.forEach { (window, label) ->
+            val selected = activeWindow == window
             Box(
                 modifier = androidx.compose.ui.Modifier
                     .clip(CircleShape)
-                    .background(if (activeWindow == window) BrandPrimary else DarkSurfaceVariant)
+                    .background(if (selected) BrandPrimary else DarkSurfaceVariant)
+                    .border(
+                        width = 1.dp,
+                        color = if (selected) {
+                            BrandPrimary
+                        } else {
+                            DarkTextSecondary.copy(alpha = 0.35f)
+                        },
+                        shape = CircleShape,
+                    )
                     .clickable { onSelect(window) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
@@ -213,7 +227,7 @@ private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (Analyt
                     label,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (activeWindow == window) Color.White else DarkTextSecondary,
+                    color = if (selected) Color.White else DarkTextPrimary,
                 )
             }
         }

@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -241,12 +242,21 @@ private fun StatsFilterRow(
                 modifier = Modifier
                     .clip(RoundedCornerShape(18.dp))
                     .background(if (selected) BrandPrimary else BrandPrimary.copy(alpha = 0.12f))
+                    .border(
+                        width = 1.dp,
+                        color = if (selected) {
+                            BrandPrimary
+                        } else {
+                            DarkTextSecondary.copy(alpha = 0.35f)
+                        },
+                        shape = RoundedCornerShape(18.dp),
+                    )
                     .clickable { onSelect(filter) }
                     .padding(horizontal = 15.dp, vertical = 8.dp),
             ) {
                 Text(
                     label,
-                    color = if (selected) Color.White else BrandPrimary,
+                    color = if (selected) Color.White else DarkTextPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
