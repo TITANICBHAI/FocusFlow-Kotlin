@@ -359,8 +359,8 @@ private fun FocusFlowRoot(
                     onOnboardingTourFinished = {
                         // A normal cold launch starts on Schedule, but the
                         // first post-onboarding handoff intentionally lands on
-                        // Defense. Keep that distinction explicit.
-                        requestedRoute = Routes.DEFENSE
+                        // Defense. FocusFlowNavGraph performs that navigation
+                        // immediately after this callback.
                     },
                     focusDayRating = focusDayRating,
                 )
