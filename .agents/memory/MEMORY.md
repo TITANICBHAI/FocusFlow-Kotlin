@@ -6,3 +6,5 @@
 - [Profile usage sheet](profile-usage-sheet.md) — present profile fields as compact icon rows in a full-height dark bottom sheet.
 - [React sizing reference](react-sizing-reference.md) — use the React design tokens as the dimensional baseline for Kotlin UI.
 - [Android build environment](android-build-environment.md) — this workspace may have a JDK but no Android SDK platform, so Gradle can stop before source compilation.
+- [Text size settings](text-size-settings.md) — Home stays at 100%; per-tab overrides replace General and the rollout is strictly scoped.
+- [Stats fix plan](stats-fix-plan.md) — use calendar-time evidence, state-agnostic pacing, and persisted hourly data for Stats correctness.
