@@ -69,7 +69,7 @@ class StatsViewModel(
     val loadState: StateFlow<StatsLoadState> = _loadState.asStateFlow()
     val activeWindow: StateFlow<AnalyticsWindow> = _activeWindow.asStateFlow()
 
-    private val _selectedRatingDate = MutableStateFlow(todayLocalDate())
+    private val _selectedRatingDate = MutableStateFlow(resolveDefaultRatingDate())
     private val _currentRating = MutableStateFlow<DayRatingEntity?>(null)
     private val _ratableDates = MutableStateFlow<List<RatableDateEntry>>(emptyList())
     private val _suggestedChips = MutableStateFlow<List<SuggestedChip>>(emptyList())
@@ -139,10 +139,13 @@ class StatsViewModel(
                 if (window == ANALYTICS_WEEK) {
                     _weeklyStandout.value = insightEngine.syncWeeklyStandout(snapshot)
                 }
-                _loadState.value = if (hasUsableStats(snapshot)) {
-                    StatsLoadState.Ready
-                } else {
+                _loadState.value = if (
+                    window == ANALYTICS_THREE_MONTHS &&
+                    !hasUsableStats(snapshot)
+                ) {
                     StatsLoadState.Unavailable
+                } else {
+                    StatsLoadState.Ready
                 }
                 launch {
                     loadRatingData()
@@ -312,8 +315,24 @@ class StatsViewModel(
         return chips
     }
 
-    private fun todayLocalDate(): String =
-        java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+    private fun resolveDefaultRatingDate(): String {
+        val now = java.time.LocalDateTime.now()
+        val prefs = AppModule.applicationContext.getSharedPreferences(
+            "focusday_prefs",
+            android.content.Context.MODE_PRIVATE,
+        )
+        val sleepHour = prefs.getInt("sleep_time_hour", 22).coerceIn(0, 23)
+        val sleepMinute = prefs.getInt("sleep_time_minute", 0).coerceIn(0, 59)
+        val ratingTodayThreshold = now.toLocalDate()
+            .atTime(sleepHour, sleepMinute)
+            .minusMinutes(30)
+
+        return (if (now.isBefore(ratingTodayThreshold)) {
+            now.toLocalDate().minusDays(1)
+        } else {
+            now.toLocalDate()
+        }).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {

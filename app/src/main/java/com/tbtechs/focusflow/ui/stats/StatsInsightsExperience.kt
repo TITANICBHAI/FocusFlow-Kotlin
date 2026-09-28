@@ -127,40 +127,46 @@ fun StatsInsightsExperience(
                             weeklyStandout?.let { InsightCardView(it) }
                         }
                         DataHealthNotice(loaded)
-                        if (loaded.tasks.total == 0 && loaded.sessions.total == 0 && loaded.blocking.totalAttempts == 0 && window != ANALYTICS_THREE_MONTHS) {
+                        val isEmpty = loaded.tasks.total == 0 &&
+                            loaded.sessions.total == 0 &&
+                            loaded.blocking.totalAttempts == 0 &&
+                            window != ANALYTICS_THREE_MONTHS
+                        if (isEmpty) {
                             EmptyStatsState(window)
+                        } else {
+                            FocusTimeHero(loaded)
+                            insights
+                                .filter { it.id != weeklyStandout?.id }
+                                .forEach { InsightCardView(it) }
+                            when (window) {
+                                ANALYTICS_TODAY -> {
+                                    TaskSummary(loaded)
+                                    TaskResultList(
+                                        loaded,
+                                        title = "TODAY'S TASKS",
+                                        emptyMessage = "No tasks were recorded today.",
+                                    )
+                                }
+                                ANALYTICS_ALL_TIME -> {
+                                    AllTimeStats(
+                                        snapshot = loaded,
+                                        lifetime = lifetime,
+                                        earnedAchievementCount = achievements?.earnedIds?.size ?: 0,
+                                    )
+                                    ProductivityHeatmap(loaded)
+                                }
+                                ANALYTICS_WEEK -> {
+                                    ProductivityHeatmap(loaded)
+                                    TaskSummary(loaded)
+                                }
+                                ANALYTICS_YESTERDAY -> TaskResultList(loaded)
+                                ANALYTICS_THREE_MONTHS -> {
+                                    PhoneUsageSummary(loaded, onOpenQuickBlock)
+                                    TrendChart(loaded)
+                                }
+                            }
+                            TemptationStats(loaded, onOpenQuickBlock)
                         }
-                        FocusTimeHero(loaded)
-                        insights
-                            .filter { it.id != weeklyStandout?.id }
-                            .forEach { InsightCardView(it) }
-                        when (window) {
-                            ANALYTICS_TODAY -> {
-                                TaskSummary(loaded)
-                                TaskResultList(loaded, title = "TODAY'S TASKS")
-                                ProductivityHeatmap(loaded)
-                            }
-                            ANALYTICS_ALL_TIME -> {
-                                AllTimeStats(
-                                    snapshot = loaded,
-                                    lifetime = lifetime,
-                                    earnedAchievementCount = achievements?.earnedIds?.size ?: 0,
-                                )
-                                TaskSummary(loaded)
-                                ProductivityHeatmap(loaded)
-                            }
-                            ANALYTICS_WEEK -> {
-                                PresenceStrip(loaded)
-                                ProductivityHeatmap(loaded)
-                                TaskSummary(loaded)
-                            }
-                            ANALYTICS_YESTERDAY -> TaskResultList(loaded)
-                            ANALYTICS_THREE_MONTHS -> {
-                                PhoneUsageSummary(loaded, onOpenQuickBlock)
-                                TrendChart(loaded)
-                            }
-                        }
-                        TemptationStats(loaded, onOpenQuickBlock)
                         if (window != ANALYTICS_THREE_MONTHS) {
                             achievements?.let { AchievementRow(it) }
                         }

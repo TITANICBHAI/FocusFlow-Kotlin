@@ -25,6 +25,9 @@ interface FindingDao {
     @Query("SELECT * FROM findings WHERE state = 'detected' ORDER BY first_detected_at DESC LIMIT 1")
     suspend fun getMostRecentDetected(): FindingEntity?
 
+    @Query("SELECT first_detected_at FROM findings ORDER BY first_detected_at DESC LIMIT 1")
+    suspend fun getMostRecentFirstDetectedAt(): String?
+
     @Query("""
         SELECT * FROM findings
         WHERE detection_type = :detectionType

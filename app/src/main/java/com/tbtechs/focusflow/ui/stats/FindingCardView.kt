@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.local.entity.FindingEntity
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.SunAmber
 
 private val MANIPULATION_TYPES = setOf(
     "VARIABLE_REWARD_LOOP",
@@ -43,9 +44,9 @@ fun FindingCardView(
         finding.state == "seen" && finding.detectionType !in NO_RESPONSE_TYPES
     val isAware = finding.state == "aware"
     val accentColor = when {
+        isAware -> SunAmber
         isNew -> BrandPrimary
-        isAware -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> MaterialTheme.colorScheme.primary
+        else -> BrandPrimary.copy(alpha = 0.6f)
     }
 
     StatsCard(
@@ -67,15 +68,6 @@ fun FindingCardView(
                     fontWeight = FontWeight.SemiBold,
                     color = accentColor,
                 )
-                when {
-                    isNew -> Text(
-                        "NEW",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = BrandPrimary,
-                    )
-                    isAware -> Text("WATCHING", fontSize = 11.sp, color = DarkTextSecondary)
-                }
             }
             Spacer(Modifier.height(4.dp))
             Text(finding.headline, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
@@ -111,5 +103,5 @@ private fun findingCategoryLabel(finding: FindingEntity): String = when {
     finding.detectionType == "ALLOWANCE_SUGGESTION" -> "BASED ON YOUR DATA"
     finding.detectionType in MANIPULATION_TYPES && finding.subjectAppName != null ->
         "WHAT ${finding.subjectAppName.uppercase()} IS DOING"
-    else -> "FINDING"
+    else -> "pattern"
 }

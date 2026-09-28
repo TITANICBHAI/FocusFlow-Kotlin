@@ -3,8 +3,8 @@ name: Android build environment
 description: Environment limitation affecting Android Gradle verification in this workspace
 ---
 
-The workspace can expose a usable JDK through `/nix/store` while still lacking an Android SDK platform installation or `sdk.dir` configuration. In that state, Gradle starts normally but fails during Android plugin dependency setup before Kotlin source compilation.
+The workspace may lack a usable Java command or `JAVA_HOME`; it can also expose a JDK while lacking an Android SDK platform installation or `sdk.dir` configuration. Gradle may therefore stop before Kotlin source compilation for either JVM or SDK setup.
 
-**Why:** A successful Gradle launch is not evidence that Android source compilation ran; distinguish JVM setup failures from SDK provisioning failures.
+**Why:** A failed Gradle invocation can be an environment problem before any source is compiled, so distinguish JVM setup failures from SDK provisioning failures.
 
-**How to apply:** Check for `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or `local.properties` SDK configuration before spending time on compiler diagnostics. Do not treat the absence of an SDK as a source regression.
+**How to apply:** Check `java`, `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `local.properties` before spending time on compiler diagnostics. Do not treat missing Java or an SDK as a source regression.

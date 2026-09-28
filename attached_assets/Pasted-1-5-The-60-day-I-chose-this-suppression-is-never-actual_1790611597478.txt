@@ -1,0 +1,59 @@
+1.5 — The 60-day "I chose this" suppression is never actually checked
+File: data/repository/FindingRepository.kt, submit()
+
+existing.state == "intentional" ->
+    if (existing.evidenceFingerprint == finding.evidenceFingerprint) false
+    else { resurface(existing.id, finding); true }
+acknowledgeIntentional() correctly writes suppressedUntil 60 days out when the user responds "I chose this." submit() never reads existing.suppressedUntil anywhere — the only gate on resurfacing an intentional finding is whether the fingerprint changed at all. A fingerprint is deliberately sensitive to real evidence drift (bucketed sample size and metric, not exact-match), so it can legitimately shift within days of acknowledgment as more data comes in — nowhere close to 60 days, and not necessarily because the pattern got worse in any meaningful sense; it can shift on an improving trend too, since the check is fingerprint inequality, not magnitude or direction of change.
+
+Net effect: a user explicitly tells the system "I know about this, leave it alone," and it can come back within the week. This isn't a cosmetic gap — it's the specific thing that makes the difference between a system that respects a stated choice and one that nags anyway.
+
+Fix direction: the existing.state == "intentional" branch needs a time check before anything else: if Instant.now() is before Instant.parse(existing.suppressedUntil), return false unconditionally — still suppressed, full stop, regardless of fingerprint. Only past that date should fingerprint comparison even run. Separately, re-read the original intent (evidence would need to worsen by a real margin, not just differ, to justify an early resurface before the 60 days are up) and decide whether that early-resurface path is worth implementing now or whether "wait out the 60 days, then treat any change as fair game" is an acceptable v1 — the time-check alone fixes the actively-broken part; the magnitude-of-change nuance is a smaller refinement on top.
+
+1.6 — The one-per-week pacing resets as soon as the current finding is read
+File: data/repository/FindingRepository.kt, insertIfCooldownElapsed()
+
+private suspend fun insertIfCooldownElapsed(finding: FindingEntity): Boolean {
+    val recent = findingDao.getMostRecentDetected()   // WHERE state = 'detected'
+    if (recent != null && daysBetween(recent.firstDetectedAt, now) < 7) return false
+    findingDao.insert(finding)
+    return true
+}
+getMostRecentDetected() filters to state = 'detected' — i.e., "is there one still sitting unread." The moment a user taps their current finding (moving it to seen), that query returns null on the very next detection run, and the cooldown check passes immediately — not because 7 real days elapsed, but because nothing is currently unread. An engaged user who checks Stats daily and reads each finding promptly could receive a new one every single day. Someone who never opens Stats gets throttled correctly by accident; someone who actually uses the feature as intended gets the opposite of the one-per-week pacing that was the whole point.
+
+Fix direction: the cooldown needs to be keyed to calendar time since the last finding was created, regardless of its current state — query MAX(first_detected_at) across all findings with no state filter, not just ones still sitting in detected. getMostRecentDetected() can stay for whatever else it's used for, but insertIfCooldownElapsed needs a state-agnostic version of that timestamp lookup.
+
+1.7 — FindingCardView still has the pre-refresh visual treatment
+Files: ui/stats/FindingCardView.kt, ui/stats/FindingsSection.kt
+
+Confirmed by direct re-read: neither file reflects the accent-driven, single-signal design discussed earlier. Concretely, still present:
+
+A NEW / WATCHING text badge sitting next to the category label, duplicating what the label's own color could carry alone
+"FINDING" as the generic fallback label for non-manipulation findings, where the existing insight-rule vocabulary (WeeklyRules.kt, ThreeMonthRules.kt already use category = "pattern", "trend", "resistance") has a real word available
+The clean-state card in FindingsSection.kt still reads "No unusual patterns detected. The system has nothing to report."
+This was written up in detail once already with a specific file-by-file diff (shared separately) — restating the two changes needed in short form here so this ticket list is the single complete reference:
+
+Collapse the category label + NEW/WATCHING badge into one signal: the label's own color/alpha carries read-state (full color = unread, ~60% alpha once seen, amber = aware/still-open) — no second badge element.
+Replace the "FINDING" fallback with "pattern", matching the vocabulary the rest of Stats already uses for this kind of content.
+Rewrite the clean-state copy to drop "the system" — plain, user-facing language matching every other finding body already written.
+1.2 — TaskResultList's empty message ignores its own title
+File: ui/stats/TaskResultList.kt
+
+fun TaskResultList(snapshot: AnalyticsSnapshot, title: String = "YESTERDAY'S TASKS") = StatsCard {
+    Text(title, ...)
+    val rows = snapshot.tasks.resultRows.orEmpty()
+    if (rows.isEmpty()) Text("No tasks were recorded yesterday.", ...)  // hardcoded
+Called from the Today branch with title = "TODAY'S TASKS". On a Today with zero scheduled tasks but some session/blocking activity (so the screen-level isEmpty gate from Part 0 item 3 doesn't suppress it), the card reads:
+
+TODAY'S TASKS No tasks were recorded yesterday.
+
+Two lines, one card, contradicting each other.
+
+Fix direction: derive the empty-state line from the same title the caller already passes, or from an explicit second parameter (emptyMessage: String = "No tasks were recorded yesterday." with the Today call site passing its own). Don't infer the day word from the title string by parsing it — pass it explicitly so a future third call site ("ALL TIME'S TASKS" or similar) can't reintroduce the same mismatch.
+
+1.3 — ProductivityHeatmap renders a single populated cell under "Today"
+Files: ui/stats/StatsParityCards.kt (ProductivityHeatmap), analytics/AnalyticsProcessor.kt (buildTaskMetrics, getAnalyticsRange)
+
+Root cause, confirmed by reading both functions: getAnalyticsRange for ANALYTICS_TODAY returns a range of exactly one calendar day (now.toLocalDate().atStartOfDay() through +1 day - 1ns). buildTaskMetrics populates byDayOfWeek only from the tasks list it's handed — which, for the Today window, only ever contains today's tasks. Every other weekday bucket in byDayOfWeek stays at its zero default. ProductivityHeatmap titles itself "WEEKLY PRODUCTIVITY" and renders all 7 buckets regardless — under the Today pill this reliably shows one colored cell and six empty grey ones for a component whose own label promises a week of pattern.
+
+Fix direction: this component's data is only meaningful for windows where byDayOfWeek genuinely spans multiple days — confirm which those are by checking getAnalyticsRange's branches for ANALYTICS_WEEK, ANALYTICS_ALL_TIME, and whatever ANALYTICS_THREE_MONTHS resolves to. Remove the ProductivityHeatmap call from the ANALYTICS_TODAY branch in StatsInsightsExperience.kt's when(window) block. If a genuinely Today-relevant version of this idea is wanted, it would need a different data source (e.g. an hour-of-day view of today specifically, not a day-of-week view) — that's a new component, not a fix to this one.

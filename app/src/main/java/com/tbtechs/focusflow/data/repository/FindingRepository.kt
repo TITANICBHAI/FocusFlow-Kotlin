@@ -25,12 +25,19 @@ class FindingRepository(
         val existing = findingDao.getExisting(finding.detectionType, finding.subjectPackage)
         when {
             existing == null -> insertIfCooldownElapsed(finding)
-            existing.state == "intentional" ->
-                if (existing.evidenceFingerprint == finding.evidenceFingerprint) false
-                else {
+            existing.state == "intentional" -> {
+                val stillSuppressed = existing.suppressedUntil?.let { suppressedUntil ->
+                    runCatching {
+                        Instant.now().isBefore(Instant.parse(suppressedUntil))
+                    }.getOrDefault(false)
+                } == true
+                if (stillSuppressed || existing.evidenceFingerprint == finding.evidenceFingerprint) {
+                    false
+                } else {
                     resurface(existing.id, finding)
                     true
                 }
+            }
             existing.state == "resolved" -> insertIfCooldownElapsed(finding)
             else -> {
                 if (existing.evidenceFingerprint != finding.evidenceFingerprint) {
@@ -94,9 +101,9 @@ class FindingRepository(
     }
 
     private suspend fun insertIfCooldownElapsed(finding: FindingEntity): Boolean {
-        val recent = findingDao.getMostRecentDetected()
-        if (recent != null &&
-            ChronoUnit.DAYS.between(Instant.parse(recent.firstDetectedAt), Instant.now()) <
+        val recentFirstDetectedAt = findingDao.getMostRecentFirstDetectedAt()
+        if (recentFirstDetectedAt != null &&
+            ChronoUnit.DAYS.between(Instant.parse(recentFirstDetectedAt), Instant.now()) <
             SURFACE_COOLDOWN_DAYS
         ) {
             return false

@@ -12,11 +12,12 @@ import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 fun TaskResultList(
     snapshot: AnalyticsSnapshot,
     title: String = "YESTERDAY'S TASKS",
+    emptyMessage: String = "No tasks were recorded yesterday.",
 ) = StatsCard {
     Column(modifier = androidx.compose.ui.Modifier.padding(12.dp)) {
         Text(title, style = MaterialTheme.typography.labelLarge)
         val rows = snapshot.tasks.resultRows.orEmpty()
-        if (rows.isEmpty()) Text("No tasks were recorded yesterday.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (rows.isEmpty()) Text(emptyMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
         rows.forEach { row ->
             val label = when (row.status) {
                 "completed" -> "Done"

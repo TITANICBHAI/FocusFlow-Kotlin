@@ -95,7 +95,7 @@ fun FindingsSection(
                 Text("Nothing to flag", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "No unusual patterns detected. The system has nothing to report.",
+                    "No unusual patterns detected. Nothing to report.",
                     fontSize = 13.sp,
                     color = DarkTextSecondary,
                 )
