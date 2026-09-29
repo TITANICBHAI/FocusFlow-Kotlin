@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.HourglassEmpty
  import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.PhoneAndroid
@@ -35,6 +37,9 @@ import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -76,6 +81,8 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.SunAmber
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -141,10 +148,7 @@ fun ArchivedStatsScreen(
         )
         StatsFilterRow(
             activeWindow = window,
-            weekViewMode = weekViewMode,
-            weekStartDay = weekStartDay,
             onSelect = statsViewModel::setWindow,
-            onSelectWeekMode = statsViewModel::setWeekViewMode,
         )
 
         when (val state = loadState) {
@@ -175,9 +179,13 @@ fun ArchivedStatsScreen(
                                     DeviceUsageCard(
                                         usage = phoneUsage,
                                         window = window,
+                                        weekViewMode = weekViewMode,
                                         weekStartDay = weekStartDay,
+                                        rangeStartISO = loaded.range.startISO,
+                                        focusMinutesByDate = loaded.sessions.focusMinutesByDate,
                                         focusMinutesByDayOfWeek = loaded.sessions.focusMinutesByDayOfWeek,
                                         onOpenQuickBlock = onOpenQuickBlock,
+                                        onSelectWeekMode = statsViewModel::setWeekViewMode,
                                     )
                                 }
                         }
@@ -188,6 +196,8 @@ fun ArchivedStatsScreen(
                                     snapshot = loaded,
                                     weekViewMode = weekViewMode,
                                     weekStartDay = weekStartDay,
+                                    showWeekModeMenu = loaded.phoneUsage == null,
+                                    onSelectWeekMode = statsViewModel::setWeekViewMode,
                                 )
                                 ANALYTICS_ALL_TIME -> AllTimeReport(loaded, lifetime)
                                 else -> TodayReport(loaded)
@@ -260,10 +270,7 @@ private fun ExtraButton(onClick: () -> Unit) {
 @Composable
 private fun StatsFilterRow(
     activeWindow: String,
-    weekViewMode: String,
-    weekStartDay: Int,
     onSelect: (String) -> Unit,
-    onSelectWeekMode: (String) -> Unit,
 ) {
     val filters = listOf(
         ANALYTICS_TODAY to "Today",
@@ -291,25 +298,56 @@ private fun StatsFilterRow(
                 )
             }
         }
-        if (activeWindow == ANALYTICS_WEEK) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 20.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StatsPeriodPill(
-                    label = "Dynamic",
-                    selected = weekViewMode == WEEK_MODE_DYNAMIC,
-                    onClick = { onSelectWeekMode(WEEK_MODE_DYNAMIC) },
-                )
-                StatsPeriodPill(
-                    label = weekRangeLabel(weekStartDay),
-                    selected = weekViewMode == WEEK_MODE_FIXED,
-                    onClick = { onSelectWeekMode(WEEK_MODE_FIXED) },
-                )
-            }
+    }
+}
+
+@Composable
+private fun WeekModeMenu(
+    weekViewMode: String,
+    weekStartDay: Int,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(40.dp),
+        ) {
+            Icon(
+                Icons.Outlined.MoreVert,
+                contentDescription = "Choose week range",
+                tint = DarkTextSecondary,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Last 7 days") },
+                onClick = {
+                    expanded = false
+                    onSelect(WEEK_MODE_DYNAMIC)
+                },
+                trailingIcon = {
+                    if (weekViewMode == WEEK_MODE_DYNAMIC) {
+                        Icon(Icons.Outlined.Check, contentDescription = null, tint = BrandPrimary)
+                    }
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(weekRangeLabel(weekStartDay)) },
+                onClick = {
+                    expanded = false
+                    onSelect(WEEK_MODE_FIXED)
+                },
+                trailingIcon = {
+                    if (weekViewMode == WEEK_MODE_FIXED) {
+                        Icon(Icons.Outlined.Check, contentDescription = null, tint = BrandPrimary)
+                    }
+                },
+            )
         }
     }
 }
@@ -379,20 +417,33 @@ private fun WeekReport(
     snapshot: AnalyticsSnapshot,
     weekViewMode: String,
     weekStartDay: Int,
+    showWeekModeMenu: Boolean,
+    onSelectWeekMode: (String) -> Unit,
 ) {
     ArchivedCard {
-        Text(
-            if (weekViewMode == WEEK_MODE_DYNAMIC) "Current week so far" else "${weekRangeLabel(weekStartDay)} report",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = DarkTextPrimary,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (weekViewMode == WEEK_MODE_DYNAMIC) "Last 7 days" else "${weekRangeLabel(weekStartDay)} report",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkTextPrimary,
+                )
+            }
+            if (showWeekModeMenu) {
+                WeekModeMenu(
+                    weekViewMode = weekViewMode,
+                    weekStartDay = weekStartDay,
+                    onSelect = onSelectWeekMode,
+                )
+            }
+        }
         Text(
             "${snapshot.tasks.completed} of ${snapshot.tasks.total} tasks completed",
             color = DarkTextSecondary,
         )
         Spacer(Modifier.height(14.dp))
-        WeekCompletionBars(snapshot, weekStartDay)
+        WeekCompletionBars(snapshot, snapshot.range.startISO)
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             StatTile("${snapshot.sessions.totalFocusMinutes.roundToInt()}m", "Focus", BrandPrimary)
@@ -459,7 +510,10 @@ private fun BreakdownRow(label: String, value: Int, color: Color, total: Int) {
 }
 
 @Composable
-private fun WeekCompletionBars(snapshot: AnalyticsSnapshot, weekStartDay: Int) {
+private fun WeekCompletionBars(snapshot: AnalyticsSnapshot, rangeStartISO: String) {
+    val startDate = rangeStartISO
+        .let { runCatching { Instant.parse(it).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull() }
+        ?: LocalDate.now().minusDays(6)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -468,9 +522,8 @@ private fun WeekCompletionBars(snapshot: AnalyticsSnapshot, weekStartDay: Int) {
         verticalAlignment = Alignment.Bottom,
     ) {
         (0..6).forEach { offset ->
-            val dayIndex = (weekStartDay + offset) % 7
-            val day = WEEKDAY_SHORT[dayIndex].take(1)
-            val bucket = snapshot.tasks.byDayOfWeek[dayIndex]
+            val date = startDate.plusDays(offset.toLong())
+            val bucket = snapshot.tasks.byDate[date.toString()]
             val total = bucket?.total ?: 0
             val rate = if (total == 0) 0f
             else ((bucket?.completed ?: 0).toFloat() / total).coerceIn(0f, 1f)
@@ -483,7 +536,11 @@ private fun WeekCompletionBars(snapshot: AnalyticsSnapshot, weekStartDay: Int) {
                         .background(if (rate > 0f) BrandPrimary else DarkBorder),
                 )
                 Spacer(Modifier.height(5.dp))
-                Text(day, fontSize = 11.sp, color = DarkTextSecondary)
+                Text(
+                    date.format(DateTimeFormatter.ofPattern("M/d", Locale.getDefault())),
+                    fontSize = 10.sp,
+                    color = DarkTextSecondary,
+                )
             }
         }
     }
@@ -522,9 +579,13 @@ private fun UsageAccessCard(
 private fun DeviceUsageCard(
     usage: AnalyticsSnapshot.PhoneUsage,
     window: String,
+    weekViewMode: String,
     weekStartDay: Int,
+    rangeStartISO: String,
+    focusMinutesByDate: Map<String, Double>,
     focusMinutesByDayOfWeek: Map<Int, Double>,
     onOpenQuickBlock: (String?) -> Unit,
+    onSelectWeekMode: (String) -> Unit,
 ) {
     ArchivedCard {
         val totalMinutes = if (usage.totalMinutes > 0) {
@@ -551,6 +612,13 @@ private fun DeviceUsageCard(
                 color = DarkTextPrimary,
             )
             Spacer(Modifier.weight(1f))
+            if (window == ANALYTICS_WEEK) {
+                WeekModeMenu(
+                    weekViewMode = weekViewMode,
+                    weekStartDay = weekStartDay,
+                    onSelect = onSelectWeekMode,
+                )
+            }
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
@@ -612,9 +680,9 @@ private fun DeviceUsageCard(
 
         if (window == ANALYTICS_WEEK) {
             WeeklyObservationChart(
-                observedMinutesByDayOfWeek = usage.observedMinutesByDayOfWeek,
-                focusMinutesByDayOfWeek = focusMinutesByDayOfWeek,
-                weekStartDay = weekStartDay,
+                observedMinutesByDate = usage.observedMinutesByDate,
+                focusMinutesByDate = focusMinutesByDate,
+                rangeStartISO = rangeStartISO,
             )
         }
 
@@ -739,15 +807,20 @@ private fun UsageAppRow(
 
 @Composable
 private fun WeeklyObservationChart(
-    observedMinutesByDayOfWeek: Map<Int, Double>,
-    focusMinutesByDayOfWeek: Map<Int, Double>,
-    weekStartDay: Int,
+    observedMinutesByDate: Map<String, Double>,
+    focusMinutesByDate: Map<String, Double>,
+    rangeStartISO: String,
 ) {
+    val startDate = runCatching {
+        Instant.parse(rangeStartISO).atZone(ZoneId.systemDefault()).toLocalDate()
+    }.getOrElse { LocalDate.now().minusDays(6) }
+    val dates = (0..6).map { startDate.plusDays(it.toLong()) }
     val maxMinutes = (0..6)
-        .maxOf { day ->
+        .maxOf { offset ->
+            val date = dates[offset].toString()
             maxOf(
-                observedMinutesByDayOfWeek[day] ?: 0.0,
-                focusMinutesByDayOfWeek[day] ?: 0.0,
+                observedMinutesByDate[date] ?: 0.0,
+                focusMinutesByDate[date] ?: 0.0,
             )
         }
         .coerceAtLeast(1.0)
@@ -773,8 +846,8 @@ private fun WeeklyObservationChart(
             verticalAlignment = Alignment.Bottom,
         ) {
             (0..6).forEach { offset ->
-                val dayIndex = (weekStartDay + offset) % 7
-                val label = WEEKDAY_SHORT[dayIndex]
+                val date = dates[offset]
+                val dateKey = date.toString()
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -785,17 +858,21 @@ private fun WeeklyObservationChart(
                         verticalAlignment = Alignment.Bottom,
                     ) {
                         WeeklyUsageBar(
-                            value = observedMinutesByDayOfWeek[dayIndex] ?: 0.0,
+                            value = observedMinutesByDate[dateKey] ?: 0.0,
                             maxMinutes = maxMinutes,
                             color = Color(0xFF63A7FF),
                         )
                         WeeklyUsageBar(
-                            value = focusMinutesByDayOfWeek[dayIndex] ?: 0.0,
+                            value = focusMinutesByDate[dateKey] ?: 0.0,
                             maxMinutes = maxMinutes,
                             color = BrandPrimary,
                         )
                     }
-                    Text(label, fontSize = 10.sp, color = DarkTextMuted)
+                    Text(
+                        date.format(DateTimeFormatter.ofPattern("M/d", Locale.getDefault())),
+                        fontSize = 10.sp,
+                        color = DarkTextMuted,
+                    )
                 }
             }
         }
@@ -985,7 +1062,7 @@ private fun StatsEmptyState(window: String) {
 private fun statsSubtitle(window: String, weekViewMode: String, weekStartDay: Int): String = when (window) {
     ANALYTICS_YESTERDAY -> "The day that just ended"
     ANALYTICS_WEEK -> if (weekViewMode == WEEK_MODE_DYNAMIC) {
-        "Your ${weekRangeLabel(weekStartDay)} week so far"
+        "The last 7 days, including today"
     } else {
         "${weekRangeLabel(weekStartDay)} calendar week"
     }

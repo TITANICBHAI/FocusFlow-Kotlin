@@ -26,6 +26,7 @@ data class AnalyticsSnapshot(
         val resultRows: List<TaskResultRow>? = null,
         val byHour: Map<Int, HourBucket> = emptyMap(),
         val firstTaskHour: Int? = null,
+        val byDate: Map<String, DayBucket> = emptyMap(),
     )
 
     data class SessionMetrics(
@@ -40,6 +41,7 @@ data class AnalyticsSnapshot(
         val fastestWindowImprovementPercent: Int? = null,
         val hardestSession: HardestSession? = null,
         val focusMinutesByDayOfWeek: Map<Int, Double> = emptyMap(),
+        val focusMinutesByDate: Map<String, Double> = emptyMap(),
     )
 
     data class BlockingMetrics(
@@ -110,6 +112,7 @@ data class AnalyticsSnapshot(
         val apps: List<HeaviestApp> = emptyList(),
         val totalMinutes: Int = 0,
         val observedMinutesByDayOfWeek: Map<Int, Double> = emptyMap(),
+        val observedMinutesByDate: Map<String, Double> = emptyMap(),
     )
 
     data class HeaviestApp(

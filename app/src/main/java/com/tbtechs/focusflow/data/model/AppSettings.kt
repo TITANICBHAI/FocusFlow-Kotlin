@@ -120,6 +120,7 @@ data class AppSettings(
     val defenseHelpDismissed: Boolean = false,
     val standaloneBlockHintDismissed: Boolean = false,
     val alwaysOnInfoDismissed: Boolean = false,
+    val protectionStatusBannerDismissed: Boolean = false,
 )
 
 /**

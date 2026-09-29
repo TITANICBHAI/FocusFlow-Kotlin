@@ -8,3 +8,4 @@
 - [Android build environment](android-build-environment.md) — this workspace may have a JDK but no Android SDK platform, so Gradle can stop before source compilation.
 - [Text size settings](text-size-settings.md) — Home stays at 100%; per-tab overrides replace General and the rollout is strictly scoped.
 - [Stats fix plan](stats-fix-plan.md) — use calendar-time evidence, state-agnostic pacing, and persisted hourly data for Stats correctness.
+- [Rolling Stats dates](rolling-stats-dates.md) — rolling week charts must use ISO calendar-date series, not weekday-only aggregates.

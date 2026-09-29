@@ -64,6 +64,7 @@ data class AnalyticsSourceData(
 )
 
 data class UsageDaySummary(
+    val date: String,
     val dayOfWeek: Int,
     val totalMinutes: Int,
 )
@@ -136,6 +137,14 @@ fun getAnalyticsRange(
         }
 
         ANALYTICS_WEEK -> {
+            if (weekMode == WEEK_MODE_DYNAMIC) {
+                val start = now.minusDays(6).toLocalDate().atStartOfDay(now.zone)
+                return AnalyticsRange(
+                    start = start,
+                    end = now,
+                    trendWeekAnchor = startOfSundayWeek(now),
+                )
+            }
             val offset = (sundayIndex - normalizedWeekStart + 7) % 7
             val start = now.minusDays(offset.toLong()).toLocalDate().atStartOfDay(now.zone)
             AnalyticsRange(
@@ -185,6 +194,7 @@ private fun buildTaskMetrics(
 ): AnalyticsSnapshot.TaskMetrics {
     val byHour = emptyTaskHourBuckets()
     val byDay = emptyDayBuckets()
+    val byDate = mutableMapOf<String, AnalyticsSnapshot.DayBucket>()
     val resultRows = tasks.map { AnalyticsSnapshot.TaskResultRow(it.title, it.status) }
     val taskIds = tasks.mapTo(mutableSetOf()) { it.id }
     var firstTaskHour: Int? = null
@@ -204,6 +214,12 @@ private fun buildTaskMetrics(
         byDay[day] = previousDay.copy(
             total = previousDay.total + 1,
             completed = previousDay.completed + if (task.status == "completed") 1 else 0,
+        )
+        val date = local.toLocalDate().toString()
+        val previousDate = byDate[date] ?: AnalyticsSnapshot.DayBucket(total = 0)
+        byDate[date] = previousDate.copy(
+            total = previousDate.total + 1,
+            completed = previousDate.completed + if (task.status == "completed") 1 else 0,
         )
         if (firstTaskAt == null || start.isBefore(firstTaskAt!!)) {
             firstTaskAt = start
@@ -231,6 +247,7 @@ private fun buildTaskMetrics(
             .map { it.actualMinutes - it.plannedMinutes }
             .filter { it.isFinite() },
         firstTaskHour = firstTaskHour,
+        byDate = byDate,
     )
 }
 
@@ -242,6 +259,7 @@ private fun buildSessionMetrics(
     val byHour = emptyHourBuckets()
     val byDay = (0..6).associateWith { 0 }.toMutableMap()
     val focusMinutesByDay = (0..6).associateWith { 0.0 }.toMutableMap()
+    val focusMinutesByDate = mutableMapOf<String, Double>()
     val durations = mutableListOf<Double>()
     val ratiosByHour = mutableMapOf<Int, MutableList<Double>>()
     var totalFocusMinutes = 0.0
@@ -260,6 +278,8 @@ private fun buildSessionMetrics(
         totalFocusMinutes += duration
         val dayOfWeek = local.dayOfWeek.value % 7
         focusMinutesByDay[dayOfWeek] = focusMinutesByDay.getValue(dayOfWeek) + duration
+        val date = local.toLocalDate().toString()
+        focusMinutesByDate[date] = (focusMinutesByDate[date] ?: 0.0) + duration
         durations += duration
     }
 
@@ -298,6 +318,7 @@ private fun buildSessionMetrics(
         },
         hardestSession = hardest,
         focusMinutesByDayOfWeek = focusMinutesByDay,
+        focusMinutesByDate = focusMinutesByDate,
     )
 }
 
@@ -409,6 +430,7 @@ private fun buildPhoneUsageMetrics(
         apps = apps,
         totalMinutes = usageSummary?.totalMinutes ?: byHour.values.sum().roundToInt(),
         observedMinutesByDayOfWeek = usageDaily.associate { it.dayOfWeek to it.totalMinutes.toDouble() },
+        observedMinutesByDate = usageDaily.associate { it.date to it.totalMinutes.toDouble() },
     )
 }
 
@@ -534,6 +556,7 @@ class AnalyticsProcessor(
                         val dayStart = day.toLocalDate().atStartOfDay(day.zone)
                         if (dayStart.isAfter(options.now)) {
                             return@async UsageDaySummary(
+                                date = day.toLocalDate().toString(),
                                 dayOfWeek = day.dayOfWeek.value % 7,
                                 totalMinutes = 0,
                             )
@@ -552,6 +575,7 @@ class AnalyticsProcessor(
                             UsageSummary(totalMinutes = 0, apps = emptyList()),
                         )
                         UsageDaySummary(
+                            date = day.toLocalDate().toString(),
                             dayOfWeek = day.dayOfWeek.value % 7,
                             totalMinutes = result.value.totalMinutes,
                         )

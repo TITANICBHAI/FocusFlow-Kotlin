@@ -157,6 +157,9 @@ fun AlwaysOnScreen(
     var showInfo by remember(settings.alwaysOnInfoDismissed) {
         mutableStateOf(!settings.alwaysOnInfoDismissed)
     }
+    var showProtectionStatus by remember(settings.protectionStatusBannerDismissed) {
+        mutableStateOf(!settings.protectionStatusBannerDismissed)
+    }
     val installedAppsState = rememberInstalledApps(installedAppsRepository)
     val apps = installedAppsState.apps.filterNot { it.packageName in systemNeverBlock }
     val loading = settingsLoading || installedAppsState.loading
@@ -314,7 +317,7 @@ fun AlwaysOnScreen(
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (blockProtectionActive) {
+            if (blockProtectionActive && showProtectionStatus) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -345,6 +348,22 @@ fun AlwaysOnScreen(
                                 fontSize = 12.sp,
                                 lineHeight = 17.sp,
                                 color = DarkTextSecondary,
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                showProtectionStatus = false
+                                settingsViewModel.updateSettings(
+                                    settings.copy(protectionStatusBannerDismissed = true),
+                                )
+                            },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Dismiss protection status",
+                                tint = DarkTextMuted,
+                                modifier = Modifier.size(18.dp),
                             )
                         }
                     }

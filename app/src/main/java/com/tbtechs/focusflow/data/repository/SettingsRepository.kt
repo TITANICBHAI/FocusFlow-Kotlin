@@ -125,6 +125,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_DEFENSE_HELP_DISMISSED = "defense_help_dismissed"
         private const val KEY_STANDALONE_BLOCK_HINT_DISMISSED = "standalone_block_hint_dismissed"
         private const val KEY_ALWAYS_ON_INFO_DISMISSED = "always_on_info_dismissed"
+        private const val KEY_PROTECTION_STATUS_BANNER_DISMISSED = "protection_status_banner_dismissed"
         private const val KEY_LAUNCHER_DOCK_PACKAGES = "launcher_dock_packages"
         private const val KEY_LAUNCHER_HIDDEN_PACKAGES = "launcher_hidden_packages"
         private const val KEY_DRAWER_HIDDEN_PACKAGES = "drawer_hidden_packages"
@@ -821,6 +822,7 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_DEFENSE_HELP_DISMISSED, settings.defenseHelpDismissed)
             .putBoolean(KEY_STANDALONE_BLOCK_HINT_DISMISSED, settings.standaloneBlockHintDismissed)
             .putBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, settings.alwaysOnInfoDismissed)
+            .putBoolean(KEY_PROTECTION_STATUS_BANNER_DISMISSED, settings.protectionStatusBannerDismissed)
             .apply {
                 if (settings.lastShownDebriefSessionId == null) {
                     remove(KEY_LAST_SHOWN_DEBRIEF_SESSION_ID)
@@ -938,6 +940,7 @@ class SettingsRepository(context: Context) {
             defenseHelpDismissed = prefs.getBoolean(KEY_DEFENSE_HELP_DISMISSED, false),
             standaloneBlockHintDismissed = prefs.getBoolean(KEY_STANDALONE_BLOCK_HINT_DISMISSED, false),
             alwaysOnInfoDismissed = prefs.getBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, false),
+            protectionStatusBannerDismissed = prefs.getBoolean(KEY_PROTECTION_STATUS_BANNER_DISMISSED, false),
         )
     }
 

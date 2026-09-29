@@ -120,6 +120,9 @@ fun DefenseScreen(
     val scope = rememberCoroutineScope()
     var showHint by remember(settings.defenseHintDismissed) { mutableStateOf(!settings.defenseHintDismissed) }
     var showHelp by remember(settings.defenseHelpDismissed) { mutableStateOf(!settings.defenseHelpDismissed) }
+    var showProtectionStatus by remember(settings.protectionStatusBannerDismissed) {
+        mutableStateOf(!settings.protectionStatusBannerDismissed)
+    }
     var allowanceVisible by remember { mutableStateOf(false) }
     var schedulesVisible by remember { mutableStateOf(false) }
     var nuclearVisible by remember { mutableStateOf(false) }
@@ -233,7 +236,7 @@ fun DefenseScreen(
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
 
-                if (blockActive) {
+                if (blockActive && showProtectionStatus) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -264,6 +267,20 @@ fun DefenseScreen(
                                     fontSize = 12.sp,
                                     lineHeight = 17.sp,
                                     color = DarkTextSecondary,
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    showProtectionStatus = false
+                                    update(settings.copy(protectionStatusBannerDismissed = true))
+                                },
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = "Dismiss protection status",
+                                    tint = DarkTextMuted,
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
                         }
