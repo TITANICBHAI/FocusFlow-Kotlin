@@ -79,7 +79,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 /**
- * Kotlin port of the archived RN stats layout.
+ * Kotlin port of the archived Stats tab layout.
  *
  * It intentionally keeps the RN information hierarchy: a sticky four-option
  * filter row, one focused report per period, compact summary cards, and clear
@@ -92,6 +92,7 @@ fun ArchivedStatsScreen(
     onOpenUsageAccessSettings: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
     onOpenQuickBlock: (String?) -> Unit = {},
+    onOpenExtra: () -> Unit = {},
 ) {
     val snapshot by statsViewModel.analyticsSnapshot.collectAsState()
     val lifetime by statsViewModel.lifetimeStats.collectAsState()
@@ -102,9 +103,6 @@ fun ArchivedStatsScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        if (statsViewModel.activeWindow.value != ANALYTICS_TODAY) {
-            statsViewModel.setWindow(ANALYTICS_TODAY)
-        }
         usagePermission = runCatching {
             com.tbtechs.focusflow.di.AppModule.usageStatsRepository.hasPermission()
         }.getOrDefault(false)
@@ -134,6 +132,11 @@ fun ArchivedStatsScreen(
         StatsFilterRow(
             activeWindow = window,
             onSelect = statsViewModel::setWindow,
+        )
+        StatsModeToggle(
+            extraSelected = false,
+            onOpenReport = {},
+            onOpenExtra = onOpenExtra,
         )
 
         when (val state = loadState) {
@@ -247,7 +250,7 @@ private fun StatsFilterRow(
                         color = if (selected) {
                             BrandPrimary
                         } else {
-                            DarkTextSecondary.copy(alpha = 0.35f)
+                            BrandPrimary.copy(alpha = 0.20f)
                         },
                         shape = RoundedCornerShape(18.dp),
                     )
@@ -256,7 +259,7 @@ private fun StatsFilterRow(
             ) {
                 Text(
                     label,
-                    color = if (selected) Color.White else DarkTextPrimary,
+                    color = if (selected) Color.White else BrandPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )

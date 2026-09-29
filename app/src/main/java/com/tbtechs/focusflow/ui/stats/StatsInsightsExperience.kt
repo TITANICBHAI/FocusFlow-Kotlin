@@ -55,6 +55,8 @@ fun StatsInsightsExperience(
     onOpenActiveBlocks: () -> Unit = {},
     onOpenQuickBlock: (String?) -> Unit = {},
     focusDayRating: Boolean = false,
+    screenTitle: String = "Stats",
+    onOpenArchived: (() -> Unit)? = null,
 ) {
     val snapshot by statsViewModel.analyticsSnapshot.collectAsState()
     val insights by statsViewModel.insightCards.collectAsState()
@@ -97,7 +99,7 @@ fun StatsInsightsExperience(
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
             Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
-                Text("Stats", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text(screenTitle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 Text(windowSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
             }
             ActiveStatusIndicator(
@@ -105,6 +107,13 @@ fun StatsInsightsExperience(
             )
         }
         AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
+        onOpenArchived?.let { onReport ->
+            StatsModeToggle(
+                extraSelected = true,
+                onOpenReport = onReport,
+                onOpenExtra = {},
+            )
+        }
         if (
             reflectionPromptsEnabled &&
             currentRating == null &&
