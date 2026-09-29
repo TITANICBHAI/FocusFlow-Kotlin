@@ -62,6 +62,7 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
 import com.tbtechs.focusflow.analytics.WEEK_MODE_DYNAMIC
+import com.tbtechs.focusflow.analytics.WEEK_MODE_FIXED
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 import com.tbtechs.focusflow.analytics.LifetimeStats
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
