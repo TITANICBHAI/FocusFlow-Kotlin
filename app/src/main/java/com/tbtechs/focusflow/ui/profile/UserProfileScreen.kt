@@ -122,6 +122,7 @@ fun UserProfileScreen(
     var distractionTriggers by remember { mutableStateOf(setOf<String>()) }
     var motivationStyle by remember { mutableStateOf(setOf<String>()) }
     var weeklyReviewDay by remember { mutableStateOf("") }
+    var weekUsageReportStartDay by remember { mutableStateOf("mon") }
     var saving by remember { mutableStateOf(false) }
     var importBusy by remember { mutableStateOf(false) }
     var usageVisible by remember { mutableStateOf(false) }
@@ -146,6 +147,10 @@ fun UserProfileScreen(
                     distractionTriggers = profile.optJSONArray("distractionTriggers").toStringSet()
                     motivationStyle = profile.optJSONArray("motivationStyle").toStringSet()
                     weeklyReviewDay = profile.optString("weeklyReviewDay")
+                    weekUsageReportStartDay = profile.optString(
+                        "weekUsageReportStartDay",
+                        "mon",
+                    )
                 }
             }
     }
@@ -181,6 +186,7 @@ fun UserProfileScreen(
                 put("distractionTriggers", JSONArray(distractionTriggers.toList()))
                 put("motivationStyle", JSONArray(motivationStyle.toList()))
                 put("weeklyReviewDay", weeklyReviewDay.takeIf(String::isNotBlank) ?: JSONObject.NULL)
+                put("weekUsageReportStartDay", weekUsageReportStartDay)
             }
             runCatching {
                 settingsRepository.putString(PROFILE_KEY, profile.toString())
@@ -566,6 +572,18 @@ fun UserProfileScreen(
                 ) { weeklyReviewDay = if (weeklyReviewDay == it) "" else it }
             }
 
+            ProfileFieldCard(
+                title = "STATS WEEK STARTS",
+                subtitle = "First day used by the fixed week report in Stats",
+            ) {
+                FlowChoiceChips(
+                    choices = USAGE_WEEK_START_DAYS,
+                    selected = setOf(weekUsageReportStartDay),
+                    enabled = editing,
+                    multiSelect = false,
+                ) { weekUsageReportStartDay = it }
+            }
+
             // 10. Information sheet button (9a_(4) / 9a(5))
             Box(
                 modifier = Modifier
@@ -775,6 +793,12 @@ fun UserProfileScreen(
                 label = "Weekly review day",
                 value = labelFor(REVIEW_DAYS, weeklyReviewDay).ifBlank { "Not set" },
                 detail = "Pick a day to receive your weekly recap.",
+            )
+            ProfileUsageItem(
+                icon = Icons.Outlined.CalendarToday,
+                label = "Stats week starts",
+                value = labelFor(USAGE_WEEK_START_DAYS, weekUsageReportStartDay),
+                detail = "Sets the start day for the fixed week view in Stats.",
             )
 
             Spacer(Modifier.height(18.dp))
@@ -1145,4 +1169,9 @@ private val MOTIVATION_STYLES = listOf(
 private val REVIEW_DAYS = listOf(
     "sun" to "Sun", "mon" to "Mon", "tue" to "Tue", "wed" to "Wed",
     "thu" to "Thu", "fri" to "Fri", "sat" to "Sat",
+)
+
+private val USAGE_WEEK_START_DAYS = listOf(
+    "sun" to "Sunday", "mon" to "Monday", "tue" to "Tuesday", "wed" to "Wednesday",
+    "thu" to "Thursday", "fri" to "Friday", "sat" to "Saturday",
 )

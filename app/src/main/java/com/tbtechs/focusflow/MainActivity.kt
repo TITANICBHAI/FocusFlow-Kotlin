@@ -160,6 +160,7 @@ private fun FocusFlowRoot(
             findingRepository = AppModule.findingRepository,
             hypothesisRepository = AppModule.behaviouralHypothesisRepository,
             clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
+            settingsRepository = AppModule.settingsRepository,
         )
     }
     val backupCoordinator = remember {

@@ -29,6 +29,9 @@ const val ANALYTICS_WEEK: AnalyticsWindow = "week"
 const val ANALYTICS_THREE_MONTHS: AnalyticsWindow = "three_months"
 const val ANALYTICS_ALL_TIME: AnalyticsWindow = "all_time"
 
+const val WEEK_MODE_DYNAMIC = "dynamic"
+const val WEEK_MODE_FIXED = "fixed"
+
 const val SOURCE_LOADED: AnalyticsSourceState = "loaded"
 const val SOURCE_UNAVAILABLE: AnalyticsSourceState = "unavailable"
 const val SOURCE_FAILED: AnalyticsSourceState = "failed"
@@ -67,7 +70,8 @@ data class UsageDaySummary(
 
 data class AnalyticsBuildOptions(
     val now: ZonedDateTime = ZonedDateTime.now(),
-    val weekStartDay: Int = 0,
+    val weekStartDay: Int = 1,
+    val weekMode: String = WEEK_MODE_DYNAMIC,
     /**
      * When null, the processor checks Usage Access itself for the only window
      * that can read device usage. Supplying this is useful for deterministic
@@ -79,7 +83,8 @@ data class AnalyticsBuildOptions(
 fun getAnalyticsRange(
     window: AnalyticsWindow,
     now: ZonedDateTime = ZonedDateTime.now(),
-    weekStartDay: Int = 0,
+    weekStartDay: Int = 1,
+    weekMode: String = WEEK_MODE_DYNAMIC,
 ): AnalyticsRange {
     val normalizedWeekStart = weekStartDay.coerceIn(0, 6)
     val sundayIndex = now.dayOfWeek.value % 7
@@ -135,7 +140,11 @@ fun getAnalyticsRange(
             val start = now.minusDays(offset.toLong()).toLocalDate().atStartOfDay(now.zone)
             AnalyticsRange(
                 start = start,
-                end = start.plusDays(7).minusNanos(1),
+                end = if (weekMode == WEEK_MODE_FIXED) {
+                    start.plusDays(7).minusNanos(1)
+                } else {
+                    now
+                },
                 trendWeekAnchor = if (normalizedWeekStart == 0) {
                     start
                 } else {
@@ -481,7 +490,12 @@ class AnalyticsProcessor(
         window: AnalyticsWindow,
         options: AnalyticsBuildOptions = AnalyticsBuildOptions(),
     ): AnalyticsSnapshot {
-        val range = getAnalyticsRange(window, options.now, options.weekStartDay)
+        val range = getAnalyticsRange(
+            window = window,
+            now = options.now,
+            weekStartDay = options.weekStartDay,
+            weekMode = options.weekMode,
+        )
         val startISO = range.start.toInstant().toString()
         val endISO = range.end.toInstant().toString()
         val previousRange = previousAnalyticsRange(range)
@@ -491,7 +505,12 @@ class AnalyticsProcessor(
             else -> 2
         }
         val weekForSkipComparison = if (window == ANALYTICS_YESTERDAY) {
-            getAnalyticsRange(ANALYTICS_WEEK, options.now, options.weekStartDay)
+            getAnalyticsRange(
+                window = ANALYTICS_WEEK,
+                now = options.now,
+                weekStartDay = options.weekStartDay,
+                weekMode = options.weekMode,
+            )
         } else {
             null
         }
@@ -513,7 +532,16 @@ class AnalyticsProcessor(
                     async {
                         val day = range.start.plusDays(offset.toLong())
                         val dayStart = day.toLocalDate().atStartOfDay(day.zone)
-                        val dayEnd = dayStart.plusDays(1).minusNanos(1)
+                        if (dayStart.isAfter(options.now)) {
+                            return@async UsageDaySummary(
+                                dayOfWeek = day.dayOfWeek.value % 7,
+                                totalMinutes = 0,
+                            )
+                        }
+                        val dayEnd = minOf(
+                            dayStart.plusDays(1).minusNanos(1),
+                            options.now,
+                        )
                         val result = readSource(
                             {
                                 usageStatsRepository.getUsageSummary(

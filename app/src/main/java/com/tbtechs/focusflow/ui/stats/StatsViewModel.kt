@@ -14,6 +14,8 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_ALL_TIME
 import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
+import com.tbtechs.focusflow.analytics.WEEK_MODE_DYNAMIC
+import com.tbtechs.focusflow.analytics.WEEK_MODE_FIXED
 import com.tbtechs.focusflow.analytics.InsightCard
 import com.tbtechs.focusflow.analytics.InsightEngine
 import com.tbtechs.focusflow.analytics.LifetimeStats
@@ -26,6 +28,7 @@ import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
 import com.tbtechs.focusflow.data.repository.DayRatingRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
 import com.tbtechs.focusflow.data.repository.DayRatingRepository.RatableDateEntry
+import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.di.AppModule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -34,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
+import org.json.JSONObject
 
 sealed class StatsLoadState {
     data object Loading : StatsLoadState()
@@ -51,6 +55,7 @@ class StatsViewModel(
     private val findingRepository: FindingRepository,
     private val hypothesisRepository: BehaviouralHypothesisRepository,
     private val clarifyingQuestionRepository: ClarifyingQuestionRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     companion object {
         const val COLD_START_DISMISSED_KEY = "stats_cold_start_dismissed"
@@ -65,6 +70,7 @@ class StatsViewModel(
                     findingRepository = AppModule.findingRepository,
                     hypothesisRepository = AppModule.behaviouralHypothesisRepository,
                     clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
+                    settingsRepository = AppModule.settingsRepository,
                 ) as T
             }
 
@@ -78,6 +84,7 @@ class StatsViewModel(
                     findingRepository = AppModule.findingRepository,
                     hypothesisRepository = AppModule.behaviouralHypothesisRepository,
                     clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
+                    settingsRepository = AppModule.settingsRepository,
                 ) as T
             }
         }
@@ -92,6 +99,8 @@ class StatsViewModel(
     // The archived RN stats screen opens on Today. Keep that same first view
     // so a fresh install does not land on a denser historical report.
     private val _activeWindow = MutableStateFlow<AnalyticsWindow>(ANALYTICS_TODAY)
+    private val _weekViewMode = MutableStateFlow(readWeekViewMode())
+    private val _weekStartDay = MutableStateFlow(readWeekStartDay())
 
     val analyticsSnapshot: StateFlow<AnalyticsSnapshot?> = _analyticsSnapshot.asStateFlow()
     val insightCards: StateFlow<List<InsightCard>> = _insightCards.asStateFlow()
@@ -100,6 +109,8 @@ class StatsViewModel(
     val lifetimeStats: StateFlow<LifetimeStats?> = _lifetimeStats.asStateFlow()
     val loadState: StateFlow<StatsLoadState> = _loadState.asStateFlow()
     val activeWindow: StateFlow<AnalyticsWindow> = _activeWindow.asStateFlow()
+    val weekViewMode: StateFlow<String> = _weekViewMode.asStateFlow()
+    val weekStartDay: StateFlow<Int> = _weekStartDay.asStateFlow()
 
     private val _selectedRatingDate = MutableStateFlow(resolveDefaultRatingDate())
     private val _currentRating = MutableStateFlow<DayRatingEntity?>(null)
@@ -141,9 +152,22 @@ class StatsViewModel(
         reload()
     }
 
+    fun setWeekViewMode(mode: String) {
+        if (mode !in setOf(WEEK_MODE_DYNAMIC, WEEK_MODE_FIXED)) return
+        if (_weekViewMode.value == mode) return
+        _weekViewMode.value = mode
+        viewModelScope.launch {
+            settingsRepository.putString(WEEK_VIEW_MODE_KEY, mode)
+            if (_activeWindow.value == ANALYTICS_WEEK) {
+                reload()
+            }
+        }
+    }
+
     fun reload() {
         loadJob?.cancel()
         val window = _activeWindow.value
+        _weekStartDay.value = readWeekStartDay()
         _analyticsSnapshot.value = null
         _insightCards.value = emptyList()
         _weeklyStandout.value = null
@@ -168,6 +192,8 @@ class StatsViewModel(
                 val snapshot = analyticsProcessor.buildAnalyticsSnapshot(
                     window = window,
                     options = com.tbtechs.focusflow.analytics.AnalyticsBuildOptions(
+                        weekStartDay = _weekStartDay.value,
+                        weekMode = _weekViewMode.value,
                         usageStatsPermission = usagePermission,
                     ),
                 )
@@ -365,6 +391,20 @@ class StatsViewModel(
         return java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
     }
 
+    private fun readWeekViewMode(): String =
+        settingsRepository.getString(WEEK_VIEW_MODE_KEY)
+            ?.takeIf { it == WEEK_MODE_DYNAMIC || it == WEEK_MODE_FIXED }
+            ?: WEEK_MODE_DYNAMIC
+
+    private fun readWeekStartDay(): Int {
+        val configuredId = runCatching {
+            settingsRepository.getString(USER_PROFILE_KEY)
+                ?.let(::JSONObject)
+                ?.optString(WEEK_START_PROFILE_FIELD)
+        }.getOrNull()
+        return PROFILE_WEEK_START_DAYS.indexOf(configuredId).takeIf { it >= 0 } ?: 1
+    }
+
     private fun ratingDateForWindow(window: AnalyticsWindow): String? {
         val today = java.time.LocalDate.now()
         return when (window) {
@@ -375,6 +415,11 @@ class StatsViewModel(
     }
 
 }
+
+private const val USER_PROFILE_KEY = "user_profile"
+private const val WEEK_START_PROFILE_FIELD = "weekUsageReportStartDay"
+private const val WEEK_VIEW_MODE_KEY = "stats_week_view_mode"
+private val PROFILE_WEEK_START_DAYS = listOf("sun", "mon", "tue", "wed", "thu", "fri", "sat")
 
 private fun List<String>.toStorageValue(): String =
     kotlinx.serialization.json.Json.encodeToString(this)
