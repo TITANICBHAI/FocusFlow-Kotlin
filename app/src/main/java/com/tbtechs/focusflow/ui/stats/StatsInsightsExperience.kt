@@ -1,23 +1,17 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -44,9 +38,7 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
 import com.tbtechs.focusflow.analytics.AnalyticsWindow
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.di.AppModule
-import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
-import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import kotlinx.coroutines.launch
@@ -234,8 +226,8 @@ private fun AnalyticsWindowTabs(
     onSelect: (AnalyticsWindow) -> Unit,
 ) {
     val windows = listOfNotNull(
-        ANALYTICS_YESTERDAY to "Yesterday",
         ANALYTICS_TODAY to "Today",
+        ANALYTICS_YESTERDAY to "Yesterday",
         ANALYTICS_WEEK to "Week",
         (ANALYTICS_THREE_MONTHS to "3 Months").takeIf { includeThreeMonths },
         ANALYTICS_ALL_TIME to "All Time",
@@ -244,34 +236,15 @@ private fun AnalyticsWindowTabs(
         modifier = androidx.compose.ui.Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(start = 16.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         windows.forEach { (window, label) ->
-            val selected = activeWindow == window
-            Box(
-                modifier = androidx.compose.ui.Modifier
-                    .clip(CircleShape)
-                    .background(if (selected) BrandPrimary else DarkSurfaceVariant)
-                    .border(
-                        width = 1.dp,
-                        color = if (selected) {
-                            BrandPrimary
-                        } else {
-                            DarkTextSecondary.copy(alpha = 0.35f)
-                        },
-                        shape = CircleShape,
-                    )
-                    .clickable { onSelect(window) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) Color.White else DarkTextPrimary,
-                )
-            }
+            StatsPeriodPill(
+                label = label,
+                selected = activeWindow == window,
+                onClick = { onSelect(window) },
+            )
         }
     }
 }

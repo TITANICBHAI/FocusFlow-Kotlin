@@ -280,11 +280,11 @@ private fun StatsFilterRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(start = 16.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             filters.forEach { (filter, label) ->
-                FilterPill(
+                StatsPeriodPill(
                     label = label,
                     selected = activeWindow == filter,
                     onClick = { onSelect(filter) },
@@ -296,48 +296,21 @@ private fun StatsFilterRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                    .padding(start = 16.dp, end = 20.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FilterPill(
+                StatsPeriodPill(
                     label = "Dynamic",
                     selected = weekViewMode == WEEK_MODE_DYNAMIC,
                     onClick = { onSelectWeekMode(WEEK_MODE_DYNAMIC) },
                 )
-                FilterPill(
+                StatsPeriodPill(
                     label = weekRangeLabel(weekStartDay),
                     selected = weekViewMode == WEEK_MODE_FIXED,
                     onClick = { onSelectWeekMode(WEEK_MODE_FIXED) },
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun FilterPill(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (selected) BrandPrimary else BrandPrimary.copy(alpha = 0.12f))
-            .border(
-                width = 1.dp,
-                color = if (selected) BrandPrimary else BrandPrimary.copy(alpha = 0.20f),
-                shape = RoundedCornerShape(18.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 8.dp),
-    ) {
-        Text(
-            label,
-            color = if (selected) Color.White else BrandPrimary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
     }
 }
 
