@@ -274,6 +274,20 @@ fun SettingsScreen(
                         )
                     }
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsToggleRow(
+                        title = "Daily reflection prompts",
+                        description = "Show the questionnaire and day-rating prompts",
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.reflectionPromptsEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(
+                                    settings.copy(reflectionPromptsEnabled = enabled),
+                                )
+                            },
+                        )
+                    }
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsActionRow(
                         icon = Icons.Outlined.Notifications,
                         title = "Request Notification Permission",

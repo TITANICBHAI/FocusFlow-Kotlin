@@ -38,6 +38,7 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
 import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
 import com.tbtechs.focusflow.analytics.AnalyticsWindow
+import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -70,12 +71,17 @@ fun StatsInsightsExperience(
     val pendingQuestion by statsViewModel.pendingQuestion.collectAsState()
     val needsColdStart by statsViewModel.needsColdStart.collectAsState()
     val settingsRepository = remember { AppModule.settingsRepository }
+    val reflectionPromptsEnabled = settingsRepository.getBoolean(
+        SettingsRepository.REFLECTION_PROMPTS_ENABLED_KEY,
+        defaultValue = true,
+    )
     val scope = rememberCoroutineScope()
     var localNoticeDismissed by remember {
         mutableStateOf(settingsRepository.getString("local_analytics_notice_dismissed") == "true")
     }
 
     if (
+        reflectionPromptsEnabled &&
         needsColdStart &&
         (window == ANALYTICS_TODAY || window == ANALYTICS_YESTERDAY)
     ) {
@@ -100,6 +106,7 @@ fun StatsInsightsExperience(
         }
         AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
         if (
+            reflectionPromptsEnabled &&
             currentRating == null &&
             (window == ANALYTICS_TODAY || window == ANALYTICS_YESTERDAY)
         ) {

@@ -107,6 +107,7 @@ data class AppSettings(
 
     // ── Productivity preferences ─────────────────────────────────────────────
     val taskRemindersEnabled: Boolean = true,
+    val reflectionPromptsEnabled: Boolean = true,
     val defaultDurationMinutes: Int = 60,
     val autoFocusEnabled: Boolean = false,
     val allowedFocusPackages: List<String> = emptyList(),

@@ -112,6 +112,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOWN_PATTERN_INSIGHT_IDS = "shown_pattern_insight_ids"
         private const val KEY_LAST_SHOWN_DEBRIEF_SESSION_ID = "last_shown_debrief_session_id"
         private const val KEY_TASK_REMINDERS_ENABLED = "task_reminders_enabled"
+        const val REFLECTION_PROMPTS_ENABLED_KEY = "reflection_prompts_enabled"
         private const val KEY_DEFAULT_DURATION_MINUTES = "default_duration_minutes"
         private const val KEY_AUTO_FOCUS_ENABLED = "auto_focus_enabled"
         private const val KEY_ALLOWED_FOCUS_PACKAGES = "allowed_focus_packages"
@@ -178,6 +179,9 @@ class SettingsRepository(context: Context) {
             else -> prefs.all[key] as? String
         }
     }
+
+    fun getBoolean(key: String, defaultValue: Boolean = false): Boolean =
+        prefs.getBoolean(key, defaultValue)
 
     suspend fun putString(key: String, value: String) {
         when (key) {
@@ -804,6 +808,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_LAST_SESSION_RESULT_BY_TASK_ID, results.toString())
             .putString(KEY_SHOWN_PATTERN_INSIGHT_IDS, JSONArray(settings.shownPatternInsightIds).toString())
             .putBoolean(KEY_TASK_REMINDERS_ENABLED, settings.taskRemindersEnabled)
+            .putBoolean(REFLECTION_PROMPTS_ENABLED_KEY, settings.reflectionPromptsEnabled)
             .putInt(KEY_DEFAULT_DURATION_MINUTES, settings.defaultDurationMinutes.coerceIn(5, 480))
             .putBoolean(KEY_AUTO_FOCUS_ENABLED, settings.autoFocusEnabled)
             .putString(KEY_ALLOWED_FOCUS_PACKAGES, settings.allowedFocusPackages.toJsonArrayString())
@@ -920,6 +925,7 @@ class SettingsRepository(context: Context) {
                 null
             },
             taskRemindersEnabled = prefs.getBoolean(KEY_TASK_REMINDERS_ENABLED, true),
+            reflectionPromptsEnabled = prefs.getBoolean(REFLECTION_PROMPTS_ENABLED_KEY, true),
             defaultDurationMinutes = prefs.getInt(KEY_DEFAULT_DURATION_MINUTES, 60).coerceIn(5, 480),
             autoFocusEnabled = prefs.getBoolean(KEY_AUTO_FOCUS_ENABLED, false),
             allowedFocusPackages = parseStringArray(prefs.getString(KEY_ALLOWED_FOCUS_PACKAGES, "[]")),
