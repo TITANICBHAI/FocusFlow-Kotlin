@@ -96,16 +96,21 @@ fun StatsInsightsExperience(
             )
         }
         AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
-        DayRatingBar(
-            selectedDate = selectedDate,
-            currentRating = currentRating,
-            ratableDates = ratableDates,
-            suggestedChips = suggestedChips,
-            onSelectDate = statsViewModel::selectRatingDate,
-            onLoadChips = statsViewModel::loadChipsForDate,
-            requestFocus = focusDayRating,
-            onSubmit = statsViewModel::submitRating,
-        )
+        if (
+            currentRating == null &&
+            (window == ANALYTICS_TODAY || window == ANALYTICS_YESTERDAY)
+        ) {
+            DayRatingBar(
+                selectedDate = selectedDate,
+                currentRating = currentRating,
+                ratableDates = ratableDates,
+                suggestedChips = suggestedChips,
+                onSelectDate = statsViewModel::selectRatingDate,
+                onLoadChips = statsViewModel::loadChipsForDate,
+                requestFocus = focusDayRating,
+                onSubmit = statsViewModel::submitRating,
+            )
+        }
         if (window == ANALYTICS_THREE_MONTHS && !localNoticeDismissed) {
             LocalOnlyNotice(onDismiss = {
                 scope.launch {
@@ -129,19 +134,29 @@ fun StatsInsightsExperience(
                             weeklyStandout?.let { InsightCardView(it) }
                         }
                         DataHealthNotice(loaded)
+                        val hasObservedDeviceTime = window in setOf(
+                            ANALYTICS_YESTERDAY,
+                            ANALYTICS_TODAY,
+                            ANALYTICS_WEEK,
+                        ) && loaded.phoneUsage?.byHour?.values?.any { it > 0.0 } == true
                         val isEmpty = loaded.tasks.total == 0 &&
                             loaded.sessions.total == 0 &&
                             loaded.blocking.totalAttempts == 0 &&
+                            !hasObservedDeviceTime &&
                             window != ANALYTICS_THREE_MONTHS
                         if (isEmpty) {
                             EmptyStatsState(window)
                         } else {
                             FocusTimeHero(loaded)
                             insights
-                                .filter { it.id != weeklyStandout?.id }
+                                .filter {
+                                    it.id != weeklyStandout?.id &&
+                                        (window == ANALYTICS_WEEK || it.id != "WEEKLY_SHOWED_UP")
+                                }
                                 .forEach { InsightCardView(it) }
                             when (window) {
                                 ANALYTICS_TODAY -> {
+                                    PhoneUsageSummary(loaded, onOpenQuickBlock)
                                     TaskSummary(loaded)
                                     TaskResultList(
                                         loaded,
@@ -158,12 +173,15 @@ fun StatsInsightsExperience(
                                     ProductivityHeatmap(loaded)
                                 }
                                 ANALYTICS_WEEK -> {
+                                    PhoneUsageSummary(loaded, onOpenQuickBlock)
                                     ProductivityHeatmap(loaded)
                                     TaskSummary(loaded)
                                 }
-                                ANALYTICS_YESTERDAY -> TaskResultList(loaded)
-                                ANALYTICS_THREE_MONTHS -> {
+                                ANALYTICS_YESTERDAY -> {
                                     PhoneUsageSummary(loaded, onOpenQuickBlock)
+                                    TaskResultList(loaded)
+                                }
+                                ANALYTICS_THREE_MONTHS -> {
                                     TrendChart(loaded)
                                 }
                             }

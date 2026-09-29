@@ -13,6 +13,7 @@ import com.tbtechs.focusflow.analytics.ANALYTICS_THREE_MONTHS
 import com.tbtechs.focusflow.analytics.ANALYTICS_ALL_TIME
 import com.tbtechs.focusflow.analytics.ANALYTICS_TODAY
 import com.tbtechs.focusflow.analytics.ANALYTICS_WEEK
+import com.tbtechs.focusflow.analytics.ANALYTICS_YESTERDAY
 import com.tbtechs.focusflow.analytics.InsightCard
 import com.tbtechs.focusflow.analytics.InsightEngine
 import com.tbtechs.focusflow.analytics.LifetimeStats
@@ -96,17 +97,27 @@ class StatsViewModel(
     }
 
     fun setWindow(window: AnalyticsWindow) {
-        if (window !in setOf("yesterday", ANALYTICS_TODAY, ANALYTICS_WEEK, ANALYTICS_THREE_MONTHS, ANALYTICS_ALL_TIME)) return
+        if (window !in setOf(
+                ANALYTICS_YESTERDAY,
+                ANALYTICS_TODAY,
+                ANALYTICS_WEEK,
+                ANALYTICS_THREE_MONTHS,
+                ANALYTICS_ALL_TIME,
+            )
+        ) return
         _activeWindow.value = window
+        ratingDateForWindow(window)?.let(::selectRatingDate)
         reload()
     }
 
     fun reload() {
         loadJob?.cancel()
         val window = _activeWindow.value
+        _analyticsSnapshot.value = null
+        _insightCards.value = emptyList()
+        _weeklyStandout.value = null
+        _loadState.value = StatsLoadState.Loading
         loadJob = viewModelScope.launch {
-            _loadState.value = StatsLoadState.Loading
-            _weeklyStandout.value = null
             try {
                 val usagePermission = if (window == ANALYTICS_THREE_MONTHS) {
                     analyticsProcessor.hasUsageStatsPermission()
@@ -172,6 +183,8 @@ class StatsViewModel(
 
     fun selectRatingDate(date: String) {
         _selectedRatingDate.value = date
+        _currentRating.value = null
+        _suggestedChips.value = emptyList()
         viewModelScope.launch {
             _currentRating.value = dayRatingRepository.getForDate(date)
             _suggestedChips.value = buildSuggestedChips(date)
@@ -316,22 +329,16 @@ class StatsViewModel(
     }
 
     private fun resolveDefaultRatingDate(): String {
-        val now = java.time.LocalDateTime.now()
-        val prefs = AppModule.applicationContext.getSharedPreferences(
-            "focusday_prefs",
-            android.content.Context.MODE_PRIVATE,
-        )
-        val sleepHour = prefs.getInt("sleep_time_hour", 22).coerceIn(0, 23)
-        val sleepMinute = prefs.getInt("sleep_time_minute", 0).coerceIn(0, 59)
-        val ratingTodayThreshold = now.toLocalDate()
-            .atTime(sleepHour, sleepMinute)
-            .minusMinutes(30)
+        return java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+    }
 
-        return (if (now.isBefore(ratingTodayThreshold)) {
-            now.toLocalDate().minusDays(1)
-        } else {
-            now.toLocalDate()
-        }).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+    private fun ratingDateForWindow(window: AnalyticsWindow): String? {
+        val today = java.time.LocalDate.now()
+        return when (window) {
+            ANALYTICS_TODAY -> today
+            ANALYTICS_YESTERDAY -> today.minusDays(1)
+            else -> null
+        }?.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
     }
 
     companion object {
