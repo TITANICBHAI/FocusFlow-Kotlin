@@ -20,7 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
@@ -98,6 +102,15 @@ fun StatsInsightsExperience(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
+            onOpenArchived?.let { onReport ->
+                IconButton(onClick = onReport) {
+                    Icon(
+                        imageVector = Icons.Outlined.ArrowBack,
+                        contentDescription = "Back to Report",
+                        tint = DarkTextPrimary,
+                    )
+                }
+            }
             Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
                 Text(screenTitle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 Text(windowSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
@@ -106,14 +119,11 @@ fun StatsInsightsExperience(
                 onOpenActiveBlocks = onOpenActiveBlocks,
             )
         }
-        AnalyticsWindowTabs(activeWindow = window, onSelect = statsViewModel::setWindow)
-        onOpenArchived?.let { onReport ->
-            StatsModeToggle(
-                extraSelected = true,
-                onOpenReport = onReport,
-                onOpenExtra = {},
-            )
-        }
+        AnalyticsWindowTabs(
+            activeWindow = window,
+            includeThreeMonths = onOpenArchived == null,
+            onSelect = statsViewModel::setWindow,
+        )
         if (
             reflectionPromptsEnabled &&
             currentRating == null &&
@@ -130,7 +140,7 @@ fun StatsInsightsExperience(
                 onSubmit = statsViewModel::submitRating,
             )
         }
-        if (window == ANALYTICS_THREE_MONTHS && !localNoticeDismissed) {
+        if (onOpenArchived == null && window == ANALYTICS_THREE_MONTHS && !localNoticeDismissed) {
             LocalOnlyNotice(onDismiss = {
                 scope.launch {
                     settingsRepository.putString("local_analytics_notice_dismissed", "true")
@@ -153,16 +163,9 @@ fun StatsInsightsExperience(
                             weeklyStandout?.let { InsightCardView(it) }
                         }
                         DataHealthNotice(loaded)
-                        val hasObservedDeviceTime = window in setOf(
-                            ANALYTICS_YESTERDAY,
-                            ANALYTICS_TODAY,
-                            ANALYTICS_WEEK,
-                        ) && loaded.phoneUsage?.byHour?.values?.any { it > 0.0 } == true
                         val isEmpty = loaded.tasks.total == 0 &&
                             loaded.sessions.total == 0 &&
-                            loaded.blocking.totalAttempts == 0 &&
-                            !hasObservedDeviceTime &&
-                            window != ANALYTICS_THREE_MONTHS
+                            loaded.blocking.totalAttempts == 0
                         if (isEmpty) {
                             EmptyStatsState(window)
                         } else {
@@ -175,7 +178,6 @@ fun StatsInsightsExperience(
                                 .forEach { InsightCardView(it) }
                             when (window) {
                                 ANALYTICS_TODAY -> {
-                                    PhoneUsageSummary(loaded, onOpenQuickBlock)
                                     TaskSummary(loaded)
                                     TaskResultList(
                                         loaded,
@@ -190,14 +192,13 @@ fun StatsInsightsExperience(
                                         earnedAchievementCount = achievements?.earnedIds?.size ?: 0,
                                     )
                                     ProductivityHeatmap(loaded)
+                                    TrendChart(loaded)
                                 }
                                 ANALYTICS_WEEK -> {
-                                    PhoneUsageSummary(loaded, onOpenQuickBlock)
                                     ProductivityHeatmap(loaded)
                                     TaskSummary(loaded)
                                 }
                                 ANALYTICS_YESTERDAY -> {
-                                    PhoneUsageSummary(loaded, onOpenQuickBlock)
                                     TaskResultList(loaded)
                                 }
                                 ANALYTICS_THREE_MONTHS -> {
@@ -227,12 +228,16 @@ fun StatsInsightsExperience(
 }
 
 @Composable
-private fun AnalyticsWindowTabs(activeWindow: AnalyticsWindow, onSelect: (AnalyticsWindow) -> Unit) {
-    val windows = listOf(
+private fun AnalyticsWindowTabs(
+    activeWindow: AnalyticsWindow,
+    includeThreeMonths: Boolean,
+    onSelect: (AnalyticsWindow) -> Unit,
+) {
+    val windows = listOfNotNull(
         ANALYTICS_YESTERDAY to "Yesterday",
         ANALYTICS_TODAY to "Today",
         ANALYTICS_WEEK to "Week",
-        ANALYTICS_THREE_MONTHS to "3 Months",
+        (ANALYTICS_THREE_MONTHS to "3 Months").takeIf { includeThreeMonths },
         ANALYTICS_ALL_TIME to "All Time",
     )
     Row(

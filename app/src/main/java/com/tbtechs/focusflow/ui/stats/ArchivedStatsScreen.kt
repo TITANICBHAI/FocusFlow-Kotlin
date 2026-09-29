@@ -72,6 +72,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.SunAmber
+import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -128,15 +129,13 @@ fun ArchivedStatsScreen(
             .fillMaxSize()
             .background(DarkBackground),
     ) {
-        StatsHeader(window)
+        StatsHeader(
+            window = window,
+            onOpenActiveBlocks = onOpenActiveBlocks,
+        )
         StatsFilterRow(
             activeWindow = window,
             onSelect = statsViewModel::setWindow,
-        )
-        StatsModeToggle(
-            extraSelected = false,
-            onOpenReport = {},
-            onOpenExtra = onOpenExtra,
         )
 
         when (val state = loadState) {
@@ -191,6 +190,9 @@ fun ArchivedStatsScreen(
                                 onOpenQuickBlock = onOpenQuickBlock,
                             )
                         }
+                        item {
+                            ExtraButton(onClick = onOpenExtra)
+                        }
                     }
                 }
             }
@@ -199,7 +201,10 @@ fun ArchivedStatsScreen(
 }
 
 @Composable
-private fun StatsHeader(window: String) {
+private fun StatsHeader(
+    window: String,
+    onOpenActiveBlocks: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -211,12 +216,22 @@ private fun StatsHeader(window: String) {
             Text("Stats", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
             Text(statsSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
         }
-        Icon(
-            Icons.Outlined.Analytics,
-            contentDescription = "Stats",
-            tint = BrandPrimary,
-            modifier = Modifier.size(22.dp),
+        ActiveStatusIndicator(
+            onOpenActiveBlocks = onOpenActiveBlocks,
         )
+    }
+}
+
+@Composable
+private fun ExtraButton(onClick: () -> Unit) {
+    Button(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+    ) {
+        Icon(Icons.Outlined.Analytics, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text("Extra")
     }
 }
 
