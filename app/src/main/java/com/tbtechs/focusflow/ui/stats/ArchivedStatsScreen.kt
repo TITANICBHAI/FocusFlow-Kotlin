@@ -622,14 +622,28 @@ private fun DeviceUsageCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(Color(0xFF55C98A).copy(alpha = 0.12f))
+                    .background(
+                        if (window == ANALYTICS_WEEK) {
+                            BrandPrimary.copy(alpha = 0.12f)
+                        } else {
+                            Color(0xFF55C98A).copy(alpha = 0.12f)
+                        },
+                    )
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    "On device",
+                    if (window == ANALYTICS_WEEK) {
+                        if (weekViewMode == WEEK_MODE_DYNAMIC) {
+                            "Dynamic"
+                        } else {
+                            weekRangeLabel(weekStartDay)
+                        }
+                    } else {
+                        "On device"
+                    },
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF55C98A),
+                    color = if (window == ANALYTICS_WEEK) BrandPrimary else Color(0xFF55C98A),
                 )
             }
         }
