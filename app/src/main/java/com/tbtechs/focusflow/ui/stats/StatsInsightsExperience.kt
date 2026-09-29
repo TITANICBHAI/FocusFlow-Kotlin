@@ -75,7 +75,10 @@ fun StatsInsightsExperience(
         mutableStateOf(settingsRepository.getString("local_analytics_notice_dismissed") == "true")
     }
 
-    if (needsColdStart) {
+    if (
+        needsColdStart &&
+        (window == ANALYTICS_TODAY || window == ANALYTICS_YESTERDAY)
+    ) {
         ColdStartSheet(onComplete = statsViewModel::saveColdStartAnswers)
     }
 

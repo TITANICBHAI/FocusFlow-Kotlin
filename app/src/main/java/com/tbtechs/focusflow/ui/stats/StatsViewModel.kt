@@ -52,6 +52,10 @@ class StatsViewModel(
     private val hypothesisRepository: BehaviouralHypothesisRepository,
     private val clarifyingQuestionRepository: ClarifyingQuestionRepository,
 ) : ViewModel() {
+    private companion object {
+        const val COLD_START_DISMISSED_KEY = "stats_cold_start_dismissed"
+    }
+
     private val _analyticsSnapshot = MutableStateFlow<AnalyticsSnapshot?>(null)
     private val _insightCards = MutableStateFlow<List<InsightCard>>(emptyList())
     private val _weeklyStandout = MutableStateFlow<InsightCard?>(null)
@@ -265,6 +269,7 @@ class StatsViewModel(
     fun saveColdStartAnswers(answers: List<BehaviouralHypothesisEntity>) {
         viewModelScope.launch {
             answers.forEach { hypothesisRepository.save(it) }
+            AppModule.settingsRepository.putString(COLD_START_DISMISSED_KEY, "true")
             _needsColdStart.value = false
         }
     }
@@ -294,7 +299,8 @@ class StatsViewModel(
     private suspend fun loadFindingData() {
         _activeFindings.value = findingRepository.getActiveFindings()
         _pendingQuestion.value = clarifyingQuestionRepository.getPending()
-        _needsColdStart.value = hypothesisRepository.needsColdStart()
+        val wasDismissed = AppModule.settingsRepository.getString(COLD_START_DISMISSED_KEY) == "true"
+        _needsColdStart.value = !wasDismissed && hypothesisRepository.needsColdStart()
     }
 
     private suspend fun buildSuggestedChips(date: String): List<SuggestedChip> {
