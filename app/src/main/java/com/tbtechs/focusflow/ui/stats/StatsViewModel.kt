@@ -52,8 +52,35 @@ class StatsViewModel(
     private val hypothesisRepository: BehaviouralHypothesisRepository,
     private val clarifyingQuestionRepository: ClarifyingQuestionRepository,
 ) : ViewModel() {
-    private companion object {
+    companion object {
         const val COLD_START_DISMISSED_KEY = "stats_cold_start_dismissed"
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return StatsViewModel(
+                    analyticsProcessor = AppModule.analyticsProcessor,
+                    insightEngine = AppModule.insightEngine,
+                    achievementEngine = AppModule.achievementEngine,
+                    dayRatingRepository = AppModule.dayRatingRepository,
+                    findingRepository = AppModule.findingRepository,
+                    hypothesisRepository = AppModule.behaviouralHypothesisRepository,
+                    clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
+                ) as T
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                return StatsViewModel(
+                    analyticsProcessor = AppModule.analyticsProcessor,
+                    insightEngine = AppModule.insightEngine,
+                    achievementEngine = AppModule.achievementEngine,
+                    dayRatingRepository = AppModule.dayRatingRepository,
+                    findingRepository = AppModule.findingRepository,
+                    hypothesisRepository = AppModule.behaviouralHypothesisRepository,
+                    clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
+                ) as T
+            }
+        }
     }
 
     private val _analyticsSnapshot = MutableStateFlow<AnalyticsSnapshot?>(null)
@@ -347,35 +374,6 @@ class StatsViewModel(
         }?.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
     }
 
-    companion object {
-        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return StatsViewModel(
-                    analyticsProcessor = AppModule.analyticsProcessor,
-                    insightEngine = AppModule.insightEngine,
-                    achievementEngine = AppModule.achievementEngine,
-                    dayRatingRepository = AppModule.dayRatingRepository,
-                    findingRepository = AppModule.findingRepository,
-                    hypothesisRepository = AppModule.behaviouralHypothesisRepository,
-                    clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
-                ) as T
-            }
-
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-                return StatsViewModel(
-                    analyticsProcessor = AppModule.analyticsProcessor,
-                    insightEngine = AppModule.insightEngine,
-                    achievementEngine = AppModule.achievementEngine,
-                    dayRatingRepository = AppModule.dayRatingRepository,
-                    findingRepository = AppModule.findingRepository,
-                    hypothesisRepository = AppModule.behaviouralHypothesisRepository,
-                    clarifyingQuestionRepository = AppModule.clarifyingQuestionRepository,
-                ) as T
-            }
-        }
-    }
 }
 
 private fun List<String>.toStorageValue(): String =
