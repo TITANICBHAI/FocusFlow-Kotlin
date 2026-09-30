@@ -7,17 +7,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -145,14 +149,24 @@ fun NuclearModeModal(
             decorFitsSystemWindows = false,
         ),
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .imePadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.Center,
         ) {
+            val maxDialogHeight = maxHeight * 0.92f
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxDialogHeight)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(DarkCard)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
+            ) {
             // Header matching 3e_13
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -290,7 +304,7 @@ fun NuclearModeModal(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false),
+                        .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(apps, key = { it.packageName }) { app ->
@@ -362,6 +376,7 @@ fun NuclearModeModal(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 

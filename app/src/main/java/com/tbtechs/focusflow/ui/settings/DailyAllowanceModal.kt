@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -277,8 +276,7 @@ fun DailyAllowanceModal(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .navigationBarsPadding(),
+                .padding(padding),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             item {
@@ -610,9 +608,6 @@ fun DailyAllowanceModal(
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
         }
     }
 
