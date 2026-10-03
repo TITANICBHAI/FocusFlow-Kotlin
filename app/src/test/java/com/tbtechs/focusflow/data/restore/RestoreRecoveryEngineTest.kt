@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.data.restore
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -75,6 +76,27 @@ class RestoreRecoveryEngineTest {
         assertTrue(result is RecoveryRunResult.Completed)
         assertEquals(2, actions.taskCalls)
         assertEquals(RestoreGate.State.OPEN, gate.state.value)
+    }
+
+    @Test
+    fun cancellationDuringRecoveryPropagatesAndKeepsGateClosedForRetry() = runTest {
+        val store = FakeJournalStore(journal = journal(RestorePhase.PLANNED))
+        val actions = CountingActions(cancelTaskPhase = true)
+        val gate = RestoreGate(RestoreGate.State.RECOVERING)
+        val engine = engine(gate, store, actions)
+
+        var cancelled = false
+        try {
+            engine.runAlreadyClosedGate(interrupted = true)
+        } catch (_: CancellationException) {
+            cancelled = true
+        }
+
+        assertTrue(cancelled)
+        assertEquals(1, actions.taskCalls)
+        assertEquals(RestorePhase.PLANNED, store.journal?.phase)
+        assertEquals(RestoreGate.State.RECOVERY_BLOCKED, gate.state.value)
+        assertTrue(engine.state.value is RestoreUiState.Blocked)
     }
 
     @Test
@@ -268,6 +290,7 @@ class RestoreRecoveryEngineTest {
 
     private class CountingActions(
         var failTaskCalls: Int = 0,
+        var cancelTaskPhase: Boolean = false,
         var failSettingsAfterPartialCalls: Int = 0,
         var failReconcileCalls: Int = 0,
         var failPersistCalls: Int = 0,
@@ -284,6 +307,10 @@ class RestoreRecoveryEngineTest {
         override suspend fun applyTasks(plan: RestorePlan) {
             taskCalls++
             events?.add("tasks")
+            if (cancelTaskPhase) {
+                cancelTaskPhase = false
+                throw CancellationException("injected task phase cancellation")
+            }
             if (failTaskCalls > 0) {
                 failTaskCalls--
                 error("injected task phase failure")

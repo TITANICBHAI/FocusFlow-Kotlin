@@ -148,6 +148,7 @@ private fun FocusFlowRoot(
             settingsRepository = AppModule.settingsRepository,
             context = context,
             foregroundServiceController = AppModule.foregroundServiceController,
+            taskAlarmReconciler = AppModule.taskAlarmReconciler,
             restoreGate = AppModule.restoreGate,
         )
     }

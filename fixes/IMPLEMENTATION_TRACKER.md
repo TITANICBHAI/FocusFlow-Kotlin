@@ -106,8 +106,9 @@ Verification notes:
 
 ### M3 — Durable import and recovery engine
 
-Status: **In progress** — restore and recovery components are present; end-to-end
-coverage and several contract scenarios remain incomplete or unverified.
+Status: **In progress** — implementation and focused test sources are present, but
+source review is not complete and the relevant Android tests were not run, per the
+user's instruction not to run Gradle/builds.
 
 - [ ] Add the process-wide restore gate and route every relevant persistent writer through it.
 - [ ] Persist validated `PendingImport` before confirmation and handle process death, cancel, replacement, and startup recovery.
@@ -123,25 +124,50 @@ Progress notes:
 
 - Current source includes the gate, atomic PendingImport and journal stores, pure restore
   planning, phased restore coordination, recovery, and Retry/Discard UI.
-- `RestoreRecoveryEngineTest` covers phase-boundary replay, a failed phase retaining the
-  journal and closed gate followed by retry, a phase-write replay, and corrupt-journal
-  quarantine. There are no focused tests for plan conflicts/reminder differences,
-  PendingImport lifecycle, discard, unknown journal versions, or the full §6.6 crash
-  matrix. Persistent-writer gate coverage also remains to be audited.
-- The Android unit-test task could not start in this environment because Java is absent;
-  M3 items remain unchecked until their relevant coverage and checks support completion.
+- Focused tests now cover gate drain/suspension, PendingImport recreation/replacement/cancel,
+  reminder-different Merge duplicates, divergent-ID rejection, failed PendingImport and
+  journal writes, closed-gate admission, phase-boundary replay, partial settings replay,
+  pending cleanup retry, unknown-version quarantine, and discard/retry behavior.
+- Source review still needs to close the full §6.6 crash matrix, including failure inside
+  the actual Room restore transaction, and confirm every relevant writer path. No Gradle,
+  build, or test task was run per user instruction; M3 remains unchecked pending that work.
 
 ### M4 — Task-end alarms and reconciliation
 
-Status: **Not started**
+Status: **In progress** — existing implementation was audited; the missed
+FocusSession reschedule path is now wired to reconciliation, cross-talk coverage
+has been expanded, and current Android exact-alarm guidance has been checked.
+No Gradle or test task was run per the user's instruction.
 
-- [ ] Give all task-end PendingIntents collision-resistant per-task data URI identity and notifications per-task identity.
-- [ ] Make past-trigger scheduling a no-op and remove inexact task-end fallback.
-- [ ] Persist and reconcile alarm registry state; defer exact-alarm-unavailable entries and retry on capability changes.
-- [ ] Validate task state at fire time, use receiver time budgets, and deduplicate notifications.
-- [ ] Add startup/boot/permission/time/task-change reconciliation and the overdue sweep.
-- [ ] Keep restore, alarm cancellation, and reconciliation serialized with the restore gate.
+- [x] Give all task-end PendingIntents collision-resistant per-task data URI identity and notifications per-task identity.
+- [x] Make past-trigger scheduling a no-op and remove inexact task-end fallback.
+- [x] Persist and reconcile alarm registry state; defer exact-alarm-unavailable entries and retry on capability changes.
+- [x] Validate task state at fire time, use receiver time budgets, and deduplicate notifications.
+- [x] Add startup/boot/permission/time/task-change reconciliation and the overdue sweep.
+- [x] Keep restore, alarm cancellation, and reconciliation serialized with the restore gate.
 - [ ] Verify exact-alarm behavior against current Android documentation and test the multi-alarm cross-talk cases.
+
+Progress notes:
+
+- Source audit confirmed per-task alarm/show PendingIntent URIs and notification tags,
+  exact-only task-end scheduling, past-trigger no-op behavior, durable registry,
+  exact-access deferral/retry triggers, receiver validation/budgets/deduplication,
+  boot/startup/permission/wall-clock/task reconciliation, overdue sweeping, and
+  shared restore-gate serialization.
+- `FocusSessionViewModel.startFocusMode` can adjust a task's start/end times when
+  starting immediately. It now reconciles task-end alarms after that update.
+- The existing instrumentation test already covered distinct alarm/activity
+  PendingIntents and per-task deduplication. It now also checks per-task PendingIntent
+  cancellation isolation, UI replacement via `onNewIntent`, and task-specific
+  dismissal isolation. The added instrumentation has not been executed.
+- Current Android guidance confirms that PendingIntent matching follows
+  `Intent.filterEquals` (including data URI), and that apps must check
+  `canScheduleExactAlarms()` and handle the permission-grant broadcast. References:
+  [PendingIntent](https://developer.android.com/reference/android/app/PendingIntent),
+  [AlarmManager](https://developer.android.com/develop/background-work/services/alarms),
+  [Android 14 exact-alarm changes](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms).
+- No Gradle/build/test command was run per user instruction. Device-matrix checks
+  remain outside this milestone's source-only verification.
 
 ### M5 — Reminder chain
 
@@ -173,7 +199,7 @@ Separate source/build failures from missing SDK/device capabilities.
 | 2026-10-03 | Initial source review | Reviewed backup coordinator/manager, task model/repository, alarm repository, routes, manifest, and task timestamp write sites. Confirmed review-note dispositions above. | At that point, no implementation milestone had started. Android build and device matrix had not been run. |
 | 2026-10-03 | M0 | Implemented the live-state import denylist, external-route allowlist, content-filter changes, canonical task timestamp boundary, and weakening-import PIN gate. `git diff --check` and static source/fixture assertions passed. Source review confirms settings restore remains independent of task Merge/Replace. | `bash ./gradlew :app:testDebugUnitTest --no-daemon` could not start: no `java` command or `JAVA_HOME`. `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset; no build or unit-test result is available. Review-notes file is absent from the current workspace and was not recreated. |
 | 2026-10-03 | M2 | User confirmed M2 is done. Source inspection found the V1 exporter and golden compatibility/round-trip tests; all M2 tracker items are checked. | Local `bash ./gradlew :app:testDebugUnitTest --no-daemon` failed because Java/`JAVA_HOME` is unavailable; no local Android build or unit-test result. |
-| 2026-10-03 | M3 | Set to **In progress** after source inspection found restore planning, atomic stores, phased recovery, and partial recovery-engine tests. | Plan, PendingImport lifecycle, reminder-difference, discard, unknown-version, full crash-matrix tests, and complete writer-gate audit remain outstanding or unverified. Android unit tests could not start because Java is unavailable. |
+| 2026-10-03 | M3 | Added focused gate, PendingImport, conflict/reminder, journal-write, retry, discard, quarantine, and phase-replay test sources; recovery routing and writer gates were extended. | Full §6.6 coverage—especially failure inside the Room restore transaction—and final writer-path audit remain; tests were intentionally not run per user instruction. |
 
 Final handoff must list changed files, completed tracker items, exact checks run, source
 assumptions that differed from the contract, and all unresolved or device-only items.

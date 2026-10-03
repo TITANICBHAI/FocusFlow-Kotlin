@@ -15,6 +15,7 @@ import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.SessionPinRequiredException
 import com.tbtechs.focusflow.data.repository.SettingsRepository
+import com.tbtechs.focusflow.data.repository.TaskAlarmReconciler
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.di.AppModule
@@ -80,6 +81,7 @@ class FocusSessionViewModel(
     private val settingsRepository: SettingsRepository,
     context: Context,
     private val foregroundServiceController: ForegroundServiceController,
+    private val taskAlarmReconciler: TaskAlarmReconciler,
     private val restoreGate: RestoreGate = RestoreGate(),
 ) : ViewModel() {
 
@@ -290,6 +292,7 @@ class FocusSessionViewModel(
                                 updatedAt = now.toString(),
                             ),
                         )
+                        taskAlarmReconciler.reconcile("focus_session_rescheduled")
                     }
 
                     val session = FocusSession(
@@ -477,6 +480,7 @@ class FocusSessionViewModel(
                     settingsRepository = AppModule.settingsRepository,
                     context = ctx,
                     foregroundServiceController = AppModule.foregroundServiceController,
+                    taskAlarmReconciler = AppModule.taskAlarmReconciler,
                     restoreGate = AppModule.restoreGate,
                 ) as T
             }
@@ -491,6 +495,7 @@ class FocusSessionViewModel(
                     settingsRepository = AppModule.settingsRepository,
                     context = ctx,
                     foregroundServiceController = AppModule.foregroundServiceController,
+                    taskAlarmReconciler = AppModule.taskAlarmReconciler,
                     restoreGate = AppModule.restoreGate,
                 ) as T
             }

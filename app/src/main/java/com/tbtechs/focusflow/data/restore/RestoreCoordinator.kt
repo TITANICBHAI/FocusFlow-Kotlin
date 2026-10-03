@@ -84,7 +84,7 @@ class RestoreCoordinator(
             ) {
                 return@withLock Result.failure(IllegalStateException("A restore is already running."))
             }
-            runCatching {
+            try {
                 pendingStore.write(
                     PendingImportRecord(
                         displayName = displayName.take(256).ifBlank { "FocusFlow backup" },
@@ -93,6 +93,11 @@ class RestoreCoordinator(
                         invalidTaskCount = parsed.invalidTaskCount,
                     ),
                 )
+                Result.success(Unit)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Result.failure(error)
             }
         }
 
@@ -125,7 +130,14 @@ class RestoreCoordinator(
         ) {
             return@withLock Result.failure(IllegalStateException("The active restore cannot be cancelled here."))
         }
-        runCatching { pendingStore.delete() }
+        try {
+            pendingStore.delete()
+            Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
+        }
     }
 
     suspend fun preview(
@@ -194,7 +206,6 @@ class RestoreCoordinator(
             return RestoreAdmissionResult.FailedBeforeJournal("Select at least one section to import.")
         }
 
-        lateinit var completion: CompletableDeferred<RecoveryRunResult>
         val journal = withContext(NonCancellable) {
             admissionMutex.withLock {
             if (!gate.tryBeginRestore()) return@withLock null
@@ -306,9 +317,9 @@ class RestoreCoordinator(
             RecoverExistingJournal -> Unit
         }
 
-        completion = CompletableDeferred()
-        applicationScope.launch(Dispatchers.IO) {
-            completion.complete(recoveryEngine.runAlreadyClosedGate(interrupted = false))
+        val completion = CompletableDeferred<RecoveryRunResult>()
+        launchRecoveryWork(completion) {
+            recoveryEngine.runAlreadyClosedGate(interrupted = false)
         }
         return when (val result = completion.await()) {
             is RecoveryRunResult.Completed ->
@@ -334,18 +345,32 @@ class RestoreCoordinator(
 
     suspend fun retryRecovery(): RecoveryRunResult {
         val completion = CompletableDeferred<RecoveryRunResult>()
-        applicationScope.launch(Dispatchers.IO) {
-            completion.complete(recoveryEngine.retry())
+        launchRecoveryWork(completion) {
+            recoveryEngine.retry()
         }
         return completion.await()
     }
 
     suspend fun discardRecovery(): Result<Unit> {
         val completion = CompletableDeferred<Result<Unit>>()
-        applicationScope.launch(Dispatchers.IO) {
-            completion.complete(recoveryEngine.discard())
+        launchRecoveryWork(completion) {
+            recoveryEngine.discard()
         }
         return completion.await()
+    }
+
+    private fun <T> launchRecoveryWork(
+        completion: CompletableDeferred<T>,
+        operation: suspend () -> T,
+    ) {
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                completion.complete(operation())
+            } catch (failure: Throwable) {
+                completion.completeExceptionally(failure)
+                throw failure
+            }
+        }
     }
 
     private data object RecoverExistingJournal

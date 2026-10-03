@@ -6,6 +6,7 @@ import com.tbtechs.focusflow.data.backup.ParsedBackupV1
 import com.tbtechs.focusflow.data.model.Reminder
 import com.tbtechs.focusflow.data.model.Task
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
@@ -101,6 +102,35 @@ class RestoreCoordinatorTest {
         assertTrue(replacement.isFailure)
         assertEquals(previous, state.pending.record)
         assertTrue(state.coordinator.hasPendingImport())
+    }
+
+    @Test
+    fun pendingStoreCancellationPropagatesWithoutReplacingOrDeletingImport() = runTest {
+        val state = fixture(this)
+        state.coordinator.stage(backup("previous"), "previous.json").getOrThrow()
+        val previous = state.pending.record
+        state.pending.cancelWrites = 1
+
+        var stageCancelled = false
+        try {
+            state.coordinator.stage(backup("replacement"), "replacement.json")
+        } catch (_: CancellationException) {
+            stageCancelled = true
+        }
+
+        assertTrue(stageCancelled)
+        assertEquals(previous, state.pending.record)
+
+        state.pending.cancelDeletes = 1
+        var deleteCancelled = false
+        try {
+            state.coordinator.cancelPending()
+        } catch (_: CancellationException) {
+            deleteCancelled = true
+        }
+
+        assertTrue(deleteCancelled)
+        assertEquals(previous, state.pending.record)
     }
 
     @Test
@@ -264,12 +294,18 @@ class RestoreCoordinatorTest {
     private class FakePendingStore : PendingImportStore {
         var record: PendingImportRecord? = null
         var failWrites = 0
+        var cancelWrites = 0
+        var cancelDeletes = 0
 
         override fun exists() = record != null
         override suspend fun read(): PendingImportRead =
             record?.let(PendingImportRead::Value) ?: PendingImportRead.Missing
 
         override suspend fun write(record: PendingImportRecord) {
+            if (cancelWrites > 0) {
+                cancelWrites--
+                throw CancellationException("injected pending-import write cancellation")
+            }
             if (failWrites > 0) {
                 failWrites--
                 error("injected pending-import rewrite failure")
@@ -278,6 +314,10 @@ class RestoreCoordinatorTest {
         }
 
         override suspend fun delete() {
+            if (cancelDeletes > 0) {
+                cancelDeletes--
+                throw CancellationException("injected pending-import delete cancellation")
+            }
             record = null
         }
     }

@@ -1,13 +1,24 @@
 package com.tbtechs.focusflow.data.repository
 
 import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.lifecycle.Lifecycle
+import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.tbtechs.focusflow.enforcement.TaskAlarmActivity
+import com.tbtechs.focusflow.enforcement.receivers.TaskEndAlarmReceiver
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,6 +60,12 @@ class TaskEndAlarmIdentityInstrumentedTest {
             )
             assertEquals(firstAlarm, sameIdentityUpdated)
             sameIdentityUpdated.cancel()
+            firstShow.cancel()
+
+            assertNull(existingAlarmPendingIntent(context, firstId))
+            assertNotNull(existingAlarmPendingIntent(context, secondId))
+            assertNull(existingShowPendingIntent(context, firstId))
+            assertNotNull(existingShowPendingIntent(context, secondId))
         } finally {
             firstAlarm.cancel()
             secondAlarm.cancel()
@@ -72,5 +89,97 @@ class TaskEndAlarmIdentityInstrumentedTest {
         assertTrue(registry.postOnce(secondId, firstEnd, nowMs) { posts.incrementAndGet() })
         assertTrue(registry.postOnce(firstId, firstEnd + 60_000L, nowMs) { posts.incrementAndGet() })
         assertEquals(3, posts.get())
+    }
+
+    @Test
+    fun alarmActivityReplacesTaskWhenAnotherAlarmArrivesViaNewIntent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val previousId = "activity-test-${UUID.randomUUID()}-previous"
+        val incomingId = "activity-test-${UUID.randomUUID()}-incoming"
+        val scenario = ActivityScenario.launch<TaskAlarmActivity>(
+            alarmActivityIntent(context, previousId, "Previous task"),
+        )
+
+        try {
+            scenario.onActivity { activity ->
+                assertEquals(previousId, activity.intent.getStringExtra(TaskAlarmActivity.EXTRA_TASK_ID))
+                assertTrue(activity.window.decorView.containsText("Previous task"))
+
+                activity.onNewIntent(
+                    alarmActivityIntent(context, incomingId, "Incoming task"),
+                )
+
+                assertEquals(incomingId, activity.intent.getStringExtra(TaskAlarmActivity.EXTRA_TASK_ID))
+                assertEquals(
+                    "Incoming task",
+                    activity.intent.getStringExtra(TaskAlarmActivity.EXTRA_TASK_NAME),
+                )
+                assertTrue(activity.window.decorView.containsText("Incoming task"))
+                assertFalse(activity.window.decorView.containsText("Previous task"))
+            }
+
+            val instrumentation = InstrumentationRegistry.getInstrumentation()
+            context.sendBroadcast(dismissAlarmIntent(context, previousId))
+            instrumentation.waitForIdleSync()
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+
+            context.sendBroadcast(dismissAlarmIntent(context, incomingId))
+            instrumentation.waitForIdleSync()
+            assertEquals(Lifecycle.State.DESTROYED, scenario.state)
+        } finally {
+            scenario.close()
+        }
+    }
+
+    private fun existingAlarmPendingIntent(context: Context, taskId: String): PendingIntent? {
+        val intent = Intent(context, TaskEndAlarmReceiver::class.java).apply {
+            action = TaskEndAlarmReceiver.ACTION_FIRE
+            data = TaskEndAlarmIdentity.dataUri(taskId)
+            `package` = context.packageName
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            TaskEndAlarmIdentity.REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun existingShowPendingIntent(context: Context, taskId: String): PendingIntent? {
+        val intent = Intent(context, TaskAlarmActivity::class.java).apply {
+            action = TaskAlarmActivity.ACTION_SHOW_ALARM
+            data = TaskEndAlarmIdentity.dataUri(taskId)
+            `package` = context.packageName
+        }
+        return PendingIntent.getActivity(
+            context,
+            TaskEndAlarmIdentity.REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun alarmActivityIntent(
+        context: Context,
+        taskId: String,
+        taskName: String,
+    ) = Intent(context, TaskAlarmActivity::class.java).apply {
+        action = TaskAlarmActivity.ACTION_SHOW_ALARM
+        data = TaskEndAlarmIdentity.dataUri(taskId)
+        putExtra(TaskAlarmActivity.EXTRA_TASK_ID, taskId)
+        putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, taskName)
+        putExtra(TaskAlarmActivity.EXTRA_END_MS, System.currentTimeMillis() + 60_000L)
+    }
+
+    private fun dismissAlarmIntent(context: Context, taskId: String) =
+        Intent(TaskAlarmActivity.ACTION_DISMISS_ALARM).apply {
+            `package` = context.packageName
+            putExtra(TaskAlarmActivity.EXTRA_TASK_ID, taskId)
+        }
+
+    private fun View.containsText(expected: String): Boolean = when (this) {
+        is TextView -> text.toString() == expected
+        is ViewGroup -> (0 until childCount).any { getChildAt(it).containsText(expected) }
+        else -> false
     }
 }

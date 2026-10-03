@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.data.restore
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,15 @@ class RestoreRecoveryEngine(
     }
 
     suspend fun runAlreadyClosedGate(interrupted: Boolean): RecoveryRunResult {
+        return try {
+            runAlreadyClosedGateInternal(interrupted)
+        } catch (cancelled: CancellationException) {
+            markBlockedAfterCancellation()
+            throw cancelled
+        }
+    }
+
+    private suspend fun runAlreadyClosedGateInternal(interrupted: Boolean): RecoveryRunResult {
         _state.value = RestoreUiState.Running(interrupted)
         var journal = when (val read = journalStore.read()) {
             RestoreJournalRead.Missing -> {
@@ -115,10 +125,18 @@ class RestoreRecoveryEngine(
                         return RecoveryRunResult.Completed(journal, interrupted)
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 failuresThisRun += 1
                 journal = journal.copy(attempts = journal.attempts + 1)
-                runCatching { journalStore.write(journal) }
+                try {
+                    journalStore.write(journal)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Keep the original journal; the retry window still bounds this run.
+                }
                 if (failuresThisRun >= maxAttempts) {
                     gate.markRecoveryBlocked()
                     val message = "Restore could not be completed. The app is locked until you retry or discard it."
@@ -131,6 +149,15 @@ class RestoreRecoveryEngine(
     }
 
     suspend fun retry(): RecoveryRunResult {
+        return try {
+            retryInternal()
+        } catch (cancelled: CancellationException) {
+            markBlockedAfterCancellation()
+            throw cancelled
+        }
+    }
+
+    private suspend fun retryInternal(): RecoveryRunResult {
         if (!gate.beginRetry()) {
             return RecoveryRunResult.Blocked(
                 "Restore recovery is not waiting for a retry.",
@@ -145,6 +172,8 @@ class RestoreRecoveryEngine(
                 gate.reopen()
                 _state.value = RestoreUiState.Idle
                 RecoveryRunResult.NoJournal(pendingImportStore.exists())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 gate.markRecoveryBlocked()
                 val message =
@@ -156,6 +185,8 @@ class RestoreRecoveryEngine(
         if (journalStore.hasQuarantine()) {
             try {
                 journalStore.restoreQuarantineForRetry()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 gate.markRecoveryBlocked()
                 val message = "The restore record could not be read. Retry may not succeed."
@@ -166,7 +197,13 @@ class RestoreRecoveryEngine(
         val read = journalStore.read()
         if (read is RestoreJournalRead.Value) {
             // A user retry starts a fresh three-attempt window.
-            runCatching { journalStore.write(read.journal.copy(attempts = 0)) }
+            try {
+                journalStore.write(read.journal.copy(attempts = 0))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // The previous attempt count is still safe; recovery remains bounded.
+            }
         }
         return runAlreadyClosedGate(interrupted = true)
     }
@@ -184,6 +221,15 @@ class RestoreRecoveryEngine(
             _state.value = RestoreUiState.Idle
             gate.reopen()
             Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+            if (discardReconciliationPending) {
+                gate.markRecoveryBlocked()
+                _state.value = RestoreUiState.Blocked(
+                    "The restore was discarded, but current data could not be reconciled. Retry to repair it.",
+                    unreadableJournal = false,
+                )
+            }
+            throw cancelled
         } catch (error: Exception) {
             if (discardReconciliationPending) {
                 gate.markRecoveryBlocked()
@@ -205,10 +251,25 @@ class RestoreRecoveryEngine(
     }
 
     private suspend fun blockUnreadableJournal(message: String): RecoveryRunResult.Blocked {
-        runCatching { journalStore.quarantine() }
         gate.markRecoveryBlocked()
         val userMessage = "The restore record could not be read. Retry may not succeed."
         _state.value = RestoreUiState.Blocked(userMessage, unreadableJournal = true)
+        try {
+            journalStore.quarantine()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Keep the gate blocked even if quarantine cannot be persisted.
+        }
         return RecoveryRunResult.Blocked(userMessage, unreadableJournal = true)
+    }
+
+    private fun markBlockedAfterCancellation() {
+        val unreadable = (_state.value as? RestoreUiState.Blocked)?.unreadableJournal ?: false
+        gate.markRecoveryBlocked()
+        _state.value = RestoreUiState.Blocked(
+            message = "Restore recovery was interrupted. Retry or discard it to continue.",
+            unreadableJournal = unreadable,
+        )
     }
 }
