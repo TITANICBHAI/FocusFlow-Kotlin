@@ -3,15 +3,17 @@ package com.tbtechs.focusflow.data.restore
 import com.tbtechs.focusflow.data.backup.BackupV1ParseResult
 import com.tbtechs.focusflow.data.backup.BackupV1Parser
 import com.tbtechs.focusflow.data.backup.ParsedBackupV1
-import com.tbtechs.focusflow.data.repository.FocusSessionRepository
-import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.data.model.Task
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 data class PendingBackup(
     val record: PendingImportRecord,
@@ -58,8 +60,8 @@ class RestoreCoordinator(
     private val gate: RestoreGate,
     private val pendingStore: PendingImportStore,
     private val journalStore: RestoreJournalStore,
-    private val taskRepository: TaskRepository,
-    private val focusSessionRepository: FocusSessionRepository,
+    private val readLocalTasks: suspend () -> List<Task>,
+    private val hasActiveFocusSession: suspend () -> Boolean,
     private val recoveryEngine: RestoreRecoveryEngine,
     private val applicationScope: CoroutineScope,
     private val isRuntimeFocusActive: suspend () -> Boolean = { false },
@@ -138,7 +140,7 @@ class RestoreCoordinator(
             return Result.failure(IllegalStateException(message))
         }
         val backup = loaded.backup.parsed
-        val local = taskRepository.getAllTasks()
+        val local = readLocalTasks()
         val allConflicts = if (mode == RestoreMode.MERGE && restoreTasks) {
             RestorePlanBuilder.conflicts(backup.envelope, local)
         } else {
@@ -193,7 +195,8 @@ class RestoreCoordinator(
         }
 
         lateinit var completion: CompletableDeferred<RecoveryRunResult>
-        val journal = admissionMutex.withLock {
+        val journal = withContext(NonCancellable) {
+            admissionMutex.withLock {
             if (!gate.tryBeginRestore()) return@withLock null
 
             try {
@@ -213,7 +216,7 @@ class RestoreCoordinator(
 
                 val activeSession = runtimeFocusActive ||
                     isRuntimeFocusActive() ||
-                    focusSessionRepository.getActiveFocusSession()?.isActive == true
+                    hasActiveFocusSession()
                 if (mode == RestoreMode.REPLACE && restoreTasks && activeSession) {
                     gate.reopen()
                     return@withLock RestoreAdmissionResult.ActiveFocusSession
@@ -223,7 +226,7 @@ class RestoreCoordinator(
                     return@withLock RestoreAdmissionResult.PinRequired
                 }
 
-                val localTasks = taskRepository.getAllTasks()
+                val localTasks = readLocalTasks()
                 val backup = loaded.parsed
                 val warnings = buildList {
                     if (backup.warnings.isNotEmpty()) add("BACKUP_VALIDATION_WARNINGS")
@@ -265,15 +268,34 @@ class RestoreCoordinator(
                             plan = planResult.plan,
                         )
                         journalStore.write(next)
-                        runCatching { pendingStore.delete() }
+                        // The journal now owns recovery. If this cleanup fails,
+                        // the recovery runner retries it before applying tasks.
+                        try {
+                            pendingStore.delete()
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            // Do not reopen after a durable journal exists.
+                        }
                         next
                     }
                 }
-            } catch (error: Exception) {
+            } catch (cancelled: CancellationException) {
+                if (journalStore.hasJournal()) return@withLock RecoverExistingJournal
                 if (gate.state.value != RestoreGate.State.OPEN) gate.reopen()
+                throw cancelled
+            } catch (error: Exception) {
+                // Once a journal may exist, the gate must remain closed. The
+                // recovery runner will determine whether the atomic write left
+                // a valid journal or no journal at all.
+                if (journalStore.hasJournal()) return@withLock RecoverExistingJournal
+                if (gate.state.value != RestoreGate.State.OPEN) {
+                    gate.reopen()
+                }
                 return@withLock RestoreAdmissionResult.FailedBeforeJournal(
                     error.message ?: "Restore could not be prepared.",
                 )
+            }
             }
         }
 
@@ -281,6 +303,7 @@ class RestoreCoordinator(
             null -> return RestoreAdmissionResult.Busy
             is RestoreAdmissionResult -> return journal
             is RestoreJournal -> Unit
+            RecoverExistingJournal -> Unit
         }
 
         completion = CompletableDeferred()
@@ -309,7 +332,21 @@ class RestoreCoordinator(
         }
     }
 
-    suspend fun retryRecovery(): RecoveryRunResult = recoveryEngine.retry()
+    suspend fun retryRecovery(): RecoveryRunResult {
+        val completion = CompletableDeferred<RecoveryRunResult>()
+        applicationScope.launch(Dispatchers.IO) {
+            completion.complete(recoveryEngine.retry())
+        }
+        return completion.await()
+    }
 
-    suspend fun discardRecovery(): Result<Unit> = recoveryEngine.discard()
+    suspend fun discardRecovery(): Result<Unit> {
+        val completion = CompletableDeferred<Result<Unit>>()
+        applicationScope.launch(Dispatchers.IO) {
+            completion.complete(recoveryEngine.discard())
+        }
+        return completion.await()
+    }
+
+    private data object RecoverExistingJournal
 }

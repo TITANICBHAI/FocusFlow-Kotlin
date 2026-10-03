@@ -47,6 +47,7 @@ class RestoreRecoveryEngine(
 ) {
     private val _state = MutableStateFlow<RestoreUiState>(RestoreUiState.Idle)
     val state: StateFlow<RestoreUiState> = _state.asStateFlow()
+    private var discardReconciliationPending = false
 
     fun reflectBlockedStartup(unreadableJournal: Boolean) {
         _state.value = RestoreUiState.Blocked(
@@ -81,27 +82,30 @@ class RestoreRecoveryEngine(
         }
 
         var failuresThisRun = 0
+        var pendingImportCleared = false
         while (true) {
             try {
+                if (!pendingImportCleared) {
+                    // The journal is authoritative whenever both durable files
+                    // exist. Clear the staged preview before any restore phase.
+                    pendingImportStore.delete()
+                    pendingImportCleared = true
+                }
                 when (journal.phase) {
                     RestorePhase.PLANNED -> {
                         actions.applyTasks(journal.plan())
-                        journal = journal.copy(phase = RestorePhase.TASKS_APPLIED)
-                        journalStore.write(journal)
+                        journal = advance(journal, RestorePhase.TASKS_APPLIED)
                     }
                     RestorePhase.TASKS_APPLIED -> {
                         actions.applySettings(journal.plan())
-                        journal = journal.copy(phase = RestorePhase.SETTINGS_APPLIED)
-                        journalStore.write(journal)
+                        journal = advance(journal, RestorePhase.SETTINGS_APPLIED)
                     }
                     RestorePhase.SETTINGS_APPLIED -> {
                         actions.reconcile(journal.plan())
-                        journal = journal.copy(phase = RestorePhase.RECONCILED)
-                        journalStore.write(journal)
+                        journal = advance(journal, RestorePhase.RECONCILED)
                     }
                     RestorePhase.RECONCILED -> {
                         actions.persistLastResult(journal.plan(), interrupted)
-                        pendingImportStore.delete()
                         journalStore.deleteJournal()
                         gate.reopen()
                         _state.value = RestoreUiState.Completed(
@@ -133,6 +137,22 @@ class RestoreRecoveryEngine(
                 unreadableJournal = journalStore.hasQuarantine(),
             )
         }
+        if (discardReconciliationPending) {
+            _state.value = RestoreUiState.Running(interrupted = true)
+            return try {
+                actions.reconcileCurrentState()
+                discardReconciliationPending = false
+                gate.reopen()
+                _state.value = RestoreUiState.Idle
+                RecoveryRunResult.NoJournal(pendingImportStore.exists())
+            } catch (_: Exception) {
+                gate.markRecoveryBlocked()
+                val message =
+                    "The restore was discarded, but current data could not be reconciled. Retry to repair it."
+                _state.value = RestoreUiState.Blocked(message, unreadableJournal = false)
+                RecoveryRunResult.Blocked(message, unreadableJournal = false)
+            }
+        }
         if (journalStore.hasQuarantine()) {
             try {
                 journalStore.restoreQuarantineForRetry()
@@ -155,19 +175,33 @@ class RestoreRecoveryEngine(
         if (gate.state.value != RestoreGate.State.RECOVERY_BLOCKED) {
             return Result.failure(IllegalStateException("Discard is available only when recovery is blocked."))
         }
-        return runCatching {
+        return try {
             journalStore.deleteJournal()
             journalStore.deleteQuarantine()
-            var reconciliationFailure: Exception? = null
-            try {
-                actions.reconcileCurrentState()
-            } catch (error: Exception) {
-                reconciliationFailure = error
-            }
+            discardReconciliationPending = true
+            actions.reconcileCurrentState()
+            discardReconciliationPending = false
             _state.value = RestoreUiState.Idle
             gate.reopen()
-            reconciliationFailure?.let { throw it }
+            Result.success(Unit)
+        } catch (error: Exception) {
+            if (discardReconciliationPending) {
+                gate.markRecoveryBlocked()
+                val message =
+                    "The restore was discarded, but current data could not be reconciled. Retry to repair it."
+                _state.value = RestoreUiState.Blocked(message, unreadableJournal = false)
+            }
+            Result.failure(error)
         }
+    }
+
+    private suspend fun advance(
+        current: RestoreJournal,
+        phase: RestorePhase,
+    ): RestoreJournal {
+        val next = current.copy(phase = phase)
+        journalStore.write(next)
+        return next
     }
 
     private suspend fun blockUnreadableJournal(message: String): RecoveryRunResult.Blocked {

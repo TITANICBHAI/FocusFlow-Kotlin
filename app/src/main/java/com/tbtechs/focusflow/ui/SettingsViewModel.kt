@@ -521,6 +521,7 @@ class SettingsViewModel(
                     settingsRepository = AppModule.settingsRepository,
                     pinManager = AppModule.pinManager,
                     context = ctx,
+                    restoreGate = AppModule.restoreGate,
                 ) as T
             }
 
@@ -532,6 +533,7 @@ class SettingsViewModel(
                     settingsRepository = AppModule.settingsRepository,
                     pinManager = AppModule.pinManager,
                     context = ctx,
+                    restoreGate = AppModule.restoreGate,
                 ) as T
             }
         }

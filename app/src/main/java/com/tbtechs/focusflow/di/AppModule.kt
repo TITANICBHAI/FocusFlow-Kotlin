@@ -290,8 +290,10 @@ object AppModule {
             gate = restoreGate,
             pendingStore = pendingStore,
             journalStore = journalStore,
-            taskRepository = taskRepository,
-            focusSessionRepository = focusSessionRepository,
+            readLocalTasks = { taskRepository.getAllTasks() },
+            hasActiveFocusSession = {
+                focusSessionRepository.getActiveFocusSession()?.isActive == true
+            },
             recoveryEngine = recoveryEngine,
             applicationScope = applicationScope,
             isRuntimeFocusActive = { settingsRepository.isFocusActive() },

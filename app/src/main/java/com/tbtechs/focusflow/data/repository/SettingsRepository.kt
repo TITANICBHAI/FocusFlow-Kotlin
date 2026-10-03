@@ -725,6 +725,7 @@ class SettingsRepository(
      * (entries without a scheduleId) are preserved.
      */
     suspend fun setRecurringBlockSchedules(schedules: List<RecurringBlockSchedule>) {
+        restoreGate.write("SettingsRepository.setRecurringBlockSchedules") {
         val recurringJson = JSONArray().apply {
             schedules.forEach { schedule ->
                 put(JSONObject().apply {
@@ -764,6 +765,7 @@ class SettingsRepository(
                 ),
             "recurring schedule",
         )
+        }
     }
 
     /**
@@ -771,6 +773,7 @@ class SettingsRepository(
      * schedule consumed by AppBlockerAccessibilityService.
      */
     suspend fun setUserGreyoutWindows(windowsJson: String) {
+        restoreGate.write("SettingsRepository.setUserGreyoutWindows") {
         val parsedWindows = JSONArray(windowsJson)
         val userWindows = buildList {
             for (index in 0 until parsedWindows.length()) {
@@ -790,32 +793,40 @@ class SettingsRepository(
                 .putString("greyout_schedule", JSONArray(combined).toString()),
             "user greyout windows",
         )
+        }
     }
 
     suspend fun publishScheduleVpnSnapshot(packagesJson: String) {
+        restoreGate.write("SettingsRepository.publishScheduleVpnSnapshot") {
         commitEditor(
             prefs.edit().putString(KEY_SCHEDULE_VPN_PACKAGES, packagesJson),
             "schedule VPN snapshot",
         )
         VpnPolicyCoordinator.requestSync(appContext)
+        }
     }
 
     suspend fun setDailyAllowancePackages(packages: List<String>) {
+        restoreGate.write("SettingsRepository.setDailyAllowancePackages") {
         prefs.edit()
             .putString(
                 AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_PKGS,
                 packages.toJsonArrayString(),
             )
             .apply()
+        }
     }
 
     suspend fun setAlwaysOnVpnPackages(packages: List<String>) {
+        restoreGate.write("SettingsRepository.setAlwaysOnVpnPackages") {
         prefs.edit()
             .putString(KEY_ALWAYS_ON_VPN_PACKAGES, packages.toJsonArrayString())
             .apply()
+        }
     }
 
     suspend fun setBlockPresets(presets: List<BlockPreset>) {
+        restoreGate.write("SettingsRepository.setBlockPresets") {
         val json = JSONArray().apply {
             presets.forEach { preset ->
                 put(JSONObject().apply {
@@ -826,69 +837,90 @@ class SettingsRepository(
             }
         }.toString()
         prefs.edit().putString(KEY_BLOCK_PRESETS, json).apply()
+        }
     }
 
     suspend fun setOverlayQuotes(quotes: List<String>) {
-        BlockOverlayController(appContext).setCustomQuotes(JSONArray(quotes).toString())
+        restoreGate.write("SettingsRepository.setOverlayQuotes") {
+            BlockOverlayController(appContext).setCustomQuotes(JSONArray(quotes).toString())
+        }
     }
 
     suspend fun setBlockedWords(words: List<String>) {
+        restoreGate.write("SettingsRepository.setBlockedWords") {
         prefs.edit()
             .putString(AppBlockerAccessibilityService.PREF_BLOCKED_WORDS, words.toJsonArrayString())
             .apply()
+        }
     }
 
     suspend fun setLauncherDockPackages(packagesJson: String) {
-        prefs.edit().putString(KEY_LAUNCHER_DOCK_PACKAGES, packagesJson).apply()
+        restoreGate.write("SettingsRepository.setLauncherDockPackages") {
+            prefs.edit().putString(KEY_LAUNCHER_DOCK_PACKAGES, packagesJson).apply()
+        }
     }
 
     suspend fun setSystemGuardEnabled(enabled: Boolean) {
+        restoreGate.write("SettingsRepository.setSystemGuardEnabled") {
         prefs.edit()
             .putBoolean(AppBlockerAccessibilityService.PREF_SYSTEM_GUARD_ENABLED, enabled)
             .apply()
+        }
     }
 
     suspend fun setBlockInstallActionsEnabled(enabled: Boolean) {
+        restoreGate.write("SettingsRepository.setBlockInstallActionsEnabled") {
         prefs.edit()
             .putBoolean(AppBlockerAccessibilityService.PREF_BLOCK_INSTALL_ACTIONS, enabled)
             .apply()
+        }
     }
 
     suspend fun setBlockYoutubeShortsEnabled(enabled: Boolean) {
+        restoreGate.write("SettingsRepository.setBlockYoutubeShortsEnabled") {
         prefs.edit()
             .putBoolean(AppBlockerAccessibilityService.PREF_BLOCK_YT_SHORTS, enabled)
             .apply()
+        }
     }
 
     suspend fun setBlockInstagramReelsEnabled(enabled: Boolean) {
+        restoreGate.write("SettingsRepository.setBlockInstagramReelsEnabled") {
         prefs.edit()
             .putBoolean(AppBlockerAccessibilityService.PREF_BLOCK_IG_REELS, enabled)
             .apply()
+        }
     }
 
     suspend fun setNetworkBlockEnabled(enabled: Boolean) {
+        restoreGate.write("SettingsRepository.setNetworkBlockEnabled") {
         prefs.edit()
             .putBoolean(KEY_NETWORK_BLOCK_ENABLED, enabled)
             .putBoolean(KEY_NETWORK_BLOCK_VPN, enabled)
             .apply()
         requestVpnSync()
+        }
     }
 
     suspend fun setVpnSelectedPackages(packagesJson: String) {
+        restoreGate.write("SettingsRepository.setVpnSelectedPackages") {
         prefs.edit()
             .putString(KEY_VPN_SELECTED_PACKAGES, packagesJson)
             .putString(KEY_EXPLICIT_VPN_PACKAGES, packagesJson)
             .apply()
         requestVpnSync()
+        }
     }
 
     suspend fun setDailyAllowanceConfig(configJson: String) {
+        restoreGate.write("SettingsRepository.setDailyAllowanceConfig") {
         prefs.edit().putString(KEY_DAILY_ALLOWANCE_CONFIG, configJson).apply()
         appContext.sendBroadcast(
             Intent(AppBlockerAccessibilityService.ACTION_ALLOWANCE_CONFIG_CHANGED).apply {
                 `package` = appContext.packageName
             },
         )
+        }
     }
 
     /**
@@ -948,6 +980,7 @@ class SettingsRepository(
     }
 
     suspend fun setNotificationPreferences(settings: AppSettings) {
+        restoreGate.write("SettingsRepository.setNotificationPreferences") {
         val results = JSONObject().apply {
             settings.lastSessionResultByTaskId.forEach { (taskId, result) -> put(taskId, result) }
         }
@@ -988,6 +1021,7 @@ class SettingsRepository(
                 }
             }
             .apply()
+        }
     }
 
     /**
@@ -1149,10 +1183,12 @@ class SettingsRepository(
     }
 
     suspend fun setLauncherHiddenPackages(packagesJson: String) {
+        restoreGate.write("SettingsRepository.setLauncherHiddenPackages") {
         prefs.edit()
             .putString(KEY_LAUNCHER_HIDDEN_PACKAGES, packagesJson)
             .putString(KEY_DRAWER_HIDDEN_PACKAGES, packagesJson)
             .apply()
+        }
     }
 
     suspend fun setLauncherWallpaperUri(uri: String?) {
@@ -1163,6 +1199,7 @@ class SettingsRepository(
     }
 
     suspend fun setLauncherPresets(presets: List<AllowedAppPreset>) {
+        restoreGate.write("SettingsRepository.setLauncherPresets") {
         val json = JSONArray().apply {
             presets.forEach { preset ->
                 put(JSONObject().apply {
@@ -1173,6 +1210,7 @@ class SettingsRepository(
             }
         }.toString()
         prefs.edit().putString("allowed_app_presets", json).apply()
+        }
     }
 
     suspend fun setLauncherDockPackages(packages: List<String>) {
@@ -1180,21 +1218,29 @@ class SettingsRepository(
     }
 
     suspend fun setLauncherTheme(theme: String) {
+        restoreGate.write("SettingsRepository.setLauncherTheme") {
         prefs.edit()
             .putString(KEY_LAUNCHER_THEME, if (theme == "classic") "classic" else "glassy")
             .apply()
+        }
     }
 
     suspend fun setFocusToolPackages(packagesJson: String) {
-        prefs.edit().putString(KEY_FOCUS_TOOL_PACKAGES, packagesJson).apply()
+        restoreGate.write("SettingsRepository.setFocusToolPackages") {
+            prefs.edit().putString(KEY_FOCUS_TOOL_PACKAGES, packagesJson).apply()
+        }
     }
 
     suspend fun setLauncherLockDuringStandalone(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_LAUNCHER_LOCK_DURING_STANDALONE, enabled).apply()
+        restoreGate.write("SettingsRepository.setLauncherLockDuringStandalone") {
+            prefs.edit().putBoolean(KEY_LAUNCHER_LOCK_DURING_STANDALONE, enabled).apply()
+        }
     }
 
     suspend fun setLauncherBlockUninstall(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, enabled).apply()
+        restoreGate.write("SettingsRepository.setLauncherBlockUninstall") {
+            prefs.edit().putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, enabled).apply()
+        }
     }
 
     /**
@@ -1202,6 +1248,7 @@ class SettingsRepository(
      * enforcement or by the focus/task schedulers.
      */
     suspend fun setDefensePreferences(settings: AppSettings) {
+        restoreGate.write("SettingsRepository.setDefensePreferences") {
         val editor = prefs.edit()
             .putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, settings.launcherBlockUninstall)
             .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, settings.vpnSelfHealEnabled)
@@ -1217,6 +1264,7 @@ class SettingsRepository(
             .putBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, settings.autoCopyToAlwaysOn)
         commitEditor(editor, "defense preferences")
         requestVpnSync()
+        }
     }
 
     suspend fun isDefaultLauncher(): Boolean {
@@ -1229,7 +1277,9 @@ class SettingsRepository(
     }
 
     suspend fun setLauncherClockStyle(style: String) {
-        prefs.edit().putString(KEY_LAUNCHER_CLOCK_STYLE, style).apply()
+        restoreGate.write("SettingsRepository.setLauncherClockStyle") {
+            prefs.edit().putString(KEY_LAUNCHER_CLOCK_STYLE, style).apply()
+        }
     }
 
     suspend fun resetDailyAllowanceUsage(packageName: String?) {

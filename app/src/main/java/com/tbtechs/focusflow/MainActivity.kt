@@ -205,6 +205,7 @@ private fun FocusFlowRoot(
             restoreGate = AppModule.restoreGate,
         )
     }
+    val pendingImportAvailable = backupCoordinator.restorePendingAvailable()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var replaceTasksOnImport by remember { mutableStateOf(false) }
     var pendingImportGeneration by remember { mutableStateOf(0) }
@@ -244,10 +245,18 @@ private fun FocusFlowRoot(
         }
     }
 
-    LaunchedEffect(isDbReady, pendingImportGeneration) {
+    LaunchedEffect(
+        isDbReady,
+        pendingImportGeneration,
+        privacyAccepted,
+        onboardingComplete,
+        pendingImportAvailable,
+    ) {
         if (
             isDbReady &&
-            backupCoordinator.restorePendingAvailable() &&
+            privacyAccepted &&
+            onboardingComplete &&
+            pendingImportAvailable &&
             navController.currentDestination?.route != Routes.IMPORT_CONFIRM
         ) {
             navController.navigate(Routes.IMPORT_CONFIRM) { launchSingleTop = true }
@@ -280,7 +289,13 @@ private fun FocusFlowRoot(
         }
     }
 
-    LaunchedEffect(requestedRoute, isDbReady, privacyAccepted, onboardingComplete) {
+    LaunchedEffect(
+        requestedRoute,
+        isDbReady,
+        privacyAccepted,
+        onboardingComplete,
+        pendingImportAvailable,
+    ) {
         if (!isDbReady) return@LaunchedEffect
         val currentRoute = navController.currentBackStackEntry?.destination?.route
         val isCurrentlyInHowToUse = currentRoute?.contains(Routes.HOW_TO_USE) == true
@@ -290,6 +305,7 @@ private fun FocusFlowRoot(
             privacyAccepted && !onboardingComplete &&
                 requestedRoute != Routes.PRIVACY_POLICY &&
                 requestedRoute != Routes.ONBOARDING -> Routes.ONBOARDING
+            pendingImportAvailable -> Routes.IMPORT_CONFIRM
             else -> requestedRoute
         }
 
