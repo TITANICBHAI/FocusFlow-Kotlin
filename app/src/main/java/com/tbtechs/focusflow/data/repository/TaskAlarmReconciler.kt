@@ -1,0 +1,130 @@
+package com.tbtechs.focusflow.data.repository
+
+import android.util.Log
+import com.tbtechs.focusflow.data.model.CanonicalTimestamp
+import com.tbtechs.focusflow.data.model.Task
+import com.tbtechs.focusflow.data.restore.RestoreGate
+import java.time.Instant
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+data class DesiredTaskEndAlarm(
+    val taskId: String,
+    val taskName: String,
+    val endTimeMillis: Long,
+)
+
+object TaskAlarmReconcilePlan {
+    const val MAX_ARMED_ALARMS = 100
+
+    fun desired(
+        tasks: List<Task>,
+        nowMs: Long,
+        limit: Int = MAX_ARMED_ALARMS,
+    ): List<DesiredTaskEndAlarm> =
+        tasks.asSequence()
+            .filter { it.status == "scheduled" || it.status == "active" }
+            .map { task ->
+                val endMs = runCatching { Instant.parse(task.endTime).toEpochMilli() }
+                    .getOrElse {
+                        throw IllegalStateException(
+                            "A task has an invalid end time and cannot be reconciled.",
+                        )
+                    }
+                DesiredTaskEndAlarm(task.id, task.title, endMs)
+            }
+            .filter { it.endTimeMillis > nowMs }
+            .sortedBy(DesiredTaskEndAlarm::endTimeMillis)
+            .take(limit)
+            .toList()
+}
+
+/**
+ * Rebuilds task-end AlarmManager registrations from Room. Normal runs acquire
+ * the restore gate; restore recovery uses the explicit closed-gate entry point.
+ */
+class TaskAlarmReconciler(
+    private val taskRepository: TaskRepository,
+    private val alarmRepository: AlarmRepository,
+    private val restoreGate: RestoreGate,
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
+    private val reconcileMutex = Mutex()
+
+    suspend fun reconcile(reason: String) =
+        restoreGate.write("TaskAlarmReconciler:$reason") {
+            reconcileMutex.withLock { reconcileLocked(reason, duringRestore = false) }
+        }
+
+    suspend fun reconcileDuringRestore() {
+        check(restoreGate.state.value != RestoreGate.State.OPEN) {
+            "Restore reconciliation requires the restore gate to remain closed."
+        }
+        reconcileMutex.withLock { reconcileLocked("restore", duringRestore = true) }
+    }
+
+    private suspend fun reconcileLocked(reason: String, duringRestore: Boolean) {
+        var passes = 0
+        while (passes++ <= TaskAlarmReconcilePlan.MAX_ARMED_ALARMS) {
+            val nowMs = clock()
+            val canonicalNow = CanonicalTimestamp.format(Instant.ofEpochMilli(nowMs))
+            if (duringRestore) {
+                taskRepository.markOverdueDuringRestore(canonicalNow)
+            } else {
+                taskRepository.markOverdue(canonicalNow)
+            }
+
+            val desired = TaskAlarmReconcilePlan.desired(taskRepository.getAllTasks(), clock())
+            val desiredIds = desired.mapTo(mutableSetOf(), DesiredTaskEndAlarm::taskId)
+            val registeredIds = alarmRepository.registeredTaskIds()
+
+            (registeredIds - desiredIds).forEach { taskId ->
+                check(alarmRepository.cancelTaskEndAlarmWithinReconciliation(taskId)) {
+                    "A task-end alarm no longer desired by Room could not be cancelled."
+                }
+            }
+
+            alarmRepository.prepareDesiredTaskEndAlarms(
+                desired.associate { it.taskId to it.endTimeMillis },
+            )
+
+            var foundPastTrigger = false
+            for (alarm in desired) {
+                when (
+                    val result = alarmRepository.scheduleTaskEndAlarmWithinReconciliation(
+                        alarm.taskId,
+                        alarm.taskName,
+                        alarm.endTimeMillis,
+                    )
+                ) {
+                    AlarmScheduleResult.Scheduled,
+                    AlarmScheduleResult.DeferredExactUnavailable -> Unit
+                    AlarmScheduleResult.PastTrigger -> {
+                        // Time can advance while the horizon is being armed.
+                        // Cancel this identity, sweep the now-overdue row, and
+                        // recompute so the next future task enters the horizon.
+                        check(
+                            alarmRepository.cancelTaskEndAlarmWithinReconciliation(alarm.taskId),
+                        ) { "A past task-end alarm could not be cancelled." }
+                        foundPastTrigger = true
+                        break
+                    }
+                    is AlarmScheduleResult.Failed -> throw IllegalStateException(
+                        "Could not schedule a task-end alarm.",
+                        result.cause,
+                    )
+                }
+            }
+
+            if (!foundPastTrigger) {
+                Log.i(TAG, "Task-end alarms reconciled reason=$reason count=${desired.size}")
+                return
+            }
+        }
+        throw IllegalStateException("Task-end alarm reconciliation did not converge.")
+    }
+
+    companion object {
+        private const val TAG = "TaskAlarmReconciler"
+    }
+}

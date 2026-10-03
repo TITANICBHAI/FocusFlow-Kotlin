@@ -12,12 +12,13 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
+import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.data.repository.LauncherController
-import com.tbtechs.focusflow.data.repository.AlarmRepository
 import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 
 enum class PermissionId {
-    ACCESSIBILITY, USAGE, BATTERY, NOTIFICATIONS, DEVICE_ADMIN, OVERLAY, MEDIA, VPN, EXACT_ALARMS, LAUNCHER,
+    ACCESSIBILITY, USAGE, BATTERY, NOTIFICATIONS, DEVICE_ADMIN, OVERLAY, MEDIA, VPN, EXACT_ALARMS,
+    FULL_SCREEN_INTENT, LAUNCHER,
 }
 
 enum class PermissionStatus { GRANTED, DENIED, UNKNOWN }
@@ -42,8 +43,9 @@ val permissionDefinitions = listOf(
     // Helpful but optional protections. Keep Notifications immediately before
     // Device Admin so the everyday service requirement is easy to find.
     PermissionDefinition(PermissionId.BATTERY, "Battery Optimization", "Helps FocusFlow keep running in the background.", "Some phones stop background services.", listOf("Blocking can stop when the screen turns off", "Focus sessions may stop"), true, "Disable Battery Optimization"),
-    PermissionDefinition(PermissionId.EXACT_ALARMS, "Exact Alarms", "Fires task reminders on schedule.", "Without it, Android may delay reminders.", listOf("Task reminders may be delayed"), true, "Allow Alarms & Reminders"),
+    PermissionDefinition(PermissionId.EXACT_ALARMS, "Exact Alarms", "Allows task-end alerts to fire on time.", "Without it, task-end alerts are deferred until access returns.", listOf("Task-end alerts are deferred"), true, "Allow Alarms & Reminders"),
     PermissionDefinition(PermissionId.NOTIFICATIONS, "Notifications", "Shows reminders and the focus notification.", "Keeps reminders and the foreground service notification visible.", listOf("No task reminders", "The focus notification may be hidden", "You may not see service status"), true, "Open Notification Settings"),
+    PermissionDefinition(PermissionId.FULL_SCREEN_INTENT, "Full-screen Alarms", "Lets Android show the task-end screen over the lock screen.", "Android 14+ may restrict full-screen alarm screens.", listOf("The task-end notification may appear without opening the alarm screen"), true, "Allow Full-screen Alarms"),
     PermissionDefinition(PermissionId.DEVICE_ADMIN, "Device Admin", "Adds resistance to force-stop controls.", "Some phones expose force-stop paths.", listOf("Stopping FocusFlow may be easier"), true, "Activate Device Admin"),
     PermissionDefinition(PermissionId.LAUNCHER, "Home Launcher", "Intercepts blocked launches before they open.", "Stops blocked apps from flashing.", listOf("Blocked apps may flash first", "Launcher filtering is unavailable"), true, "Set as Home Launcher"),
 )
@@ -62,7 +64,8 @@ suspend fun checkPermission(context: Context, id: PermissionId): PermissionStatu
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) PermissionStatus.GRANTED else PermissionStatus.DENIED
         }
         PermissionId.VPN -> if (VpnService.prepare(context) == null) PermissionStatus.GRANTED else PermissionStatus.DENIED
-        PermissionId.EXACT_ALARMS -> if (AlarmRepository(context).canScheduleExactAlarms()) PermissionStatus.GRANTED else PermissionStatus.DENIED
+        PermissionId.EXACT_ALARMS -> if (AppModule.alarmRepository.canScheduleExactAlarms()) PermissionStatus.GRANTED else PermissionStatus.DENIED
+        PermissionId.FULL_SCREEN_INTENT -> if (AppModule.alarmRepository.canUseFullScreenIntent()) PermissionStatus.GRANTED else PermissionStatus.DENIED
         PermissionId.DEVICE_ADMIN -> {
             val manager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val receiver = android.content.ComponentName(context, com.tbtechs.focusflow.enforcement.receivers.FocusDayDeviceAdminReceiver::class.java)
@@ -90,7 +93,8 @@ suspend fun openPermissionSettings(context: Context, id: PermissionId) {
             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         })
-        PermissionId.EXACT_ALARMS -> AlarmRepository(context).requestExactAlarmPermission()
+        PermissionId.EXACT_ALARMS -> AppModule.alarmRepository.requestExactAlarmPermission()
+        PermissionId.FULL_SCREEN_INTENT -> AppModule.alarmRepository.requestFullScreenIntentPermission()
         PermissionId.MEDIA, PermissionId.VPN -> Unit
     }
 }

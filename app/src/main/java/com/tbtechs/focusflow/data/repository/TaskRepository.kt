@@ -161,6 +161,20 @@ class TaskRepository(
         }
     }
 
+    /** Marks every locally unresolved task whose end time has passed as overdue. */
+    suspend fun markOverdue(canonicalNow: String): Int =
+        restoreGate.write("TaskRepository.markOverdue") {
+            taskDao.markOverdueTasks(canonicalNow)
+        }
+
+    /** Restore-only form used while the coordinator deliberately holds the gate closed. */
+    internal suspend fun markOverdueDuringRestore(canonicalNow: String): Int {
+        check(restoreGate.state.value != RestoreGate.State.OPEN) {
+            "Restore overdue writes require a closed RestoreGate."
+        }
+        return taskDao.markOverdueTasks(canonicalNow)
+    }
+
     /** Deletes the task with [taskId]. Maps to `dbDeleteTask`. */
     suspend fun deleteTask(taskId: String) {
         restoreGate.write("TaskRepository.deleteTask") { taskDao.deleteTask(taskId) }

@@ -2,6 +2,7 @@ package com.tbtechs.focusflow.enforcement
 
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
 import com.tbtechs.focusflow.enforcement.receivers.NotificationActionReceiver
+import com.tbtechs.focusflow.data.repository.TaskEndAlarmIdentity
 
 import android.app.Activity
 import android.app.KeyguardManager
@@ -65,6 +66,8 @@ class TaskAlarmActivity : Activity() {
         const val EXTRA_TASK_NAME  = "taskName"
         const val EXTRA_END_MS     = "endTimeMs"
 
+        const val ACTION_SHOW_ALARM = "com.tbtechs.focusflow.SHOW_TASK_ALARM"
+
         /** JS-driven dismiss broadcast — fired by TaskAlarmModule.dismissAlarm(). */
         const val ACTION_DISMISS_ALARM = "com.tbtechs.focusflow.alarm.DISMISS"
 
@@ -116,8 +119,11 @@ class TaskAlarmActivity : Activity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        intent?.getStringExtra(EXTRA_TASK_ID)?.let { if (it.isNotEmpty()) taskId = it }
-        intent?.getStringExtra(EXTRA_TASK_NAME)?.let { if (it.isNotEmpty()) taskName = it }
+        if (intent == null) return
+        setIntent(intent)
+        intent.getStringExtra(EXTRA_TASK_ID)?.let { if (it.isNotEmpty()) taskId = it }
+        taskName = intent.getStringExtra(EXTRA_TASK_NAME).orEmpty()
+        buildUI()
     }
 
     override fun onDestroy() {
@@ -388,7 +394,12 @@ class TaskAlarmActivity : Activity() {
         try {
             val nm = getSystemService(Context.NOTIFICATION_SERVICE)
                 as? android.app.NotificationManager
-            nm?.cancel(ForegroundTaskService.TASK_ALARM_NOTIF_ID)
+            if (taskId.isNotEmpty()) {
+                nm?.cancel(
+                    TaskEndAlarmIdentity.notificationTag(taskId),
+                    TaskEndAlarmIdentity.NOTIFICATION_ID,
+                )
+            }
         } catch (_: Exception) {}
         finish()
     }

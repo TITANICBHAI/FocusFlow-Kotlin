@@ -9,9 +9,10 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
-import com.tbtechs.focusflow.enforcement.ForegroundTaskService
+import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.enforcement.TaskAlarmActivity
 import com.tbtechs.focusflow.enforcement.receivers.TaskEndAlarmReceiver
+import com.tbtechs.focusflow.ui.common.AppErrorEvents
 
 /**
  * AlarmRepository
@@ -21,23 +22,19 @@ import com.tbtechs.focusflow.enforcement.receivers.TaskEndAlarmReceiver
  * fire reliably even when the app is in Doze or the process has been killed.
  *
  * Responsibilities:
- *   1. scheduleAlarm — Fallback ladder: setAlarmClock -> setExactAndAllowWhileIdle -> setAndAllowWhileIdle
+ *   1. scheduleAlarm — exact-only ladder: setAlarmClock -> setExactAndAllowWhileIdle
  *   2. cancelAlarm — cancels AlarmManager registration for a given taskId
  *   3. dismissAlarm — finishes TaskAlarmActivity and clears notification
  *   4. canScheduleExactAlarms / requestExactAlarmPermission — probes and opens settings on Android 12+
  */
-class AlarmRepository(private val context: Context) {
+class AlarmRepository(
+    private val context: Context,
+    private val restoreGate: RestoreGate,
+) {
+    private val registry = TaskAlarmRegistry(context)
 
     companion object {
         private const val TAG = "AlarmRepository"
-
-        /**
-         * Stable hash -> request code so the same taskId always maps to the same PendingIntent.
-         */
-        fun requestCodeFor(taskId: String): Int {
-            val h = taskId.hashCode()
-            return if (h == Int.MIN_VALUE) 0 else Math.abs(h)
-        }
 
         /** Build the canonical alarm PendingIntent for a given taskId. */
         fun buildAlarmPendingIntent(
@@ -49,14 +46,39 @@ class AlarmRepository(private val context: Context) {
         ): PendingIntent {
             val intent = Intent(ctx.applicationContext, TaskEndAlarmReceiver::class.java).apply {
                 action = TaskEndAlarmReceiver.ACTION_FIRE
+                data = TaskEndAlarmIdentity.dataUri(taskId)
                 `package` = ctx.packageName
-                putExtra(TaskEndAlarmReceiver.EXTRA_TASK_ID,   taskId)
+                putExtra(TaskEndAlarmReceiver.EXTRA_TASK_ID, taskId)
                 putExtra(TaskEndAlarmReceiver.EXTRA_TASK_NAME, taskName)
-                putExtra(TaskEndAlarmReceiver.EXTRA_END_MS,    endMs)
+                putExtra(TaskEndAlarmReceiver.EXTRA_END_MS, endMs)
             }
             return PendingIntent.getBroadcast(
                 ctx.applicationContext,
-                requestCodeFor(taskId),
+                TaskEndAlarmIdentity.REQUEST_CODE,
+                intent,
+                flags,
+            )
+        }
+
+        /** Build the task-specific show/full-screen Activity PendingIntent. */
+        fun buildShowPendingIntent(
+            ctx: Context,
+            taskId: String,
+            taskName: String,
+            endMs: Long,
+            flags: Int,
+        ): PendingIntent {
+            val intent = Intent(ctx.applicationContext, TaskAlarmActivity::class.java).apply {
+                action = TaskAlarmActivity.ACTION_SHOW_ALARM
+                data = TaskEndAlarmIdentity.dataUri(taskId)
+                `package` = ctx.packageName
+                putExtra(TaskAlarmActivity.EXTRA_TASK_ID, taskId)
+                putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, taskName)
+                putExtra(TaskAlarmActivity.EXTRA_END_MS, endMs)
+            }
+            return PendingIntent.getActivity(
+                ctx.applicationContext,
+                TaskEndAlarmIdentity.REQUEST_CODE,
                 intent,
                 flags,
             )
@@ -66,107 +88,115 @@ class AlarmRepository(private val context: Context) {
     /**
      * Schedules a wake-up alarm at [endMs] that posts the full-screen task-end alarm.
      * Replaces any earlier registration for the same taskId.
-     *
-     * Named Risk Preserved:
-     * Fallback ladder setAlarmClock -> setExactAndAllowWhileIdle -> setAndAllowWhileIdle,
-     * tried in that order, gated by canScheduleExactAlarms() on API 31+.
      */
-    suspend fun scheduleAlarm(taskId: String?, taskName: String?, endMs: Long): Boolean {
+    suspend fun scheduleTaskEndAlarm(
+        taskId: String?,
+        taskName: String?,
+        endMs: Long,
+    ): AlarmScheduleResult = restoreGate.write("AlarmRepository.scheduleTaskEndAlarm") {
+        scheduleTaskEndAlarmWithinReconciliation(taskId, taskName, endMs)
+    }
+
+    /**
+     * Used only by TaskAlarmReconciler while it owns the restore gate (or is
+     * running as the restore coordinator with the gate deliberately closed).
+     */
+    internal fun scheduleTaskEndAlarmWithinReconciliation(
+        taskId: String?,
+        taskName: String?,
+        endMs: Long,
+    ): AlarmScheduleResult {
+        val id = taskId?.takeIf(String::isNotBlank)
+            ?: return AlarmScheduleResult.Failed(IllegalArgumentException("Task ID is required."))
+        if (endMs <= System.currentTimeMillis()) return AlarmScheduleResult.PastTrigger
+
         return try {
-            val id = taskId ?: ""
-            val name = taskName ?: ""
-            val triggerAt = endMs
+            registry.prepareDesired(mapOf(id to endMs))
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                ?: return AlarmScheduleResult.Failed(
+                    IllegalStateException("AlarmManager is unavailable."),
+                ).also {
+                    AlarmCapabilitySnapshot.record(context, "schedule", "FAILED")
+                }
 
-            if (id.isEmpty()) {
-                Log.w(TAG, "scheduleAlarm: empty taskId — refusing to schedule")
-                return false
-            }
-            if (triggerAt <= System.currentTimeMillis()) {
-                // Caller is rescheduling something that has already ended —
-                // fire immediately so the user still gets the alarm UI and
-                // the task moves to awaiting-decision state.
-                Log.i(TAG, "scheduleAlarm: triggerAt is in the past — posting alarm now")
-                ForegroundTaskService.postTaskEndAlarmNotification(
-                    context.applicationContext, id, name, triggerAt,
-                )
-                return true
-            }
+            val exactAccess = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                alarmManager.canScheduleExactAlarms()
+            if (!exactAccess) return deferred(id)
 
-            val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            if (am == null) {
-                Log.e(TAG, "scheduleAlarm: AlarmManager unavailable")
-                return false
-            }
-
-            val pi = buildAlarmPendingIntent(
-                context, id, name, triggerAt,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            val alarmPi = buildAlarmPendingIntent(
+                context,
+                id,
+                taskName.orEmpty(),
+                endMs,
+                flags,
+            )
+            val showPi = buildShowPendingIntent(
+                context,
+                id,
+                taskName.orEmpty(),
+                endMs,
+                flags,
             )
 
-            // Strategy ladder, strictest first:
-            //   1. setAlarmClock — Doze-immune, shown in lockscreen alarm row.
-            //      Requires SCHEDULE_EXACT_ALARM (auto-granted with USE_EXACT_ALARM
-            //      on API 33+) or USE_EXACT_ALARM on API 31-32.
-            //   2. setExactAndAllowWhileIdle — fires within ~10s of trigger
-            //      even in Doze. Used when 1 fails (no exact-alarm permission
-            //      or OEM rejects setAlarmClock).
-            //   3. setAndAllowWhileIdle — coarse fallback for OS versions or
-            //      OEM ROMs that reject the exact APIs entirely. May be off
-            //      by minutes but at least the alarm eventually fires.
-            val showIntent = Intent(context, TaskAlarmActivity::class.java)
-            val showPi = PendingIntent.getActivity(
-                context.applicationContext,
-                requestCodeFor(id) xor 0x55AA55AA,
-                showIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-
-            var scheduled = false
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (am.canScheduleExactAlarms()) {
-                        am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showPi), pi)
-                        scheduled = true
-                    }
+                alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(endMs, showPi), alarmPi)
+                registry.markScheduled(id, AlarmTier.ALARM_CLOCK)
+                AlarmCapabilitySnapshot.record(context, "schedule", AlarmTier.ALARM_CLOCK.name)
+                Log.i(TAG, "Scheduled task-end alarm with alarm-clock tier.")
+                return AlarmScheduleResult.Scheduled
+            } catch (error: Exception) {
+                Log.w(TAG, "setAlarmClock failed; trying exact allow-while-idle.", error)
+            }
+
+            try {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endMs, alarmPi)
+                registry.markScheduled(id, AlarmTier.EXACT_ALLOW_IDLE)
+                AlarmCapabilitySnapshot.record(context, "schedule", AlarmTier.EXACT_ALLOW_IDLE.name)
+                Log.i(TAG, "Scheduled task-end alarm with exact allow-while-idle tier.")
+                AlarmScheduleResult.Scheduled
+            } catch (error: Exception) {
+                if (
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    !alarmManager.canScheduleExactAlarms()
+                ) {
+                    deferred(id)
                 } else {
-                    am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showPi), pi)
-                    scheduled = true
-                }
-            } catch (e: SecurityException) {
-                Log.w(TAG, "setAlarmClock denied: ${e.message}")
-            } catch (e: Exception) {
-                Log.w(TAG, "setAlarmClock failed: ${e.message}")
-            }
-
-            if (!scheduled) {
-                try {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-                    scheduled = true
-                } catch (e: SecurityException) {
-                    Log.w(TAG, "setExactAndAllowWhileIdle denied: ${e.message}")
-                } catch (e: Exception) {
-                    Log.w(TAG, "setExactAndAllowWhileIdle failed: ${e.message}")
+                    registry.markFailed(id)
+                    AlarmCapabilitySnapshot.record(context, "schedule", "FAILED")
+                    AlarmScheduleResult.Failed(error)
                 }
             }
-
-            if (!scheduled) {
-                try {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-                    scheduled = true
-                } catch (e: Exception) {
-                    Log.e(TAG, "setAndAllowWhileIdle failed — alarm will NOT fire: ${e.message}")
-                }
-            }
-
-            Log.i(TAG, "scheduleAlarm taskId=$id name='$name' endMs=$triggerAt scheduled=$scheduled")
-            scheduled
-        } catch (e: Exception) {
-            Log.e(TAG, "scheduleAlarm crashed: ${e.message}", e)
-            false
+        } catch (error: Exception) {
+            Log.e(TAG, "Task-end alarm scheduling failed.", error)
+            AlarmScheduleResult.Failed(error)
         }
     }
 
-    /** Overload for Double millisecond timestamp compatibility */
+    private fun deferred(taskId: String): AlarmScheduleResult {
+        if (registry.markDeferred(taskId)) {
+            AppErrorEvents.report(
+                tag = "Task alarms",
+                message = "Exact alarm access is off. Task-end alerts are deferred; enable Exact Alarms in Permissions to restore them.",
+            )
+        }
+        AlarmCapabilitySnapshot.record(
+            context,
+            "schedule",
+            "DEFERRED_EXACT_UNAVAILABLE",
+        )
+        return AlarmScheduleResult.DeferredExactUnavailable
+    }
+
+    /** Compatibility wrapper used by the currently dormant notification adapter. */
+    suspend fun scheduleAlarm(taskId: String?, taskName: String?, endMs: Long): Boolean =
+        when (scheduleTaskEndAlarm(taskId, taskName, endMs)) {
+            AlarmScheduleResult.Scheduled,
+            AlarmScheduleResult.PastTrigger,
+            AlarmScheduleResult.DeferredExactUnavailable -> true
+            is AlarmScheduleResult.Failed -> false
+        }
+
     suspend fun scheduleAlarm(taskId: String?, taskName: String?, endMs: Double): Boolean =
         scheduleAlarm(taskId, taskName, endMs.toLong())
 
@@ -174,24 +204,46 @@ class AlarmRepository(private val context: Context) {
      * Cancels any previously-scheduled alarm for this taskId. Safe to call
      * even if no alarm exists — PendingIntent.cancel() is a no-op in that case.
      */
-    suspend fun cancelAlarm(taskId: String?): Boolean {
-        return try {
-            val id = taskId ?: ""
-            if (id.isEmpty()) return true
+    suspend fun cancelAlarm(taskId: String?): Boolean =
+        restoreGate.write("AlarmRepository.cancelAlarm") {
+            cancelTaskEndAlarmWithinReconciliation(taskId)
+        }
 
-            val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            val existing = buildAlarmPendingIntent(
-                context, id, "", 0L,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
-            )
-            if (existing != null) {
-                am?.cancel(existing)
-                existing.cancel()
+    internal fun registeredTaskIds(): Set<String> = registry.registeredTaskIds()
+
+    internal fun triggerAtMillis(taskId: String): Long? = registry.triggerAtMillis(taskId)
+
+    internal fun recordFireCapabilitySnapshot(taskId: String) {
+        val tier = registry.tierFor(taskId)?.name ?: "UNKNOWN"
+        AlarmCapabilitySnapshot.record(context, "fire", tier)
+    }
+
+    internal fun prepareDesiredTaskEndAlarms(alarms: Map<String, Long>) =
+        registry.prepareDesired(alarms)
+
+    internal fun cancelTaskEndAlarmWithinReconciliation(taskId: String?): Boolean {
+        val id = taskId?.takeIf(String::isNotBlank) ?: return true
+        return try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                ?: return false
+            val flags = PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            val alarmPi = buildAlarmPendingIntent(context, id, "", 0L, flags)
+            val showPi = buildShowPendingIntent(context, id, "", 0L, flags)
+            if (alarmPi != null) {
+                alarmManager.cancel(alarmPi)
+                alarmPi.cancel()
             }
-            Log.i(TAG, "cancelAlarm taskId=$id existed=${existing != null}")
+            if (showPi != null) showPi.cancel()
+            registry.remove(id)
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            notificationManager?.cancel(
+                TaskEndAlarmIdentity.notificationTag(id),
+                TaskEndAlarmIdentity.NOTIFICATION_ID,
+            )
             true
-        } catch (e: Exception) {
-            Log.w(TAG, "cancelAlarm failed: ${e.message}")
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not cancel task-end alarm.", error)
             false
         }
     }
@@ -199,7 +251,12 @@ class AlarmRepository(private val context: Context) {
     /**
      * Finishes visible TaskAlarmActivity and cancels the alarm notification.
      */
-    suspend fun dismissAlarm(taskId: String?): Boolean {
+    suspend fun dismissAlarm(taskId: String?): Boolean =
+        restoreGate.write("AlarmRepository.dismissAlarm") {
+            dismissAlarmWithinGate(taskId)
+        }
+
+    private fun dismissAlarmWithinGate(taskId: String?): Boolean {
         return try {
             val intent = Intent(TaskAlarmActivity.ACTION_DISMISS_ALARM).apply {
                 `package` = context.packageName
@@ -210,7 +267,12 @@ class AlarmRepository(private val context: Context) {
             context.sendBroadcast(intent)
 
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            nm?.cancel(ForegroundTaskService.TASK_ALARM_NOTIF_ID)
+            if (!taskId.isNullOrEmpty()) {
+                nm?.cancel(
+                    TaskEndAlarmIdentity.notificationTag(taskId),
+                    TaskEndAlarmIdentity.NOTIFICATION_ID,
+                )
+            }
 
             true
         } catch (e: Exception) {
@@ -235,6 +297,22 @@ class AlarmRepository(private val context: Context) {
         }
     }
 
+    suspend fun canUseFullScreenIntent(): Boolean {
+        if (Build.VERSION.SDK_INT < 34) return true
+        return try {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            manager?.canUseFullScreenIntent() == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun markNotificationPostedOnce(
+        taskId: String,
+        endMs: Long,
+        post: () -> Unit,
+    ): Boolean = registry.postOnce(taskId, endMs, System.currentTimeMillis(), post)
+
     /**
      * Opens the system "Alarms & reminders" settings screen for this app.
      * Resolves true if the settings activity could be launched.
@@ -252,6 +330,21 @@ class AlarmRepository(private val context: Context) {
             true
         } catch (e: Exception) {
             Log.w(TAG, "requestExactAlarmPermission failed: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun requestFullScreenIntentPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < 34) return true
+        return try {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            true
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not open full-screen intent settings.", error)
             false
         }
     }

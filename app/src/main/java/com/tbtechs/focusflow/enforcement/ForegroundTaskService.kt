@@ -18,6 +18,9 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.core.app.NotificationCompat
+import com.tbtechs.focusflow.data.repository.AlarmRepository
+import com.tbtechs.focusflow.data.repository.TaskAlarmRegistry
+import com.tbtechs.focusflow.data.repository.TaskEndAlarmIdentity
 import com.tbtechs.focusflow.R
 import com.tbtechs.focusflow.MainActivity
 
@@ -116,8 +119,39 @@ class ForegroundTaskService : Service() {
          * the full-screen intent is honoured even on locked / asleep devices.
          */
         const val TASK_ALARM_CHANNEL   = "task_alarm"
-        const val TASK_ALARM_NOTIF_ID  = 9101
-        private const val PI_TASK_ALARM = 7
+        const val TASK_ALARM_NOTIF_ID  = TaskEndAlarmIdentity.NOTIFICATION_ID
+
+        /** The single authoritative definition of the task-end notification channel. */
+        fun ensureTaskAlarmChannel(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val app = context.applicationContext
+            val manager = app.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                ?: return
+            if (manager.getNotificationChannel(TASK_ALARM_CHANNEL) != null) return
+
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val sound = android.media.RingtoneManager.getDefaultUri(
+                android.media.RingtoneManager.TYPE_ALARM,
+            )
+            val channel = NotificationChannel(
+                TASK_ALARM_CHANNEL,
+                "Task End Alarm",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Wakes the device when a task ends."
+                enableLights(true)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0L, 600L, 600L, 600L)
+                setSound(sound, attrs)
+                setBypassDnd(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
+            }
+            manager.createNotificationChannel(channel)
+        }
 
         /**
          * Posts the heads-up + full-screen-intent task-end alarm notification.
@@ -130,9 +164,9 @@ class ForegroundTaskService : Service() {
          * users hit when alarms "didn't go off" after the screen had been
          * off for a while.
          *
-         * Idempotent: the notification ID is fixed ([TASK_ALARM_NOTIF_ID]),
-         * so a second post just replaces the first if the service tick races
-         * the AlarmManager broadcast.
+         * The (tag, ID) pair is task-specific. A durable dedupe ledger prevents
+         * the service tick and AlarmManager receiver from posting the same end
+         * event twice.
          */
         fun postTaskEndAlarmNotification(
             context: Context,
@@ -140,50 +174,31 @@ class ForegroundTaskService : Service() {
             endedTaskName: String,
             endedAtMs: Long,
         ) {
+            if (endedTaskId.isBlank()) return
             try {
                 val app = context.applicationContext
                 val nm = app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-                // Ensure the high-importance alarm channel exists. Channels are
-                // sticky once created so this is a cheap idempotent call, but we
-                // can't assume the foreground service has run yet (the receiver
-                // may fire after a process death where onCreate never executed).
-                val existing = nm.getNotificationChannel(TASK_ALARM_CHANNEL)
-                if (existing == null) {
-                    val attrs = android.media.AudioAttributes.Builder()
-                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                    val sound = android.media.RingtoneManager.getDefaultUri(
-                        android.media.RingtoneManager.TYPE_ALARM
-                    )
-                    val channel = android.app.NotificationChannel(
-                        TASK_ALARM_CHANNEL,
-                        "Task End Alarm",
-                        NotificationManager.IMPORTANCE_HIGH,
-                    ).apply {
-                        description = "Wakes the device when a task ends."
-                        enableLights(true)
-                        enableVibration(true)
-                        setSound(sound, attrs)
-                        setBypassDnd(true)
-                        lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-                    }
-                    nm.createNotificationChannel(channel)
-                }
+                ensureTaskAlarmChannel(app)
 
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                val fullScreenPi = AlarmRepository.buildShowPendingIntent(
+                    app,
+                    endedTaskId,
+                    endedTaskName,
+                    endedAtMs,
+                    flags,
+                )
                 val activityIntent = Intent(app, TaskAlarmActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or
                             Intent.FLAG_ACTIVITY_NO_HISTORY
+                    action = TaskAlarmActivity.ACTION_SHOW_ALARM
+                    data = TaskEndAlarmIdentity.dataUri(endedTaskId)
                     putExtra(TaskAlarmActivity.EXTRA_TASK_ID,   endedTaskId)
                     putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, endedTaskName)
                     putExtra(TaskAlarmActivity.EXTRA_END_MS,    endedAtMs)
                 }
-                val fullScreenPi = PendingIntent.getActivity(
-                    app, PI_TASK_ALARM, activityIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
 
                 val displayName = if (endedTaskName.isNotEmpty()) endedTaskName else "Your task"
 
@@ -199,14 +214,41 @@ class ForegroundTaskService : Service() {
                     .setAutoCancel(true)
                     .setOngoing(true)
                     .build()
-                nm.notify(TASK_ALARM_NOTIF_ID, notif)
+                val posted = TaskAlarmRegistry(app).postOnce(
+                    endedTaskId,
+                    endedAtMs,
+                    System.currentTimeMillis(),
+                ) {
+                    nm.notify(
+                        TaskEndAlarmIdentity.notificationTag(endedTaskId),
+                        TaskEndAlarmIdentity.NOTIFICATION_ID,
+                        notif,
+                    )
+                }
+                if (!posted) return
 
-                // Belt-and-braces: on some OEM ROMs the full-screen intent is
-                // delayed until the user unlocks. Fire startActivity directly
-                // too — the system simply ignores it if the activity is
-                // already up. From a BroadcastReceiver context this requires
-                // FLAG_ACTIVITY_NEW_TASK which we already set above.
-                try { app.startActivity(activityIntent) } catch (_: Exception) {}
+                // Background activity launches are restricted. Keep this
+                // non-authoritative fallback only on devices with overlay access.
+                if (Settings.canDrawOverlays(app)) {
+                    runCatching { app.startActivity(activityIntent) }
+                        .onSuccess {
+                            android.util.Log.i(
+                                "ForegroundTaskService",
+                                "Overlay-authorized task alarm activity fallback attempted.",
+                            )
+                        }
+                        .onFailure {
+                            android.util.Log.w(
+                                "ForegroundTaskService",
+                                "Task alarm activity fallback was rejected.",
+                            )
+                        }
+                } else {
+                    android.util.Log.i(
+                        "ForegroundTaskService",
+                        "Task alarm activity fallback skipped; overlay access is unavailable.",
+                    )
+                }
             } catch (_: Exception) { /* alarm is best-effort */ }
         }
     }
@@ -1185,52 +1227,26 @@ class ForegroundTaskService : Service() {
             }
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(channel)
-            // Also create the high-importance task-alarm channel up front so the
-            // first task end is not delayed waiting for channel creation.
-            createTaskAlarmChannel(nm)
+            ensureTaskAlarmChannel(this)
         }
     }
 
-    /**
-     * High-importance task-alarm channel.  Must include sound + vibration so
-     * the heads-up notification presents and the full-screen-intent is honoured
-     * even when the screen is off.
-     */
-    private fun createTaskAlarmChannel(nm: NotificationManager) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val existing = nm.getNotificationChannel(TASK_ALARM_CHANNEL)
-        if (existing != null) return
-        val alarmUri = android.media.RingtoneManager.getDefaultUri(
-            android.media.RingtoneManager.TYPE_ALARM
-        )
-        val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        val channel = NotificationChannel(
-            TASK_ALARM_CHANNEL,
-            "Task Alarm",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "Wakes the screen with a full-screen alarm when a task ends"
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0L, 600L, 600L, 600L)
-            enableLights(true)
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setBypassDnd(true)
-            setShowBadge(true)
-            if (alarmUri != null) setSound(alarmUri, attrs)
-        }
-        nm.createNotificationChannel(channel)
-    }
-
-    /**
-     * Instance-level wrapper kept for the in-process tick path. Delegates to
-     * the static [postTaskEndAlarmNotification] helper so the AlarmManager
-     * receiver and the Handler tick share one canonical implementation.
-     */
+    /** Routes the in-process fallback tick through the same validation path as AlarmManager. */
     private fun triggerTaskAlarm(endedTaskId: String, endedTaskName: String, endedAtMs: Long) {
-        postTaskEndAlarmNotification(applicationContext, endedTaskId, endedTaskName, endedAtMs)
+        if (endedTaskId.isBlank()) return
+        runCatching {
+            sendBroadcast(
+                Intent(applicationContext, TaskEndAlarmReceiver::class.java).apply {
+                    action = TaskEndAlarmReceiver.ACTION_FIRE
+                    data = TaskEndAlarmIdentity.dataUri(endedTaskId)
+                    putExtra(TaskEndAlarmReceiver.EXTRA_TASK_ID, endedTaskId)
+                    putExtra(TaskEndAlarmReceiver.EXTRA_TASK_NAME, endedTaskName)
+                    putExtra(TaskEndAlarmReceiver.EXTRA_END_MS, endedAtMs)
+                },
+            )
+        }.onFailure {
+            android.util.Log.w("ForegroundTaskService", "Could not dispatch task-end validation.")
+        }
     }
 
     private fun buildIdleNotification(): Notification {

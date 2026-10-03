@@ -138,6 +138,20 @@ interface TaskDao {
     @Update
     suspend fun updateTasks(tasks: List<TaskEntity>)
 
+    /**
+     * Atomically closes tasks that have ended without being resolved. The
+     * caller supplies one canonical UTC timestamp for both comparison and write.
+     */
+    @Query(
+        """
+        UPDATE tasks
+        SET status = 'overdue', updated_at = :canonicalNow
+        WHERE status IN ('scheduled', 'active')
+          AND julianday(end_time) <= julianday(:canonicalNow)
+        """,
+    )
+    suspend fun markOverdueTasks(canonicalNow: String): Int
+
     /** Maps to `dbDeleteTask`. */
     @Query("DELETE FROM tasks WHERE id = :taskId")
     suspend fun deleteTask(taskId: String)

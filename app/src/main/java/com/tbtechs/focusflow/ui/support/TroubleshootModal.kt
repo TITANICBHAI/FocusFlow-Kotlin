@@ -376,5 +376,6 @@ private fun permissionInfo(id: PermissionId): PermissionInfo = when (id) {
     PermissionId.MEDIA -> PermissionInfo("Media Files Access", Icons.Outlined.Layers)
     PermissionId.VPN -> PermissionInfo("VPN Network Access", Icons.Outlined.Security)
     PermissionId.EXACT_ALARMS -> PermissionInfo("Exact Alarms", Icons.Outlined.Alarm)
+    PermissionId.FULL_SCREEN_INTENT -> PermissionInfo("Full-screen Alarms", Icons.Outlined.Alarm)
     PermissionId.LAUNCHER -> PermissionInfo("Home Launcher", Icons.Outlined.Layers)
 }

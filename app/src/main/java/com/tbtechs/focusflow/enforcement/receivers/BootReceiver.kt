@@ -46,6 +46,11 @@ class BootReceiver : BroadcastReceiver() {
             action != Intent.ACTION_MY_PACKAGE_REPLACED &&
             action != Intent.ACTION_USER_UNLOCKED) return
 
+        // The receiver is direct-boot aware, but Room and normal SharedPreferences
+        // are credential-encrypted. Wait for USER_UNLOCKED before touching them.
+        if (!isUserUnlocked(context)) return
+        runCatching { TaskAlarmReconcileWorker.enqueue(context, "boot_or_unlock") }
+
         val prefs: SharedPreferences = context.getSharedPreferences(
             AppBlockerAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE
         )

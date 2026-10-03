@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.repository.AlarmRepository
+import com.tbtechs.focusflow.data.repository.TaskAlarmReconciler
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.SettingsRepository
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 class TaskViewModel(
     private val taskRepository: TaskRepository,
     private val alarmRepository: AlarmRepository,
+    private val taskAlarmReconciler: TaskAlarmReconciler,
     private val focusSessionRepository: FocusSessionRepository,
     private val foregroundServiceController: ForegroundServiceController,
     private val settingsRepository: SettingsRepository,
@@ -92,14 +94,7 @@ class TaskViewModel(
                     return@withTaskOperationLock
                 }
                 taskRepository.insertTask(task)
-                val endMs = runCatching {
-                    Instant.parse(task.endTime).toEpochMilli()
-                }.getOrNull() ?: return@withTaskOperationLock
-                if (endMs > System.currentTimeMillis() &&
-                    task.status !in setOf("completed", "skipped")
-                ) {
-                    alarmRepository.scheduleAlarm(task.id, task.title, endMs)
-                }
+                reconcileAlarms("task_created")
             }
         }
     }
@@ -117,17 +112,7 @@ class TaskViewModel(
                     return@withTaskOperationLock
                 }
                 taskRepository.updateTask(task)
-                // Cancel old alarm then reschedule for updated end time while
-                // holding the same mutex as the Room write.
-                alarmRepository.cancelAlarm(task.id)
-                val endMs = runCatching {
-                    Instant.parse(task.endTime).toEpochMilli()
-                }.getOrNull() ?: return@withTaskOperationLock
-                if (endMs > System.currentTimeMillis() &&
-                    task.status !in setOf("completed", "skipped")
-                ) {
-                    alarmRepository.scheduleAlarm(task.id, task.title, endMs)
-                }
+                reconcileAlarms("task_updated")
             }
         }
     }
@@ -146,7 +131,6 @@ class TaskViewModel(
                 beforeTaskDelete(taskId, pinHash)
                 val task = taskRepository.getTaskById(taskId)
                     ?: return@withTaskOperationLock
-                alarmRepository.cancelAlarm(taskId)
                 alarmRepository.dismissAlarm(taskId)
                 taskRepository.deleteTask(taskId)
                 if (shouldAutoReschedule() && task.status !in COMPLETED_STATUSES) {
@@ -156,6 +140,7 @@ class TaskViewModel(
                     )
                     persistRescheduledTasks(rescheduled, excludedTaskId = task.id)
                 }
+                reconcileAlarms("task_deleted")
             }
         }
     }
@@ -174,10 +159,10 @@ class TaskViewModel(
                 beforeClearTasks(pinHash)
                 val allTasks = taskRepository.getAllTasks()
                 allTasks.forEach {
-                    alarmRepository.cancelAlarm(it.id)
                     alarmRepository.dismissAlarm(it.id)
                 }
                 taskRepository.deleteAllTasks()
+                reconcileAlarms("tasks_cleared")
             }
         }
     }
@@ -195,10 +180,10 @@ class TaskViewModel(
                 }
                 val allTasks = taskRepository.getAllTasks()
                 allTasks.filter { it.id != excludedTaskId }.forEach {
-                    alarmRepository.cancelAlarm(it.id)
                     alarmRepository.dismissAlarm(it.id)
                 }
                 taskRepository.deleteAllTasksExcept(excludedTaskId)
+                reconcileAlarms("tasks_cleared_except_active")
             }
         }
     }
@@ -214,12 +199,11 @@ class TaskViewModel(
             taskRepository.withTaskOperationLock {
                 val task = taskRepository.getTaskById(taskId) ?: return@withTaskOperationLock
                 if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
-                alarmRepository.cancelAlarm(taskId)
-                alarmRepository.dismissAlarm(taskId)
                 val completedAt = Instant.now()
                 taskRepository.updateTask(
                     task.copy(status = "completed", updatedAt = completedAt.toString()),
                 )
+                alarmRepository.dismissAlarm(taskId)
                 if (shouldAutoReschedule()) {
                     val rescheduled = schedulerEngine.compressSchedule(
                         completedTask = task,
@@ -228,6 +212,7 @@ class TaskViewModel(
                     )
                     persistRescheduledTasks(rescheduled, excludedTaskId = task.id)
                 }
+                reconcileAlarms("task_completed")
             }
         }
     }
@@ -243,11 +228,10 @@ class TaskViewModel(
             taskRepository.withTaskOperationLock {
                 val task = taskRepository.getTaskById(taskId) ?: return@withTaskOperationLock
                 if (task.status == "completed" || task.status == "skipped") return@withTaskOperationLock
-                alarmRepository.cancelAlarm(taskId)
-                alarmRepository.dismissAlarm(taskId)
                 taskRepository.updateTask(
                     task.copy(status = "skipped", updatedAt = Instant.now().toString()),
                 )
+                alarmRepository.dismissAlarm(taskId)
                 if (shouldAutoReschedule()) {
                     // Skipping frees the task's full scheduled slot. Treat it
                     // like deletion so later scheduled tasks move forward.
@@ -257,6 +241,7 @@ class TaskViewModel(
                     )
                     persistRescheduledTasks(rescheduled, excludedTaskId = task.id)
                 }
+                reconcileAlarms("task_skipped")
             }
         }
     }
@@ -282,12 +267,8 @@ class TaskViewModel(
                         updatedAt = Instant.now().toString(),
                     ),
                 )
-                // Reschedule end-time alarm for the new extended time
-                alarmRepository.cancelAlarm(taskId)
                 val newEndMs = newEnd.toEpochMilli()
-                if (newEndMs > System.currentTimeMillis()) {
-                    alarmRepository.scheduleAlarm(taskId, task.title, newEndMs)
-                }
+                reconcileAlarms("task_extended")
                 if (focusSessionRepository.getActiveFocusSession()?.taskId == taskId) {
                     foregroundServiceController.updateNotification(
                         taskId = taskId,
@@ -332,16 +313,19 @@ class TaskViewModel(
         if (changedTasks.isEmpty()) return
 
         taskRepository.updateTasksBatch(changedTasks)
-        changedTasks.forEach { task ->
-            alarmRepository.cancelAlarm(task.id)
-            val endMs = runCatching {
-                Instant.parse(task.endTime).toEpochMilli()
-            }.getOrNull() ?: return@forEach
-            if (endMs > System.currentTimeMillis() &&
-                task.status !in COMPLETED_STATUSES
-            ) {
-                alarmRepository.scheduleAlarm(task.id, task.title, endMs)
-            }
+    }
+
+    private suspend fun reconcileAlarms(reason: String) {
+        try {
+            taskAlarmReconciler.reconcile(reason)
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            AppErrorEvents.report(
+                tag = "Task alarms",
+                message = "Task changes were saved, but task-end alarms need reconciliation.",
+                throwable = error,
+            )
         }
     }
 
@@ -354,6 +338,7 @@ class TaskViewModel(
                 return TaskViewModel(
                     taskRepository = AppModule.taskRepository,
                     alarmRepository = AppModule.alarmRepository,
+                    taskAlarmReconciler = AppModule.taskAlarmReconciler,
                     focusSessionRepository = AppModule.focusSessionRepository,
                     foregroundServiceController = AppModule.foregroundServiceController,
                     settingsRepository = AppModule.settingsRepository,
@@ -366,6 +351,7 @@ class TaskViewModel(
                 return TaskViewModel(
                     taskRepository = AppModule.taskRepository,
                     alarmRepository = AppModule.alarmRepository,
+                    taskAlarmReconciler = AppModule.taskAlarmReconciler,
                     focusSessionRepository = AppModule.focusSessionRepository,
                     foregroundServiceController = AppModule.foregroundServiceController,
                     settingsRepository = AppModule.settingsRepository,

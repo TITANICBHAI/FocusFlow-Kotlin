@@ -153,6 +153,14 @@
             android:name=".enforcement.receivers.TaskEndAlarmReceiver"
             android:exported="false" />
         <receiver
+            android:name=".enforcement.receivers.TaskAlarmReconcileReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name=".enforcement.receivers.VpnWatchdogReceiver"
             android:exported="false" />
         <receiver

@@ -104,6 +104,18 @@ class MainActivity : ComponentActivity() {
         notificationEventNonce++
     }
 
+    override fun onStart() {
+        super.onStart()
+        AppModule.requestTaskAlarmReconciliation("activity_start")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Also re-check after returning from exact-alarm or notification
+        // settings; Android does not broadcast exact-alarm revocation.
+        AppModule.requestTaskAlarmReconciliation("activity_resume")
+    }
+
     private fun routeFromIntent(intent: Intent?): String =
         if (intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING) {
             Routes.STATS
@@ -143,13 +155,12 @@ private fun FocusFlowRoot(
         TaskViewModel(
             taskRepository = AppModule.taskRepository,
             alarmRepository = AppModule.alarmRepository,
+            taskAlarmReconciler = AppModule.taskAlarmReconciler,
             focusSessionRepository = AppModule.focusSessionRepository,
             foregroundServiceController = AppModule.foregroundServiceController,
             settingsRepository = AppModule.settingsRepository,
             schedulerEngine = AppModule.schedulerEngine,
             beforeTaskDelete = { taskId, pinHash ->
-                AppModule.alarmRepository.cancelAlarm(taskId)
-                AppModule.alarmRepository.dismissAlarm(taskId)
                 focusSessionViewModel.stopFocusModeForTaskAwait(taskId, pinHash)
             },
             beforeClearTasks = { pinHash ->

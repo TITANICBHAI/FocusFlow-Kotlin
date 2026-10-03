@@ -112,12 +112,8 @@ class NotificationRepository(
 
     suspend fun cancelAllReminders() {
         writeMutex.withLock {
-            val scheduled = scheduler.getScheduledNotifications()
-            val taskIds = scheduled
-                .mapNotNull { it.data["taskId"]?.takeIf(String::isNotBlank) }
-                .distinct()
+            scheduler.getScheduledNotifications()
             scheduler.cancelAll()
-            taskIds.forEach { alarmRepository.cancelAlarm(it) }
         }
     }
 
@@ -125,11 +121,7 @@ class NotificationRepository(
         writeMutex.withLock {
             val scheduled = scheduler.getScheduledNotifications()
             val toCancel = scheduled.filter { it.data["taskId"] != taskId }
-            val taskIds = toCancel
-                .mapNotNull { it.data["taskId"]?.takeIf(String::isNotBlank) }
-                .distinct()
             toCancel.forEach { scheduler.cancel(it.identifier) }
-            taskIds.forEach { alarmRepository.cancelAlarm(it) }
         }
     }
 
@@ -460,9 +452,6 @@ class NotificationRepository(
             )
         }
 
-        if (endMs > now) {
-            alarmRepository.scheduleAlarm(task.id, task.title, endMs)
-        }
     }
 
     private suspend fun cancelTaskRemindersUnlocked(taskIds: List<String>) {
@@ -476,7 +465,6 @@ class NotificationRepository(
                 }
             }
             .forEach { scheduler.cancel(it.identifier) }
-        uniqueIds.forEach { alarmRepository.cancelAlarm(it) }
     }
 
     private suspend fun schedule(

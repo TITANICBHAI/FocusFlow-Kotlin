@@ -7,6 +7,7 @@ import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.AlarmRepository
+import com.tbtechs.focusflow.data.repository.TaskAlarmReconciler
 import com.tbtechs.focusflow.data.repository.BlockOverlayController
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.ReportNotesRepository
@@ -32,6 +33,8 @@ import com.tbtechs.focusflow.data.restore.RestoreRecoveryEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import com.tbtechs.focusflow.ui.common.AppErrorEvents
 
 /**
  * Manual DI singleton — the single source of truth for every repository
@@ -94,6 +97,9 @@ object AppModule {
         private set
 
     lateinit var alarmRepository: AlarmRepository
+        private set
+
+    lateinit var taskAlarmReconciler: TaskAlarmReconciler
         private set
 
     lateinit var blockOverlayController: BlockOverlayController
@@ -211,13 +217,18 @@ object AppModule {
         settingsRepository = SettingsRepository(app, restoreGate)
         reportNotesRepository = ReportNotesRepository(app, database.reportNotesDao())
         foregroundServiceController = ForegroundServiceController(app)
-        alarmRepository = AlarmRepository(app)
+        alarmRepository = AlarmRepository(app, restoreGate)
         blockOverlayController = BlockOverlayController(app)
         pinManager = PinManager(app)
 
         taskRepository = TaskRepository(
             taskDao = database.taskDao(),
             database = database,
+            restoreGate = restoreGate,
+        )
+        taskAlarmReconciler = TaskAlarmReconciler(
+            taskRepository = taskRepository,
+            alarmRepository = alarmRepository,
             restoreGate = restoreGate,
         )
         schedulerEngine = SchedulerEngine()
@@ -272,7 +283,7 @@ object AppModule {
             actions = AndroidRestorePhaseActions(
                 taskRepository = taskRepository,
                 settingsRepository = settingsRepository,
-                alarmRepository = alarmRepository,
+                taskAlarmReconciler = taskAlarmReconciler,
             ),
         )
         restoreCoordinator = RestoreCoordinator(
@@ -289,5 +300,19 @@ object AppModule {
 
     fun startRestoreRecovery() {
         restoreCoordinator.startStartupRecovery()
+    }
+
+    fun requestTaskAlarmReconciliation(reason: String) {
+        if (!::taskAlarmReconciler.isInitialized) return
+        applicationScope.launch {
+            runCatching { taskAlarmReconciler.reconcile(reason) }
+                .onFailure {
+                    AppErrorEvents.report(
+                        tag = "Task alarms",
+                        message = "Task-end alarms could not be fully reconciled.",
+                        throwable = it,
+                    )
+                }
+        }
     }
 }
