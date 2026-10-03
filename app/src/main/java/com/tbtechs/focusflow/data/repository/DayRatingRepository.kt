@@ -5,6 +5,7 @@ import com.tbtechs.focusflow.data.local.dao.DailyAppUsageDao
 import com.tbtechs.focusflow.data.local.dao.DayRatingDao
 import com.tbtechs.focusflow.data.local.dao.TaskDao
 import com.tbtechs.focusflow.data.local.entity.DayRatingEntity
+import kotlinx.coroutines.CancellationException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -15,10 +16,16 @@ class DayRatingRepository(private val dao: DayRatingDao) {
         private val DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE
     }
 
-    suspend fun upsert(rating: DayRatingEntity) {
-        runCatching { dao.upsert(rating) }
-            .onFailure { Log.e(TAG, "upsert(${rating.date}) failed", it) }
-    }
+    suspend fun upsert(rating: DayRatingEntity): Boolean =
+        try {
+            dao.upsert(rating)
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.e(TAG, "upsert(${rating.date}) failed", error)
+            false
+        }
 
     suspend fun getForDate(date: String): DayRatingEntity? =
         runCatching { dao.getForDate(date) }.getOrNull()

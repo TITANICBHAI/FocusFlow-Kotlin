@@ -25,17 +25,19 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +60,8 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 enum class ChipType { WORD, APP }
 
@@ -77,20 +81,26 @@ fun DayRatingBar(
     onSelectDate: (String) -> Unit,
     onLoadChips: (String) -> Unit,
     requestFocus: Boolean = false,
-    onSubmit: (
+    onSubmit: suspend (
         date: String,
         rating: Int,
         contextTag: String?,
         note: String?,
         appTags: List<String>,
         wordTags: List<String>,
-    ) -> Unit,
+    ) -> Boolean,
 ) {
     var dateMenuOpen by remember { mutableStateOf(false) }
     var tappedRating by remember(selectedDate) { mutableStateOf(currentRating?.rating) }
     var contextTag by remember(selectedDate) { mutableStateOf(currentRating?.contextTag) }
     var noteText by remember(selectedDate) { mutableStateOf(currentRating?.note.orEmpty()) }
     var editorDirty by remember(selectedDate) { mutableStateOf(false) }
+    var isSaving by remember(selectedDate) { mutableStateOf(false) }
+    var saveFailed by remember(selectedDate) { mutableStateOf(false) }
+    var saveMessage by remember(selectedDate) {
+        mutableStateOf(if (currentRating != null) "Saved on this device" else "")
+    }
+    var pendingDate by remember { mutableStateOf<String?>(null) }
     val wordTags = remember(selectedDate) {
         mutableStateListOf<String>().apply {
             addAll(decodeStorageList(currentRating?.wordTags))
@@ -103,17 +113,43 @@ fun DayRatingBar(
     }
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+
+    fun markDirty() {
+        editorDirty = true
+        saveFailed = false
+        saveMessage = ""
+    }
 
     fun save() {
-        tappedRating?.let {
-            onSubmit(
-                selectedDate,
-                it,
-                contextTag,
-                noteText.ifBlank { null },
-                appTags.toList(),
-                wordTags.toList(),
-            )
+        val rating = tappedRating ?: return
+        if (!editorDirty || isSaving) return
+        val date = selectedDate
+        scope.launch {
+            isSaving = true
+            val saved = try {
+                onSubmit(
+                    date,
+                    rating,
+                    contextTag,
+                    noteText.ifBlank { null },
+                    appTags.toList(),
+                    wordTags.toList(),
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
+            isSaving = false
+            if (saved) {
+                editorDirty = false
+                saveFailed = false
+                saveMessage = "Saved on this device"
+            } else {
+                saveFailed = true
+                saveMessage = "Could not save. Check storage and try again."
+            }
         }
     }
 
@@ -126,6 +162,8 @@ fun DayRatingBar(
         wordTags.addAll(decodeStorageList(currentRating?.wordTags))
         appTags.clear()
         appTags.addAll(decodeStorageList(currentRating?.appTags))
+        saveFailed = false
+        saveMessage = if (currentRating != null) "Saved on this device" else ""
     }
     LaunchedEffect(selectedDate) {
         onLoadChips(selectedDate)
@@ -144,7 +182,7 @@ fun DayRatingBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Box {
-                    TextButton(onClick = { dateMenuOpen = true }) {
+                    TextButton(onClick = { dateMenuOpen = true }, enabled = !isSaving) {
                         Text(
                             "${friendlyDate(selectedDate)} ▾",
                             fontSize = 14.sp,
@@ -174,7 +212,11 @@ fun DayRatingBar(
                                         )
                                     },
                                     onClick = {
-                                        onSelectDate(entry.date)
+                                        if (editorDirty) {
+                                            pendingDate = entry.date
+                                        } else {
+                                            onSelectDate(entry.date)
+                                        }
                                         dateMenuOpen = false
                                     },
                                 )
@@ -206,16 +248,8 @@ fun DayRatingBar(
                             .clip(CircleShape)
                             .background(if (selected) BrandPrimary else DarkSurfaceVariant)
                             .clickable {
-                                editorDirty = true
+                                markDirty()
                                 tappedRating = number
-                                onSubmit(
-                                    selectedDate,
-                                    number,
-                                    contextTag,
-                                    noteText.ifBlank { null },
-                                    appTags.toList(),
-                                    wordTags.toList(),
-                                )
                             }
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                     ) {
@@ -252,9 +286,8 @@ fun DayRatingBar(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (selected) BrandPrimary else DarkSurfaceVariant)
                                     .clickable {
-                                        editorDirty = true
+                                        markDirty()
                                         contextTag = if (selected) null else tag
-                                        save()
                                     }
                                     .padding(horizontal = 10.dp, vertical = 5.dp),
                             ) {
@@ -285,7 +318,7 @@ fun DayRatingBar(
                                             RoundedCornerShape(20.dp),
                                         )
                                         .clickable {
-                                            editorDirty = true
+                                            markDirty()
                                             when (chip.type) {
                                                 ChipType.WORD -> if (selected) {
                                                     wordTags.remove(chip.label)
@@ -297,7 +330,6 @@ fun DayRatingBar(
                                                     else appTags.add(packageName)
                                                 }
                                             }
-                                            save()
                                         }
                                         .padding(horizontal = 10.dp, vertical = 5.dp),
                                 ) {
@@ -316,7 +348,7 @@ fun DayRatingBar(
                         value = noteText,
                         onValueChange = {
                             if (it.length <= 200) {
-                                editorDirty = true
+                                markDirty()
                                 noteText = it
                             }
                         },
@@ -335,16 +367,30 @@ fun DayRatingBar(
                         ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                save()
-                            },
+                            onDone = { focusManager.clearFocus() },
                         ),
                     )
-                    DisposableEffect(selectedDate) {
-                        onDispose {
-                            save()
-                        }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = ::save,
+                        enabled = editorDirty && !isSaving,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            when {
+                                isSaving -> "Saving…"
+                                !editorDirty -> "Saved"
+                                else -> "Save rating"
+                            },
+                        )
+                    }
+                    if (saveMessage.isNotBlank()) {
+                        Text(
+                            saveMessage,
+                            fontSize = 12.sp,
+                            color = if (saveFailed) MaterialTheme.colorScheme.error
+                            else DarkTextSecondary,
+                        )
                     }
                 }
             }

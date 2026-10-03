@@ -257,16 +257,16 @@ class StatsViewModel(
         }
     }
 
-    fun submitRating(
+    suspend fun submitRating(
         date: String,
         rating: Int,
         contextTag: String?,
         note: String?,
         appTags: List<String>,
         wordTags: List<String>,
-    ) {
+    ): Boolean {
         val safeRating = rating.coerceIn(1, 10)
-        viewModelScope.launch {
+        return try {
             ratingSaveMutex.withLock {
                 val now = java.time.Instant.now().toString()
                 val existing = dayRatingRepository.getForDate(date)
@@ -287,12 +287,17 @@ class StatsViewModel(
                     createdAt = now,
                     updatedAt = now,
                 )
-                dayRatingRepository.upsert(entity)
+                if (!dayRatingRepository.upsert(entity)) return@withLock false
                 if (date == _selectedRatingDate.value) {
                     _currentRating.value = entity
                 }
                 totalRatingCount = dayRatingRepository.count()
+                true
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -317,18 +322,26 @@ class StatsViewModel(
         }
     }
 
-    fun answerClarifyingQuestion(id: String, response: String) {
-        viewModelScope.launch {
-            clarifyingQuestionRepository.answer(id, response)
+    suspend fun answerClarifyingQuestion(id: String, response: String): Boolean {
+        val saved = clarifyingQuestionRepository.answer(id, response)
+        if (saved) {
             _pendingQuestion.value = clarifyingQuestionRepository.getPending()
         }
+        return saved
     }
 
-    fun saveColdStartAnswers(answers: List<BehaviouralHypothesisEntity>) {
-        viewModelScope.launch {
-            answers.forEach { hypothesisRepository.save(it) }
+    suspend fun saveColdStartAnswers(answers: List<BehaviouralHypothesisEntity>): Boolean {
+        return try {
+            for (answer in answers) {
+                if (!hypothesisRepository.save(answer)) return false
+            }
             AppModule.settingsRepository.putString(COLD_START_DISMISSED_KEY, "true")
             _needsColdStart.value = false
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            false
         }
     }
 

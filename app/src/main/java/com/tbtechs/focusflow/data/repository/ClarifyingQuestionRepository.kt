@@ -3,6 +3,7 @@ package com.tbtechs.focusflow.data.repository
 import android.util.Log
 import com.tbtechs.focusflow.data.local.dao.ClarifyingQuestionDao
 import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
+import kotlinx.coroutines.CancellationException
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -23,10 +24,16 @@ class ClarifyingQuestionRepository(private val dao: ClarifyingQuestionDao) {
             true
         }.onFailure { Log.e(TAG, "submitIfAllowed failed", it) }.getOrDefault(false)
 
-    suspend fun answer(id: String, response: String) {
-        runCatching { dao.answer(id, response, Instant.now().toString()) }
-            .onFailure { Log.e(TAG, "answer($id) failed", it) }
-    }
+    suspend fun answer(id: String, response: String): Boolean =
+        try {
+            dao.answer(id, response, Instant.now().toString())
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.e(TAG, "answer($id) failed", error)
+            false
+        }
 
     suspend fun pruneOldAnswered() {
         runCatching {
