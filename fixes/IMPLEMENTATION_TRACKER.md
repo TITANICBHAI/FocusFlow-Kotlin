@@ -180,14 +180,15 @@ Progress notes:
 
 ### M5 — Reminder chain
 
-Status: **In progress** — reminder-chain implementation and focused test sources are
-present; unit and Android test execution remains unverified.
+Status: **In progress** — M5 implementation and focused test sources have been
+source-reviewed against v14. Unit and Android test execution was not run, per the
+user's instruction, so the milestone is not verified.
 
 - [x] Generate reminder slots from task IDs and task times, not `Task.reminders`.
 - [x] Enforce the 450-slot budget and skip ineligible or expired task slots.
 - [x] Schedule one reminder-chain alarm and replan after each fire.
 - [x] Gate reminders using the device-local reminder preference and persist a bounded dedupe ledger.
-- [ ] Test chain delivery, rescheduling, cancellation, and budget behavior.
+- [x] Add focused tests for chain delivery, rescheduling, cancellation, and budget behavior.
 
 Progress notes:
 
@@ -209,6 +210,19 @@ Progress notes:
 - Added unit coverage for derived slots, eligibility/expiry, the 450-slot cap,
   due delivery and deduplication, rescheduling, cancellation, disabled
   preferences, and ledger retention/bounds. Tests have not been executed.
+- Source review found that reconciliation removed ineligible future slots but left
+  already-posted reminder notifications visible. Reconciliation now cancels posted
+  slots for deleted or non-scheduled/non-active tasks using the dedupe ledger. Slot
+  IDs are matched by their defined suffix, avoiding task-ID prefix collisions, and
+  a focused regression test covers deleted, completed, and still-active tasks.
+- Confirmed the preference write requests reconciliation after persistence; task
+  mutations, app start/resume, and restore use the same reconciler. The reminder
+  receiver is registered non-exported and checks its fixed action/data identity.
+- Static source assertions passed for planner rules, fixed chain identity, exact/inexact
+  reminder alarm tiers, receiver gate/preference/replanning, persistent bounded ledger,
+  notification identity, cancellation wiring, receiver registration, and focused test
+  case presence. `git diff --check` passed. These checks do not establish Kotlin
+  compilation or Android runtime behavior.
 
 ### M6 — Alarm presentation and diagnostics
 
@@ -232,6 +246,7 @@ Separate source/build failures from missing SDK/device capabilities.
 | 2026-10-03 | M2 | User confirmed M2 is done. Source inspection found the V1 exporter and golden compatibility/round-trip tests; all M2 tracker items are checked. | Local `bash ./gradlew :app:testDebugUnitTest --no-daemon` failed because Java/`JAVA_HOME` is unavailable; no local Android build or unit-test result. |
 | 2026-10-03 | M3 | Added focused gate, PendingImport, conflict/reminder, journal-write, retry, discard, quarantine, and phase-replay test sources; recovery routing and writer gates were extended. | Full §6.6 coverage—especially failure inside the Room restore transaction—and final writer-path audit remain; tests were intentionally not run per user instruction. |
 | 2026-10-03 | M4 follow-up audit | Source assertions passed for the task-end invariants and current cross-talk test source; `git diff --check` passed. Current Android docs and task-change/recovery triggers were reviewed. | Instrumentation and device-matrix checks remain unrun; local Java/Android SDK and emulator/device are unavailable. M4 stays in progress. |
+| 2026-10-03 | M5 source audit | Reviewed planner, scheduler, ledger, receiver, reconciliation, preference trigger, DI/manifest wiring, and focused unit-test cases. Added reconciliation cancellation for already-posted notifications belonging to deleted/ineligible tasks. Shell static assertions and `git diff --check` passed. | Gradle/unit-test execution was not run per user instruction; no Kotlin compile or Android runtime result is available. M5 remains in progress pending Android test execution. |
 
 Final handoff must list changed files, completed tracker items, exact checks run, source
 assumptions that differed from the contract, and all unresolved or device-only items.

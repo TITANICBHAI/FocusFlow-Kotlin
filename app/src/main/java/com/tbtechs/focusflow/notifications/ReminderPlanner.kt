@@ -41,7 +41,23 @@ object ReminderPlanner {
     private const val MINUTES_MS = 60_000L
     private const val MID_SESSION_MIN_REMAINING_MS = 10 * MINUTES_MS
     private val excludedStatuses = setOf("completed", "skipped", "overdue")
+    private val slotIdSuffixes = listOf(
+        "-mid1800000",
+        "-mid900000",
+        "-pre-600000",
+        "-pre-300000",
+        "-pre-60000",
+        "-pre0",
+        "-almost",
+    )
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+
+    internal fun taskIdFromSlotId(slotId: String): String? =
+        slotIdSuffixes.firstNotNullOfOrNull { suffix ->
+            slotId.takeIf { it.endsWith(suffix) }
+                ?.dropLast(suffix.length)
+                ?.takeIf(String::isNotBlank)
+        }
 
     fun plan(
         tasks: List<Task>,

@@ -242,6 +242,34 @@ class ReminderChainTest {
         assertFalse("recent-${ReminderPlanner.MAX_SLOTS - 1}" in store.entries)
     }
 
+    @Test
+    fun reconciliationCancelsNotificationsForDeletedOrIneligibleTasksOnly() {
+        val store = InMemoryLedgerStore(
+            entries = mapOf(
+                "deleted-pre0" to startMs,
+                "completed-pre0" to startMs,
+                "task-1-pre0" to startMs,
+                "task-1-almost" to startMs,
+                "task-10-pre0" to startMs,
+            ),
+        )
+        val ledger = ReminderChainLedger(store)
+        val cancelled = mutableListOf<String>()
+
+        ledger.cancelNotificationsForIneligibleTasks(
+            tasks = listOf(
+                task("completed", startMs, startMs + 60 * 60_000L, status = "completed"),
+                task("task-1", startMs, startMs + 60 * 60_000L, status = "active"),
+            ),
+            cancel = cancelled::add,
+        )
+
+        assertEquals(
+            listOf("completed-pre0", "deleted-pre0", "task-10-pre0"),
+            cancelled.sorted(),
+        )
+    }
+
     private fun task(
         id: String,
         startMs: Long,

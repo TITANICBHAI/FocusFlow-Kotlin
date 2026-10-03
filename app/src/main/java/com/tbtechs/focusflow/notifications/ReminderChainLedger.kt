@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.notifications
 
 import android.content.Context
+import com.tbtechs.focusflow.data.model.Task
 import java.nio.charset.StandardCharsets
 
 interface ReminderLedgerStore {
@@ -64,6 +65,21 @@ class SharedPreferencesReminderLedgerStore(context: Context) : ReminderLedgerSto
 class ReminderChainLedger(
     private val store: ReminderLedgerStore,
 ) {
+    fun cancelNotificationsForIneligibleTasks(
+        tasks: List<Task>,
+        cancel: (String) -> Unit,
+    ) = synchronized(PROCESS_LOCK) {
+        val eligibleTaskIds = tasks.asSequence()
+            .filter { it.status == "scheduled" || it.status == "active" }
+            .mapTo(mutableSetOf(), Task::id)
+        store.read().keys
+            .filter { slotId ->
+                val taskId = ReminderPlanner.taskIdFromSlotId(slotId)
+                taskId != null && taskId !in eligibleTaskIds
+            }
+            .forEach(cancel)
+    }
+
     fun deliverDue(
         slots: List<ReminderSlot>,
         nowMs: Long,

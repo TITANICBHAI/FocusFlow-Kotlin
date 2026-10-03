@@ -5,6 +5,8 @@ import com.tbtechs.focusflow.data.model.CanonicalTimestamp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.notifications.ReminderChainScheduler
+import com.tbtechs.focusflow.notifications.ReminderChainLedger
+import com.tbtechs.focusflow.notifications.ReminderNotificationPublisher
 import com.tbtechs.focusflow.notifications.ReminderPlanner
 import java.time.Instant
 import kotlinx.coroutines.sync.Mutex
@@ -51,6 +53,8 @@ class TaskAlarmReconciler(
     private val restoreGate: RestoreGate,
     private val settingsRepository: SettingsRepository,
     private val reminderChainScheduler: ReminderChainScheduler,
+    private val reminderChainLedger: ReminderChainLedger,
+    private val cancelReminderNotification: (String) -> Unit,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val reconcileMutex = Mutex()
@@ -123,6 +127,10 @@ class TaskAlarmReconciler(
 
             if (!foundPastTrigger) {
                 val reminderNowMs = clock()
+                reminderChainLedger.cancelNotificationsForIneligibleTasks(
+                    tasks = tasks,
+                    cancel = cancelReminderNotification,
+                )
                 val remindersEnabled = settingsRepository.readAppSettings().taskRemindersEnabled
                 val reminderPlan = ReminderPlanner.plan(
                     tasks = tasks,
