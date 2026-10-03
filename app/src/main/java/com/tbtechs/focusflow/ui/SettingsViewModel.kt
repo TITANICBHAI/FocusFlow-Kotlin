@@ -23,6 +23,7 @@ import com.tbtechs.focusflow.domain.FocusPinManager
 import com.tbtechs.focusflow.domain.PinReuseTracker
 import com.tbtechs.focusflow.domain.PinSessionState
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
+import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,6 +61,7 @@ class SettingsViewModel(
     private val restoreGate: RestoreGate = RestoreGate(),
 ) : ViewModel() {
 
+    private val appContext = context.applicationContext
     private val focusPinManager = FocusPinManager(context)
     private val prefs: SharedPreferences = context.applicationContext
         .getSharedPreferences(AppBlockerAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE)
@@ -172,10 +174,14 @@ class SettingsViewModel(
     fun updateSettings(newSettings: AppSettings) {
         viewModelScope.launch {
             var taskReminderPreferenceChanged = false
+            var dayRatingScheduleChanged = false
             restoreGate.write("SettingsViewModel.updateSettings") {
             val current = _settings.value
             taskReminderPreferenceChanged =
                 newSettings.taskRemindersEnabled != current.taskRemindersEnabled
+            dayRatingScheduleChanged =
+                newSettings.reflectionPromptsEnabled != current.reflectionPromptsEnabled ||
+                    newSettings.bedTime != current.bedTime
 
             // blockedWords: SettingsRepository.setBlockedWords(words)
             if (newSettings.blockedWords != current.blockedWords) {
@@ -271,6 +277,9 @@ class SettingsViewModel(
             }
 
             _settings.value = newSettings
+            }
+            if (dayRatingScheduleChanged) {
+                DayRatingNotificationScheduler.ensureScheduled(appContext)
             }
             if (taskReminderPreferenceChanged) {
                 AppModule.requestTaskAlarmReconciliation("task_reminders_setting")

@@ -118,7 +118,6 @@ fun StatsInsightsExperience(
         )
         if (
             reflectionPromptsEnabled &&
-            currentRating == null &&
             (window == ANALYTICS_TODAY || window == ANALYTICS_YESTERDAY)
         ) {
             DayRatingBar(

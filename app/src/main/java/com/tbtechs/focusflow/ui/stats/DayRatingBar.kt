@@ -90,6 +90,7 @@ fun DayRatingBar(
     var tappedRating by remember(selectedDate) { mutableStateOf(currentRating?.rating) }
     var contextTag by remember(selectedDate) { mutableStateOf(currentRating?.contextTag) }
     var noteText by remember(selectedDate) { mutableStateOf(currentRating?.note.orEmpty()) }
+    var editorDirty by remember(selectedDate) { mutableStateOf(false) }
     val wordTags = remember(selectedDate) {
         mutableStateListOf<String>().apply {
             addAll(decodeStorageList(currentRating?.wordTags))
@@ -116,7 +117,8 @@ fun DayRatingBar(
         }
     }
 
-    LaunchedEffect(currentRating) {
+    LaunchedEffect(currentRating, selectedDate) {
+        if (editorDirty) return@LaunchedEffect
         tappedRating = currentRating?.rating
         contextTag = currentRating?.contextTag
         noteText = currentRating?.note.orEmpty()
@@ -204,6 +206,7 @@ fun DayRatingBar(
                             .clip(CircleShape)
                             .background(if (selected) BrandPrimary else DarkSurfaceVariant)
                             .clickable {
+                                editorDirty = true
                                 tappedRating = number
                                 onSubmit(
                                     selectedDate,
@@ -249,6 +252,7 @@ fun DayRatingBar(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (selected) BrandPrimary else DarkSurfaceVariant)
                                     .clickable {
+                                        editorDirty = true
                                         contextTag = if (selected) null else tag
                                         save()
                                     }
@@ -281,6 +285,7 @@ fun DayRatingBar(
                                             RoundedCornerShape(20.dp),
                                         )
                                         .clickable {
+                                            editorDirty = true
                                             when (chip.type) {
                                                 ChipType.WORD -> if (selected) {
                                                     wordTags.remove(chip.label)
@@ -309,7 +314,12 @@ fun DayRatingBar(
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = noteText,
-                        onValueChange = { if (it.length <= 200) noteText = it },
+                        onValueChange = {
+                            if (it.length <= 200) {
+                                editorDirty = true
+                                noteText = it
+                            }
+                        },
                         placeholder = {
                             Text(
                                 "Anything else? (optional)",

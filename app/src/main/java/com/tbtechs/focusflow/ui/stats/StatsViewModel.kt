@@ -36,6 +36,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import org.json.JSONObject
 
@@ -119,6 +121,7 @@ class StatsViewModel(
     private val _activeFindings = MutableStateFlow<List<FindingEntity>>(emptyList())
     private val _pendingQuestion = MutableStateFlow<ClarifyingQuestionEntity?>(null)
     private val _needsColdStart = MutableStateFlow(false)
+    private val ratingSaveMutex = Mutex()
     var dataHealthDayCount: Int = 0
         private set
     var totalRatingCount: Int = 0
@@ -264,30 +267,32 @@ class StatsViewModel(
     ) {
         val safeRating = rating.coerceIn(1, 10)
         viewModelScope.launch {
-            val now = java.time.Instant.now().toString()
-            val existing = dayRatingRepository.getForDate(date)
-            val entity = existing?.copy(
-                rating = safeRating,
-                contextTag = contextTag,
-                note = note?.take(200),
-                appTags = appTags.toStorageValue(),
-                wordTags = wordTags.toStorageValue(),
-                updatedAt = now,
-            ) ?: DayRatingEntity(
-                date = date,
-                rating = safeRating,
-                contextTag = contextTag,
-                note = note?.take(200),
-                appTags = appTags.toStorageValue(),
-                wordTags = wordTags.toStorageValue(),
-                createdAt = now,
-                updatedAt = now,
-            )
-            dayRatingRepository.upsert(entity)
-            if (date == _selectedRatingDate.value) {
-                _currentRating.value = entity
+            ratingSaveMutex.withLock {
+                val now = java.time.Instant.now().toString()
+                val existing = dayRatingRepository.getForDate(date)
+                val entity = existing?.copy(
+                    rating = safeRating,
+                    contextTag = contextTag,
+                    note = note?.take(200),
+                    appTags = appTags.toStorageValue(),
+                    wordTags = wordTags.toStorageValue(),
+                    updatedAt = now,
+                ) ?: DayRatingEntity(
+                    date = date,
+                    rating = safeRating,
+                    contextTag = contextTag,
+                    note = note?.take(200),
+                    appTags = appTags.toStorageValue(),
+                    wordTags = wordTags.toStorageValue(),
+                    createdAt = now,
+                    updatedAt = now,
+                )
+                dayRatingRepository.upsert(entity)
+                if (date == _selectedRatingDate.value) {
+                    _currentRating.value = entity
+                }
+                totalRatingCount = dayRatingRepository.count()
             }
-            totalRatingCount = dayRatingRepository.count()
         }
     }
 

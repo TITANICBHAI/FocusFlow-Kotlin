@@ -104,7 +104,8 @@ class BootReceiver : BroadcastReceiver() {
             NetworkBlockerVpnService.requestRecoverySync(context)
         }
 
-        // AlarmManager alarms are cleared by reboot.
+        // Always recreate the alarm: AlarmManager alarms are cleared by reboot,
+        // but the scheduler's persisted metadata survives.
         DayRatingNotificationScheduler.ensureScheduled(context)
 
         if (sessionValid && endTimeMs > 0L) {

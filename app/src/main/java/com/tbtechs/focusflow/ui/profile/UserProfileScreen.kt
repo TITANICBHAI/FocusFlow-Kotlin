@@ -69,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.SettingsRepository
+import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -108,6 +110,7 @@ fun UserProfileScreen(
     settingsViewModel: SettingsViewModel? = null,
 ) {
     val dimensions = LocalFocusFlowDimensions.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var editing by remember(isEditMode) { mutableStateOf(!isEditMode) }
     var name by remember { mutableStateOf("") }
@@ -191,6 +194,7 @@ fun UserProfileScreen(
             runCatching {
                 settingsRepository.putString(PROFILE_KEY, profile.toString())
                 settingsRepository.putString("onboarding_complete", "true")
+                DayRatingNotificationScheduler.ensureScheduled(context)
             }
             focusLength?.let { duration ->
                 settingsViewModel?.updateSettings(
