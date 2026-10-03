@@ -44,6 +44,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val PREF_PENDING_TASK_ID   = "pending_notif_task_id"
         const val PREF_PENDING_MINUTES   = "pending_notif_minutes"
         const val PREF_PENDING_TIME_MS   = "pending_notif_time_ms"
+        private const val TAG = "NotificationActionReceiver"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -90,7 +91,4 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
-    private companion object {
-        const val TAG = "NotificationActionReceiver"
-    }
 }

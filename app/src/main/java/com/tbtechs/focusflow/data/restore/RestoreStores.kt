@@ -142,6 +142,7 @@ class AtomicRestoreJournalStore(context: Context) : RestoreJournalStore {
             check(quarantineFile.exists()) { "No restore journal was available to quarantine." }
         }
         File(journalFile.path + ".bak").delete()
+        Unit
     }
 
     override suspend fun restoreQuarantineForRetry() = withContext(Dispatchers.IO) {
@@ -158,6 +159,7 @@ class AtomicRestoreJournalStore(context: Context) : RestoreJournalStore {
     override suspend fun deleteJournal() = withContext(Dispatchers.IO) {
         atomicFile.delete()
         File(journalFile.path + ".bak").delete()
+        Unit
     }
 
     override suspend fun deleteQuarantine() = withContext(Dispatchers.IO) {

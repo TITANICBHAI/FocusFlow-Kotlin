@@ -191,7 +191,7 @@ class ForegroundTaskService : Service() {
                     flags,
                 )
                 val activityIntent = Intent(app, TaskAlarmActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or
                             Intent.FLAG_ACTIVITY_NO_HISTORY
                     action = TaskAlarmActivity.ACTION_SHOW_ALARM

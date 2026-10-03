@@ -254,6 +254,7 @@ private fun FocusFlowRoot(
         }
     }
 
+    var diagnosticsVisible by remember { mutableStateOf(false) }
     LaunchedEffect(
         isDbReady,
         pendingImportGeneration,
@@ -280,7 +281,6 @@ private fun FocusFlowRoot(
     }
     var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var diagnosticEvents by remember { mutableStateOf(startupDiagnosticEntries()) }
-    var diagnosticsVisible by remember { mutableStateOf(false) }
     var alarmCapabilitySnapshots by remember {
         mutableStateOf(AppModule.alarmRepository.capabilitySnapshots())
     }

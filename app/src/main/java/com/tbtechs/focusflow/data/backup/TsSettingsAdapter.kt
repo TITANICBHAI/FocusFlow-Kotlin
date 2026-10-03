@@ -733,7 +733,12 @@ object TsSettingsAdapter {
         var dropped = 0
         val accepted = array.mapNotNull { element ->
             val normalized = (element as? JsonObject)?.let { normalizeSchedule(it, warnings) }
-            if (normalized == null) dropped++ else normalized
+            if (normalized == null) {
+                dropped++
+                null
+            } else {
+                normalized
+            }
         }
         if (dropped > 0) warnings += "recurringBlockSchedules: dropped $dropped invalid schedule(s)."
         return JsonArray(accepted)
