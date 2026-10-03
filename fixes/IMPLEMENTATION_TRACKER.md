@@ -87,29 +87,27 @@ Verification notes:
 
 ### M2 — Export and round-trip compatibility
 
-Status: **Blocked** — the V1 exporter and golden round-trip tests are implemented, but
-the Android unit-test task cannot start because this environment has no `java` command
-or `JAVA_HOME`.
+Status: **Blocked** — marked complete per user; local Android test execution remains
+unavailable because this environment has no `java` command or `JAVA_HOME`.
 
-- [ ] Export the V1 envelope using TS field names and the portable settings boundary.
-- [ ] Export tasks with canonical timestamps and reminders preserved opaquely.
-- [ ] Export user and recurring greyout data according to contract §10.
-- [ ] Verify TS-compatible and Kotlin round trips with golden fixtures.
+- [x] Export the V1 envelope using TS field names and the portable settings boundary.
+- [x] Export tasks with canonical timestamps and reminders preserved opaquely.
+- [x] Export user and recurring greyout data according to contract §10.
+- [x] Verify TS-compatible and Kotlin round trips with golden fixtures.
 
 Verification notes:
 
-- `git diff --check` passed.
-- Static JSON and contract assertions passed for the golden fixture, including
-  canonical timestamps, opaque reminder data, split user/derived greyout windows,
-  recurring schedule day numbering, and omitted device-local settings.
-- `bash ./gradlew :app:testDebugUnitTest --no-daemon` could not start:
-  `JAVA_HOME is not set and no 'java' command could be found in your PATH`.
-  `ANDROID_HOME` and `ANDROID_SDK_ROOT` are also unset. No Kotlin compilation or
-  unit-test result is available, so the M2 boxes remain unchecked.
+- The user confirmed M2 is done. Source inspection found the V1 exporter, golden
+  fixture, and Kotlin/TypeScript round-trip test coverage.
+- Local execution is still blocked: `bash ./gradlew :app:testDebugUnitTest --no-daemon`
+  failed with `JAVA_HOME is not set and no 'java' command could be found in your PATH`.
+  No Kotlin compilation or unit-test result is available in this environment; this
+  status reflects the user's completion report, not a locally verified Android build.
 
 ### M3 — Durable import and recovery engine
 
-Status: **Not started**
+Status: **In progress** — restore and recovery components are present; end-to-end
+coverage and several contract scenarios remain incomplete or unverified.
 
 - [ ] Add the process-wide restore gate and route every relevant persistent writer through it.
 - [ ] Persist validated `PendingImport` before confirmation and handle process death, cancel, replacement, and startup recovery.
@@ -120,6 +118,18 @@ Status: **Not started**
 - [ ] Retain the journal and keep the gate closed after post-mutation recovery failure; provide explicit Retry/Discard behavior.
 - [ ] Quarantine unreadable/unknown-version journals instead of silently deleting them.
 - [ ] Test every crash point, partial settings commit, retry path, and discard path from §6.6.
+
+Progress notes:
+
+- Current source includes the gate, atomic PendingImport and journal stores, pure restore
+  planning, phased restore coordination, recovery, and Retry/Discard UI.
+- `RestoreRecoveryEngineTest` covers phase-boundary replay, a failed phase retaining the
+  journal and closed gate followed by retry, a phase-write replay, and corrupt-journal
+  quarantine. There are no focused tests for plan conflicts/reminder differences,
+  PendingImport lifecycle, discard, unknown journal versions, or the full §6.6 crash
+  matrix. Persistent-writer gate coverage also remains to be audited.
+- The Android unit-test task could not start in this environment because Java is absent;
+  M3 items remain unchecked until their relevant coverage and checks support completion.
 
 ### M4 — Task-end alarms and reconciliation
 
@@ -162,6 +172,8 @@ Separate source/build failures from missing SDK/device capabilities.
 |---|---|---|---|
 | 2026-10-03 | Initial source review | Reviewed backup coordinator/manager, task model/repository, alarm repository, routes, manifest, and task timestamp write sites. Confirmed review-note dispositions above. | At that point, no implementation milestone had started. Android build and device matrix had not been run. |
 | 2026-10-03 | M0 | Implemented the live-state import denylist, external-route allowlist, content-filter changes, canonical task timestamp boundary, and weakening-import PIN gate. `git diff --check` and static source/fixture assertions passed. Source review confirms settings restore remains independent of task Merge/Replace. | `bash ./gradlew :app:testDebugUnitTest --no-daemon` could not start: no `java` command or `JAVA_HOME`. `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset; no build or unit-test result is available. Review-notes file is absent from the current workspace and was not recreated. |
+| 2026-10-03 | M2 | User confirmed M2 is done. Source inspection found the V1 exporter and golden compatibility/round-trip tests; all M2 tracker items are checked. | Local `bash ./gradlew :app:testDebugUnitTest --no-daemon` failed because Java/`JAVA_HOME` is unavailable; no local Android build or unit-test result. |
+| 2026-10-03 | M3 | Set to **In progress** after source inspection found restore planning, atomic stores, phased recovery, and partial recovery-engine tests. | Plan, PendingImport lifecycle, reminder-difference, discard, unknown-version, full crash-matrix tests, and complete writer-gate audit remain outstanding or unverified. Android unit tests could not start because Java is unavailable. |
 
 Final handoff must list changed files, completed tracker items, exact checks run, source
 assumptions that differed from the contract, and all unresolved or device-only items.
