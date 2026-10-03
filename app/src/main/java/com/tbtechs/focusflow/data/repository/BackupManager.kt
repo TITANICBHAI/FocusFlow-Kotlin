@@ -3,9 +3,12 @@ package com.tbtechs.focusflow.data.repository
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.tbtechs.focusflow.data.backup.BackupV1Exporter
 import com.tbtechs.focusflow.data.backup.BackupJsonPreflight
 import com.tbtechs.focusflow.data.backup.BackupV1ParseResult
 import com.tbtechs.focusflow.data.backup.BackupV1Parser
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.DateFormat
@@ -32,40 +35,20 @@ class BackupManager(
         settings: JSONObject,
         appVersion: String? = null,
     ): String {
-        val tasks = runCatching { dataSource.getAllTasks() }
-            .getOrElse { emptyList() }
+        val tasks = dataSource.getAllTasks().map { task ->
+            Json.parseToJsonElement(task.toString()) as? JsonObject
+                ?: error("Task export record must be a JSON object.")
+        }
+        val portableSettings = Json.parseToJsonElement(settings.toString()) as? JsonObject
+            ?: error("Export settings must be a JSON object.")
         val now = clock.instant()
-        val taskArray = JSONArray()
-        tasks.forEach { taskArray.put(copyJson(it)) }
-
-        val envelope = JSONObject()
-            .put("kind", BACKUP_ENVELOPE_KIND)
-            .put("version", 1)
-            .put("exportedAt", formatIso(now))
-            .put(
-                "exportedAtHuman",
-                DateFormat.getDateTimeInstance().format(Date.from(now)),
-            )
-            .put("platform", JSONObject().put("os", "android"))
-            .put("settings", getPortableSettings(settings))
-            .put("tasks", taskArray)
-            .put("presetSections", buildPresetSections(settings))
-            .put(
-                "summary",
-                JSONObject()
-                    .put("taskCount", tasks.size)
-                    .put("blockedWordCount", jsonArray(settings, "blockedWords").length())
-                    .put("greyoutWindowCount", jsonArray(settings, "greyoutSchedule").length())
-                    .put(
-                        "dailyAllowanceCount",
-                        jsonArray(settings, "dailyAllowanceEntries").length(),
-                    ),
-            )
-
-        // JSON.stringify omits an undefined optional appVersion. JSONObject
-        // follows the same contract by not adding the key for null.
-        if (appVersion != null) envelope.put("appVersion", appVersion)
-        return envelope.toString(2)
+        return BackupV1Exporter.buildBackupJson(
+            settings = portableSettings,
+            tasks = tasks,
+            exportedAt = now,
+            exportedAtHuman = DateFormat.getDateTimeInstance().format(Date.from(now)),
+            appVersion = appVersion,
+        )
     }
 
     /**
@@ -286,111 +269,6 @@ class BackupManager(
         return RestoreResult.Success(summary)
     }
 
-    private fun getPortableSettings(settings: JSONObject): JSONObject {
-        val portable = copyJson(settings)
-        BackupSettingsPolicy.neverApplyImportKeys.forEach(portable::remove)
-        portable.put(
-            "focusMirrorVpnEnabled",
-            settings.optBoolean("focusMirrorVpnEnabled", false),
-        )
-        return portable
-    }
-
-    private fun buildPresetSections(settings: JSONObject): JSONArray {
-        val allowedApps = jsonArray(settings, "allowedInFocus")
-        val standaloneApps = jsonArray(settings, "standaloneBlockPackages")
-        val standaloneVpnApps = jsonArray(settings, "standaloneVpnPackages")
-        val alwaysOnApps = jsonArray(settings, "alwaysOnPackages")
-        val alwaysOnVpnApps = jsonArray(settings, "alwaysOnVpnPackages")
-        val allowances = jsonArray(settings, "dailyAllowanceEntries")
-        val keywords = jsonArray(settings, "blockedWords")
-        val schedules = jsonArray(settings, "greyoutSchedule")
-        val blockPresets = jsonArray(settings, "blockPresets")
-        val allowedAppPresets = jsonArray(settings, "allowedAppPresets")
-
-        val sections = JSONArray()
-        sections.put(
-            JSONObject()
-                .put("id", "focus-mode")
-                .put("name", "Focus Mode")
-                .put(
-                    "configured",
-                    allowedApps.length() > 0 || allowedAppPresets.length() > 0,
-                )
-                .put("appPackages", allowedApps)
-                .put("itemCount", allowedAppPresets.length())
-                .put(
-                    "details",
-                    JSONObject().put("allowedAppPresets", allowedAppPresets),
-                ),
-        )
-        sections.put(
-            JSONObject()
-                .put("id", "standalone-block")
-                .put("name", "Standalone Block")
-                .put(
-                    "configured",
-                    standaloneApps.length() > 0 || standaloneVpnApps.length() > 0,
-                )
-                .put("appPackages", standaloneApps)
-                .put("vpnPackages", standaloneVpnApps)
-                .put("details", JSONObject().put("runtimeState", "local-only")),
-        )
-        sections.put(
-            JSONObject()
-                .put("id", "always-on")
-                .put("name", "Always-On Blocking")
-                .put(
-                    "configured",
-                    alwaysOnApps.length() > 0 || alwaysOnVpnApps.length() > 0,
-                )
-                .put("appPackages", alwaysOnApps)
-                .put("vpnPackages", alwaysOnVpnApps),
-        )
-        sections.put(
-            JSONObject()
-                .put("id", "daily-allowance")
-                .put("name", "Daily Allowance")
-                .put("configured", allowances.length() > 0)
-                .put("itemCount", allowances.length())
-                .put("details", JSONObject().put("entries", allowances)),
-        )
-        sections.put(
-            JSONObject()
-                .put("id", "keyword-blocker")
-                .put("name", "Keyword Blocker")
-                .put("configured", keywords.length() > 0)
-                .put("itemCount", keywords.length())
-                .put("details", JSONObject().put("keywords", keywords)),
-        )
-        sections.put(
-            JSONObject()
-                .put("id", "block-schedules")
-                .put("name", "Block Schedules")
-                .put("configured", schedules.length() > 0)
-                .put("itemCount", schedules.length())
-                .put("details", JSONObject().put("windows", schedules)),
-        )
-        sections.put(
-            JSONObject()
-                .put("id", "defense")
-                .put("name", "Defense")
-                .put("configured", blockPresets.length() > 0)
-                .put("itemCount", blockPresets.length())
-                .put(
-                    "details",
-                    JSONObject()
-                        .put("blockPresets", blockPresets)
-                        .put("overlayQuotes", jsonArray(settings, "overlayQuotes"))
-                        .put("overlayWallpaper", settings.optString("overlayWallpaper", "")),
-                ),
-        )
-        return sections
-    }
-
-    private fun jsonArray(objectValue: JSONObject, key: String): JSONArray =
-        objectValue.optJSONArray(key) ?: JSONArray()
-
     private fun copyJson(value: JSONObject): JSONObject = JSONObject(value.toString())
 
     private fun parseInstantOrNull(value: String): Instant? =
@@ -414,7 +292,7 @@ class BackupManager(
     }
 
     companion object {
-        const val BACKUP_ENVELOPE_KIND = "FocusFlowBackupV1"
+        const val BACKUP_ENVELOPE_KIND = BackupV1Exporter.ENVELOPE_KIND
         const val BACKUP_FILE_EXT = ".focusflow"
         const val BACKUP_MIME_TYPE = "application/octet-stream"
     }

@@ -87,12 +87,25 @@ Verification notes:
 
 ### M2 — Export and round-trip compatibility
 
-Status: **Not started**
+Status: **Blocked** — the V1 exporter and golden round-trip tests are implemented, but
+the Android unit-test task cannot start because this environment has no `java` command
+or `JAVA_HOME`.
 
 - [ ] Export the V1 envelope using TS field names and the portable settings boundary.
 - [ ] Export tasks with canonical timestamps and reminders preserved opaquely.
 - [ ] Export user and recurring greyout data according to contract §10.
 - [ ] Verify TS-compatible and Kotlin round trips with golden fixtures.
+
+Verification notes:
+
+- `git diff --check` passed.
+- Static JSON and contract assertions passed for the golden fixture, including
+  canonical timestamps, opaque reminder data, split user/derived greyout windows,
+  recurring schedule day numbering, and omitted device-local settings.
+- `bash ./gradlew :app:testDebugUnitTest --no-daemon` could not start:
+  `JAVA_HOME is not set and no 'java' command could be found in your PATH`.
+  `ANDROID_HOME` and `ANDROID_SDK_ROOT` are also unset. No Kotlin compilation or
+  unit-test result is available, so the M2 boxes remain unchecked.
 
 ### M3 — Durable import and recovery engine
 
