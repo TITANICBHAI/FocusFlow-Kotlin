@@ -175,6 +175,11 @@ class SettingsViewModel(
             if (newSettings.blockedWords != current.blockedWords) {
                 settingsRepository.setBlockedWords(newSettings.blockedWords)
             }
+            if (newSettings.dailyAllowanceConfigJson != current.dailyAllowanceConfigJson) {
+                settingsRepository.setDailyAllowanceConfig(
+                    newSettings.dailyAllowanceConfigJson ?: "[]",
+                )
+            }
             // networkBlockEnabled: SettingsRepository.setNetworkBlockEnabled(enabled)
             if (newSettings.networkBlockEnabled != current.networkBlockEnabled) {
                 settingsRepository.setNetworkBlockEnabled(newSettings.networkBlockEnabled)

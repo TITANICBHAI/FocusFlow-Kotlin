@@ -3,6 +3,9 @@ package com.tbtechs.focusflow.data.repository
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.tbtechs.focusflow.data.backup.BackupJsonPreflight
+import com.tbtechs.focusflow.data.backup.BackupV1ParseResult
+import com.tbtechs.focusflow.data.backup.BackupV1Parser
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.DateFormat
@@ -134,46 +137,27 @@ class BackupManager(
 
     private fun readBackupText(sourceUri: Uri): String? =
         appContext.contentResolver.openInputStream(sourceUri)
-            ?.bufferedReader(Charsets.UTF_8)
-            ?.use { it.readText() }
+            ?.use { input -> BackupJsonPreflight.readUtf8Bounded(input) }
 
     fun parseBackupJson(text: String): BackupParseResult {
-        val parsed = try {
-            JSONObject(text)
-        } catch (_: Exception) {
-            return BackupParseResult.Error(
-                "File is not valid JSON — is this a genuine .focusflow file?",
-            )
+        return when (val result = BackupV1Parser.parse(text)) {
+            is BackupV1ParseResult.Error -> BackupParseResult.Error(result.message)
+            is BackupV1ParseResult.Success -> {
+                val v1 = result.backup.envelope
+                val tasks = JSONArray().apply {
+                    v1.tasks.forEach { put(JSONObject(it.wire.toString())) }
+                }
+                BackupParseResult.Success(
+                    BackupEnvelope(
+                        raw = JSONObject(v1.raw.toString()),
+                        settings = JSONObject(v1.settings.toString()),
+                        tasks = tasks,
+                        warnings = result.backup.warnings,
+                        invalidTaskCount = result.backup.invalidTaskCount,
+                    ),
+                )
+            }
         }
-
-        if (parsed.optString("kind", null) != BACKUP_ENVELOPE_KIND) {
-            val actual = if (parsed.has("kind")) parsed.opt("kind").toString() else "unknown"
-            return BackupParseResult.Error(
-                "Unsupported format (expected \"$BACKUP_ENVELOPE_KIND\", got \"$actual\"). " +
-                    "Make sure you are importing a .focusflow backup file created by FocusFlow.",
-            )
-        }
-        val version = parsed.optInt("version", -1)
-        if (version != 1) {
-            return BackupParseResult.Error(
-                "Unsupported backup version $version. This app can import version 1 files only.",
-            )
-        }
-        if (parsed.opt("settings") !is JSONObject) {
-            return BackupParseResult.Error(
-                "Backup is missing settings — the file may be corrupted.",
-            )
-        }
-        if (parsed.opt("tasks") !is JSONArray) {
-            return BackupParseResult.Error("Backup is missing task data.")
-        }
-        return BackupParseResult.Success(
-            BackupEnvelope(
-                raw = parsed,
-                settings = parsed.getJSONObject("settings"),
-                tasks = parsed.getJSONArray("tasks"),
-            ),
-        )
     }
 
     fun buildRestoreCallbacks(
@@ -213,12 +197,14 @@ class BackupManager(
             }
         }
 
-        val summary = ImportSummary()
+        val summary = ImportSummary(
+            tasksSkipped = envelope.invalidTaskCount,
+            warnings = envelope.warnings.toMutableList(),
+        )
 
         try {
-            val merged = mergeObjects(callbacks.currentSettings, envelope.settings)
             if (callbacks.restoreSettings) {
-                callbacks.updateSettings(merged)
+                callbacks.updateSettings(envelope.settings)
                 summary.settings = true
             }
         } catch (error: Exception) {
@@ -407,18 +393,6 @@ class BackupManager(
 
     private fun copyJson(value: JSONObject): JSONObject = JSONObject(value.toString())
 
-    private fun mergeObjects(base: JSONObject, overlay: JSONObject): JSONObject {
-        val merged = copyJson(base)
-        val keys = overlay.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            if (BackupSettingsPolicy.mayApplyImportKey(key)) {
-                merged.put(key, overlay.get(key))
-            }
-        }
-        return merged
-    }
-
     private fun parseInstantOrNull(value: String): Instant? =
         runCatching { Instant.parse(value) }
             .getOrElse {
@@ -466,6 +440,8 @@ data class BackupEnvelope(
     val raw: JSONObject,
     val settings: JSONObject,
     val tasks: JSONArray,
+    val warnings: List<String> = emptyList(),
+    val invalidTaskCount: Int = 0,
 )
 
 sealed class BackupParseResult {

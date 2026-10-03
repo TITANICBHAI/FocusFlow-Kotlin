@@ -54,25 +54,36 @@ security or recovery work.
 
 ### M0 — Security and routing hotfix
 
-Status: **Blocked** — implementation changes are in place, but build and unit-test verification cannot start without a Java runtime.
+Status: **Blocked** — implementation criteria are complete; Gradle build/unit-test verification cannot start because Java and the Android SDK are unavailable.
 
-- [ ] Never apply the 21 live-state keys from either old or current backup files.
-- [ ] Use an explicit external-route allowlist; never expose `IMPORT_CONFIRM` to arbitrary links.
-- [ ] Remove `BROWSABLE` from both content URI filters while retaining the specified MIME support.
-- [ ] Introduce canonical UTC millisecond timestamps for imports and every Kotlin task write.
-- [ ] Verify merge/replace settings behavior and ensure the import cannot weaken protection without the required PIN flow.
-- [ ] Add regression tests for old exports, route rejection, and timestamp formatting.
+- [x] Never apply the 21 live-state keys from either old or current backup files.
+- [x] Use an explicit external-route allowlist; never expose `IMPORT_CONFIRM` to arbitrary links.
+- [x] Remove `BROWSABLE` from both content URI filters while retaining the specified MIME support.
+- [x] Introduce canonical UTC millisecond timestamps for imports and every Kotlin task write.
+- [x] Verify merge/replace settings behavior and ensure the import cannot weaken protection without the required PIN flow.
+- [x] Add regression tests for old exports, route rejection, and timestamp formatting.
 
 ### M1 — Wire model, parser, validation, settings adapter, and legacy migration
 
-Status: **Not started**
+Status: **Blocked** — implementation and fixtures are in place; Gradle unit-test verification cannot start because Java and the Android SDK are unavailable.
 
-- [ ] Model the V1 envelope and TS wire names in one shared adapter.
-- [ ] Enforce bounded, strict parsing; reject duplicate JSON keys and duplicate task IDs before mutation.
-- [ ] Validate task/settings records and preserve the null-versus-empty package-list semantics.
-- [ ] Route legacy settings migration through the adapter and correct the key, preference store, and marker behavior.
-- [ ] Verify new model/settings fields against current repositories and enforcement consumers before adding storage.
-- [ ] Add parser, validation, migration, and compatibility fixtures from contract §11.
+- [x] Model the V1 envelope and TS wire names in one shared adapter.
+- [x] Enforce bounded, strict parsing; reject duplicate JSON keys and duplicate task IDs before mutation.
+- [x] Validate task/settings records and preserve the null-versus-empty package-list semantics.
+- [x] Route legacy settings migration through the adapter and correct the key, preference store, and marker behavior.
+- [x] Verify new model/settings fields against current repositories and enforcement consumers before adding storage.
+- [x] Add parser, validation, migration, and compatibility fixtures from contract §11.
+
+Verification notes:
+
+- `git diff --check` and source-level assertions passed for bounded import parsing,
+  duplicate-ID validation ordering, adapter wiring, migration key/store/marker behavior,
+  and daily-allowance persistence. Gradle unit tests were not run.
+- The current container has no `java`, `kotlinc`, `JAVA_HOME`, or Android SDK variables,
+  so M0 and M1 remain **Blocked** pending a runnable Android toolchain.
+- `alwaysOnVpnPackages` already has model and SharedPreferences read/write paths. No direct
+  enforcement consumer was found in `VpnRepository` or the accessibility service; no new
+  enforcement behavior was added without contract evidence.
 
 ### M2 — Export and round-trip compatibility
 

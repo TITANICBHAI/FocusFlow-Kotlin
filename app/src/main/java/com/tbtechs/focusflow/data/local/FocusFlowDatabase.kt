@@ -35,6 +35,9 @@ import com.tbtechs.focusflow.data.local.entity.FindingEntity
 import com.tbtechs.focusflow.data.local.entity.FindingAcknowledgementEntity
 import com.tbtechs.focusflow.data.local.entity.BehaviouralHypothesisEntity
 import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
+import com.tbtechs.focusflow.data.backup.LegacySettingsMigration
+import com.tbtechs.focusflow.data.backup.LegacyPreferenceValue
+import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 
 /**
  * Room database for FocusFlow.
@@ -143,6 +146,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
         const val DB_NAME = "focusday.db"
 
         private const val TAG = "FocusFlowDatabase"
+        private const val SETTINGS_BLOB_MIGRATED_KEY = "_settings_blob_migrated"
 
         // ─── Migrations ───────────────────────────────────────────────────────
 
@@ -553,69 +557,55 @@ abstract class FocusFlowDatabase : RoomDatabase() {
          */
         fun migrateSettingsBlobToSharedPrefs(context: Context, db: FocusFlowDatabase) {
             try {
-                val prefs = context.getSharedPreferences("FocusFlowPrefs", Context.MODE_PRIVATE)
-                // Guard: if the marker key already exists, migration already ran.
-                if (prefs.contains("_settings_blob_migrated")) return
+                val target = context.getSharedPreferences(
+                    AppBlockerAccessibilityService.PREFS_NAME,
+                    Context.MODE_PRIVATE,
+                )
+                // The old FocusFlowPrefs marker intentionally does not suppress this upgrade path.
+                if (target.contains(SETTINGS_BLOB_MIGRATED_KEY)) return
 
-                // Query settings table if it exists
                 val tableCheck = db.openHelper.readableDatabase.query(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='settings'",
                 )
                 val hasSettingsTable = tableCheck.use { it.moveToFirst() }
-                if (!hasSettingsTable) {
-                    prefs.edit().putBoolean("_settings_blob_migrated", true).apply()
-                    return
-                }
-
-                val cursor = db.openHelper.readableDatabase.query(
-                    "SELECT value FROM settings WHERE key = 'appSettings' LIMIT 1",
-                )
-                val json = cursor.use {
-                    if (it.moveToFirst()) it.getString(0) else null
-                } ?: run {
-                    // No settings row — fresh install or TS app never ran. Mark done.
-                    prefs.edit().putBoolean("_settings_blob_migrated", true).apply()
-                    return
-                }
-
-                val obj = org.json.JSONObject(json)
-                val editor = prefs.edit()
-
-                // Only write keys that are not already set (honour any writes the Kotlin
-                // app made before this migration runs, e.g. on a partial upgrade).
-                fun putIfAbsent(key: String, value: String) {
-                    if (!prefs.contains(key)) editor.putString(key, value)
-                }
-
-                obj.optJSONArray("blockedWords")?.let { putIfAbsent("blocked_words", it.toString()) }
-                obj.optJSONArray("recurringBlockSchedules")?.let {
-                    putIfAbsent("recurring_block_schedules", it.toString())
-                }
-                obj.optJSONArray("allowedInFocus")?.let { putIfAbsent("allowed_focus_packages", it.toString()) }
-                obj.optJSONArray("alwaysOnPackages")?.let { putIfAbsent("always_block_packages", it.toString()) }
-                obj.optJSONArray("allowedAppPresets")?.let { putIfAbsent("allowed_app_presets", it.toString()) }
-                obj.optJSONArray("dailyAllowanceEntries")?.let {
-                    putIfAbsent("daily_allowance_config", it.toString())
-                }
-                obj.optJSONObject("userProfile")?.let {
-                    putIfAbsent("user_profile", it.toString())
-                }
-                // Boolean and numeric preferences
-                if (!prefs.contains("always_block_enabled")) {
-                    editor.putBoolean(
-                        "always_block_enabled",
-                        obj.optBoolean("alwaysOnEnforcementEnabled", false),
+                val legacyJson = if (hasSettingsTable) {
+                    val cursor = db.openHelper.readableDatabase.query(
+                        "SELECT value FROM settings WHERE key = 'app_settings' LIMIT 1",
                     )
+                    cursor.use { if (it.moveToFirst()) it.getString(0) else null }
+                } else {
+                    null
+                }
+                val plan = LegacySettingsMigration.prepare(hasSettingsTable, legacyJson)
+                if (!plan.markComplete) {
+                    // A present table with a missing row may be populated later; retry next launch.
+                    Log.w(TAG, "'app_settings' row not found; settings migration will retry.")
+                    return
                 }
 
-                editor.putBoolean("_settings_blob_migrated", true)
-                editor.apply()
+                val editor = target.edit()
+                plan.preferences.forEach { (key, value) ->
+                    if (!target.contains(key)) {
+                        when (value) {
+                            is LegacyPreferenceValue.StringValue -> editor.putString(key, value.value)
+                            is LegacyPreferenceValue.BooleanValue -> editor.putBoolean(key, value.value)
+                            is LegacyPreferenceValue.IntValue -> editor.putInt(key, value.value)
+                        }
+                    }
+                }
 
-                Log.i(TAG, "Settings blob migrated from SQLite to SharedPrefs")
-            } catch (e: Exception) {
-                // Non-fatal: log and continue. User may lose some settings but the app
-                // will not crash. On next launch the guard key is absent so it retries.
-                Log.e(TAG, "Settings blob migration failed: ${e.message}", e)
+                editor.putBoolean(SETTINGS_BLOB_MIGRATED_KEY, true)
+                if (!editor.commit()) {
+                    Log.e(TAG, "Settings blob migration commit failed; it will retry.")
+                } else {
+                    Log.i(TAG, "Settings blob migrated to focusday_prefs.")
+                }
+            } catch (error: Exception) {
+                // Non-fatal: leave the marker absent so a later launch can retry.
+                Log.e(
+                    TAG,
+                    "Settings blob migration failed; it will retry (${error.javaClass.simpleName}).",
+                )
             }
         }
 

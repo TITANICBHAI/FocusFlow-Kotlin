@@ -12,6 +12,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.longOrNull
+import java.io.InputStream
 import java.time.Instant
 import java.time.OffsetDateTime
 
@@ -68,6 +69,15 @@ sealed class BackupV1ParseResult {
 object BackupV1Parser {
     const val ENVELOPE_KIND = "FocusFlowBackupV1"
     private val json = Json { isLenient = false }
+
+    fun parse(input: InputStream, now: Instant = Instant.now()): BackupV1ParseResult =
+        try {
+            parse(BackupJsonPreflight.readUtf8Bounded(input), now)
+        } catch (error: BackupJsonFormatException) {
+            BackupV1ParseResult.Error(error.message ?: "Backup exceeds a format limit.")
+        } catch (_: Exception) {
+            BackupV1ParseResult.Error("Backup could not be read.")
+        }
 
     fun parse(text: String, now: Instant = Instant.now()): BackupV1ParseResult {
         return try {
@@ -198,7 +208,9 @@ object BackupV1Parser {
         val tags = when (tagsValue) {
             null -> emptyList()
             is JsonArray -> {
-                if (tagsValue.size > BackupJsonLimits.MAX_TAGS_PER_TASK) return null
+                if (tagsValue.size > BackupJsonLimits.MAX_TAGS_PER_TASK) {
+                    throw BackupJsonFormatException("A task exceeds the maximum tag count.")
+                }
                 val parsedTags = tagsValue.map { it.stringValue() ?: return null }
                 if (parsedTags.any { it.length > BackupJsonLimits.MAX_TAG_CHARS }) return null
                 parsedTags
@@ -208,16 +220,18 @@ object BackupV1Parser {
 
         val remindersValue = source["reminders"]
         if (remindersValue != null && remindersValue !is JsonArray) {
-            warnings += "Task $id: invalid reminders field was replaced with an empty list."
+            warnings += "Task reminders: invalid field was replaced with an empty list."
         }
         val remindersArray = remindersValue as? JsonArray ?: JsonArray(emptyList())
-        if (remindersArray.size > BackupJsonLimits.MAX_REMINDERS_PER_TASK) return null
+        if (remindersArray.size > BackupJsonLimits.MAX_REMINDERS_PER_TASK) {
+            throw BackupJsonFormatException("A task exceeds the maximum reminder count.")
+        }
         var invalidReminderCount = 0
         val reminders = remindersArray.mapNotNull { value ->
             decodeReminder(value, id).also { if (it == null) invalidReminderCount++ }
         }
         if (invalidReminderCount > 0) {
-            warnings += "Task $id: dropped $invalidReminderCount invalid reminder(s)."
+            warnings += "Task reminders: dropped $invalidReminderCount invalid item(s)."
         }
 
         val color = when {
@@ -235,7 +249,8 @@ object BackupV1Parser {
         val focusAllowedPackages = when {
             !packagesPresent || packagesElement == JsonNull -> null
             packagesElement !is JsonArray -> return null
-            packagesElement.size > BackupJsonLimits.MAX_PACKAGES_PER_LIST -> return null
+            packagesElement.size > BackupJsonLimits.MAX_PACKAGES_PER_LIST ->
+                throw BackupJsonFormatException("A task exceeds the maximum package-list size.")
             else -> {
                 var dropped = 0
                 val validPackages = packagesElement.mapNotNull { value ->
@@ -251,7 +266,7 @@ object BackupV1Parser {
                     }
                 }
                 if (dropped > 0) {
-                    warnings += "Task $id: dropped $dropped invalid focus package(s)."
+                    warnings += "Task focus packages: dropped $dropped invalid item(s)."
                 }
                 validPackages
             }

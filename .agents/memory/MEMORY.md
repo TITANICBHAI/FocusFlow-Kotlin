@@ -9,3 +9,4 @@
 - [Text size settings](text-size-settings.md) — Home stays at 100%; per-tab overrides replace General and the rollout is strictly scoped.
 - [Stats fix plan](stats-fix-plan.md) — use calendar-time evidence, state-agnostic pacing, and persisted hourly data for Stats correctness.
 - [Rolling Stats dates](rolling-stats-dates.md) — rolling week charts must use ISO calendar-date series, not weekday-only aggregates.
+- [Backup contract authority](backup-contract-authority.md) — v14 is the only product spec; don't invent behavior absent from its documented TypeScript facts.

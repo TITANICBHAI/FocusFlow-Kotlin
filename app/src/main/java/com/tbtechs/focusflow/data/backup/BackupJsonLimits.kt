@@ -1,5 +1,11 @@
 package com.tbtechs.focusflow.data.backup
 
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
+
 /**
  * Central limits for the FocusFlow V1 backup parser.
  *
@@ -37,6 +43,45 @@ class BackupJsonFormatException(message: String) : IllegalArgumentException(mess
  * across escaped spellings such as "a" and "\\u0061".
  */
 object BackupJsonPreflight {
+    /**
+     * Reads no more than the contract byte limit and rejects malformed UTF-8
+     * instead of allowing a CharsetReader to replace bad bytes with U+FFFD.
+     * The caller owns and closes [input].
+     */
+    fun readUtf8Bounded(input: InputStream): String {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var byteCount = 0
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (count == 0) {
+                val next = input.read()
+                if (next < 0) break
+                if (byteCount == BackupJsonLimits.MAX_FILE_BYTES) {
+                    throw BackupJsonFormatException("Backup exceeds the 8 MiB file limit.")
+                }
+                output.write(next)
+                byteCount++
+                continue
+            }
+            if (count > BackupJsonLimits.MAX_FILE_BYTES - byteCount) {
+                throw BackupJsonFormatException("Backup exceeds the 8 MiB file limit.")
+            }
+            output.write(buffer, 0, count)
+            byteCount += count
+        }
+
+        val decoder = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        return try {
+            decoder.decode(ByteBuffer.wrap(output.toByteArray())).toString()
+        } catch (_: Exception) {
+            throw BackupJsonFormatException("Backup is not valid UTF-8.")
+        }
+    }
+
     fun validateAndStripBom(text: String): String {
         val normalized = text.removePrefix("\uFEFF")
         val byteCount = utf8ByteCount(normalized)
@@ -255,7 +300,9 @@ object BackupJsonPreflight {
         }
 
         private fun skipWhitespace() {
-            while (cursor < text.length && text[cursor] in charArrayOf(' ', '\t', '\r', '\n')) {
+            while (cursor < text.length) {
+                val char = text[cursor]
+                if (char != ' ' && char != '\t' && char != '\r' && char != '\n') break
                 cursor++
             }
         }
