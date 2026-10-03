@@ -28,3 +28,17 @@ mtime_ms = 1790144086055
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:d4f34917-4b09-40d5-b1d5-6781f579faa1/7e87aaa4-256a-4d8e-9514-39f26c5fa8ce/4c039595-b7b8-4c7c-a795-e4ce759e2580"
 storage_version_token = "1790144115472731"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "Puw620qOjd1qfClgxWvne"
+uri = "file://docs/focusflow-backup-builder.html"
+type = "html"
+title = "FocusFlow Backup Builder"
+description = "Self-contained offline HTML guide and JSON editor for creating and checking FocusFlow V1 .focusflow backups."
+logical_id = "77b687f3-f2c3-41ca-8887-af647ab78795"
+content_hash = "sha256:e2f982e1911052e7a97722ad04e6618145941833cf802ec34aa6c9a60a5ce765"
+size = 45783
+mtime_ms = 1791054013376
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:1fd268f0-2e6d-4429-91fb-304de9f5264e/77b687f3-f2c3-41ca-8887-af647ab78795/59a359c6-36bd-4a2e-8230-5516dba8303f"
+storage_version_token = "1791054031798590"
+content_type = "text/html"
