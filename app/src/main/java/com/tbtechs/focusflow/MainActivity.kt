@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
+import com.tbtechs.focusflow.data.repository.AlarmCapabilitySnapshotRecord
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
@@ -77,6 +80,7 @@ class MainActivity : ComponentActivity() {
     private var requestedRoute by mutableStateOf(Routes.HOME)
     private var focusDayRating by mutableStateOf(false)
     private var notificationEventNonce by mutableStateOf(0)
+    private var resumeNonce by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,6 +94,7 @@ class MainActivity : ComponentActivity() {
                 requestedRoute = requestedRoute,
                 focusDayRating = focusDayRating,
                 notificationEventNonce = notificationEventNonce,
+                resumeNonce = resumeNonce,
                 vpnRepository = vpnRepository,
             )
         }
@@ -111,6 +116,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        resumeNonce++
         // Also re-check after returning from exact-alarm or notification
         // settings; Android does not broadcast exact-alarm revocation.
         AppModule.requestTaskAlarmReconciliation("activity_resume")
@@ -129,9 +135,11 @@ private fun FocusFlowRoot(
     requestedRoute: String,
     focusDayRating: Boolean,
     notificationEventNonce: Int,
+    resumeNonce: Int,
     vpnRepository: VpnRepository,
 ) {
     val context = LocalContext.current
+    val uiScope = rememberCoroutineScope()
     val navController = rememberNavController()
     val settingsViewModel = remember {
         SettingsViewModel(
@@ -252,6 +260,7 @@ private fun FocusFlowRoot(
         privacyAccepted,
         onboardingComplete,
         pendingImportAvailable,
+        diagnosticsVisible,
     ) {
         if (
             isDbReady &&
@@ -272,6 +281,10 @@ private fun FocusFlowRoot(
     var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var diagnosticEvents by remember { mutableStateOf(startupDiagnosticEntries()) }
     var diagnosticsVisible by remember { mutableStateOf(false) }
+    var alarmCapabilitySnapshots by remember {
+        mutableStateOf(AppModule.alarmRepository.capabilitySnapshots())
+    }
+    var showFullScreenIntentPrompt by remember { mutableStateOf(false) }
     var dismissedAchievementId by remember { mutableStateOf<String?>(null) }
     var showDiscardRestorePrompt by remember { mutableStateOf(false) }
     val achievementState by statsViewModel.achievementState.collectAsState()
@@ -283,6 +296,35 @@ private fun FocusFlowRoot(
     // coroutine from init, so assigning it later in LaunchedEffect could miss
     // an active-session recovery on a fast database.
     appBootViewModel.onSessionRecovered = focusSessionViewModel::loadActiveSession
+
+    LaunchedEffect(
+        resumeNonce,
+        isDbReady,
+        privacyAccepted,
+        onboardingComplete,
+        pendingImportAvailable,
+    ) {
+        if (
+            resumeNonce > 0 &&
+            isDbReady &&
+            privacyAccepted &&
+            onboardingComplete &&
+            !pendingImportAvailable &&
+            !diagnosticsVisible &&
+            Build.VERSION.SDK_INT >= 34 &&
+            !AppModule.alarmRepository.canUseFullScreenIntent() &&
+            AppModule.alarmRepository.markFullScreenIntentPromptShownOnce()
+        ) {
+            showFullScreenIntentPrompt = true
+        }
+    }
+
+    LaunchedEffect(diagnosticsVisible) {
+        if (diagnosticsVisible) {
+            diagnosticEvents = startupDiagnosticEntries()
+            alarmCapabilitySnapshots = AppModule.alarmRepository.capabilitySnapshots()
+        }
+    }
 
     LaunchedEffect(Unit) {
         AppErrorEvents.events.collect {
@@ -561,13 +603,52 @@ private fun FocusFlowRoot(
         DiagnosticsModal(
             visible = diagnosticsVisible,
             logs = diagnosticEvents,
-            onRefresh = { diagnosticEvents = startupDiagnosticEntries() },
+            alarmCapabilitySnapshots = alarmCapabilitySnapshots,
+            onRefresh = {
+                diagnosticEvents = startupDiagnosticEntries()
+                alarmCapabilitySnapshots = AppModule.alarmRepository.capabilitySnapshots()
+            },
             onClearLogs = {
                 StartupLogger.clear()
                 diagnosticEvents = emptyList()
             },
             onClose = { diagnosticsVisible = false },
         )
+
+        if (showFullScreenIntentPrompt) {
+            AlertDialog(
+                onDismissRequest = { showFullScreenIntentPrompt = false },
+                title = { Text("Allow full-screen task alarms?") },
+                text = {
+                    Text(
+                        "On Android 14 and later, task-end notifications may appear without " +
+                            "opening the alarm screen unless full-screen alarm access is allowed.",
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showFullScreenIntentPrompt = false
+                            uiScope.launch {
+                                if (!AppModule.alarmRepository.requestFullScreenIntentPermission()) {
+                                    AppErrorEvents.report(
+                                        tag = "Task alarms",
+                                        message = "Could not open full-screen alarm settings. Open Permissions to review this access.",
+                                    )
+                                }
+                            }
+                        },
+                    ) {
+                        Text("Open settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFullScreenIntentPrompt = false }) {
+                        Text("Not now")
+                    }
+                },
+            )
+        }
     }
 }
 

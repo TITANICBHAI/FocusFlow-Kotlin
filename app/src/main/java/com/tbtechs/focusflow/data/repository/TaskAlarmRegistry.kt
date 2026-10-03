@@ -8,9 +8,18 @@ import android.content.SharedPreferences
  * from enforcement preferences and is only a reconciliation aid; Room remains
  * the source of truth.
  */
-class TaskAlarmRegistry(context: Context) {
+data class AlarmCapabilitySnapshotRecord(
+    val phase: String,
+    val capturedAtEpochMs: Long,
+    val summary: String,
+)
+
+class TaskAlarmRegistry(
+    context: Context,
+    preferencesName: String? = null,
+) {
     private val preferences: SharedPreferences = context.applicationContext
-        .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        .getSharedPreferences(preferencesName ?: PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     fun registeredTaskIds(): Set<String> = synchronized(registryLock) {
         preferences.getStringSet(KEY_REGISTRY, emptySet()).orEmpty().toSet()
@@ -31,22 +40,47 @@ class TaskAlarmRegistry(context: Context) {
     }
 
     /** Keeps the latest schedule/fire capability snapshot in the alarm-only store. */
-    fun recordCapabilitySnapshot(phase: String, summary: String): Boolean =
+    fun recordCapabilitySnapshot(
+        phase: String,
+        summary: String,
+        capturedAtEpochMs: Long = System.currentTimeMillis(),
+    ): Boolean =
         synchronized(registryLock) {
             require(phase == SNAPSHOT_SCHEDULE || phase == SNAPSHOT_FIRE)
             val key = "$KEY_SNAPSHOT_PREFIX$phase"
+            val timestampKey = "$KEY_SNAPSHOT_TIMESTAMP_PREFIX$phase"
             val changed = preferences.getString(key, null) != summary
             commit(
-                preferences.edit().putString(key, summary),
+                preferences.edit()
+                    .putString(key, summary)
+                    .putLong(timestampKey, capturedAtEpochMs),
                 "record task-end alarm capability snapshot",
             )
             changed
         }
 
+    fun capabilitySnapshots(): List<AlarmCapabilitySnapshotRecord> =
+        synchronized(registryLock) {
+            listOf(SNAPSHOT_SCHEDULE, SNAPSHOT_FIRE).mapNotNull { phase ->
+                preferences.getString("$KEY_SNAPSHOT_PREFIX$phase", null)?.let { summary ->
+                    AlarmCapabilitySnapshotRecord(
+                        phase = phase,
+                        capturedAtEpochMs = preferences.getLong(
+                            "$KEY_SNAPSHOT_TIMESTAMP_PREFIX$phase",
+                            0L,
+                        ),
+                        summary = summary,
+                    )
+                }
+            }
+        }
+
     fun markFullScreenPromptShownOnce(): Boolean = synchronized(registryLock) {
-        if (preferences.getBoolean(KEY_FSI_PROMPT_SHOWN, false)) return@synchronized false
+        if (preferences.getBoolean(KEY_FSI_ACTIONABLE_PROMPT_SHOWN, false)) {
+            return@synchronized false
+        }
         commit(
-            preferences.edit().putBoolean(KEY_FSI_PROMPT_SHOWN, true),
+            preferences.edit().putBoolean(KEY_FSI_ACTIONABLE_PROMPT_SHOWN, true),
             "record full-screen alarm capability prompt",
         )
         true
@@ -170,7 +204,8 @@ class TaskAlarmRegistry(context: Context) {
         private const val KEY_TRIGGER_PREFIX = "trigger:"
         private const val KEY_TIER_PREFIX = "tier:"
         private const val KEY_SNAPSHOT_PREFIX = "capability_snapshot:"
-        private const val KEY_FSI_PROMPT_SHOWN = "full_screen_prompt_shown"
+        private const val KEY_SNAPSHOT_TIMESTAMP_PREFIX = "capability_snapshot_time:"
+        private const val KEY_FSI_ACTIONABLE_PROMPT_SHOWN = "full_screen_actionable_prompt_shown_v2"
         private const val SNAPSHOT_SCHEDULE = "schedule"
         private const val SNAPSHOT_FIRE = "fire"
         private const val DEDUPE_RETENTION_MS = 48L * 60L * 60L * 1_000L

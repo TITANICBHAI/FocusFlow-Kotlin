@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.PowerManager
 import android.util.Log
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
+import com.tbtechs.focusflow.data.repository.AlarmRuntimeDiagnostics
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.data.repository.TaskEndAlarmValidation
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
@@ -67,6 +68,7 @@ class TaskEndAlarmReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        AlarmRuntimeDiagnostics.record("receiver.onReceive")
         val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
         if (taskId.isBlank()) {
             Log.w(TAG, "Ignoring task-end alarm without a task ID.")

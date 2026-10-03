@@ -92,6 +92,31 @@ class TaskEndAlarmIdentityInstrumentedTest {
     }
 
     @Test
+    fun capabilitySnapshotsPersistByPhaseAndFullscreenPromptIsOneTime() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferencesName = "alarm-capability-test-${UUID.randomUUID()}"
+        val preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        val registry = TaskAlarmRegistry(context, preferencesName)
+
+        try {
+            assertTrue(registry.recordCapabilitySnapshot("schedule", "schedule-snapshot", 1_000L))
+            assertFalse(registry.recordCapabilitySnapshot("schedule", "schedule-snapshot", 2_000L))
+            assertTrue(registry.recordCapabilitySnapshot("fire", "fire-snapshot", 3_000L))
+
+            val byPhase = registry.capabilitySnapshots().associateBy { it.phase }
+            assertEquals("schedule-snapshot", byPhase["schedule"]?.summary)
+            assertEquals(2_000L, byPhase["schedule"]?.capturedAtEpochMs)
+            assertEquals("fire-snapshot", byPhase["fire"]?.summary)
+            assertEquals(3_000L, byPhase["fire"]?.capturedAtEpochMs)
+
+            assertTrue(registry.markFullScreenPromptShownOnce())
+            assertFalse(registry.markFullScreenPromptShownOnce())
+        } finally {
+            preferences.edit().clear().commit()
+        }
+    }
+
+    @Test
     fun alarmActivityReplacesTaskWhenAnotherAlarmArrivesViaNewIntent() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val previousId = "activity-test-${UUID.randomUUID()}-previous"

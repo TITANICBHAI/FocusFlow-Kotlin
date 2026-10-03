@@ -49,11 +49,16 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.tbtechs.focusflow.data.repository.AlarmCapabilitySnapshotRecord
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun DiagnosticsModal(
     visible: Boolean,
     logs: List<DiagnosticLogEntry> = emptyList(),
+    alarmCapabilitySnapshots: List<AlarmCapabilitySnapshotRecord> = emptyList(),
     loading: Boolean = false,
     onClose: () -> Unit,
     onRefresh: () -> Unit = {},
@@ -167,27 +172,38 @@ fun DiagnosticsModal(
                     }
                 }
 
-                when {
-                    loading -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 12.dp),
+                ) {
+                    item {
+                        AlarmCapabilitySnapshotsCard(alarmCapabilitySnapshots)
                     }
-                    displayedLogs.isEmpty() -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "No logs yet.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    else -> LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 12.dp),
-                    ) {
-                        itemsIndexed(displayedLogs.asReversed()) { _, entry ->
+                    when {
+                        loading -> item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        displayedLogs.isEmpty() -> item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "No logs yet.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        else -> itemsIndexed(displayedLogs.asReversed()) { _, entry ->
                             DiagnosticLogRow(entry)
                         }
                     }
@@ -240,6 +256,58 @@ fun DiagnosticsModal(
         onClose = { reportVisible = false },
         onOpenDraft = onOpenReport,
     )
+}
+
+@Composable
+private fun AlarmCapabilitySnapshotsCard(
+    snapshots: List<AlarmCapabilitySnapshotRecord>,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Task alarm capabilities", style = MaterialTheme.typography.titleSmall)
+            if (snapshots.isEmpty()) {
+                Text(
+                    "No schedule or fire snapshot has been recorded yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                snapshots.forEach { snapshot ->
+                    val phaseLabel = when (snapshot.phase) {
+                        "schedule" -> "At schedule"
+                        "fire" -> "At alarm fire"
+                        else -> snapshot.phase
+                    }
+                    Text(
+                        "$phaseLabel · ${formatSnapshotTime(snapshot.capturedAtEpochMs)}",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Text(
+                        snapshot.summary,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatSnapshotTime(epochMs: Long): String {
+    if (epochMs <= 0L) return "time unavailable"
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z")
+        .withZone(ZoneId.systemDefault())
+    return formatter.format(Instant.ofEpochMilli(epochMs))
 }
 
 @Composable

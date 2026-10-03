@@ -226,13 +226,47 @@ Progress notes:
 
 ### M6 — Alarm presentation and diagnostics
 
-Status: **Not started**
+Status: **In progress** — source implementation and static checks are complete;
+the required Android device-state matrix has not been run.
 
-- [ ] Consolidate task-alarm notification channel creation.
-- [ ] Capture and display the capability snapshot described in §8.8.
-- [ ] Add the API-34+ full-screen-intent capability prompt/diagnostic behavior.
-- [ ] Restrict any background `startActivity` fallback as specified and do not treat a non-throwing call as proof of visibility.
-- [ ] Add runtime timestamps and complete the required device-state matrix; attach actual results before sign-off.
+- [x] Consolidate task-alarm notification channel creation.
+- [x] Capture and display the capability snapshot described in §8.8.
+- [x] Add the API-34+ full-screen-intent capability prompt/diagnostic behavior.
+- [x] Restrict any background `startActivity` fallback as specified and do not treat a non-throwing call as proof of visibility.
+- [x] Add runtime timestamps for receiver, notification posting, activity lifecycle, and window-focus visibility signal.
+- [ ] Run the API-34+ device-state matrix and attach actual snapshots/results before sign-off.
+
+Progress notes:
+
+- Source audit found one authoritative `task_alarm` channel definition in
+  `ForegroundTaskService.ensureTaskAlarmChannel`; alarm posting and capability
+  capture both call that helper. The existing-channel early return preserves
+  user-controlled channel settings.
+- Schedule-time and fire-time capability snapshots persist all §8.8 fields plus
+  capture time. The Diagnostics screen now shows both latest snapshots; refresh
+  reloads the stored values. Added test sources for exact snapshot-field formatting,
+  per-phase persistence, and the one-time prompt flag.
+- On Android 14+, MainActivity checks full-screen-intent access after resume and
+  after onboarding/import gates. The first denied check presents a one-time dialog
+  with an action to `ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`; the Permissions
+  screen already has the corresponding status and settings action. The actionable
+  prompt uses a separate versioned preference key so prior versions' diagnostic
+  warning flag cannot suppress the new settings prompt.
+- On API 35+, the task-specific activity PendingIntent opts into creator-side
+  background activity-start privileges as documented. The direct `startActivity`
+  fallback remains gated by `Settings.canDrawOverlays`; its log distinguishes
+  suppression, exception, and method return, with visibility explicitly unknown.
+- Runtime diagnostics now timestamp `TaskEndAlarmReceiver.onReceive`, the
+  `NotificationManager.notify` call/return, `TaskAlarmActivity.onCreate` and
+  `onResume`, and a window-focus/visible signal. These logs omit task names and IDs.
+- Current Android references reviewed:
+  [Android 14 behavior changes](https://developer.android.com/about/versions/14/behavior-changes-14),
+  [background activity starts](https://developer.android.com/guide/components/activities/background-starts),
+  and [notification channels](https://developer.android.com/develop/ui/compose/notifications/channels).
+- The required matrix has 24 API-34+ combinations (3 screen/keyguard states ×
+  notification access granted/denied × FSI granted/revoked × exact-alarm access
+  granted/denied). It was not run: this workspace has no Java, Android SDK, `adb`,
+  or emulator executable. No actual matrix results are attached; M6 is not verified.
 
 ## Verification and handoff record
 
@@ -247,6 +281,7 @@ Separate source/build failures from missing SDK/device capabilities.
 | 2026-10-03 | M3 | Added focused gate, PendingImport, conflict/reminder, journal-write, retry, discard, quarantine, and phase-replay test sources; recovery routing and writer gates were extended. | Full §6.6 coverage—especially failure inside the Room restore transaction—and final writer-path audit remain; tests were intentionally not run per user instruction. |
 | 2026-10-03 | M4 follow-up audit | Source assertions passed for the task-end invariants and current cross-talk test source; `git diff --check` passed. Current Android docs and task-change/recovery triggers were reviewed. | Instrumentation and device-matrix checks remain unrun; local Java/Android SDK and emulator/device are unavailable. M4 stays in progress. |
 | 2026-10-03 | M5 source audit | Reviewed planner, scheduler, ledger, receiver, reconciliation, preference trigger, DI/manifest wiring, and focused unit-test cases. Added reconciliation cancellation for already-posted notifications belonging to deleted/ineligible tasks. Shell static assertions and `git diff --check` passed. | Gradle/unit-test execution was not run per user instruction; no Kotlin compile or Android runtime result is available. M5 remains in progress pending Android test execution. |
+| 2026-10-03 | M6 source audit | Consolidated channel source is singular; added schedule/fire snapshot timestamps and Diagnostics display, the API-34+ one-time settings prompt, API-35 creator BAL opt-in, overlay-only fallback logging, and receiver/notify/activity runtime timestamps. Added focused unit/instrumentation test sources. Shell source assertions and `git diff --check` passed. | No Java/Gradle/device tests were run. The 24-case API-34+ screen, notification, FSI, and exact-alarm matrix remains outstanding because Java, SDK, `adb`, and emulator are unavailable; actual results are not attached. |
 
 Final handoff must list changed files, completed tracker items, exact checks run, source
 assumptions that differed from the contract, and all unresolved or device-only items.

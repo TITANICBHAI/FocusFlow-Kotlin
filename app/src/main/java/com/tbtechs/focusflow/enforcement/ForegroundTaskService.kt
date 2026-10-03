@@ -18,6 +18,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.core.app.NotificationCompat
+import com.tbtechs.focusflow.data.repository.AlarmRuntimeDiagnostics
 import com.tbtechs.focusflow.data.repository.AlarmRepository
 import com.tbtechs.focusflow.data.repository.TaskAlarmRegistry
 import com.tbtechs.focusflow.data.repository.TaskEndAlarmIdentity
@@ -219,34 +220,44 @@ class ForegroundTaskService : Service() {
                     endedAtMs,
                     System.currentTimeMillis(),
                 ) {
-                    nm.notify(
-                        TaskEndAlarmIdentity.notificationTag(endedTaskId),
-                        TaskEndAlarmIdentity.NOTIFICATION_ID,
-                        notif,
-                    )
+                    AlarmRuntimeDiagnostics.record("notification.nm_notify.begin")
+                    try {
+                        nm.notify(
+                            TaskEndAlarmIdentity.notificationTag(endedTaskId),
+                            TaskEndAlarmIdentity.NOTIFICATION_ID,
+                            notif,
+                        )
+                        AlarmRuntimeDiagnostics.record("notification.nm_notify.returned")
+                    } catch (error: Exception) {
+                        AlarmRuntimeDiagnostics.record(
+                            "notification.nm_notify.threw",
+                            "exception=${error.javaClass.simpleName}",
+                        )
+                        throw error
+                    }
                 }
                 if (!posted) return
 
                 // Background activity launches are restricted. Keep this
                 // non-authoritative fallback only on devices with overlay access.
-                if (Settings.canDrawOverlays(app)) {
-                    runCatching { app.startActivity(activityIntent) }
-                        .onSuccess {
-                            android.util.Log.i(
-                                "ForegroundTaskService",
-                                "Overlay-authorized task alarm activity fallback attempted.",
-                            )
-                        }
-                        .onFailure {
-                            android.util.Log.w(
-                                "ForegroundTaskService",
-                                "Task alarm activity fallback was rejected.",
-                            )
-                        }
+                val overlayAuthorized = Settings.canDrawOverlays(app)
+                if (overlayAuthorized) {
+                    try {
+                        app.startActivity(activityIntent)
+                        AlarmRuntimeDiagnostics.record(
+                            "activityFallback.startActivity.returned",
+                            "overlayAuthorized=true visibility=unknown",
+                        )
+                    } catch (error: Exception) {
+                        AlarmRuntimeDiagnostics.record(
+                            "activityFallback.startActivity.threw",
+                            "overlayAuthorized=true exception=${error.javaClass.simpleName}",
+                        )
+                    }
                 } else {
-                    android.util.Log.i(
-                        "ForegroundTaskService",
-                        "Task alarm activity fallback skipped; overlay access is unavailable.",
+                    AlarmRuntimeDiagnostics.record(
+                        "activityFallback.suppressed",
+                        "overlayAuthorized=false",
                     )
                 }
             } catch (_: Exception) { /* alarm is best-effort */ }

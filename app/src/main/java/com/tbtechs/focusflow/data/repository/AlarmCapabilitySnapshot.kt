@@ -9,7 +9,6 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
-import com.tbtechs.focusflow.ui.common.AppErrorEvents
 
 /** Device capabilities that affect task-end alert delivery, without task/user content. */
 data class AlarmCapabilitySnapshot(
@@ -44,22 +43,18 @@ data class AlarmCapabilitySnapshot(
             ForegroundTaskService.ensureTaskAlarmChannel(context)
             val snapshot = capture(context, alarmTierUsed)
             val summary = snapshot.toDiagnosticString()
+            val capturedAtEpochMs = System.currentTimeMillis()
             runCatching {
                 val registry = TaskAlarmRegistry(context)
-                val changed = registry.recordCapabilitySnapshot(phase, summary)
+                val changed = registry.recordCapabilitySnapshot(
+                    phase = phase,
+                    summary = summary,
+                    capturedAtEpochMs = capturedAtEpochMs,
+                )
                 if (changed) {
                     StartupLogger.info(
                         "AlarmCapabilitySnapshot",
-                        "phase=$phase $summary",
-                    )
-                }
-                if (
-                    snapshot.canUseFullScreenIntent == false &&
-                    registry.markFullScreenPromptShownOnce()
-                ) {
-                    AppErrorEvents.report(
-                        tag = "Task alarms",
-                        message = "Full-screen task alarms are restricted. Open Permissions and allow Full-screen Alarms to review this setting.",
+                        "phase=$phase capturedAtEpochMs=$capturedAtEpochMs $summary",
                     )
                 }
             }.onFailure {
@@ -117,5 +112,17 @@ data class AlarmCapabilitySnapshot(
                 alarmTierUsed = alarmTierUsed,
             )
         }
+    }
+}
+
+/** Timestamped, content-free events for tracing the task-alarm presentation path. */
+object AlarmRuntimeDiagnostics {
+    fun record(event: String, details: String = "") {
+        val suffix = details.takeIf(String::isNotBlank)?.let { " $it" }.orEmpty()
+        StartupLogger.info(
+            "TaskAlarmRuntime",
+            "event=$event wallClockEpochMs=${System.currentTimeMillis()} " +
+                "elapsedRealtimeMs=${android.os.SystemClock.elapsedRealtime()}$suffix",
+        )
     }
 }

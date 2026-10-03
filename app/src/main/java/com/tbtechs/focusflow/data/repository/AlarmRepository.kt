@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.data.repository
 
 import android.app.AlarmManager
+import android.app.ActivityOptions
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -76,12 +77,27 @@ class AlarmRepository(
                 putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, taskName)
                 putExtra(TaskAlarmActivity.EXTRA_END_MS, endMs)
             }
-            return PendingIntent.getActivity(
-                ctx.applicationContext,
-                TaskEndAlarmIdentity.REQUEST_CODE,
-                intent,
-                flags,
-            )
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                val options = ActivityOptions.makeBasic().apply {
+                    setPendingIntentCreatorBackgroundActivityStartMode(
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
+                    )
+                }
+                PendingIntent.getActivity(
+                    ctx.applicationContext,
+                    TaskEndAlarmIdentity.REQUEST_CODE,
+                    intent,
+                    flags,
+                    options.toBundle(),
+                )
+            } else {
+                PendingIntent.getActivity(
+                    ctx.applicationContext,
+                    TaskEndAlarmIdentity.REQUEST_CODE,
+                    intent,
+                    flags,
+                )
+            }
         }
     }
 
@@ -306,6 +322,12 @@ class AlarmRepository(
             false
         }
     }
+
+    fun markFullScreenIntentPromptShownOnce(): Boolean =
+        registry.markFullScreenPromptShownOnce()
+
+    fun capabilitySnapshots(): List<AlarmCapabilitySnapshotRecord> =
+        registry.capabilitySnapshots()
 
     fun markNotificationPostedOnce(
         taskId: String,

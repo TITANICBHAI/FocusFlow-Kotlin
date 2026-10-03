@@ -3,6 +3,7 @@ package com.tbtechs.focusflow.enforcement
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
 import com.tbtechs.focusflow.enforcement.receivers.NotificationActionReceiver
 import com.tbtechs.focusflow.data.repository.TaskEndAlarmIdentity
+import com.tbtechs.focusflow.data.repository.AlarmRuntimeDiagnostics
 
 import android.app.Activity
 import android.app.KeyguardManager
@@ -99,6 +100,7 @@ class TaskAlarmActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AlarmRuntimeDiagnostics.record("TaskAlarmActivity.onCreate")
         taskId   = intent?.getStringExtra(EXTRA_TASK_ID) ?: ""
         taskName = intent?.getStringExtra(EXTRA_TASK_NAME) ?: ""
 
@@ -124,6 +126,20 @@ class TaskAlarmActivity : Activity() {
         intent.getStringExtra(EXTRA_TASK_ID)?.let { if (it.isNotEmpty()) taskId = it }
         taskName = intent.getStringExtra(EXTRA_TASK_NAME).orEmpty()
         buildUI()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AlarmRuntimeDiagnostics.record("TaskAlarmActivity.onResume")
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        val becameVisible = hasFocus && window.decorView.isShown
+        AlarmRuntimeDiagnostics.record(
+            "TaskAlarmActivity.windowFocusChanged",
+            "windowFocused=$hasFocus becameVisible=$becameVisible",
+        )
     }
 
     override fun onDestroy() {
