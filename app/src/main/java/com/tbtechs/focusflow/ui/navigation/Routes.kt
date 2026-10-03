@@ -60,8 +60,34 @@ object Routes {
     )
 
     /**
+     * Destinations that may be opened by an external VIEW intent. Keep
+     * stateful startup, active-session, and import-confirmation routes internal.
+     */
+    val externalLinkableRoutes: Set<String> = setOf(
+        HOME,
+        FOCUS,
+        STATS,
+        SETTINGS,
+        DEFENSE,
+        ALWAYS_ON,
+        BLOCK_DEFENSE,
+        CHANGELOG,
+        HOME_LAUNCHER_SETUP,
+        HOW_TO_USE,
+        KEYWORD_BLOCKER,
+        PASSWORD_PROTECTION,
+        PERMISSIONS,
+        PRIVACY_POLICY,
+        REPORTS,
+        REPORT,
+        TERMS_OF_SERVICE,
+        USER_PROFILE,
+        VPN_BLOCK_LIST,
+    )
+
+    /**
      * Converts both deep-link slugs (`privacy-policy`) and internal route
-     * strings (`privacy_policy`) to a safe NavHost destination.
+     * strings (`privacy_policy`) to a safe externally linkable destination.
      */
     fun fromPath(path: String?): String {
         val normalized = path
@@ -69,6 +95,7 @@ object Routes {
             ?.removePrefix("/")
             ?.substringBefore("?")
             ?.substringBefore("/")
+            ?.lowercase()
             .orEmpty()
         val route = when (normalized) {
             "privacy-policy" -> PRIVACY_POLICY
@@ -76,6 +103,7 @@ object Routes {
             "how-to-use" -> HOW_TO_USE
             "block-defense" -> BLOCK_DEFENSE
             "home-launcher" -> HOME_LAUNCHER_SETUP
+            "always-on" -> ALWAYS_ON
             "keyword-blocker" -> KEYWORD_BLOCKER
             "password-protection" -> PASSWORD_PROTECTION
             "user-profile" -> USER_PROFILE
@@ -83,6 +111,6 @@ object Routes {
             else -> normalized
         }
         if (normalized.isBlank()) return HOME
-        return if (route in architectureRoutes || route == ONBOARDING) route else NOT_FOUND
+        return if (route in externalLinkableRoutes) route else NOT_FOUND
     }
 }

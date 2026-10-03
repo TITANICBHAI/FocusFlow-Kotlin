@@ -1,0 +1,23 @@
+package com.tbtechs.focusflow.ui.navigation
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Test
+
+class RoutesTest {
+    @Test
+    fun internalImportAndStatefulRoutesAreRejectedFromExternalPaths() {
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath("import_confirm"))
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath("import-confirm"))
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath("onboarding"))
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath("active"))
+        assertFalse(Routes.IMPORT_CONFIRM in Routes.externalLinkableRoutes)
+    }
+
+    @Test
+    fun knownPublicDeepLinksStillResolve() {
+        assertEquals(Routes.PRIVACY_POLICY, Routes.fromPath("/privacy-policy?source=test"))
+        assertEquals(Routes.ALWAYS_ON, Routes.fromPath("always-on?package=com.example.app"))
+        assertEquals(Routes.FOCUS, Routes.fromPath("focus"))
+    }
+}

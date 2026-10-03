@@ -107,10 +107,17 @@ class BackupManager(
     suspend fun pickAndImportBackup(
         sourceUri: Uri,
         callbacks: RestoreCallbacks,
+        validateBeforeRestore: suspend (BackupEnvelope) -> RestoreResult? = { null },
     ): RestoreResult {
         return try {
             val text = readBackupText(sourceUri)
                 ?: return RestoreResult.Error("Could not read the selected backup file.")
+            when (val parsed = parseBackupJson(text)) {
+                is BackupParseResult.Error -> return parsed.toRestoreError()
+                is BackupParseResult.Success -> {
+                    validateBeforeRestore(parsed.envelope)?.let { return it }
+                }
+            }
             restoreFromJson(text, callbacks)
         } catch (error: Exception) {
             RestoreResult.Error("Could not open file picker result: $error")
@@ -210,9 +217,6 @@ class BackupManager(
 
         try {
             val merged = mergeObjects(callbacks.currentSettings, envelope.settings)
-            val importedMirror = envelope.settings.optBoolean("focusMirrorVpnEnabled", false)
-            val currentMirror = callbacks.currentSettings.optBoolean("focusMirrorVpnEnabled", false)
-            merged.put("focusMirrorVpnEnabled", importedMirror || currentMirror)
             if (callbacks.restoreSettings) {
                 callbacks.updateSettings(merged)
                 summary.settings = true
@@ -298,7 +302,7 @@ class BackupManager(
 
     private fun getPortableSettings(settings: JSONObject): JSONObject {
         val portable = copyJson(settings)
-        PORTABLE_OMITTED_KEYS.forEach(portable::remove)
+        BackupSettingsPolicy.neverApplyImportKeys.forEach(portable::remove)
         portable.put(
             "focusMirrorVpnEnabled",
             settings.optBoolean("focusMirrorVpnEnabled", false),
@@ -408,7 +412,9 @@ class BackupManager(
         val keys = overlay.keys()
         while (keys.hasNext()) {
             val key = keys.next()
-            merged.put(key, overlay.get(key))
+            if (BackupSettingsPolicy.mayApplyImportKey(key)) {
+                merged.put(key, overlay.get(key))
+            }
         }
         return merged
     }
@@ -437,30 +443,6 @@ class BackupManager(
         const val BACKUP_ENVELOPE_KIND = "FocusFlowBackupV1"
         const val BACKUP_FILE_EXT = ".focusflow"
         const val BACKUP_MIME_TYPE = "application/octet-stream"
-
-        private val PORTABLE_OMITTED_KEYS = setOf(
-            "standaloneBlockPackages",
-            "standaloneBlockUntil",
-            "standaloneVpnPackages",
-            "autoCopiedAlwaysOnPackages",
-            "focusModeEnabled",
-            "pomodoroEnabled",
-            "notificationsEnabled",
-            "weeklyReportEnabled",
-            "launcherEnabled",
-            "alwaysOnEnforcementEnabled",
-            "aversionDimmerEnabled",
-            "aversionVibrateEnabled",
-            "aversionSoundEnabled",
-            "systemGuardEnabled",
-            "blockInstallActionsEnabled",
-            "blockYoutubeShortsEnabled",
-            "blockInstagramReelsEnabled",
-            "vpnBlockEnabled",
-            "autoCopyToAlwaysOn",
-            "vpnSelfHealEnabled",
-            "pinProtectionEnabled",
-        )
     }
 }
 
@@ -505,7 +487,10 @@ data class ImportSummary(
 
 sealed class RestoreResult {
     data class Success(val summary: ImportSummary) : RestoreResult()
-    data class Error(val message: String) : RestoreResult()
+    data class Error(
+        val message: String,
+        val requiresPin: Boolean = false,
+    ) : RestoreResult()
 }
 
 data class RestoreCallbackInputs(

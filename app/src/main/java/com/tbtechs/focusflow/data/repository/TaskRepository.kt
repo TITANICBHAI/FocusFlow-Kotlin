@@ -5,6 +5,7 @@ import com.tbtechs.focusflow.data.local.dao.TasksByHourRow
 import com.tbtechs.focusflow.data.local.entity.TaskEntity
 import com.tbtechs.focusflow.data.model.Reminder
 import com.tbtechs.focusflow.data.model.Task
+import com.tbtechs.focusflow.data.model.withCanonicalTimestamps
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -82,7 +83,9 @@ class TaskRepository(private val taskDao: TaskDao) {
 
     /** Parses one backup task without dropping unknown future fields. */
     fun taskFromBackupJson(raw: JSONObject): Task? =
-        runCatching { json.decodeFromString<Task>(raw.toString()) }.getOrNull()
+        runCatching {
+            json.decodeFromString<Task>(raw.toString()).withCanonicalTimestamps()
+        }.getOrNull()
 
     /**
      * Tasks that ended within the last 24 h but are still unresolved.
@@ -122,7 +125,7 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Maps to `dbInsertTask`.
      */
     suspend fun insertTask(task: Task) {
-        taskDao.insertTask(task.toEntity())
+        taskDao.insertTask(task.withCanonicalTimestamps().toEntity())
     }
 
     /**
@@ -130,7 +133,7 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Maps to `dbUpdateTask`.
      */
     suspend fun updateTask(task: Task) {
-        taskDao.updateTask(task.toEntity())
+        taskDao.updateTask(task.withCanonicalTimestamps().toEntity())
     }
 
     /**
@@ -139,7 +142,7 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Maps to `dbUpdateTasksBatch`.
      */
     suspend fun updateTasksBatch(tasks: List<Task>) {
-        taskDao.updateTasks(tasks.map { it.toEntity() })
+        taskDao.updateTasks(tasks.map { it.withCanonicalTimestamps().toEntity() })
     }
 
     /** Deletes the task with [taskId]. Maps to `dbDeleteTask`. */

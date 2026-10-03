@@ -26,9 +26,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.repository.BackupEnvelope
@@ -62,11 +65,49 @@ fun ImportConfirmScreen(
     var restoreSettings by remember { mutableStateOf(true) }
     var restoreTasks by remember { mutableStateOf(true) }
     var result by remember { mutableStateOf<RestoreResult?>(null) }
+    var requiresDefensePin by remember(source) { mutableStateOf(false) }
+    var showPinPrompt by remember(source) { mutableStateOf(false) }
+    var defensePin by remember(source) { mutableStateOf("") }
+    var pinError by remember(source) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(source) {
         parsed = source?.let { backupCoordinator.inspect(it) }
             ?: BackupParseResult.Error("This import has expired.")
+    }
+
+    LaunchedEffect(source, parsed, currentSettings, restoreSettings) {
+        requiresDefensePin = source != null &&
+            backupCoordinator.requiresDefensePin(source, restoreSettings)
+    }
+
+    fun importBackup(pin: String? = null) {
+        if (!restoreSettings && !restoreTasks) return
+        busy = true
+        result = null
+        scope.launch {
+            val outcome = source?.let {
+                backupCoordinator.import(
+                    source = it,
+                    replaceTasks = replaceTasks,
+                    currentSettings = currentSettings,
+                    currentFocusActive = currentFocusActive,
+                    restoreSettings = restoreSettings,
+                    restoreTasks = restoreTasks,
+                    defensePin = pin,
+                )
+            } ?: RestoreResult.Error("This import has expired.")
+            busy = false
+            if (outcome is RestoreResult.Error && outcome.requiresPin) {
+                showPinPrompt = true
+                pinError = outcome.message
+            } else {
+                showPinPrompt = false
+                defensePin = ""
+                pinError = null
+                result = outcome
+            }
+        }
     }
 
     Scaffold(
@@ -103,22 +144,11 @@ fun ImportConfirmScreen(
                 currentFocusActive = currentFocusActive,
                 modifier = Modifier.fillMaxSize().padding(padding),
                 onImport = {
-                    if (restoreSettings || restoreTasks) {
-                        busy = true
-                        result = null
-                        scope.launch {
-                            result = source?.let {
-                                backupCoordinator.import(
-                                    source = it,
-                                    replaceTasks = replaceTasks,
-                                    currentSettings = currentSettings,
-                                    currentFocusActive = currentFocusActive,
-                                    restoreSettings = restoreSettings,
-                                    restoreTasks = restoreTasks,
-                                )
-                            } ?: RestoreResult.Error("This import has expired.")
-                            busy = false
-                        }
+                    if (requiresDefensePin) {
+                        showPinPrompt = true
+                        pinError = null
+                    } else {
+                        importBackup()
                     }
                 },
                 onCancel = onBack,
@@ -150,6 +180,65 @@ fun ImportConfirmScreen(
             confirmButton = { Button(onClick = onImported) { Text("Done") } },
         )
         null -> Unit
+    }
+
+    if (showPinPrompt) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!busy) {
+                    showPinPrompt = false
+                    defensePin = ""
+                    pinError = null
+                }
+            },
+            icon = { Icon(Icons.Outlined.WarningAmber, contentDescription = null) },
+            title = { Text("Confirm protection changes") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "This backup removes one or more protection entries or turns off Focus Mirror. " +
+                            "Enter your Defense PIN to continue.",
+                    )
+                    OutlinedTextField(
+                        value = defensePin,
+                        onValueChange = {
+                            defensePin = it
+                            pinError = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Defense PIN") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        isError = pinError != null,
+                    )
+                    pinError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = !busy && defensePin.isNotBlank(),
+                    onClick = {
+                        val enteredPin = defensePin
+                        defensePin = ""
+                        importBackup(enteredPin)
+                    },
+                ) {
+                    Text(if (busy) "Checking…" else "Verify & Import")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !busy,
+                    onClick = {
+                        showPinPrompt = false
+                        defensePin = ""
+                        pinError = null
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

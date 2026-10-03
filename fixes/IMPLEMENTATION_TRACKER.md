@@ -3,7 +3,7 @@
 ## Reference files
 
 - [Implementation contract](FOCUSFLOW_IMPLEMENTATION_PLAN_FINAL_v14.md) — authoritative behavior, data boundaries, work order, and tests.
-- [Review notes](REVIEW_NOTES_FINAL_v14.txt) — uploaded review of the plan.
+- Review notes: `REVIEW_NOTES_FINAL_v14.txt` — reviewed earlier; the workspace copy is currently absent. Do not reconstruct it from memory.
 - [Agent pre-read prompt](AGENT_PRE_READ_PROMPT.md) — context and working rules for agents without prior chat history.
 
 Use the implementation contract as the product specification. Re-check code before
@@ -54,7 +54,7 @@ security or recovery work.
 
 ### M0 — Security and routing hotfix
 
-Status: **Not started**
+Status: **Blocked** — implementation changes are in place, but build and unit-test verification cannot start without a Java runtime.
 
 - [ ] Never apply the 21 live-state keys from either old or current backup files.
 - [ ] Use an explicit external-route allowlist; never expose `IMPORT_CONFIRM` to arbitrary links.
@@ -136,7 +136,8 @@ Separate source/build failures from missing SDK/device capabilities.
 
 | Date | Milestone | Checks and evidence | Remaining blockers / device-only checks |
 |---|---|---|---|
-| 2026-10-03 | Initial source review | Reviewed backup coordinator/manager, task model/repository, alarm repository, routes, manifest, and task timestamp write sites. Confirmed review-note dispositions above. | No implementation milestone started. Android build and device matrix not run. |
+| 2026-10-03 | Initial source review | Reviewed backup coordinator/manager, task model/repository, alarm repository, routes, manifest, and task timestamp write sites. Confirmed review-note dispositions above. | At that point, no implementation milestone had started. Android build and device matrix had not been run. |
+| 2026-10-03 | M0 | Implemented the live-state import denylist, external-route allowlist, content-filter changes, canonical task timestamp boundary, and weakening-import PIN gate. `git diff --check` and static source/fixture assertions passed. Source review confirms settings restore remains independent of task Merge/Replace. | `bash ./gradlew :app:testDebugUnitTest --no-daemon` could not start: no `java` command or `JAVA_HOME`. `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset; no build or unit-test result is available. Review-notes file is absent from the current workspace and was not recreated. |
 
 Final handoff must list changed files, completed tracker items, exact checks run, source
 assumptions that differed from the contract, and all unresolved or device-only items.

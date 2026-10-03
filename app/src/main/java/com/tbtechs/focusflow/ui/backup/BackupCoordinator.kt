@@ -3,7 +3,6 @@ package com.tbtechs.focusflow.ui.backup
 import android.content.Context
 import android.net.Uri
 import com.tbtechs.focusflow.data.model.AppSettings
-import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.repository.BackupDataSource
 import com.tbtechs.focusflow.data.repository.BackupFileResult
 import com.tbtechs.focusflow.data.repository.BackupManager
@@ -13,6 +12,7 @@ import com.tbtechs.focusflow.data.repository.RestoreCallbackInputs
 import com.tbtechs.focusflow.data.repository.RestoreResult
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import org.json.JSONArray
 import org.json.JSONObject
@@ -31,6 +31,7 @@ class BackupCoordinator(
     private val settingsRepository: SettingsRepository,
     private val settingsViewModel: SettingsViewModel,
 ) {
+    private val vpnRepository = VpnRepository(context.applicationContext)
     private val manager = BackupManager(
         context = context,
         dataSource = object : BackupDataSource {
@@ -59,6 +60,7 @@ class BackupCoordinator(
         currentFocusActive: Boolean,
         restoreSettings: Boolean = true,
         restoreTasks: Boolean = true,
+        defensePin: String? = null,
     ): RestoreResult {
         val currentTasks = taskRepository.getAllTasks()
         val callbacks = RestoreCallbackInputs(
@@ -88,10 +90,55 @@ class BackupCoordinator(
                 restoreSettings = restoreSettings,
                 restoreTasks = restoreTasks,
             ),
+            validateBeforeRestore = { envelope ->
+                if (
+                    restoreSettings &&
+                    requiresDefensePin(envelope) &&
+                    !settingsViewModel.verifyPin(defensePin.orEmpty())
+                ) {
+                    RestoreResult.Error(
+                        message = "Incorrect Defense PIN. No data was changed.",
+                        requiresPin = true,
+                    )
+                } else {
+                    null
+                }
+            },
         )
     }
 
     suspend fun inspect(source: Uri): BackupParseResult = manager.inspectBackup(source)
+
+    suspend fun requiresDefensePin(
+        source: Uri,
+        restoreSettings: Boolean,
+    ): Boolean {
+        if (!restoreSettings) return false
+        val inspected = manager.inspectBackup(source)
+        if (inspected !is BackupParseResult.Success) return false
+        return requiresDefensePin(inspected.envelope)
+    }
+
+    private suspend fun requiresDefensePin(
+        envelope: com.tbtechs.focusflow.data.repository.BackupEnvelope,
+    ): Boolean {
+        val currentSettings = settingsViewModel.settings.value
+        if (!currentSettings.pinProtectionEnabled) return false
+        val currentVpnPackages = runCatching {
+            vpnRepository.getNetworkBlockSettings().packages
+        }.getOrElse {
+            // If the import contains this protection list but local state cannot
+            // be read, fail closed and require the local Defense PIN.
+            if (envelope.settings.has("alwaysOnVpnPackages")) return true
+            emptyList()
+        }
+        val (current, imported) = ImportProtectionPolicy.fromSettings(
+            current = currentSettings,
+            currentAlwaysOnVpnPackages = currentVpnPackages,
+            imported = envelope.settings,
+        )
+        return ImportProtectionPolicy.requiresPin(current, imported)
+    }
 
     private fun AppSettings.toBackupJson(): JSONObject = JSONObject().apply {
         put(
@@ -102,6 +149,7 @@ class BackupCoordinator(
         put("blockedWords", JSONArray(blockedWords))
         put("alwaysOnPackages", JSONArray(alwaysBlockPackages))
         put("alwaysOnEnforcementEnabled", alwaysBlockEnabled)
+        put("focusMirrorVpnEnabled", focusMirrorVpnEnabled)
         put("dailyAllowanceEntries", dailyAllowanceConfigJson?.let(::JSONArray) ?: JSONArray())
         put("greyoutSchedule", JSONArray().also { array ->
             recurringBlockSchedules.forEach { schedule ->
@@ -148,18 +196,16 @@ class BackupCoordinator(
             allowedFocusPackages = imported.stringList("allowedInFocus", allowedFocusPackages),
             blockedWords = imported.stringList("blockedWords", blockedWords),
             alwaysBlockPackages = imported.stringList("alwaysOnPackages", alwaysBlockPackages),
-            alwaysBlockEnabled = imported.optBoolean(
-                "alwaysOnEnforcementEnabled",
-                alwaysBlockEnabled,
-            ),
             dailyAllowanceConfigJson = imported.optJSONArray("dailyAllowanceEntries")
                 ?.toString()
                 ?: dailyAllowanceConfigJson,
             recurringBlockSchedules = imported.optJSONArray("greyoutSchedule")
                 ?.let(::parseSchedules)
                 ?: recurringBlockSchedules,
-            networkBlockEnabled = imported.optBoolean("vpnBlockEnabled", networkBlockEnabled),
-            systemGuardEnabled = imported.optBoolean("systemGuardEnabled", systemGuardEnabled),
+            focusMirrorVpnEnabled = imported.optBoolean(
+                "focusMirrorVpnEnabled",
+                focusMirrorVpnEnabled,
+            ),
             morningDigestEnabled = imported.optBoolean("morningDigestEnabled", morningDigestEnabled),
             achievementNotificationsEnabled = imported.optBoolean(
                 "achievementNotificationsEnabled",
@@ -197,7 +243,6 @@ class BackupCoordinator(
                 defaultDurationMinutes,
             ),
             autoFocusEnabled = imported.optBoolean("autoFocusEnabled", autoFocusEnabled),
-            pomodoroEnabled = imported.optBoolean("pomodoroEnabled", pomodoroEnabled),
             pomodoroWorkMinutes = imported.optInt("pomodoroWorkMinutes", pomodoroWorkMinutes),
             pomodoroBreakMinutes = imported.optInt("pomodoroBreakMinutes", pomodoroBreakMinutes),
         )

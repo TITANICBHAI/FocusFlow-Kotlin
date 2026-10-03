@@ -44,6 +44,18 @@ data class AppSettings(
     val launcherLockDuringStandalone: Boolean = true,
     val launcherBlockUninstall: Boolean = false,
     val launcherPresets: List<AllowedAppPreset> = emptyList(),
+    val launcherDockPackages: List<String> = emptyList(),
+    val launcherClockStyle: String = "",
+
+    // ── Portable preset and overlay settings ───────────────────────────────────
+    val blockPresets: List<BlockPreset> = emptyList(),
+    val overlayQuotes: List<String> = emptyList(),
+
+    /**
+     * Kept distinct from the network-block explicit package list: those are
+     * separate policy sources and must not overwrite one another.
+     */
+    val alwaysOnVpnPackages: List<String> = emptyList(),
 
     // ── Daily allowance ───────────────────────────────────────────────────────
     /**
@@ -58,6 +70,8 @@ data class AppSettings(
      * into the service's greyout schedule format.
      */
     val recurringBlockSchedules: List<RecurringBlockSchedule> = emptyList(),
+    /** User-authored windows only; derived schedule windows remain separate. */
+    val userGreyoutWindowsJson: String = "[]",
 
     // ── Network / VPN ────────────────────────────────────────────────────────
     /**
@@ -136,6 +150,13 @@ data class AllowedAppPreset(
     val packages: List<String>,
 )
 
+/** Named block selection, stored separately from allowed-app presets. */
+data class BlockPreset(
+    val id: String,
+    val name: String,
+    val packages: List<String>,
+)
+
 const val BLOCK_ALL_SENTINEL = "__block_all__"
 
 /**
@@ -153,6 +174,8 @@ data class RecurringBlockSchedule(
     val daysOfWeek: List<Int>, // 0=Sun..6=Sat
     val enabled: Boolean = true,
     val vpnEnabled: Boolean = false,
+    val name: String = "",
+    val vpnPackages: List<String> = emptyList(),
 )
 
 /**

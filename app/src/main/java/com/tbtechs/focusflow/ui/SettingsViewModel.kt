@@ -201,8 +201,20 @@ class SettingsViewModel(
                     newSettings.alwaysBlockPackages,
                 )
             }
+            if (newSettings.alwaysOnVpnPackages != current.alwaysOnVpnPackages) {
+                settingsRepository.setAlwaysOnVpnPackages(newSettings.alwaysOnVpnPackages)
+            }
+            if (newSettings.blockPresets != current.blockPresets) {
+                settingsRepository.setBlockPresets(newSettings.blockPresets)
+            }
+            if (newSettings.overlayQuotes != current.overlayQuotes) {
+                settingsRepository.setOverlayQuotes(newSettings.overlayQuotes)
+            }
             if (newSettings.recurringBlockSchedules != current.recurringBlockSchedules) {
                 settingsRepository.setRecurringBlockSchedules(newSettings.recurringBlockSchedules)
+            }
+            if (newSettings.userGreyoutWindowsJson != current.userGreyoutWindowsJson) {
+                settingsRepository.setUserGreyoutWindows(newSettings.userGreyoutWindowsJson)
             }
             if (newSettings.launcherTheme != current.launcherTheme) {
                 settingsRepository.setLauncherTheme(newSettings.launcherTheme)
@@ -217,6 +229,12 @@ class SettingsViewModel(
                 settingsRepository.setLauncherHiddenPackages(
                     JSONArray(newSettings.launcherHiddenPackages).toString(),
                 )
+            }
+            if (newSettings.launcherDockPackages != current.launcherDockPackages) {
+                settingsRepository.setLauncherDockPackages(newSettings.launcherDockPackages)
+            }
+            if (newSettings.launcherClockStyle != current.launcherClockStyle) {
+                settingsRepository.setLauncherClockStyle(newSettings.launcherClockStyle)
             }
             if (newSettings.launcherLockDuringStandalone != current.launcherLockDuringStandalone) {
                 settingsRepository.setLauncherLockDuringStandalone(newSettings.launcherLockDuringStandalone)

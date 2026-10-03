@@ -12,6 +12,7 @@ import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
 import com.tbtechs.focusflow.widget.FocusFlowWidget
 import com.tbtechs.focusflow.data.model.AllowedAppPreset
 import com.tbtechs.focusflow.data.model.AppSettings
+import com.tbtechs.focusflow.data.model.BlockPreset
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import org.json.JSONArray
@@ -97,6 +98,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_DAILY_ALLOWANCE_USED = "daily_allowance_used"
         private const val KEY_DAILY_ALLOWANCE_CONFIG = "daily_allowance_config"
         private const val KEY_RECURRING_BLOCK_SCHEDULES = "recurring_block_schedules"
+        private const val KEY_USER_GREYOUT_WINDOWS = "user_greyout_windows"
+        private const val KEY_BLOCK_PRESETS = "block_presets"
+        private const val KEY_ALWAYS_ON_VPN_PACKAGES = "always_on_vpn_packages"
+        private const val KEY_OVERLAY_QUOTES = "block_overlay_quotes"
         private const val KEY_DARK_MODE_ENABLED = "dark_mode_enabled"
         private const val KEY_MORNING_DIGEST_ENABLED = "morning_digest_enabled"
         private const val KEY_ACHIEVEMENT_NOTIFICATIONS_ENABLED = "achievement_notifications_enabled"
@@ -614,6 +619,7 @@ class SettingsRepository(context: Context) {
             schedules.forEach { schedule ->
                 put(JSONObject().apply {
                     put("id", schedule.id)
+                    put("name", schedule.name)
                     put("packages", JSONArray(schedule.packages))
                     put("startHour", schedule.startHour)
                     put("startMinute", schedule.startMinute)
@@ -622,41 +628,57 @@ class SettingsRepository(context: Context) {
                     put("daysOfWeek", JSONArray(schedule.daysOfWeek))
                     put("enabled", schedule.enabled)
                     put("vpnEnabled", schedule.vpnEnabled)
+                    put("vpnPackages", JSONArray(schedule.vpnPackages))
                 })
             }
         }.toString()
 
-        val existingWindows = parseJsonArrayObjects(
-            prefs.getString("greyout_schedule", "[]") ?: "[]",
-        ).filter { it.optString("scheduleId").isBlank() }
-        val scheduleWindows = schedules
-            .filter { it.enabled && it.packages.isNotEmpty() }
-            .flatMap { schedule ->
-                schedule.packages.map { packageName ->
-                    JSONObject().apply {
-                        put("pkg", packageName)
-                        put("startHour", schedule.startHour.coerceIn(0, 23))
-                        put("startMin", schedule.startMinute.coerceIn(0, 59))
-                        put("endHour", schedule.endHour.coerceIn(0, 23))
-                        put("endMin", schedule.endMinute.coerceIn(0, 59))
-                        put(
-                            "days",
-                            JSONArray(schedule.daysOfWeek.map { day -> (day.coerceIn(0, 6) + 1) }),
-                        )
-                        put("scheduleId", schedule.id)
-                        put("vpnEnabled", schedule.vpnEnabled)
-                    }
-                }
-            }
+        val previouslyStoredUserWindows =
+            prefs.all[KEY_USER_GREYOUT_WINDOWS] as? String
+        val existingWindows = previouslyStoredUserWindows
+            ?.let(::parseJsonArrayObjects)
+            ?.filter { it.optString("scheduleId").isBlank() }
+            ?: parseJsonArrayObjects(
+                stringPreference("greyout_schedule", "[]"),
+            ).filter { it.optString("scheduleId").isBlank() }
+        val userWindowsJson = JSONArray(existingWindows).toString()
+        val scheduleWindows = buildScheduleGreyoutWindows(schedules)
 
         commitEditor(
             prefs.edit()
                 .putString(KEY_RECURRING_BLOCK_SCHEDULES, recurringJson)
+                .putString(KEY_USER_GREYOUT_WINDOWS, userWindowsJson)
                 .putString(
                     "greyout_schedule",
                     JSONArray(existingWindows + scheduleWindows).toString(),
                 ),
             "recurring schedule",
+        )
+    }
+
+    /**
+     * Stores only user-authored greyout windows, then rebuilds the combined
+     * schedule consumed by AppBlockerAccessibilityService.
+     */
+    suspend fun setUserGreyoutWindows(windowsJson: String) {
+        val parsedWindows = JSONArray(windowsJson)
+        val userWindows = buildList {
+            for (index in 0 until parsedWindows.length()) {
+                val window = parsedWindows.optJSONObject(index) ?: continue
+                if (window.optString("scheduleId").isBlank()) {
+                    add(JSONObject(window.toString()))
+                }
+            }
+        }
+        val recurringSchedules = parseRecurringSchedules(
+            stringPreference(KEY_RECURRING_BLOCK_SCHEDULES, "[]"),
+        )
+        val combined = userWindows + buildScheduleGreyoutWindows(recurringSchedules)
+        commitEditor(
+            prefs.edit()
+                .putString(KEY_USER_GREYOUT_WINDOWS, JSONArray(userWindows).toString())
+                .putString("greyout_schedule", JSONArray(combined).toString()),
+            "user greyout windows",
         )
     }
 
@@ -675,6 +697,29 @@ class SettingsRepository(context: Context) {
                 packages.toJsonArrayString(),
             )
             .apply()
+    }
+
+    suspend fun setAlwaysOnVpnPackages(packages: List<String>) {
+        prefs.edit()
+            .putString(KEY_ALWAYS_ON_VPN_PACKAGES, packages.toJsonArrayString())
+            .apply()
+    }
+
+    suspend fun setBlockPresets(presets: List<BlockPreset>) {
+        val json = JSONArray().apply {
+            presets.forEach { preset ->
+                put(JSONObject().apply {
+                    put("id", preset.id)
+                    put("name", preset.name)
+                    put("packages", JSONArray(preset.packages))
+                })
+            }
+        }.toString()
+        prefs.edit().putString(KEY_BLOCK_PRESETS, json).apply()
+    }
+
+    suspend fun setOverlayQuotes(quotes: List<String>) {
+        BlockOverlayController(appContext).setCustomQuotes(JSONArray(quotes).toString())
     }
 
     suspend fun setBlockedWords(words: List<String>) {
@@ -868,10 +913,24 @@ class SettingsRepository(context: Context) {
             ),
             launcherBlockUninstall = prefs.getBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, false),
             launcherPresets = parsePresets(prefs.getString("allowed_app_presets", "[]")),
+            launcherDockPackages = parseStringArray(
+                stringPreference(KEY_LAUNCHER_DOCK_PACKAGES, "[]"),
+            ),
+            launcherClockStyle = stringPreference(KEY_LAUNCHER_CLOCK_STYLE, ""),
+            blockPresets = parseBlockPresets(
+                stringPreference(KEY_BLOCK_PRESETS, "[]"),
+            ),
+            overlayQuotes = parseStringArray(
+                stringPreference(KEY_OVERLAY_QUOTES, "[]"),
+            ),
+            alwaysOnVpnPackages = parseStringArray(
+                stringPreference(KEY_ALWAYS_ON_VPN_PACKAGES, "[]"),
+            ),
             dailyAllowanceConfigJson = prefs.getString(KEY_DAILY_ALLOWANCE_CONFIG, null),
             recurringBlockSchedules = parseRecurringSchedules(
                 prefs.getString(KEY_RECURRING_BLOCK_SCHEDULES, "[]"),
             ),
+            userGreyoutWindowsJson = stringPreference(KEY_USER_GREYOUT_WINDOWS, "[]"),
             networkBlockEnabled = prefs.getBoolean(KEY_NETWORK_BLOCK_ENABLED, false),
             vpnSelfHealEnabled = prefs.getBoolean(KEY_VPN_SELF_HEAL_ENABLED, false),
             focusMirrorVpnEnabled = prefs.getBoolean(KEY_FOCUS_MIRROR_VPN_ENABLED, false),
@@ -1002,6 +1061,10 @@ class SettingsRepository(context: Context) {
             }
         }.toString()
         prefs.edit().putString("allowed_app_presets", json).apply()
+    }
+
+    suspend fun setLauncherDockPackages(packages: List<String>) {
+        setLauncherDockPackages(JSONArray(packages).toString())
     }
 
     suspend fun setLauncherTheme(theme: String) {
@@ -1192,6 +1255,8 @@ class SettingsRepository(context: Context) {
                     daysOfWeek  = daysOfWeek,
                     enabled     = item.optBoolean("enabled", true),
                     vpnEnabled  = item.optBoolean("vpnEnabled", false),
+                    name        = item.optString("name"),
+                    vpnPackages = parseStringArray(item.optJSONArray("vpnPackages")?.toString()),
                 )
             }
         }.getOrDefault(emptyList())
@@ -1212,4 +1277,47 @@ class SettingsRepository(context: Context) {
                 )
             }
         }.getOrDefault(emptyList())
+
+    private fun parseBlockPresets(json: String?): List<BlockPreset> =
+        runCatching {
+            val array = JSONArray(json ?: "[]")
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val id = item.optString("id").takeIf { it.isNotBlank() }
+                    ?: return@mapNotNull null
+                BlockPreset(
+                    id = id,
+                    name = item.optString("name"),
+                    packages = parseStringArray(item.optJSONArray("packages")?.toString()),
+                )
+            }
+        }.getOrDefault(emptyList())
+
+    private fun buildScheduleGreyoutWindows(
+        schedules: List<RecurringBlockSchedule>,
+    ): List<JSONObject> =
+        schedules
+            .filter { it.enabled && it.packages.isNotEmpty() }
+            .flatMap { schedule ->
+                schedule.packages.map { packageName ->
+                    JSONObject().apply {
+                        put("pkg", packageName)
+                        put("startHour", schedule.startHour.coerceIn(0, 23))
+                        put("startMin", schedule.startMinute.coerceIn(0, 59))
+                        put("endHour", schedule.endHour.coerceIn(0, 23))
+                        put("endMin", schedule.endMinute.coerceIn(0, 59))
+                        put(
+                            "days",
+                            JSONArray(schedule.daysOfWeek.map { day -> day.coerceIn(0, 6) + 1 }),
+                        )
+                        put("scheduleId", schedule.id)
+                        put("scheduleName", schedule.name)
+                        put("vpnEnabled", schedule.vpnEnabled)
+                        put("vpnPackages", JSONArray(schedule.vpnPackages))
+                    }
+                }
+            }
+
+    private fun stringPreference(key: String, defaultValue: String): String =
+        prefs.all[key] as? String ?: defaultValue
 }
