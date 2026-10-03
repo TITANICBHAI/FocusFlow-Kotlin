@@ -99,6 +99,7 @@ class TaskEndAlarmIdentityInstrumentedTest {
         val registry = TaskAlarmRegistry(context, preferencesName)
 
         try {
+            preferences.edit().putBoolean("full_screen_prompt_shown", true).commit()
             assertTrue(registry.recordCapabilitySnapshot("schedule", "schedule-snapshot", 1_000L))
             assertFalse(registry.recordCapabilitySnapshot("schedule", "schedule-snapshot", 2_000L))
             assertTrue(registry.recordCapabilitySnapshot("fire", "fire-snapshot", 3_000L))

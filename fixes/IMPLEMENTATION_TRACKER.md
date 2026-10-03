@@ -264,7 +264,7 @@ Progress notes:
   [background activity starts](https://developer.android.com/guide/components/activities/background-starts),
   and [notification channels](https://developer.android.com/develop/ui/compose/notifications/channels).
 - The required matrix has 24 API-34+ combinations (3 screen/keyguard states ×
-  notification access granted/denied × FSI granted/revoked × exact-alarm access
+  notification permission granted/denied × FSI granted/revoked × exact-alarm access
   granted/denied). It was not run: this workspace has no Java, Android SDK, `adb`,
   or emulator executable. No actual matrix results are attached; M6 is not verified.
 
