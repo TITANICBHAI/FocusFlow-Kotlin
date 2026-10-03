@@ -4,6 +4,8 @@ import android.util.Log
 import com.tbtechs.focusflow.data.model.CanonicalTimestamp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.restore.RestoreGate
+import com.tbtechs.focusflow.notifications.ReminderChainScheduler
+import com.tbtechs.focusflow.notifications.ReminderPlanner
 import java.time.Instant
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,13 +42,15 @@ object TaskAlarmReconcilePlan {
 }
 
 /**
- * Rebuilds task-end AlarmManager registrations from Room. Normal runs acquire
- * the restore gate; restore recovery uses the explicit closed-gate entry point.
+ * Rebuilds task-end alarms and the reminder chain from Room. Normal runs
+ * acquire the restore gate; restore recovery uses the explicit closed-gate entry.
  */
 class TaskAlarmReconciler(
     private val taskRepository: TaskRepository,
     private val alarmRepository: AlarmRepository,
     private val restoreGate: RestoreGate,
+    private val settingsRepository: SettingsRepository,
+    private val reminderChainScheduler: ReminderChainScheduler,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val reconcileMutex = Mutex()
@@ -74,7 +78,8 @@ class TaskAlarmReconciler(
                 taskRepository.markOverdue(canonicalNow)
             }
 
-            val desired = TaskAlarmReconcilePlan.desired(taskRepository.getAllTasks(), clock())
+            val tasks = taskRepository.getAllTasks()
+            val desired = TaskAlarmReconcilePlan.desired(tasks, clock())
             val desiredIds = desired.mapTo(mutableSetOf(), DesiredTaskEndAlarm::taskId)
             val registeredIds = alarmRepository.registeredTaskIds()
 
@@ -117,6 +122,14 @@ class TaskAlarmReconciler(
             }
 
             if (!foundPastTrigger) {
+                val reminderNowMs = clock()
+                val remindersEnabled = settingsRepository.readAppSettings().taskRemindersEnabled
+                val reminderPlan = ReminderPlanner.plan(
+                    tasks = tasks,
+                    nowMs = reminderNowMs,
+                    remindersEnabled = remindersEnabled,
+                )
+                reminderChainScheduler.rearm(reminderPlan, reminderNowMs)
                 Log.i(TAG, "Task-end alarms reconciled reason=$reason count=${desired.size}")
                 return
             }

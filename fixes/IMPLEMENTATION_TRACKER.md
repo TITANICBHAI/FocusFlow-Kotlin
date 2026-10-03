@@ -134,10 +134,9 @@ Progress notes:
 
 ### M4 — Task-end alarms and reconciliation
 
-Status: **In progress** — existing implementation was audited; the missed
-FocusSession reschedule path is now wired to reconciliation, cross-talk coverage
-has been expanded, and current Android exact-alarm guidance has been checked.
-No Gradle or test task was run per the user's instruction.
+Status: **In progress** — M4 behavior and current Android exact-alarm guidance
+have been source-reviewed. Cross-talk instrumentation is present but unexecuted;
+Java/Android SDK and an emulator/device are unavailable in this workspace.
 
 - [x] Give all task-end PendingIntents collision-resistant per-task data URI identity and notifications per-task identity.
 - [x] Make past-trigger scheduling a no-op and remove inexact task-end fallback.
@@ -145,7 +144,8 @@ No Gradle or test task was run per the user's instruction.
 - [x] Validate task state at fire time, use receiver time budgets, and deduplicate notifications.
 - [x] Add startup/boot/permission/time/task-change reconciliation and the overdue sweep.
 - [x] Keep restore, alarm cancellation, and reconciliation serialized with the restore gate.
-- [ ] Verify exact-alarm behavior against current Android documentation and test the multi-alarm cross-talk cases.
+- [x] Verify exact-alarm behavior against current Android documentation.
+- [ ] Execute the multi-alarm cross-talk instrumentation cases on an Android emulator/device.
 
 Progress notes:
 
@@ -160,24 +160,55 @@ Progress notes:
   PendingIntents and per-task deduplication. It now also checks per-task PendingIntent
   cancellation isolation, UI replacement via `onNewIntent`, and task-specific
   dismissal isolation. The added instrumentation has not been executed.
-- Current Android guidance confirms that PendingIntent matching follows
-  `Intent.filterEquals` (including data URI), and that apps must check
-  `canScheduleExactAlarms()` and handle the permission-grant broadcast. References:
+- Current Android documentation confirms that PendingIntent matching uses
+  `Intent.filterEquals` (including data URI), and that `setAlarmClock()` and
+  `setExactAndAllowWhileIdle()` require exact-alarm access. The app checks
+  `canScheduleExactAlarms()` and handles the grant broadcast. Android does not
+  send that broadcast on revocation; `MainActivity.onResume` requests reconciliation
+  after returning from Settings. Fresh installs targeting API 33+ are denied
+  `SCHEDULE_EXACT_ALARM` by default. References:
   [PendingIntent](https://developer.android.com/reference/android/app/PendingIntent),
   [AlarmManager](https://developer.android.com/develop/background-work/services/alarms),
   [Android 14 exact-alarm changes](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms).
 - No Gradle/build/test command was run per user instruction. Device-matrix checks
-  remain outside this milestone's source-only verification.
+  remain outside this milestone's source-only verification. This shell has no
+  `java`, `JAVA_HOME`, Android SDK variables, `adb`, or emulator executable.
+- Inline source assertions passed for exact-only scheduling, the past-trigger
+  guard, per-task identities, reconcile triggers, receiver budgets, and the
+  existing cross-talk cases; `git diff --check` passed. These checks do not
+  establish Kotlin compilation or Android runtime behavior.
 
 ### M5 — Reminder chain
 
-Status: **Not started**
+Status: **In progress** — reminder-chain implementation and focused test sources are
+present; unit and Android test execution remains unverified.
 
-- [ ] Generate reminder slots from task IDs and task times, not `Task.reminders`.
-- [ ] Enforce the 450-slot budget and skip ineligible or expired task slots.
-- [ ] Schedule one reminder-chain alarm and replan after each fire.
-- [ ] Gate reminders using the device-local reminder preference and persist a bounded dedupe ledger.
+- [x] Generate reminder slots from task IDs and task times, not `Task.reminders`.
+- [x] Enforce the 450-slot budget and skip ineligible or expired task slots.
+- [x] Schedule one reminder-chain alarm and replan after each fire.
+- [x] Gate reminders using the device-local reminder preference and persist a bounded dedupe ledger.
 - [ ] Test chain delivery, rescheduling, cancellation, and budget behavior.
+
+Progress notes:
+
+- Extracted the existing task-time reminder rules into a pure planner. It emits
+  the seven reminder slot types from §TS.8; task-end alarms remain separate, and
+  the planner never reads `Task.reminders`.
+- The Android path now uses one fixed-identity AlarmManager PendingIntent at
+  `focusflow-internal://reminder-chain`, selects the next future slot, and
+  replans after a fire. It uses the exact-alarm tiers when available and
+  `setAndAllowWhileIdle()` as the inexact reminder fallback.
+- Task reconciliation now rearms or cancels the chain from the device-local
+  `taskRemindersEnabled` preference. The settings toggle requests reconciliation
+  after its preference write completes; restore and task-change reconciliation
+  use the same path.
+- Added a SharedPreferences ledger keyed by slot ID, retained for 48 hours and
+  capped at 450 entries, and task-reminder notifications use `(tag = slotId,
+  id = 1)`. The 450-entry cap is an implementation bound aligned with the
+  planner budget; v14 specifies 48-hour pruning but no separate ledger count.
+- Added unit coverage for derived slots, eligibility/expiry, the 450-slot cap,
+  due delivery and deduplication, rescheduling, cancellation, disabled
+  preferences, and ledger retention/bounds. Tests have not been executed.
 
 ### M6 — Alarm presentation and diagnostics
 
@@ -200,6 +231,7 @@ Separate source/build failures from missing SDK/device capabilities.
 | 2026-10-03 | M0 | Implemented the live-state import denylist, external-route allowlist, content-filter changes, canonical task timestamp boundary, and weakening-import PIN gate. `git diff --check` and static source/fixture assertions passed. Source review confirms settings restore remains independent of task Merge/Replace. | `bash ./gradlew :app:testDebugUnitTest --no-daemon` could not start: no `java` command or `JAVA_HOME`. `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset; no build or unit-test result is available. Review-notes file is absent from the current workspace and was not recreated. |
 | 2026-10-03 | M2 | User confirmed M2 is done. Source inspection found the V1 exporter and golden compatibility/round-trip tests; all M2 tracker items are checked. | Local `bash ./gradlew :app:testDebugUnitTest --no-daemon` failed because Java/`JAVA_HOME` is unavailable; no local Android build or unit-test result. |
 | 2026-10-03 | M3 | Added focused gate, PendingImport, conflict/reminder, journal-write, retry, discard, quarantine, and phase-replay test sources; recovery routing and writer gates were extended. | Full §6.6 coverage—especially failure inside the Room restore transaction—and final writer-path audit remain; tests were intentionally not run per user instruction. |
+| 2026-10-03 | M4 follow-up audit | Source assertions passed for the task-end invariants and current cross-talk test source; `git diff --check` passed. Current Android docs and task-change/recovery triggers were reviewed. | Instrumentation and device-matrix checks remain unrun; local Java/Android SDK and emulator/device are unavailable. M4 stays in progress. |
 
 Final handoff must list changed files, completed tracker items, exact checks run, source
 assumptions that differed from the contract, and all unresolved or device-only items.

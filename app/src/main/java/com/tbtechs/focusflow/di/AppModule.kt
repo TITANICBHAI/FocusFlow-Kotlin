@@ -3,6 +3,10 @@ package com.tbtechs.focusflow.di
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.tbtechs.focusflow.notifications.AndroidReminderChainAlarmDriver
+import com.tbtechs.focusflow.notifications.ReminderChainLedger
+import com.tbtechs.focusflow.notifications.ReminderChainScheduler
+import com.tbtechs.focusflow.notifications.SharedPreferencesReminderLedgerStore
 import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.ForegroundServiceController
@@ -100,6 +104,12 @@ object AppModule {
         private set
 
     lateinit var taskAlarmReconciler: TaskAlarmReconciler
+        private set
+
+    lateinit var reminderChainScheduler: ReminderChainScheduler
+        private set
+
+    lateinit var reminderChainLedger: ReminderChainLedger
         private set
 
     lateinit var blockOverlayController: BlockOverlayController
@@ -226,10 +236,14 @@ object AppModule {
             database = database,
             restoreGate = restoreGate,
         )
+        reminderChainScheduler = ReminderChainScheduler(AndroidReminderChainAlarmDriver(app))
+        reminderChainLedger = ReminderChainLedger(SharedPreferencesReminderLedgerStore(app))
         taskAlarmReconciler = TaskAlarmReconciler(
             taskRepository = taskRepository,
             alarmRepository = alarmRepository,
             restoreGate = restoreGate,
+            settingsRepository = settingsRepository,
+            reminderChainScheduler = reminderChainScheduler,
         )
         schedulerEngine = SchedulerEngine()
 

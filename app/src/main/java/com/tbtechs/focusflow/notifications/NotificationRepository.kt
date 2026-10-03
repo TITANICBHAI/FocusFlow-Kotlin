@@ -15,9 +15,7 @@ import com.tbtechs.focusflow.data.repository.TaskRepository
 import com.tbtechs.focusflow.domain.Task
 import com.tbtechs.focusflow.domain.TaskStatus
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.sync.Mutex
@@ -27,10 +25,10 @@ import kotlin.math.max
 /**
  * Port of notificationService.ts.
  *
- * Notification delivery is injected because the current Kotlin scaffold has
- * native task-end alarms but no generic reminder receiver yet. The adapter is
- * responsible for persisting/scheduling [NotificationRequest] instances and
- * must not silently discard them.
+ * Production task reminders use [ReminderPlanner] and the single-alarm chain.
+ * This injected scheduler interface remains for the repository's existing
+ * digest, report, and one-shot notification API; AppModule does not install a
+ * per-slot production scheduler.
  */
 class NotificationRepository(
     context: Context,
@@ -66,35 +64,13 @@ class NotificationRepository(
 
     suspend fun scheduleTaskReminders(task: Task) {
         writeMutex.withLock {
-            scheduleTaskRemindersUnlocked(task)
+            scheduleTaskRemindersUnlocked(listOf(task))
         }
     }
 
     suspend fun scheduleTaskRemindersBatch(tasks: List<Task>) {
         writeMutex.withLock {
-            val uniqueTasks = tasks
-                .associateBy { it.id }
-                .values
-                .toList()
-            cancelTaskRemindersUnlocked(uniqueTasks.map { it.id })
-
-            val actionable = uniqueTasks.filter { it.isActionable() }
-            if (actionable.isEmpty() || !requestPermissions()) return@withLock
-
-            val slotBudget = NotificationSlotBudget(
-                remaining = max(
-                    0,
-                    MAX_SCHEDULED_NOTIFICATIONS - scheduler.getScheduledNotifications().size,
-                ),
-            )
-            for (task in actionable) {
-                scheduleTaskRemindersUnlocked(
-                    task = task,
-                    skipCancel = true,
-                    permissionsGranted = true,
-                    slotBudget = slotBudget,
-                )
-            }
+            scheduleTaskRemindersUnlocked(tasks)
         }
     }
 
@@ -348,110 +324,40 @@ class NotificationRepository(
         )
     }
 
-    private suspend fun scheduleTaskRemindersUnlocked(
-        task: Task,
-        skipCancel: Boolean = false,
-        permissionsGranted: Boolean? = null,
-        slotBudget: NotificationSlotBudget? = null,
-    ) {
-        if (!skipCancel) cancelTaskRemindersUnlocked(listOf(task.id))
-        if (!task.isActionable()) return
+    private suspend fun scheduleTaskRemindersUnlocked(tasks: List<Task>) {
+        val uniqueTasks = tasks
+            .filter { it.id.isNotBlank() }
+            .associateBy { it.id }
+            .values
+            .toList()
+        cancelTaskRemindersUnlocked(uniqueTasks.map { it.id })
+        if (uniqueTasks.isEmpty() || !requestPermissions()) return
 
-        val granted = permissionsGranted ?: requestPermissions()
-        if (!granted) return
-
-        val budget = slotBudget ?: NotificationSlotBudget(
+        val budget = NotificationSlotBudget(
             remaining = max(
                 0,
                 MAX_SCHEDULED_NOTIFICATIONS - scheduler.getScheduledNotifications().size,
             ),
         )
-        val now = clock.millis()
-        val startMs = parseInstant(task.startTime).toEpochMilli()
-        val endMs = parseInstant(task.endTime).toEpochMilli()
-        val endLabel = formatTime(task.endTime)
-        val durationLabel = formatDuration(task.durationMinutes)
-        val preStart = listOf(
-            ReminderSpec(-10 * 60_000L, "Starting in 10 min · ends at $endLabel · $durationLabel total", false),
-            ReminderSpec(-5 * 60_000L, "Starting in 5 min · ends at $endLabel", false),
-            ReminderSpec(-60_000L, "Starting in 1 min — get ready! Ends at $endLabel", false),
-            ReminderSpec(0L, "$durationLabel session · ends at $endLabel — tap to open", true),
-        )
-
-        for (reminder in preStart) {
-            val fireAt = startMs + reminder.offsetMs
-            if (fireAt - now < 1_000L) continue
+        val plan = ReminderPlanner.plan(uniqueTasks, clock.millis(), clock.zone)
+        for (slot in plan) {
+            if (budget.remaining <= 0) break
             schedule(
                 NotificationRequest(
-                    identifier = "${task.id}-pre${reminder.offsetMs}",
-                    title = "🎯 ${task.title}",
-                    body = reminder.body,
+                    identifier = slot.id,
+                    title = slot.title,
+                    body = slot.text,
                     data = mapOf(
-                        "taskId" to task.id,
-                        "type" to if (reminder.isStart) "task-start" else "reminder",
+                        "taskId" to slot.taskId,
+                        "type" to slot.kind.notificationType,
                     ),
-                    categoryIdentifier = if (reminder.isStart) "task-active" else "task-reminder",
                     channelId = NotificationChannels.TASK_REMINDERS,
-                    trigger = NotificationTrigger.AtMillis(fireAt),
+                    categoryIdentifier = slot.kind.categoryIdentifier,
+                    trigger = NotificationTrigger.AtMillis(slot.triggerMs),
                 ),
                 budget,
             )
         }
-
-        val midSession = listOf(
-            ReminderSpec(15 * 60_000L, "15 minutes in — how's it going?", false),
-            ReminderSpec(30 * 60_000L, "Half hour in — keep going!", false),
-        )
-        for (reminder in midSession) {
-            val fireAt = startMs + reminder.offsetMs
-            if (fireAt - now < 1_000L || fireAt >= endMs || endMs - fireAt < TEN_MINUTES_MS) {
-                continue
-            }
-            schedule(
-                NotificationRequest(
-                    identifier = "${task.id}-mid${reminder.offsetMs}",
-                    title = "🟢 ${task.title}",
-                    body = reminder.body,
-                    data = mapOf("taskId" to task.id, "type" to "checkin"),
-                    categoryIdentifier = "task-active",
-                    channelId = NotificationChannels.TASK_REMINDERS,
-                    trigger = NotificationTrigger.AtMillis(fireAt),
-                ),
-                budget,
-            )
-        }
-
-        val almostDone = endMs - 60_000L
-        if (almostDone - now > 1_000L) {
-            schedule(
-                NotificationRequest(
-                    identifier = "${task.id}-almost",
-                    title = "⏳ ${task.title} — 1 minute left",
-                    body = "Start wrapping up!",
-                    data = mapOf("taskId" to task.id, "type" to "almost-done"),
-                    categoryIdentifier = "task-active",
-                    channelId = NotificationChannels.TASK_REMINDERS,
-                    trigger = NotificationTrigger.AtMillis(almostDone),
-                ),
-                budget,
-            )
-        }
-
-        if (endMs - now > 1_000L) {
-            schedule(
-                NotificationRequest(
-                    identifier = "${task.id}-end",
-                    title = "⏰ ${task.title} — Time's up!",
-                    body = "Mark as done, or extend your session.",
-                    data = mapOf("taskId" to task.id, "type" to "OVERRUN_CHECK"),
-                    categoryIdentifier = "task-active",
-                    channelId = NotificationChannels.TASK_REMINDERS,
-                    trigger = NotificationTrigger.AtMillis(endMs),
-                ),
-                budget,
-            )
-        }
-
     }
 
     private suspend fun cancelTaskRemindersUnlocked(taskIds: List<String>) {
@@ -476,11 +382,6 @@ class NotificationRepository(
         if (budget != null) budget.remaining--
     }
 
-    private fun Task.isActionable() =
-        status != TaskStatus.COMPLETED &&
-            status != TaskStatus.SKIPPED &&
-            status != TaskStatus.OVERDUE
-
     private fun parseInstant(value: String): Instant =
         runCatching { Instant.parse(value) }.getOrElse {
             java.time.OffsetDateTime.parse(value).toInstant()
@@ -493,21 +394,6 @@ class NotificationRepository(
         val minute = parts[1].toIntOrNull() ?: return null
         if (hour !in 0..23 || minute !in 0..59) return null
         return hour to minute
-    }
-
-    private fun formatTime(value: String): String =
-        parseInstant(value).atZone(clock.zone).let {
-            "%02d:%02d".format(it.hour, it.minute)
-        }
-
-    private fun formatDuration(minutes: Int): String {
-        val hours = minutes / 60
-        val remainder = minutes % 60
-        return when {
-            hours > 0 && remainder > 0 -> "${hours}h ${remainder}m"
-            hours > 0 -> "${hours}h"
-            else -> "${minutes}m"
-        }
     }
 
     companion object {
@@ -525,17 +411,10 @@ class NotificationRepository(
         private const val WEEKLY_REPORT_FALLBACK = "Consistent week. Nothing stood out."
         private const val MAX_SCHEDULED_NOTIFICATIONS = 450
         private const val FIVE_MINUTES_MS = 5 * 60_000L
-        private const val TEN_MINUTES_MS = 10 * 60_000L
     }
 }
 
 data class NotificationSlotBudget(var remaining: Int)
-
-data class ReminderSpec(
-    val offsetMs: Long,
-    val body: String,
-    val isStart: Boolean,
-)
 
 data class NotificationUserProfile(
     val name: String? = null,

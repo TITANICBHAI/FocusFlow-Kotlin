@@ -171,8 +171,11 @@ class SettingsViewModel(
      */
     fun updateSettings(newSettings: AppSettings) {
         viewModelScope.launch {
+            var taskReminderPreferenceChanged = false
             restoreGate.write("SettingsViewModel.updateSettings") {
             val current = _settings.value
+            taskReminderPreferenceChanged =
+                newSettings.taskRemindersEnabled != current.taskRemindersEnabled
 
             // blockedWords: SettingsRepository.setBlockedWords(words)
             if (newSettings.blockedWords != current.blockedWords) {
@@ -268,6 +271,9 @@ class SettingsViewModel(
             }
 
             _settings.value = newSettings
+            }
+            if (taskReminderPreferenceChanged) {
+                AppModule.requestTaskAlarmReconciliation("task_reminders_setting")
             }
         }
     }

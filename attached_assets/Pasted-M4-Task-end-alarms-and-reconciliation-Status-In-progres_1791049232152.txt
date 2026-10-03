@@ -1,0 +1,17 @@
+M4 — Task-end alarms and reconciliation
+Status: In progress — existing implementation was audited; the missed FocusSession reschedule path is now wired to reconciliation, cross-talk coverage has been expanded, and current Android exact-alarm guidance has been checked. No Gradle or test task was run per the user's instruction.
+
+ Give all task-end PendingIntents collision-resistant per-task data URI identity and notifications per-task identity.
+ Make past-trigger scheduling a no-op and remove inexact task-end fallback.
+ Persist and reconcile alarm registry state; defer exact-alarm-unavailable entries and retry on capability changes.
+ Validate task state at fire time, use receiver time budgets, and deduplicate notifications.
+ Add startup/boot/permission/time/task-change reconciliation and the overdue sweep.
+ Keep restore, alarm cancellation, and reconciliation serialized with the restore gate.
+ Verify exact-alarm behavior against current Android documentation and test the multi-alarm cross-talk cases.
+Progress notes:
+
+Source audit confirmed per-task alarm/show PendingIntent URIs and notification tags, exact-only task-end scheduling, past-trigger no-op behavior, durable registry, exact-access deferral/retry triggers, receiver validation/budgets/deduplication, boot/startup/permission/wall-clock/task reconciliation, overdue sweeping, and shared restore-gate serialization.
+FocusSessionViewModel.startFocusMode can adjust a task's start/end times when starting immediately. It now reconciles task-end alarms after that update.
+The existing instrumentation test already covered distinct alarm/activity PendingIntents and per-task deduplication. It now also checks per-task PendingIntent cancellation isolation, UI replacement via onNewIntent, and task-specific dismissal isolation. The added instrumentation has not been executed.
+Current Android guidance confirms that PendingIntent matching follows Intent.filterEquals (including data URI), and that apps must check canScheduleExactAlarms() and handle the permission-grant broadcast. References: PendingIntent, AlarmManager, Android 14 exact-alarm changes.
+No Gradle/build/test command was run per user instruction. Device-matrix checks remain outside this milestone's source-only verification.

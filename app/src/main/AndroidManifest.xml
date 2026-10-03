@@ -153,6 +153,9 @@
             android:name=".enforcement.receivers.TaskEndAlarmReceiver"
             android:exported="false" />
         <receiver
+            android:name=".notifications.receivers.ReminderReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".enforcement.receivers.TaskAlarmReconcileReceiver"
             android:exported="false">
             <intent-filter>

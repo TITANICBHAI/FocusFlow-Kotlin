@@ -1,0 +1,154 @@
+package com.tbtechs.focusflow.notifications
+
+import com.tbtechs.focusflow.data.model.Task
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+enum class ReminderKind(
+    val notificationType: String,
+    val categoryIdentifier: String,
+) {
+    PRE_START("reminder", "task-reminder"),
+    AT_START("task-start", "task-active"),
+    MID_SESSION("checkin", "task-active"),
+    ALMOST_DONE("almost-done", "task-active"),
+}
+
+data class ReminderSlot(
+    val id: String,
+    val taskId: String,
+    val kind: ReminderKind,
+    val triggerMs: Long,
+    val title: String,
+    val text: String,
+)
+
+/**
+ * Builds task reminders only from task IDs and task timestamps.
+ *
+ * The normal plan drops expired and imminent slots so they are never armed.
+ * The receiver opts into [includeDueSlots] to recover a slot whose alarm was
+ * delivered late; that path still excludes tasks whose end time has passed.
+ */
+object ReminderPlanner {
+    const val MAX_SLOTS = 450
+    const val MIN_SCHEDULE_LEAD_MS = 1_000L
+    const val DELIVERY_TOLERANCE_MS = 1_000L
+
+    private const val MINUTES_MS = 60_000L
+    private const val MID_SESSION_MIN_REMAINING_MS = 10 * MINUTES_MS
+    private val excludedStatuses = setOf("completed", "skipped", "overdue")
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+
+    fun plan(
+        tasks: List<Task>,
+        nowMs: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        remindersEnabled: Boolean = true,
+        includeDueSlots: Boolean = false,
+    ): List<ReminderSlot> {
+        if (!remindersEnabled) return emptyList()
+
+        return tasks.asSequence()
+            .filter { task ->
+                task.id.isNotBlank() && task.status !in excludedStatuses
+            }
+            .mapNotNull { task ->
+                val startMs = parseEpochMillis(task.startTime) ?: return@mapNotNull null
+                val endMs = parseEpochMillis(task.endTime) ?: return@mapNotNull null
+                if (endMs <= startMs || endMs <= nowMs) return@mapNotNull null
+                task to (startMs to endMs)
+            }
+            .flatMap { (task, times) ->
+                slotsFor(task, times.first, times.second, zoneId).asSequence()
+            }
+            .filter { slot ->
+                includeDueSlots || slot.triggerMs >= nowMs + MIN_SCHEDULE_LEAD_MS
+            }
+            .sortedWith(compareBy<ReminderSlot> { it.triggerMs }.thenBy { it.id })
+            .take(MAX_SLOTS)
+            .toList()
+    }
+
+    private fun slotsFor(
+        task: Task,
+        startMs: Long,
+        endMs: Long,
+        zoneId: ZoneId,
+    ): List<ReminderSlot> {
+        val endLabel = Instant.ofEpochMilli(endMs)
+            .atZone(zoneId)
+            .format(timeFormatter)
+        val durationLabel = formatDuration(task.durationMinutes)
+        val slots = mutableListOf<ReminderSlot>()
+
+        val preStart = listOf(
+            -10 * MINUTES_MS to "Starting in 10 min · ends at $endLabel · $durationLabel total",
+            -5 * MINUTES_MS to "Starting in 5 min · ends at $endLabel",
+            -MINUTES_MS to "Starting in 1 min — get ready! Ends at $endLabel",
+            0L to "$durationLabel session · ends at $endLabel — tap to open",
+        )
+        preStart.forEach { (offsetMs, text) ->
+            val triggerMs = safeAdd(startMs, offsetMs) ?: return@forEach
+            val kind = if (offsetMs == 0L) ReminderKind.AT_START else ReminderKind.PRE_START
+            slots += ReminderSlot(
+                id = "${task.id}-pre$offsetMs",
+                taskId = task.id,
+                kind = kind,
+                triggerMs = triggerMs,
+                title = "🎯 ${task.title}",
+                text = text,
+            )
+        }
+
+        listOf(
+            15 * MINUTES_MS to "15 minutes in — how's it going?",
+            30 * MINUTES_MS to "Half hour in — keep going!",
+        ).forEach { (offsetMs, text) ->
+            val triggerMs = safeAdd(startMs, offsetMs) ?: return@forEach
+            if (triggerMs >= endMs || endMs - triggerMs < MID_SESSION_MIN_REMAINING_MS) {
+                return@forEach
+            }
+            slots += ReminderSlot(
+                id = "${task.id}-mid$offsetMs",
+                taskId = task.id,
+                kind = ReminderKind.MID_SESSION,
+                triggerMs = triggerMs,
+                title = "🟢 ${task.title}",
+                text = text,
+            )
+        }
+
+        val almostDoneMs = endMs - MINUTES_MS
+        slots += ReminderSlot(
+            id = "${task.id}-almost",
+            taskId = task.id,
+            kind = ReminderKind.ALMOST_DONE,
+            triggerMs = almostDoneMs,
+            title = "⏳ ${task.title} — 1 minute left",
+            text = "Start wrapping up!",
+        )
+        return slots
+    }
+
+    private fun parseEpochMillis(value: String): Long? =
+        runCatching { Instant.parse(value).toEpochMilli() }
+            .recoverCatching { OffsetDateTime.parse(value).toInstant().toEpochMilli() }
+            .getOrNull()
+
+    private fun safeAdd(value: Long, offset: Long): Long? =
+        runCatching { Math.addExact(value, offset) }.getOrNull()
+
+    private fun formatDuration(minutes: Int): String {
+        val hours = minutes / 60
+        val remainder = minutes % 60
+        return when {
+            hours > 0 && remainder > 0 -> "${hours}h ${remainder}m"
+            hours > 0 -> "${hours}h"
+            else -> "${minutes}m"
+        }
+    }
+}

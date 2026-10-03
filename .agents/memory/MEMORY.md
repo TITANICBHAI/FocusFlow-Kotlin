@@ -10,3 +10,4 @@
 - [Stats fix plan](stats-fix-plan.md) — use calendar-time evidence, state-agnostic pacing, and persisted hourly data for Stats correctness.
 - [Rolling Stats dates](rolling-stats-dates.md) — rolling week charts must use ISO calendar-date series, not weekday-only aggregates.
 - [Backup contract authority](backup-contract-authority.md) — v14 is the only product spec; don't invent behavior absent from its documented TypeScript facts.
+- [Replit config side effects](replit-config-side-effects.md) — invoking an unconfigured runtime can add a module to `.replit`; use the validated replacement flow to restore config.
