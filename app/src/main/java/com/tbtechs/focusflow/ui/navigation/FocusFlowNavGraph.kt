@@ -105,7 +105,7 @@ fun FocusFlowNavGraph(
     backupCoordinator: BackupCoordinator? = null,
     onExportBackup: () -> Unit = {},
     onImportBackup: (Boolean) -> Unit = {},
-    pendingImportUri: android.net.Uri? = null,
+    pendingImportGeneration: Int = 0,
     initialReplaceTasks: Boolean = false,
     onImportFinished: () -> Unit = {},
     onOnboardingTourFinished: () -> Unit = {},
@@ -324,10 +324,9 @@ fun FocusFlowNavGraph(
             composable(Routes.IMPORT_CONFIRM) {
                 ScreenBoundary(Routes.IMPORT_CONFIRM) {
                     ImportConfirmScreen(
-                        source = pendingImportUri,
+                        pendingGeneration = pendingImportGeneration,
                         backupCoordinator = backupCoordinator
                             ?: error("Backup coordinator is required for import confirmation."),
-                        currentSettings = settingsViewModel.settings.value,
                         currentFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
                         initialReplaceTasks = initialReplaceTasks,
                         onBack = onImportFinished,

@@ -8,6 +8,7 @@ import com.tbtechs.focusflow.data.local.dao.EstimationErrorRow
 import com.tbtechs.focusflow.data.local.dao.RecentSessionSummaryRow
 import com.tbtechs.focusflow.data.local.dao.LifetimeStatsRow
 import com.tbtechs.focusflow.data.local.dao.TaskDao
+import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.data.local.entity.DailyCompletionEntity
 import com.tbtechs.focusflow.data.local.entity.FocusOverrideEntity
 import com.tbtechs.focusflow.data.local.entity.FocusSessionEntity
@@ -56,6 +57,7 @@ class FocusSessionRepository(
     private val dailyCompletionDao: DailyCompletionDao,
     /** Injected for [backfillDayCompletions] — reads task start_time/status. */
     private val taskDao: TaskDao,
+    private val restoreGate: RestoreGate = RestoreGate(),
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -72,14 +74,16 @@ class FocusSessionRepository(
      * TODO (Track C): push widget update via AppWidgetManager.
      */
     suspend fun startFocusSession(session: FocusSession) {
-        focusSessionDao.insertSession(
-            FocusSessionEntity(
-                taskId          = session.taskId,
-                startedAt       = session.startedAt,
-                isActive        = true,
-                allowedPackages = json.encodeToString(session.allowedPackages),
+        restoreGate.write("FocusSessionRepository.startFocusSession") {
+            focusSessionDao.insertSession(
+                FocusSessionEntity(
+                    taskId          = session.taskId,
+                    startedAt       = session.startedAt,
+                    isActive        = true,
+                    allowedPackages = json.encodeToString(session.allowedPackages),
+                )
             )
-        )
+        }
     }
 
     /**
@@ -91,7 +95,9 @@ class FocusSessionRepository(
      * TODO (Track C): clear enforcement SharedPreferences keys and push widget.
      */
     suspend fun endFocusSession(taskId: String): Int =
-        focusSessionDao.endSession(taskId = taskId, endedAt = Instant.now().toString())
+        restoreGate.write("FocusSessionRepository.endFocusSession") {
+            focusSessionDao.endSession(taskId = taskId, endedAt = Instant.now().toString())
+        }
 
     /**
      * Returns the currently active session, or null if none is running.
@@ -105,12 +111,14 @@ class FocusSessionRepository(
      * current. A 12-hour cutoff preserves genuinely long-running sessions.
      */
     suspend fun repairOrphanedSessions(): Int {
-        val now = Instant.now()
-        val cutoff = now.minus(12, ChronoUnit.HOURS)
-        return focusSessionDao.endOrphanedSessions(
-            cutoff = cutoff.toString(),
-            now = now.toString(),
-        )
+        return restoreGate.write("FocusSessionRepository.repairOrphanedSessions") {
+            val now = Instant.now()
+            val cutoff = now.minus(12, ChronoUnit.HOURS)
+            focusSessionDao.endOrphanedSessions(
+                cutoff = cutoff.toString(),
+                now = now.toString(),
+            )
+        }
     }
 
     /** Repairs stale rows, then emits the active session on Room changes. */
@@ -265,10 +273,12 @@ class FocusSessionRepository(
      * users in UTC-N timezones whose evening tasks cross the UTC date boundary.
      */
     suspend fun recordDayCompletion(completed: Int, total: Int) {
-        val today = LocalDate.now(ZoneId.systemDefault()).toString()
-        dailyCompletionDao.upsertCompletion(
-            DailyCompletionEntity(date = today, completed = completed, total = total)
-        )
+        restoreGate.write("FocusSessionRepository.recordDayCompletion") {
+            val today = LocalDate.now(ZoneId.systemDefault()).toString()
+            dailyCompletionDao.upsertCompletion(
+                DailyCompletionEntity(date = today, completed = completed, total = total)
+            )
+        }
     }
 
     /**
@@ -285,7 +295,8 @@ class FocusSessionRepository(
      * repository layer, not inside a single DAO.
      */
     suspend fun backfillDayCompletions(daysBack: Int = 30) {
-        runCatching {
+        restoreGate.write("FocusSessionRepository.backfillDayCompletions") {
+          runCatching {
             val cutoff = LocalDate.now(ZoneId.systemDefault())
                 .minusDays((daysBack - 1).toLong())
                 .atStartOfDay(ZoneId.systemDefault())
@@ -313,6 +324,7 @@ class FocusSessionRepository(
                 )
             }
             dailyCompletionDao.upsertCompletions(entities)
+          }
         }
         // Failure is non-fatal — mirrors `logger.error('database', …)` in JS.
     }

@@ -115,7 +115,9 @@ fun ActiveScreen(
 ) {
     val context = LocalContext.current
     val installedAppsRepository = remember { InstalledAppsRepository(context) }
-    val resolvedVpnRepo = remember(vpnRepository) { vpnRepository ?: VpnRepository(context) }
+    val resolvedVpnRepo = remember(vpnRepository) {
+        vpnRepository ?: VpnRepository(context, com.tbtechs.focusflow.di.AppModule.restoreGate)
+    }
     val focusPinManager = remember { FocusPinManager(context) }
 
     val tasks by taskViewModel.tasks.collectAsState()

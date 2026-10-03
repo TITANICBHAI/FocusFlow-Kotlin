@@ -118,6 +118,15 @@ class BackupManager(
             BackupParseResult.Error("Could not open the selected backup file: $error")
         }
 
+    suspend fun readBackupV1(sourceUri: Uri): BackupV1ParseResult =
+        try {
+            val text = readBackupText(sourceUri)
+                ?: return BackupV1ParseResult.Error("Could not read the selected backup file.")
+            BackupV1Parser.parse(text)
+        } catch (error: Exception) {
+            BackupV1ParseResult.Error("Could not open the selected backup file: $error")
+        }
+
     private fun readBackupText(sourceUri: Uri): String? =
         appContext.contentResolver.openInputStream(sourceUri)
             ?.use { input -> BackupJsonPreflight.readUtf8Bounded(input) }

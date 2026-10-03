@@ -10,6 +10,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
+import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.enforcement.receivers.VpnWatchdogReceiver
 import org.json.JSONArray
 import org.json.JSONObject
@@ -48,7 +49,10 @@ data class NetworkBlockStatus(
  * The policy-generation counter, atomic lock serialization, launcher package cache, and
  * debounce logic in VpnPolicyCoordinator remain fully authoritative.
  */
-class VpnRepository(private val context: Context) {
+class VpnRepository(
+    private val context: Context,
+    private val restoreGate: RestoreGate = RestoreGate(),
+) {
 
     companion object {
         private const val PREFS_NAME = "focusday_prefs"
@@ -136,6 +140,7 @@ class VpnRepository(private val context: Context) {
      * Only keys present in [settingsJson] are updated; missing keys are left unchanged.
      */
     suspend fun setNetworkBlockSettings(settingsJson: String) {
+        restoreGate.write("VpnRepository.setNetworkBlockSettings") {
         val obj = JSONObject(settingsJson)
         val currentEnabled = prefs.getBoolean("net_block_enabled", false)
         val currentVpn = prefs.getBoolean("net_block_vpn", true)
@@ -180,6 +185,7 @@ class VpnRepository(private val context: Context) {
 
         // Calls directly into VpnPolicyCoordinator to recalculate policy generation and dispatch
         VpnPolicyCoordinator.requestSync(context)
+        }
     }
 
     /**

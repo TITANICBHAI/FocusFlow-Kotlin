@@ -2,10 +2,14 @@ package com.tbtechs.focusflow.data.repository
 
 import com.tbtechs.focusflow.data.local.dao.TaskDao
 import com.tbtechs.focusflow.data.local.dao.TasksByHourRow
+import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.local.entity.TaskEntity
 import com.tbtechs.focusflow.data.model.Reminder
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.model.withCanonicalTimestamps
+import com.tbtechs.focusflow.data.restore.RestoreGate
+import com.tbtechs.focusflow.data.restore.RestorePlan
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -36,7 +40,11 @@ import java.time.ZoneId
  * The database singleton is built in `di/AppModule.kt` and the DAO is
  * retrieved via `database.taskDao()` before passing to this constructor.
  */
-class TaskRepository(private val taskDao: TaskDao) {
+class TaskRepository(
+    private val taskDao: TaskDao,
+    private val database: FocusFlowDatabase? = null,
+    private val restoreGate: RestoreGate = RestoreGate(),
+) {
 
     // Lenient parser: mirrors `safeJsonParse` in database.ts — ignores unknown
     // fields so tasks written by a newer app version survive a downgrade read.
@@ -48,11 +56,13 @@ class TaskRepository(private val taskDao: TaskDao) {
      * completed between the eligibility check and the session insert.
      */
     suspend fun <T> withTaskOperationLock(block: suspend () -> T): T {
-        taskOperationMutex.lock()
-        try {
-            return block()
-        } finally {
-            taskOperationMutex.unlock()
+        return restoreGate.write("TaskRepository.withTaskOperationLock") {
+            taskOperationMutex.lock()
+            try {
+                block()
+            } finally {
+                taskOperationMutex.unlock()
+            }
         }
     }
 
@@ -125,7 +135,9 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Maps to `dbInsertTask`.
      */
     suspend fun insertTask(task: Task) {
-        taskDao.insertTask(task.withCanonicalTimestamps().toEntity())
+        restoreGate.write("TaskRepository.insertTask") {
+            taskDao.insertTask(task.withCanonicalTimestamps().toEntity())
+        }
     }
 
     /**
@@ -133,7 +145,9 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Maps to `dbUpdateTask`.
      */
     suspend fun updateTask(task: Task) {
-        taskDao.updateTask(task.withCanonicalTimestamps().toEntity())
+        restoreGate.write("TaskRepository.updateTask") {
+            taskDao.updateTask(task.withCanonicalTimestamps().toEntity())
+        }
     }
 
     /**
@@ -142,22 +156,46 @@ class TaskRepository(private val taskDao: TaskDao) {
      * Maps to `dbUpdateTasksBatch`.
      */
     suspend fun updateTasksBatch(tasks: List<Task>) {
-        taskDao.updateTasks(tasks.map { it.withCanonicalTimestamps().toEntity() })
+        restoreGate.write("TaskRepository.updateTasksBatch") {
+            taskDao.updateTasks(tasks.map { it.withCanonicalTimestamps().toEntity() })
+        }
     }
 
     /** Deletes the task with [taskId]. Maps to `dbDeleteTask`. */
     suspend fun deleteTask(taskId: String) {
-        taskDao.deleteTask(taskId)
+        restoreGate.write("TaskRepository.deleteTask") { taskDao.deleteTask(taskId) }
     }
 
     /** Deletes the task table in one Room operation after callers clear active focus. */
     suspend fun deleteAllTasks() {
-        taskDao.deleteAllTasks()
+        restoreGate.write("TaskRepository.deleteAllTasks") { taskDao.deleteAllTasks() }
     }
 
     /** Deletes all task rows except the active focus task. */
     suspend fun deleteAllTasksExcept(preservedTaskId: String) {
-        taskDao.deleteAllTasksExcept(preservedTaskId)
+        restoreGate.write("TaskRepository.deleteAllTasksExcept") {
+            taskDao.deleteAllTasksExcept(preservedTaskId)
+        }
+    }
+
+    /**
+     * Restore-only absolute task write. The entire replace/delete + insert
+     * sequence is one Room transaction; it intentionally bypasses public
+     * setters while the process-wide gate is closed.
+     */
+    internal suspend fun applyRestoreTaskPlan(plan: RestorePlan) {
+        check(restoreGate.state.value != RestoreGate.State.OPEN) {
+            "Restore task writes require a closed RestoreGate."
+        }
+        val room = requireNotNull(database) {
+            "Restore transactions require the application Room database."
+        }
+        room.withTransaction {
+            if (plan.deleteAllExisting) taskDao.deleteAllTasks()
+            plan.tasksToInsert.forEach { task ->
+                taskDao.insertTask(task.withCanonicalTimestamps().toEntity())
+            }
+        }
     }
 
     /**

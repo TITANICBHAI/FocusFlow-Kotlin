@@ -15,6 +15,12 @@ import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.BlockPreset
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
+import com.tbtechs.focusflow.data.backup.LegacyPreferenceValue
+import com.tbtechs.focusflow.data.backup.TsSettingsAdapter
+import com.tbtechs.focusflow.data.restore.RestoreGate
+import com.tbtechs.focusflow.data.restore.RestorePlan
+import com.tbtechs.focusflow.data.restore.RestoreCounts
+import kotlinx.serialization.json.JsonObject
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +72,10 @@ class SessionPinRequiredException(message: String) : SecurityException(message)
  * The repository intentionally retains the old key names and the distinction
  * between asynchronous apply() writes and synchronous commit() snapshots.
  */
-class SettingsRepository(context: Context) {
+class SettingsRepository(
+    context: Context,
+    private val restoreGate: RestoreGate = RestoreGate(),
+) {
 
     companion object {
         private const val TAG = "SettingsRepository"
@@ -189,19 +198,114 @@ class SettingsRepository(context: Context) {
     fun getBoolean(key: String, defaultValue: Boolean = false): Boolean =
         prefs.getBoolean(key, defaultValue)
 
+    fun isFocusActive(): Boolean = prefs.getBoolean(KEY_FOCUS_ACTIVE, false)
+
     suspend fun putString(key: String, value: String) {
-        when (key) {
-            SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> setupPersistence.setPrivacyAccepted(
-                value.equals("true", ignoreCase = true),
+        restoreGate.write("SettingsRepository.putString") {
+            when (key) {
+                SetupPersistenceManager.KEY_PRIVACY_ACCEPTED -> setupPersistence.setPrivacyAccepted(
+                    value.equals("true", ignoreCase = true),
+                )
+                SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> setupPersistence.setOnboardingComplete(
+                    value.equals("true", ignoreCase = true),
+                )
+                SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> setupPersistence.setUserConsentedBackgroundService(
+                    value.equals("true", ignoreCase = true),
+                )
+                SetupPersistenceManager.KEY_PROTECTION_MODE -> setupPersistence.setProtectionMode(value)
+                else -> prefs.edit().putString(key, value).apply()
+            }
+        }
+    }
+
+    /**
+     * Internal absolute restore applier. Mappings come only from the reviewed
+     * TypeScript wire adapter; derived greyout_schedule is deferred to reconcile.
+     */
+    internal suspend fun applyPortableRestoreSettings(settingsPlan: JsonObject) {
+        check(restoreGate.state.value != RestoreGate.State.OPEN) {
+            "Restore settings writes require a closed RestoreGate."
+        }
+        withContext(Dispatchers.IO) {
+            val values = TsSettingsAdapter.normalizeForLegacyMigration(settingsPlan)
+            val editor = prefs.edit()
+            var protectionMode: String? = null
+
+            values.forEach { (key, value) ->
+                if (key == "greyout_schedule") return@forEach
+                when (value) {
+                    is LegacyPreferenceValue.StringValue -> {
+                        if (key == SetupPersistenceManager.KEY_PROTECTION_MODE) {
+                            protectionMode = value.value
+                        }
+                        editor.putString(key, value.value)
+                    }
+                    is LegacyPreferenceValue.BooleanValue -> editor.putBoolean(key, value.value)
+                    is LegacyPreferenceValue.IntValue -> editor.putInt(key, value.value)
+                }
+            }
+            check(editor.commit()) { "Portable settings could not be committed." }
+
+            protectionMode?.let { mode ->
+                val backup = appContext.getSharedPreferences(
+                    SetupPersistenceManager.BACKUP_PREFS_NAME,
+                    Context.MODE_PRIVATE,
+                )
+                check(
+                    backup.edit()
+                        .putString(SetupPersistenceManager.KEY_PROTECTION_MODE, mode)
+                        .commit(),
+                ) { "Protection mode backup could not be committed." }
+            }
+        }
+    }
+
+    /** Replaces side effects of portable-setting setters without calling them. */
+    internal suspend fun syncFromStoreAfterRestore() {
+        check(restoreGate.state.value != RestoreGate.State.OPEN) {
+            "Restore reconciliation requires a closed RestoreGate."
+        }
+        withContext(Dispatchers.IO) {
+            val userWindows = parseJsonArrayObjects(
+                stringPreference(KEY_USER_GREYOUT_WINDOWS, "[]"),
+            ).filter { it.optString("scheduleId").isBlank() }
+            val recurring = parseRecurringSchedules(
+                stringPreference(KEY_RECURRING_BLOCK_SCHEDULES, "[]"),
             )
-            SetupPersistenceManager.KEY_ONBOARDING_COMPLETE -> setupPersistence.setOnboardingComplete(
-                value.equals("true", ignoreCase = true),
+            val combined = userWindows + buildScheduleGreyoutWindows(recurring)
+            commitEditor(
+                prefs.edit().putString("greyout_schedule", JSONArray(combined).toString()),
+                "restore greyout reconciliation",
             )
-            SetupPersistenceManager.KEY_USER_CONSENTED_BACKGROUND_SERVICE -> setupPersistence.setUserConsentedBackgroundService(
-                value.equals("true", ignoreCase = true),
+            appContext.sendBroadcast(
+                Intent(AppBlockerAccessibilityService.ACTION_ALLOWANCE_CONFIG_CHANGED).apply {
+                    `package` = appContext.packageName
+                },
             )
-            SetupPersistenceManager.KEY_PROTECTION_MODE -> setupPersistence.setProtectionMode(value)
-            else -> prefs.edit().putString(key, value).apply()
+            VpnPolicyCoordinator.requestSync(appContext)
+            pushWidgetUpdate()
+        }
+    }
+
+    internal suspend fun persistLastRestoreResult(plan: RestorePlan) {
+        check(restoreGate.state.value != RestoreGate.State.OPEN) {
+            "Restore result persistence requires a closed RestoreGate."
+        }
+        val counts: RestoreCounts = plan.counts
+        val result = JSONObject().apply {
+            put("mode", plan.mode.name)
+            put("tasksInserted", counts.tasksInserted)
+            put("identicalDuplicates", counts.identicalDuplicates)
+            put("invalidTasks", counts.invalidTasks)
+            put("downgradedToSkipped", counts.downgradedToSkipped)
+            put("settingsApplied", counts.settingsKeys)
+            put("externalResourcesUnresolved", counts.unresolvedExternalResources)
+            put("completedAtMs", System.currentTimeMillis())
+        }
+        withContext(Dispatchers.IO) {
+            check(prefs.edit().putString("last_restore_result", result.toString()).commit()) {
+                "The restore result could not be saved."
+            }
         }
     }
 
@@ -512,6 +616,7 @@ class SettingsRepository(context: Context) {
         untilMs: Long,
         pinHash: String? = null,
     ) {
+        restoreGate.write("SettingsRepository.setStandaloneBlock") {
         if (!active && prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L) > System.currentTimeMillis()) {
             requireValidSessionPin(
                 pinHash,
@@ -525,6 +630,7 @@ class SettingsRepository(context: Context) {
             .apply()
         requestVpnSync()
         pushWidgetUpdate()
+        }
     }
 
     /** Compatibility overload for the bridge's JavaScript number timestamp. */
@@ -546,6 +652,7 @@ class SettingsRepository(context: Context) {
         pinHash: String?,
         vpnPackages: List<String>?,
     ) {
+        restoreGate.write("SettingsRepository.publishStandaloneSnapshot") {
         try {
             if (!active && prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L) > System.currentTimeMillis()) {
                 requireValidSessionPin(
@@ -582,6 +689,7 @@ class SettingsRepository(context: Context) {
         } catch (error: Exception) {
             throw IllegalStateException("PREFS_ERROR: ${error.message}", error)
         }
+        }
     }
 
     /** Compatibility overload for the bridge's JavaScript number timestamp. */
@@ -600,6 +708,7 @@ class SettingsRepository(context: Context) {
     )
 
     suspend fun setAlwaysBlockActive(active: Boolean, packages: List<String>) {
+        restoreGate.write("SettingsRepository.setAlwaysBlockActive") {
         prefs.edit()
             .putBoolean(AppBlockerAccessibilityService.PREF_ALWAYS_BLOCK, active)
             .putString(
@@ -607,6 +716,7 @@ class SettingsRepository(context: Context) {
                 packages.toJsonArrayString(),
             )
             .apply()
+        }
     }
 
     /**
@@ -793,6 +903,7 @@ class SettingsRepository(context: Context) {
         allowanceEntries: List<DailyAllowanceEntry>,
         pinHash: String?,
     ) {
+        restoreGate.write("SettingsRepository.publishStandaloneAndAllowanceSnapshot") {
         if (!active && prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L) > System.currentTimeMillis()) {
             requireValidSessionPin(
                 pinHash,
@@ -833,6 +944,7 @@ class SettingsRepository(context: Context) {
         )
         requestVpnSync()
         pushWidgetUpdate()
+        }
     }
 
     suspend fun setNotificationPreferences(settings: AppSettings) {

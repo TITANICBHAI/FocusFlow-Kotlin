@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.ui.backup
 
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,42 +42,49 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.repository.BackupEnvelope
 import com.tbtechs.focusflow.data.repository.BackupParseResult
 import com.tbtechs.focusflow.data.repository.RestoreResult
+import com.tbtechs.focusflow.data.restore.RestorePreview
 import kotlinx.coroutines.launch
 
 @Composable
 fun ImportConfirmScreen(
-    source: Uri?,
+    pendingGeneration: Int,
     backupCoordinator: BackupCoordinator,
-    currentSettings: AppSettings,
     currentFocusActive: Boolean,
     initialReplaceTasks: Boolean = false,
     onBack: () -> Unit,
     onImported: () -> Unit,
 ) {
-    var parsed by remember(source) { mutableStateOf<BackupParseResult?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var replaceTasks by remember(source, initialReplaceTasks) { mutableStateOf(initialReplaceTasks) }
-    var restoreSettings by remember { mutableStateOf(true) }
-    var restoreTasks by remember { mutableStateOf(true) }
-    var result by remember { mutableStateOf<RestoreResult?>(null) }
-    var requiresDefensePin by remember(source) { mutableStateOf(false) }
-    var showPinPrompt by remember(source) { mutableStateOf(false) }
-    var defensePin by remember(source) { mutableStateOf("") }
-    var pinError by remember(source) { mutableStateOf<String?>(null) }
+    var parsed by remember(pendingGeneration) { mutableStateOf<BackupParseResult?>(null) }
+    var busy by remember(pendingGeneration) { mutableStateOf(false) }
+    var replaceTasks by remember(pendingGeneration, initialReplaceTasks) { mutableStateOf(initialReplaceTasks) }
+    var restoreSettings by remember(pendingGeneration) { mutableStateOf(true) }
+    var restoreTasks by remember(pendingGeneration) { mutableStateOf(true) }
+    var result by remember(pendingGeneration) { mutableStateOf<RestoreResult?>(null) }
+    var preview by remember(pendingGeneration) { mutableStateOf<RestorePreview?>(null) }
+    var requiresDefensePin by remember(pendingGeneration) { mutableStateOf(false) }
+    var showPinPrompt by remember(pendingGeneration) { mutableStateOf(false) }
+    var defensePin by remember(pendingGeneration) { mutableStateOf("") }
+    var pinError by remember(pendingGeneration) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(source) {
-        parsed = source?.let { backupCoordinator.inspect(it) }
-            ?: BackupParseResult.Error("This import has expired.")
+    LaunchedEffect(pendingGeneration) {
+        parsed = backupCoordinator.inspectPending()
     }
 
-    LaunchedEffect(source, parsed, currentSettings, restoreSettings) {
-        requiresDefensePin = source != null &&
-            backupCoordinator.requiresDefensePin(source, restoreSettings)
+    LaunchedEffect(pendingGeneration, parsed, restoreSettings) {
+        requiresDefensePin = parsed is BackupParseResult.Success &&
+            backupCoordinator.requiresDefensePin(restoreSettings)
+    }
+
+    LaunchedEffect(pendingGeneration, replaceTasks, restoreSettings, restoreTasks) {
+        preview = backupCoordinator.preview(
+            replaceTasks = replaceTasks,
+            restoreSettings = restoreSettings,
+            restoreTasks = restoreTasks,
+        ).getOrNull()
     }
 
     fun importBackup(pin: String? = null) {
@@ -86,17 +92,13 @@ fun ImportConfirmScreen(
         busy = true
         result = null
         scope.launch {
-            val outcome = source?.let {
-                backupCoordinator.import(
-                    source = it,
-                    replaceTasks = replaceTasks,
-                    currentSettings = currentSettings,
-                    currentFocusActive = currentFocusActive,
-                    restoreSettings = restoreSettings,
-                    restoreTasks = restoreTasks,
-                    defensePin = pin,
-                )
-            } ?: RestoreResult.Error("This import has expired.")
+            val outcome = backupCoordinator.importPending(
+                replaceTasks = replaceTasks,
+                currentFocusActive = currentFocusActive,
+                restoreSettings = restoreSettings,
+                restoreTasks = restoreTasks,
+                defensePin = pin,
+            )
             busy = false
             if (outcome is RestoreResult.Error && outcome.requiresPin) {
                 showPinPrompt = true
@@ -110,12 +112,20 @@ fun ImportConfirmScreen(
         }
     }
 
+    fun cancelImport() {
+        if (busy) return
+        scope.launch {
+            backupCoordinator.cancelPendingImport()
+            onBack()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Import backup") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = ::cancelImport) {
                         Icon(Icons.Outlined.ArrowBack, contentDescription = "Cancel import")
                     }
                 },
@@ -127,10 +137,11 @@ fun ImportConfirmScreen(
             is BackupParseResult.Error -> ImportError(
                 message = state.message,
                 modifier = Modifier.fillMaxSize().padding(padding),
-                onClose = onBack,
+                onClose = ::cancelImport,
             )
             is BackupParseResult.Success -> ImportReview(
                 envelope = state.envelope,
+                preview = preview,
                 replaceTasks = replaceTasks,
                 onReplaceTasksChange = { replaceTasks = it },
                 restoreSettings = restoreSettings,
@@ -151,7 +162,7 @@ fun ImportConfirmScreen(
                         importBackup()
                     }
                 },
-                onCancel = onBack,
+                onCancel = ::cancelImport,
             )
         }
     }
@@ -267,6 +278,7 @@ private fun ImportError(message: String, modifier: Modifier, onClose: () -> Unit
 @Composable
 private fun ImportReview(
     envelope: BackupEnvelope,
+    preview: RestorePreview?,
     replaceTasks: Boolean,
     onReplaceTasksChange: (Boolean) -> Unit,
     restoreSettings: Boolean,
@@ -279,8 +291,7 @@ private fun ImportReview(
     onImport: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val taskCount = envelope.raw.optJSONObject("summary")?.optInt("taskCount", envelope.tasks.length())
-        ?: envelope.tasks.length()
+    val taskCount = preview?.tasksInFile ?: envelope.tasks.length()
     val blockedWordCount = envelope.raw.optJSONObject("summary")?.optInt("blockedWordCount")
         ?: envelope.settings.optJSONArray("blockedWords")?.length().orZero()
     val settingsCount = envelope.settings.length()
@@ -304,7 +315,7 @@ private fun ImportReview(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        "Settings and block lists are merged with this device. Tasks can be merged or replaced, depending on the option below.",
+                        "Portable settings overwrite matching fields; fields omitted from the backup stay local. Tasks can be merged or replaced.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -316,6 +327,19 @@ private fun ImportReview(
                 SummaryRow(Icons.Outlined.TaskAlt, "Tasks", taskCount.toString())
                 SummaryRow(Icons.Outlined.Settings, "Settings fields", settingsCount.toString())
                 SummaryRow(Icons.Outlined.WarningAmber, "Blocked words", blockedWordCount.toString())
+                preview?.let {
+                    SummaryRow(Icons.Outlined.TaskAlt, "New tasks", it.newTasks.toString())
+                    SummaryRow(Icons.Outlined.TaskAlt, "Matching IDs", it.identicalDuplicates.toString())
+                    SummaryRow(Icons.Outlined.WarningAmber, "Invalid tasks", it.invalidTasks.toString())
+                    SummaryRow(Icons.Outlined.WarningAmber, "Past tasks to skip", it.pastScheduledToSkipped.toString())
+                    if (it.externalResourcesUnresolved > 0) {
+                        SummaryRow(
+                            Icons.Outlined.WarningAmber,
+                            "Local-only resources not restored",
+                            it.externalResourcesUnresolved.toString(),
+                        )
+                    }
+                }
             }
         }
         Text("Sections to import", style = MaterialTheme.typography.titleMedium)
@@ -347,14 +371,34 @@ private fun ImportReview(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (replaceTasks) "Replace all existing tasks" else "Merge with existing tasks", style = MaterialTheme.typography.titleMedium)
+                    Text(if (replaceTasks) "Replace tasks" else "Merge tasks", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (replaceTasks) "Current tasks will be deleted before the backup tasks are restored. Settings are still merged."
+                        if (replaceTasks) "All current task rows will be replaced by the backup tasks. Portable settings are still applied separately."
                         else "Existing task IDs are kept. New tasks and portable settings are added without deleting current data.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Switch(checked = replaceTasks, onCheckedChange = onReplaceTasksChange, enabled = restoreTasks)
+            }
+        }
+        if (!replaceTasks && preview?.hasConflicts == true) {
+            Card {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "${preview.totalConflicts} tasks already exist with different content. Use Replace to overwrite.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    preview.conflictingTasks.forEach { conflict ->
+                        Text(
+                            "${conflict.importedTitle} — ${conflict.reason} (ID ${conflict.id})",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
         if (replaceTasks) {
@@ -363,7 +407,7 @@ private fun ImportReview(
                     Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     Text(
                         if (currentFocusActive) "Replace is unavailable while a focus session is active."
-                        else "Replace is destructive. Existing tasks will be deleted.",
+                        else "Replace tasks is destructive. Existing task rows will be deleted.",
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -371,11 +415,14 @@ private fun ImportReview(
         }
         Button(
             onClick = onImport,
-            enabled = !busy && (restoreSettings || restoreTasks) && !(replaceTasks && currentFocusActive),
+            enabled = !busy &&
+                (restoreSettings || restoreTasks) &&
+                !(replaceTasks && currentFocusActive) &&
+                !(restoreTasks && !replaceTasks && preview?.hasConflicts == true),
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (busy) CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            Text(if (replaceTasks) "Replace & Import" else "Merge & Import")
+            Text(if (replaceTasks) "Replace tasks" else "Merge & Import")
         }
         OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
     }

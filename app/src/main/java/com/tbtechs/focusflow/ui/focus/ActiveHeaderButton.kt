@@ -151,7 +151,9 @@ fun ActiveStatusIndicator(
     val resolvedSettings = settings ?: AppSettings()
     val resolvedSession = focusSession
 
-    val vpnRepo = remember { VpnRepository(context) }
+    val vpnRepo = remember {
+        VpnRepository(context, com.tbtechs.focusflow.di.AppModule.restoreGate)
+    }
     val usageRepo = remember { UsageStatsRepository(context) }
 
     val resolvedVpnStatus by produceState(initialValue = vpnStatus) {

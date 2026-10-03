@@ -16,6 +16,7 @@ import com.tbtechs.focusflow.data.repository.ForegroundServiceController
 import com.tbtechs.focusflow.data.repository.SessionPinRequiredException
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
@@ -79,6 +80,7 @@ class FocusSessionViewModel(
     private val settingsRepository: SettingsRepository,
     context: Context,
     private val foregroundServiceController: ForegroundServiceController,
+    private val restoreGate: RestoreGate = RestoreGate(),
 ) : ViewModel() {
 
     private val appContext = context.applicationContext
@@ -370,9 +372,10 @@ class FocusSessionViewModel(
      * deleted while a recovered native session still owns enforcement.
      */
     suspend fun stopFocusModeAwait(pinHash: String? = null) {
+        restoreGate.write("FocusSessionViewModel.stopFocusModeAwait") {
             val current = _focusSession.value
                 ?: focusSessionRepository.getActiveFocusSession()
-                ?: return
+                ?: return@write
 
             // Step 1 — validate the PIN before any Room mutation, then clear
             // the enforcement flag. The repository fails closed here.
@@ -395,6 +398,7 @@ class FocusSessionViewModel(
             // Step 4 — clear UI state
             _focusSession.value      = null
             _focusViolationApp.value = null
+        }
     }
 
     suspend fun stopFocusModeForTaskAwait(taskId: String, pinHash: String? = null) {
@@ -473,6 +477,7 @@ class FocusSessionViewModel(
                     settingsRepository = AppModule.settingsRepository,
                     context = ctx,
                     foregroundServiceController = AppModule.foregroundServiceController,
+                    restoreGate = AppModule.restoreGate,
                 ) as T
             }
 
@@ -486,6 +491,7 @@ class FocusSessionViewModel(
                     settingsRepository = AppModule.settingsRepository,
                     context = ctx,
                     foregroundServiceController = AppModule.foregroundServiceController,
+                    restoreGate = AppModule.restoreGate,
                 ) as T
             }
         }

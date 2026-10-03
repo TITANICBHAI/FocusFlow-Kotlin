@@ -159,6 +159,16 @@ object BackupV1Parser {
         }
     }
 
+    /** Serializes exactly the validated, normalized V1 content for durable confirmation. */
+    fun normalizedJson(backup: ParsedBackupV1): String {
+        val envelope = backup.envelope
+        val normalized = envelope.raw.toMutableMap().apply {
+            put("settings", envelope.settings)
+            put("tasks", JsonArray(envelope.tasks.map(BackupTaskV1::wire)))
+        }
+        return JsonObject(normalized).toString()
+    }
+
     private fun ensureUniqueTaskIds(tasks: JsonArray) {
         val ids = HashSet<String>()
         tasks.forEach { value ->

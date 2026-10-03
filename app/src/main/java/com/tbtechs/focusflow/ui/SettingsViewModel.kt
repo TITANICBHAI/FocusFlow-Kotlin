@@ -10,6 +10,7 @@ import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.QuickBlockConfig
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
+import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.data.model.StandaloneBlockAndAllowanceConfig
 import com.tbtechs.focusflow.data.model.StandaloneBlockConfig
 import com.tbtechs.focusflow.data.repository.AllowanceUsage
@@ -56,6 +57,7 @@ class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val pinManager: PinManager,
     context: Context,
+    private val restoreGate: RestoreGate = RestoreGate(),
 ) : ViewModel() {
 
     private val focusPinManager = FocusPinManager(context)
@@ -169,6 +171,7 @@ class SettingsViewModel(
      */
     fun updateSettings(newSettings: AppSettings) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.updateSettings") {
             val current = _settings.value
 
             // blockedWords: SettingsRepository.setBlockedWords(words)
@@ -265,6 +268,15 @@ class SettingsViewModel(
             }
 
             _settings.value = newSettings
+            }
+        }
+    }
+
+    fun refreshFromStore() {
+        viewModelScope.launch {
+            _settings.value = settingsRepository.readAppSettings().copy(
+                pinProtectionEnabled = pinManager.isPinSet(),
+            )
         }
     }
 
@@ -279,6 +291,7 @@ class SettingsViewModel(
      */
     fun setDailyAllowanceEntries(entries: List<DailyAllowanceEntry>) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.setDailyAllowanceEntries") {
             val json = JSONArray().also { arr ->
                 entries.forEach { entry ->
                     arr.put(JSONObject().apply {
@@ -294,6 +307,7 @@ class SettingsViewModel(
             }.toString()
             settingsRepository.setDailyAllowanceConfig(json)
             _settings.update { it.copy(dailyAllowanceConfigJson = json) }
+            }
         }
     }
 
@@ -305,16 +319,20 @@ class SettingsViewModel(
      */
     fun setBlockedWords(words: List<String>) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.setBlockedWords") {
             settingsRepository.setBlockedWords(words)
             _settings.update { it.copy(blockedWords = words) }
+            }
         }
     }
 
     /** Persists recurring block schedules and updates the settings snapshot. */
     fun setRecurringBlockSchedules(schedules: List<RecurringBlockSchedule>) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.setRecurringBlockSchedules") {
             settingsRepository.setRecurringBlockSchedules(schedules)
             _settings.update { it.copy(recurringBlockSchedules = schedules) }
+            }
         }
     }
 
@@ -326,6 +344,7 @@ class SettingsViewModel(
      */
     fun setStandaloneBlock(config: StandaloneBlockConfig) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.setStandaloneBlock") {
             settingsRepository.setStandaloneBlock(
                 active   = config.active,
                 packages = config.packages,
@@ -339,6 +358,7 @@ class SettingsViewModel(
                     standaloneBlockUntilMs  = config.untilMs,
                 )
             }
+            }
         }
     }
 
@@ -348,6 +368,7 @@ class SettingsViewModel(
      */
     fun setQuickBlockTemporary(config: QuickBlockConfig) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.setQuickBlockTemporary") {
             val untilMs = System.currentTimeMillis() + config.durationMs.coerceAtLeast(0L)
             settingsRepository.setStandaloneBlock(
                 active = true,
@@ -361,6 +382,7 @@ class SettingsViewModel(
                     standaloneBlockUntilMs = untilMs,
                 )
             }
+            }
         }
     }
 
@@ -370,6 +392,7 @@ class SettingsViewModel(
      */
     fun setStandaloneBlockAndAllowance(config: StandaloneBlockAndAllowanceConfig) {
         viewModelScope.launch {
+            restoreGate.write("SettingsViewModel.setStandaloneBlockAndAllowance") {
             val allowanceJson = JSONArray().also { arr ->
                 config.allowanceEntries.forEach { entry ->
                     arr.put(JSONObject().apply {
@@ -397,6 +420,7 @@ class SettingsViewModel(
                     standaloneBlockUntilMs = config.standaloneBlockUntilMs,
                     dailyAllowanceConfigJson = allowanceJson,
                 )
+            }
             }
         }
     }

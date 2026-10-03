@@ -1,7 +1,6 @@
 package com.tbtechs.focusflow
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,9 +9,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -27,12 +32,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.data.restore.RestoreGate
+import com.tbtechs.focusflow.data.restore.RestoreUiState
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.LauncherActivity
 import com.tbtechs.focusflow.enforcement.receivers.NotificationActionReceiver
@@ -61,7 +71,9 @@ import kotlinx.coroutines.launch
  * activity and is intentionally not part of this NavHost.
  */
 class MainActivity : ComponentActivity() {
-    private val vpnRepository by lazy { VpnRepository(applicationContext) }
+    private val vpnRepository by lazy {
+        VpnRepository(applicationContext, AppModule.restoreGate)
+    }
     private var requestedRoute by mutableStateOf(Routes.HOME)
     private var focusDayRating by mutableStateOf(false)
     private var notificationEventNonce by mutableStateOf(0)
@@ -110,7 +122,12 @@ private fun FocusFlowRoot(
     val context = LocalContext.current
     val navController = rememberNavController()
     val settingsViewModel = remember {
-        SettingsViewModel(AppModule.settingsRepository, AppModule.pinManager, context)
+        SettingsViewModel(
+            AppModule.settingsRepository,
+            AppModule.pinManager,
+            context,
+            AppModule.restoreGate,
+        )
     }
     val focusSessionViewModel = remember {
         FocusSessionViewModel(
@@ -119,6 +136,7 @@ private fun FocusFlowRoot(
             settingsRepository = AppModule.settingsRepository,
             context = context,
             foregroundServiceController = AppModule.foregroundServiceController,
+            restoreGate = AppModule.restoreGate,
         )
     }
     val taskViewModel = remember {
@@ -151,6 +169,8 @@ private fun FocusFlowRoot(
     val onboardingComplete by settingsViewModel.onboardingComplete.collectAsState()
     val isLoading by appBootViewModel.isLoading.collectAsState()
     val isDbReady by appBootViewModel.isDbReady.collectAsState()
+    val restoreState by AppModule.restoreCoordinator.state.collectAsState()
+    val restoreGateState by AppModule.restoreGate.state.collectAsState()
     val statsViewModel = remember {
         StatsViewModel(
             analyticsProcessor = AppModule.analyticsProcessor,
@@ -170,11 +190,13 @@ private fun FocusFlowRoot(
             focusSessionRepository = AppModule.focusSessionRepository,
             settingsRepository = AppModule.settingsRepository,
             settingsViewModel = settingsViewModel,
+            restoreCoordinator = AppModule.restoreCoordinator,
+            restoreGate = AppModule.restoreGate,
         )
     }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var replaceTasksOnImport by remember { mutableStateOf(false) }
-    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingImportGeneration by remember { mutableStateOf(0) }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -193,14 +215,44 @@ private fun FocusFlowRoot(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         result.data?.data?.let { source ->
-            pendingImportUri = source
-            navController.navigate(Routes.IMPORT_CONFIRM)
+            scope.launch {
+                val staged = backupCoordinator.stageImport(source)
+                if (staged.isSuccess) {
+                    pendingImportGeneration += 1
+                    navController.navigate(Routes.IMPORT_CONFIRM) {
+                        launchSingleTop = true
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        staged.exceptionOrNull()?.message ?: "The selected backup could not be saved.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(isDbReady, pendingImportGeneration) {
+        if (
+            isDbReady &&
+            backupCoordinator.restorePendingAvailable() &&
+            navController.currentDestination?.route != Routes.IMPORT_CONFIRM
+        ) {
+            navController.navigate(Routes.IMPORT_CONFIRM) { launchSingleTop = true }
+        }
+    }
+
+    LaunchedEffect(restoreState) {
+        if (restoreState is RestoreUiState.Completed) {
+            settingsViewModel.refreshFromStore()
         }
     }
     var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var diagnosticEvents by remember { mutableStateOf(startupDiagnosticEntries()) }
     var diagnosticsVisible by remember { mutableStateOf(false) }
     var dismissedAchievementId by remember { mutableStateOf<String?>(null) }
+    var showDiscardRestorePrompt by remember { mutableStateOf(false) }
     val achievementState by statsViewModel.achievementState.collectAsState()
     val newlyEarned = achievementState?.newlyEarnedIds.orEmpty()
         .firstOrNull()
@@ -350,10 +402,10 @@ private fun FocusFlowRoot(
                         replaceTasksOnImport = replace
                         importLauncher.launch(backupCoordinator.createImportIntent())
                     },
-                    pendingImportUri = pendingImportUri,
+                    pendingImportGeneration = pendingImportGeneration,
                     initialReplaceTasks = replaceTasksOnImport,
                     onImportFinished = {
-                        pendingImportUri = null
+                        settingsViewModel.refreshFromStore()
                         replaceTasksOnImport = false
                         navController.popBackStack()
                     },
@@ -370,6 +422,89 @@ private fun FocusFlowRoot(
                 visible = isLoading || !isDbReady,
                 modifier = Modifier.fillMaxSize(),
             )
+
+            when {
+                restoreState is RestoreUiState.Blocked -> {
+                    val blocked = restoreState as RestoreUiState.Blocked
+                    AlertDialog(
+                        onDismissRequest = {},
+                        title = { Text("Restore could not be completed") },
+                        text = {
+                            Column {
+                                Text(blocked.message)
+                                if (blocked.unreadableJournal) {
+                                    Text(
+                                        "The restore record could not be read. Retry may not succeed.",
+                                        modifier = Modifier.padding(top = 8.dp),
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                scope.launch { AppModule.restoreCoordinator.retryRecovery() }
+                            }) { Text("Retry") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDiscardRestorePrompt = true }) {
+                                Text("Discard")
+                            }
+                        },
+                    )
+                }
+                restoreGateState != RestoreGate.State.OPEN -> {
+                    Dialog(
+                        onDismissRequest = {},
+                        properties = DialogProperties(
+                            dismissOnBackPress = false,
+                            dismissOnClickOutside = false,
+                        ),
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(28.dp),
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                "Finishing restore…",
+                                modifier = Modifier.padding(top = 16.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (showDiscardRestorePrompt) {
+                AlertDialog(
+                    onDismissRequest = { showDiscardRestorePrompt = false },
+                    title = { Text("Discard this restore?") },
+                    text = {
+                        Text(
+                            "Some tasks or settings may already have changed. Discarding keeps the current data, repairs derived state where possible, and reopens the app.",
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            showDiscardRestorePrompt = false
+                            scope.launch {
+                                val result = AppModule.restoreCoordinator.discardRecovery()
+                                if (result.isFailure) {
+                                    Toast.makeText(
+                                        context,
+                                        "The app reopened, but some derived state could not be refreshed.",
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                            }
+                        }) { Text("Discard and reopen") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDiscardRestorePrompt = false }) {
+                            Text("Keep trying")
+                        }
+                    },
+                )
+            }
 
             networkSettings?.let { policy ->
                 VpnPermissionLostBanner(

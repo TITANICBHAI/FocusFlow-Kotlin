@@ -23,6 +23,15 @@ import com.tbtechs.focusflow.data.repository.DayRatingRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
 import com.tbtechs.focusflow.data.repository.BehaviouralHypothesisRepository
 import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
+import com.tbtechs.focusflow.data.restore.AndroidRestorePhaseActions
+import com.tbtechs.focusflow.data.restore.AtomicPendingImportStore
+import com.tbtechs.focusflow.data.restore.AtomicRestoreJournalStore
+import com.tbtechs.focusflow.data.restore.RestoreCoordinator
+import com.tbtechs.focusflow.data.restore.RestoreGate
+import com.tbtechs.focusflow.data.restore.RestoreRecoveryEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Manual DI singleton — the single source of truth for every repository
@@ -55,6 +64,14 @@ object AppModule {
 
     lateinit var applicationContext: Context
         private set
+
+    lateinit var restoreGate: RestoreGate
+        private set
+
+    lateinit var restoreCoordinator: RestoreCoordinator
+        private set
+
+    private lateinit var applicationScope: CoroutineScope
 
     // ─── Database ─────────────────────────────────────────────────────────────
 
@@ -154,6 +171,18 @@ object AppModule {
         val app = context.applicationContext
         applicationContext = app
 
+        // Only inspect file existence here. Recovery parsing and Room access
+        // start later on the application IO scope.
+        val pendingStore = AtomicPendingImportStore(app)
+        val journalStore = AtomicRestoreJournalStore(app)
+        val initialRestoreState = when {
+            journalStore.hasQuarantine() -> RestoreGate.State.RECOVERY_BLOCKED
+            journalStore.hasJournal() -> RestoreGate.State.RECOVERING
+            else -> RestoreGate.State.OPEN
+        }
+        restoreGate = RestoreGate(initialRestoreState)
+        applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         // Room database — name must match the hybrid app's file ("focusday.db").
         database = Room.databaseBuilder(
             app,
@@ -179,7 +208,7 @@ object AppModule {
             .build()
 
         // Repositories — order within this block does not matter.
-        settingsRepository = SettingsRepository(app)
+        settingsRepository = SettingsRepository(app, restoreGate)
         reportNotesRepository = ReportNotesRepository(app, database.reportNotesDao())
         foregroundServiceController = ForegroundServiceController(app)
         alarmRepository = AlarmRepository(app)
@@ -188,6 +217,8 @@ object AppModule {
 
         taskRepository = TaskRepository(
             taskDao = database.taskDao(),
+            database = database,
+            restoreGate = restoreGate,
         )
         schedulerEngine = SchedulerEngine()
 
@@ -196,6 +227,7 @@ object AppModule {
             focusOverrideDao = database.focusOverrideDao(),
             dailyCompletionDao = database.dailyCompletionDao(),
             taskDao          = database.taskDao(),
+            restoreGate      = restoreGate,
         )
 
         greyoutRepository = GreyoutRepository(app)
@@ -232,5 +264,30 @@ object AppModule {
             dayRatingDao = database.dayRatingDao(),
             clarifyingQuestionRepository = clarifyingQuestionRepository,
         )
+
+        val recoveryEngine = RestoreRecoveryEngine(
+            gate = restoreGate,
+            journalStore = journalStore,
+            pendingImportStore = pendingStore,
+            actions = AndroidRestorePhaseActions(
+                taskRepository = taskRepository,
+                settingsRepository = settingsRepository,
+                alarmRepository = alarmRepository,
+            ),
+        )
+        restoreCoordinator = RestoreCoordinator(
+            gate = restoreGate,
+            pendingStore = pendingStore,
+            journalStore = journalStore,
+            taskRepository = taskRepository,
+            focusSessionRepository = focusSessionRepository,
+            recoveryEngine = recoveryEngine,
+            applicationScope = applicationScope,
+            isRuntimeFocusActive = { settingsRepository.isFocusActive() },
+        )
+    }
+
+    fun startRestoreRecovery() {
+        restoreCoordinator.startStartupRecovery()
     }
 }
