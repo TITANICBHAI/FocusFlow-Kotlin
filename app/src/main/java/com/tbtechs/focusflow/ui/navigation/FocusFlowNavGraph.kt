@@ -81,12 +81,13 @@ import com.tbtechs.focusflow.ui.permissions.PermissionsScreen
 import com.tbtechs.focusflow.ui.profile.PasswordProtectionScreen
 import com.tbtechs.focusflow.ui.profile.UserProfileScreen
 import com.tbtechs.focusflow.ui.settings.SettingsScreen
-import com.tbtechs.focusflow.ui.settings.ProtectedAdjustmentsScreen
+import com.tbtechs.focusflow.ui.settings.TextSizeSettingsScreen
 import com.tbtechs.focusflow.ui.stats.ReportScreen
 import com.tbtechs.focusflow.ui.stats.ReportsScreen
 import com.tbtechs.focusflow.ui.stats.StatsScreen
 import com.tbtechs.focusflow.ui.support.ChangelogScreen
 import com.tbtechs.focusflow.ui.support.HowToUseScreen
+import com.tbtechs.focusflow.ui.support.SettingsGuideScreen
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowTextScale
 import com.tbtechs.focusflow.ui.home.RefBorder
@@ -202,7 +203,10 @@ fun FocusFlowNavGraph(
         ) {
             composable(Routes.HOME) {
                 MainScaffold(currentRoute, ::navigate) {
-                    CompositionLocalProvider(LocalFocusFlowTextScale provides 1f) {
+                    CompositionLocalProvider(
+                        LocalFocusFlowTextScale provides
+                            (settings.homeTextScale ?: settings.generalTextScale),
+                    ) {
                         ScreenBoundary(Routes.HOME) {
                             HomeScreen(
                                 taskViewModel = taskViewModel,
@@ -280,7 +284,8 @@ fun FocusFlowNavGraph(
                                 focusSessionViewModel = focusSessionViewModel,
                                 appBootViewModel = appBootViewModel,
                                 onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                                onOpenGuardedAdjustments = { navigate(Routes.GUARDED_ADJUSTMENTS) },
+                                onOpenTextSize = { navigate(Routes.TEXT_SIZE_SETTINGS) },
+                                onOpenGuide = { navigate(Routes.SETTINGS_GUIDE) },
                                 onExportBackup = backupCoordinator?.let { onExportBackup },
                                 onImportBackup = backupCoordinator?.let { onImportBackup },
                                 onOpenProfile = { navigate(Routes.USER_PROFILE) },
@@ -296,17 +301,35 @@ fun FocusFlowNavGraph(
                 }
             }
             composable(
-                route = RouteTextScaleContext.routePattern(Routes.GUARDED_ADJUSTMENTS),
+                route = RouteTextScaleContext.routePattern(Routes.TEXT_SIZE_SETTINGS),
                 arguments = listOf(sourceTabArgument()),
             ) { backStackEntry ->
                 RouteTextScaleProvider(
-                    route = Routes.GUARDED_ADJUSTMENTS,
+                    route = Routes.TEXT_SIZE_SETTINGS,
                     sourceTab = backStackEntry.arguments
                         ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
                     settings = settings,
                 ) {
-                    ScreenBoundary(Routes.GUARDED_ADJUSTMENTS) {
-                        ProtectedAdjustmentsScreen(
+                    ScreenBoundary(Routes.TEXT_SIZE_SETTINGS) {
+                        TextSizeSettingsScreen(
+                            settingsViewModel = settingsViewModel,
+                            onBack = ::back,
+                        )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.SETTINGS_GUIDE),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.SETTINGS_GUIDE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.SETTINGS_GUIDE) {
+                        SettingsGuideScreen(
                             onBack = ::back,
                             onOpenRoute = ::navigate,
                         )
@@ -329,7 +352,6 @@ fun FocusFlowNavGraph(
                                 onOpenVpnBlockList = { navigate(Routes.VPN_BLOCK_LIST) },
                                 onOpenPasswordProtection = { navigate(Routes.PASSWORD_PROTECTION) },
                                 onOpenPermissions = { navigate(Routes.PERMISSIONS) },
-                                onOpenHowToUse = { navigate(Routes.HOW_TO_USE) },
                                 onOpenLauncher = { navigate(Routes.HOME_LAUNCHER_SETUP) },
                                 onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
                             )

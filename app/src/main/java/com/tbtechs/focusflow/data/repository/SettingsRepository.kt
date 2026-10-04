@@ -113,6 +113,7 @@ class SettingsRepository(
         private const val KEY_OVERLAY_QUOTES = "block_overlay_quotes"
         private const val KEY_DARK_MODE_ENABLED = "dark_mode_enabled"
         private const val KEY_GENERAL_TEXT_SCALE = "general_text_scale"
+        private const val KEY_HOME_TEXT_SCALE = "home_text_scale"
         private const val KEY_FOCUS_TEXT_SCALE = "focus_text_scale"
         private const val KEY_STATS_TEXT_SCALE = "stats_text_scale"
         private const val KEY_SETTINGS_TEXT_SCALE = "settings_text_scale"
@@ -140,8 +141,6 @@ class SettingsRepository(
         private const val KEY_POMODORO_BREAK_MINUTES = "pomodoro_break_minutes"
         private const val KEY_FOCUS_DEFENSE_HINT_DISMISSED = "focus_defense_hint_dismissed"
         private const val KEY_LOCAL_ANALYTICS_NOTICE_DISMISSED = "local_analytics_notice_dismissed"
-        private const val KEY_DEFENSE_HINT_DISMISSED = "defense_hint_dismissed"
-        private const val KEY_DEFENSE_HELP_DISMISSED = "defense_help_dismissed"
         private const val KEY_STANDALONE_BLOCK_HINT_DISMISSED = "standalone_block_hint_dismissed"
         private const val KEY_ALWAYS_ON_INFO_DISMISSED = "always_on_info_dismissed"
         private const val KEY_PROTECTION_STATUS_BANNER_DISMISSED = "protection_status_banner_dismissed"
@@ -1014,12 +1013,15 @@ class SettingsRepository(
             .putInt(KEY_POMODORO_BREAK_MINUTES, settings.pomodoroBreakMinutes.coerceIn(1, 60))
             .putBoolean(KEY_FOCUS_DEFENSE_HINT_DISMISSED, settings.focusDefenseHintDismissed)
             .putBoolean(KEY_LOCAL_ANALYTICS_NOTICE_DISMISSED, settings.localAnalyticsNoticeDismissed)
-            .putBoolean(KEY_DEFENSE_HINT_DISMISSED, settings.defenseHintDismissed)
-            .putBoolean(KEY_DEFENSE_HELP_DISMISSED, settings.defenseHelpDismissed)
             .putBoolean(KEY_STANDALONE_BLOCK_HINT_DISMISSED, settings.standaloneBlockHintDismissed)
             .putBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, settings.alwaysOnInfoDismissed)
             .putBoolean(KEY_PROTECTION_STATUS_BANNER_DISMISSED, settings.protectionStatusBannerDismissed)
             .apply {
+                if (settings.homeTextScale == null) {
+                    remove(KEY_HOME_TEXT_SCALE)
+                } else {
+                    putFloat(KEY_HOME_TEXT_SCALE, settings.homeTextScale)
+                }
                 if (settings.focusTextScale == null) {
                     remove(KEY_FOCUS_TEXT_SCALE)
                 } else {
@@ -1130,6 +1132,11 @@ class SettingsRepository(
             autoCopyToAlwaysOn = prefs.getBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, false),
             darkModeEnabled = prefs.getBoolean(KEY_DARK_MODE_ENABLED, true),
             generalTextScale = prefs.getFloat(KEY_GENERAL_TEXT_SCALE, 1f),
+            homeTextScale = if (prefs.contains(KEY_HOME_TEXT_SCALE)) {
+                prefs.getFloat(KEY_HOME_TEXT_SCALE, 1f)
+            } else {
+                null
+            },
             focusTextScale = if (prefs.contains(KEY_FOCUS_TEXT_SCALE)) {
                 prefs.getFloat(KEY_FOCUS_TEXT_SCALE, 1f)
             } else {
@@ -1188,8 +1195,6 @@ class SettingsRepository(
             pomodoroBreakMinutes = prefs.getInt(KEY_POMODORO_BREAK_MINUTES, 5).coerceIn(1, 60),
             focusDefenseHintDismissed = prefs.getBoolean(KEY_FOCUS_DEFENSE_HINT_DISMISSED, false),
             localAnalyticsNoticeDismissed = prefs.getBoolean(KEY_LOCAL_ANALYTICS_NOTICE_DISMISSED, false),
-            defenseHintDismissed = prefs.getBoolean(KEY_DEFENSE_HINT_DISMISSED, false),
-            defenseHelpDismissed = prefs.getBoolean(KEY_DEFENSE_HELP_DISMISSED, false),
             standaloneBlockHintDismissed = prefs.getBoolean(KEY_STANDALONE_BLOCK_HINT_DISMISSED, false),
             alwaysOnInfoDismissed = prefs.getBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, false),
             protectionStatusBannerDismissed = prefs.getBoolean(KEY_PROTECTION_STATUS_BANNER_DISMISSED, false),

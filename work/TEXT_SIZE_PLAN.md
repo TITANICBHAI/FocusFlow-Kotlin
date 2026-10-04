@@ -1,6 +1,8 @@
 # Text Size Settings — Architecture Plan
 
-Scope: adjustable text size in FocusFlow, via a continuous % slider — one **General** default plus optional per-tab overrides for **Focus, Stats, Settings, Defense**. **Home/Schedule is deliberately excluded and insulated** — Himanshu is tuning its sizes by hand, so this system must never touch it, even indirectly.
+Scope: adjustable text size in FocusFlow, via a continuous % slider — one **General** default plus optional per-tab overrides for **Schedule/Home, Focus, Stats, Settings, and Defense**. A tab override replaces General; clearing it returns that tab to General.
+
+**Current scope update (2026-10-04):** At the user's request, Schedule/Home now has the same nullable per-tab override as the other tabs. Its screens and Home-origin shared destinations use that scale; the bottom navigation remains outside the tab provider. This supersedes the earlier Home/Schedule exclusion and 100% pin documented below.
 
 Everything below was verified directly against `main.zip` (the uploaded Kotlin/Compose source) — file paths, line numbers, and existing patterns are quoted from the real files, not assumed.
 
@@ -20,9 +22,10 @@ New section, following the file's existing `// ── Section ──` comment co
 
 ```kotlin
 // ── Text size ─────────────────────────────────────────────────────────────
-/** 1f = 100%, i.e. today's sizes. Applies everywhere except Home/Schedule. */
+/** 1f = 100%, i.e. today's sizes. */
 val generalTextScale: Float = 1f,
 /** null = inherit generalTextScale. A non-null value REPLACES it for that tab (does not stack). */
+val homeTextScale: Float? = null,
 val focusTextScale: Float? = null,
 val statsTextScale: Float? = null,
 val settingsTextScale: Float? = null,
@@ -35,6 +38,7 @@ val defenseTextScale: Float? = null,
 
 ```kotlin
 private const val KEY_GENERAL_TEXT_SCALE = "general_text_scale"
+private const val KEY_HOME_TEXT_SCALE = "home_text_scale"
 private const val KEY_FOCUS_TEXT_SCALE = "focus_text_scale"
 private const val KEY_STATS_TEXT_SCALE = "stats_text_scale"
 private const val KEY_SETTINGS_TEXT_SCALE = "settings_text_scale"
@@ -47,12 +51,13 @@ private const val KEY_DEFENSE_TEXT_SCALE = "defense_text_scale"
 .putFloat(KEY_GENERAL_TEXT_SCALE, settings.generalTextScale)
 ```
 
-— then extend the function's existing nullable-field `.apply { }` block (the one currently handling `lastShownDebriefSessionId`) with the same remove-or-put shape for each of the four per-tab fields.
+— then extend the function's existing nullable-field `.apply { }` block (the one currently handling `lastShownDebriefSessionId`) with the same remove-or-put shape for each of the five per-tab fields.
 
 **`readAppSettings()`** — add:
 
 ```kotlin
 generalTextScale = prefs.getFloat(KEY_GENERAL_TEXT_SCALE, 1f),
+homeTextScale = if (prefs.contains(KEY_HOME_TEXT_SCALE)) prefs.getFloat(KEY_HOME_TEXT_SCALE, 1f) else null,
 focusTextScale = if (prefs.contains(KEY_FOCUS_TEXT_SCALE)) prefs.getFloat(KEY_FOCUS_TEXT_SCALE, 1f) else null,
 statsTextScale = if (prefs.contains(KEY_STATS_TEXT_SCALE)) prefs.getFloat(KEY_STATS_TEXT_SCALE, 1f) else null,
 settingsTextScale = if (prefs.contains(KEY_SETTINGS_TEXT_SCALE)) prefs.getFloat(KEY_SETTINGS_TEXT_SCALE, 1f) else null,
@@ -132,12 +137,14 @@ composable(Routes.FOCUS) {
 
 Identically for `Routes.STATS` / `settings.statsTextScale`, `Routes.SETTINGS` / `settings.settingsTextScale`, `Routes.DEFENSE` / `settings.defenseTextScale`.
 
-**`Routes.HOME` gets the opposite treatment** — pin it to `1f` explicitly, so Schedule is insulated even from **General**, and even if a shared `ui/common` component it uses is ever converted to `.scaledSp` later:
+`Routes.HOME` uses `homeTextScale ?: generalTextScale`, like the other tabs:
 
 ```kotlin
 composable(Routes.HOME) {
     MainScaffold(currentRoute, ::navigate) {
-        CompositionLocalProvider(LocalFocusFlowTextScale provides 1f) {
+        CompositionLocalProvider(
+            LocalFocusFlowTextScale provides (settings.homeTextScale ?: settings.generalTextScale),
+        ) {
             ScreenBoundary(Routes.HOME) { HomeScreen(/* unchanged args */) }
         }
     }
@@ -149,27 +156,19 @@ not a child of the provider that was active on the previous route. Carry and
 apply the appropriate source-tab context to secondary routes and top-level
 overlays as specified in §12 before calling the per-tab behavior complete.
 
-## 7. New Settings UI — `ui/settings/TextSizeSettings.kt` (new file)
+## 7. Dedicated Text Size screen
 
-New file, matching the precedent set by `DarkModeToggle.kt` (one file per nontrivial control). Contents:
+Keep the existing `TextSizeSection` slider behavior and preference persistence,
+but show the controls on a dedicated `TextSizeSettingsScreen` instead of inline
+in `SettingsScreen`. The Appearance card in Settings contains a **Text Size**
+action row that opens this Settings-owned destination. The screen provides a
+short explanation and reuses `TextSizeSection` for General plus the five
+nullable Schedule/Focus/Stats/Settings/Defense overrides and their “Use General” resets.
+The existing **80%–150%** range and **100%** default are unchanged.
 
-- A `SettingsSliderRow` composable: title + description on one line, a Material3 `Slider` plus an "N%" readout on the line below. (`SettingsToggleRow`'s side-by-side layout is too narrow for a slider with a live readout.) Match the existing row styling exactly:
-  - Title: `fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary`
-  - Description: `fontSize = 13.sp, color = DarkTextSecondary, lineHeight = 16.sp`
-  - Row padding: `horizontal = 12.dp, vertical = 8.dp`
-- A `TextSizeSection(settings: AppSettings, onUpdate: (AppSettings) -> Unit)` composable wiring 5 of these together: General first, then Focus/Stats/Settings/Defense as override rows, each showing "Matches General" until moved, with a way to reset back to `null`.
-- Suggested range: **80%–150%**, defaulting to **100%** (must default to exactly 1f / 100% so existing screens look identical until someone touches the slider).
-
-**`ui/settings/SettingsScreen.kt`** — insert a new section right after `APPEARANCE` (before `NOTIFICATIONS`, currently starting at line 262):
-
-```kotlin
-item {
-    SettingsSectionHeader("TEXT SIZE")
-    SettingsCard {
-        TextSizeSection(settings = settings, onUpdate = settingsViewModel::updateSettings)
-    }
-}
-```
+Do not place the full controls back in the Settings list or combine them with
+the help guide. Route the new screen as Settings-owned so its text uses the
+Settings scale context.
 
 ## 8. Mechanical rollout — corrected, file-precise scope
 
@@ -187,13 +186,17 @@ Re-traced the routes in `FocusFlowNavGraph.kt` and call sites around the four ta
 | Defense | `ui/defense/` (168) | `DailyAllowanceModal.kt` 31, `ui/alwayson/` 29, `ui/keyword/` 19, `PasswordProtectionScreen.kt` 10, `HowToUseScreen.kt` 9, `VpnBlockListScreen.kt` 14 | **280** |
 | Shared — convert; apply caller context per §12 | — | `ui/active/` 23, `ui/permissions/` 48, `AppPickerSheet.kt` 22 | **93** |
 
-Revised total for this pass (Focus + Settings + Defense + shared; Stats and Home untouched): **528**, replacing the original ~706 (770 minus Stats' 84) estimate for these three tabs.
+Revised total for the original Prompt B pass (Focus + Settings + Defense + shared; Stats and Home were not in that mechanical rollout): **528**, replacing the original ~706 (770 minus Stats' 84) estimate for those three tabs. The later Schedule-scale follow-up is separate and does not change this count.
 
 Replace every text-sizing `X(.Y).sp` literal — in `fontSize =`, `lineHeight =`, or `letterSpacing =` position — with `X(.Y).scaledSp`, in every file above. Full file list and worked examples are in `TEXT_SIZE_PROMPTS.md`.
 
-**Explicitly out of scope for v1:**
-- `ui/home/` (66) — Himanshu is tuning these by hand; must stay untouched.
-- `ui/common/` (41, shared components) — converting these risks bleeding General's scale into Home through shared components. Leave alone for now; revisit as phase 2 if wanted (Home's explicit `1f` pin from §6 would hold regardless).
+**Explicitly out of scope for the original Prompt B rollout:**
+- `ui/home/` (66) was excluded from that mechanical pass. Batch 07 later
+  converted its Compose text literals to `.scaledSp` for the Schedule override;
+  do not treat the old exclusion as current behavior.
+- `ui/common/` (41, shared components) — excluded from the original rollout.
+  Their remaining raw `.sp` values do not respond to tab-specific overrides;
+  revisit shared-component scaling separately if needed.
 - `ui/onboarding/` (23) — not part of any of the four in-scope tabs.
 - `ui/launcher/LauncherSetupScreen.kt` (22) — judgment call: this is the home-launcher config UI, which is its own separate workstream (`LAUNCHER_TWO_THEME_PLAN.MD`). Leaving it out even though it's Defense-reachable, unless you'd rather it track Defense.
 - `ui/launcher/QuickBlockSheet.kt` (20) — triggered from Stats' quick-block flow at the NavGraph's own top level, not nested under any of the four tabs in this pass. Deferring rather than guessing, since Stats itself is out of scope this round.
@@ -258,36 +261,38 @@ the original root-tab wiring and file list do not fully describe.
 
 | Entry point | Current screens / overlays to account for | Text-size rule |
 |---|---|---|
-| Home/Schedule | `HomeScreen`; task detail/edit/quick-add and allowed-app dialogs; `AppPickerSheet` when opened from Home; shared `Routes.ACTIVE` | Pin the entire Home-origin flow to `1f`, including shared destinations and sheets. |
+| Home/Schedule | `HomeScreen`; task detail/edit/quick-add and allowed-app dialogs; `AppPickerSheet` when opened from Home; shared `Routes.ACTIVE` | Home-owned text uses the Schedule override or General; Home-origin shared destinations use the caller's scale. |
 | Focus | `FocusScreen`; its extension, session-debrief, standalone-block, and PIN dialogs; shared `Routes.ACTIVE`; `Routes.PERMISSIONS` | Focus-owned content uses the Focus override. Shared destinations use the caller's scale. |
 | Stats | `StatsScreen`; `Routes.REPORTS` / `Routes.REPORT`; the top-level `QuickBlockSheet`; shared `Routes.ACTIVE` | Stats-specific `.sp` coverage is not in Prompt B. Keep this a visible v1 limitation; do not claim the Stats override works for raw literals or the quick-block sheet. |
-| Settings | `SettingsScreen`; Guarded Adjustments; profile, permissions, changelog, privacy/terms, and backup/import destinations; overlay-appearance, allowed-apps, report-issue, PIN, import-choice, and destructive-confirmation dialogs | Settings-owned destinations use the Settings override. Inline dialogs inherit their caller unless their source file is an explicit exception. |
+| Settings | `SettingsScreen`; dedicated `TextSizeSettingsScreen` and `SettingsGuideScreen`; profile, permissions, changelog, privacy/terms, and backup/import destinations; overlay-appearance, allowed-apps, report-issue, PIN, import-choice, and destructive-confirmation dialogs | Settings-owned destinations use the Settings override. Inline dialogs inherit their caller unless their source file is an explicit exception. |
 | Defense | `DefenseScreen`; Always-On, standalone-block setup, keyword blocker, VPN list, password protection, permissions, and launcher setup destinations; daily-allowance, schedule, blocked-word, standalone-block, VPN-consent, and PIN dialogs | Defense-owned destinations use the Defense override. Shared destinations use the caller's scale. How-to-Use also opens from the global SideMenu and follows its caller; direct/onboarding entry without a source tab uses General. The existing launcher-setup exclusion remains explicit. |
 | Enforcement overlay | `BlockOverlayActivity`, a plain Android Activity with programmatic `TextView`s | It cannot inherit a Compose local; use the direct preference-read path in §10. |
 
 **Current-source revalidation (2026-10-04):** The route and caller inventory was
 checked against `Routes.kt`, `FocusFlowNavGraph.kt`, `MainActivity.kt`,
-`ProtectedAdjustmentsScreen.kt`, and current screen/modal call sites. Source
-mismatches were corrected: `Routes.ACTIVE` is opened from all five root tabs,
-including Home/Schedule (`HomeScreen`'s status indicator), and from the Settings
-Guarded Adjustments guide. Home-origin use must remain at `1f`; Focus, Stats,
-Settings, and Defense origins use their respective source scale. The Settings
-guide also links to `Routes.PERMISSIONS` and Defense-owned secondary routes.
+`SettingsGuideScreen.kt`, and current screen/modal call sites. `Routes.ACTIVE`
+is opened from all five root tabs, including Home/Schedule (`HomeScreen`'s
+status indicator). Home-origin use uses the Schedule override or General;
+Focus, Stats, Settings, and Defense origins use their respective source scale. The Settings guide
+links to `Routes.PERMISSIONS` and Defense-owned secondary routes. The dedicated
+Text Size and Settings guide destinations use Settings as their scale owner.
 
 `Routes.PERMISSIONS` is opened from Focus, Settings, and Defense, as well as from
-the Settings Guarded Adjustments guide. `Routes.HOW_TO_USE` is opened from
-Defense and from the global SideMenu available on every tab; it follows the
-opening tab except for direct/onboarding entry, which uses General. Its
-launcher-configuration action opens
+the Settings guide. `Routes.HOW_TO_USE` remains the separate onboarding/Defense
+guide and is opened from Defense and the global SideMenu available on every tab;
+it follows the opening tab except for direct/onboarding entry, which uses
+General. The Settings guide is a separate Settings-owned route and includes the
+onboarding guide content plus the guarded-adjustment Q&As. Its launcher action
+opens
 `Routes.HOME_LAUNCHER_SETUP`, so launcher setup is reachable from each of those
 origins, not only directly from Defense. `ActiveScreen` can also navigate onward
 to Focus, Defense, Always-On, Keyword Blocker, and the VPN list; `ALWAYS_ON`,
 `KEYWORD_BLOCKER`, and `VPN_BLOCK_LIST` are additionally linked from the Settings
 guide, while `ALWAYS_ON` is also opened by the Stats quick-block flow. Preserve
-the Home pin across Home-origin shared flows; shared `ACTIVE`, `PERMISSIONS`,
-and `HOW_TO_USE` use their caller's scale; tab-owned routes use the owning tab's
-scale; direct external/deep-link entries without a source tab use General
-(except Home, which is always `1f`).
+the Schedule scale across Home-origin shared flows; shared `ACTIVE`,
+`PERMISSIONS`, and `HOW_TO_USE` use their caller's scale; tab-owned routes use
+the owning tab's scale; direct external/deep-link entries without a source tab
+use General.
 
 `AppPickerSheet` is invoked inline through `ui/home/AllowedAppsDialog.kt` (Home),
 `ui/launcher/AllowedAppsModal.kt` (Settings), and
@@ -308,7 +313,7 @@ and `HOW_TO_USE` routes use the caller. Direct/external entries without a
 source-tab argument use General. Inline dialogs and sheets inherit their caller's
 provider. The top-level Stats `QuickBlockSheet` and global `SideMenu`, both
 outside the active destination provider, receive explicit caller context. Home
-remains pinned to `1f` in its root content and caller-owned shared flows.
+uses its override or General in root content and caller-owned shared flows.
 `SideMenu` remains in the `ui/common/` mechanical-conversion exclusion.
 
 **Known uncovered surfaces must stay visible in the handoff:**
@@ -320,22 +325,27 @@ remains pinned to `1f` in its root content and caller-owned shared flows.
   other individually excluded files are not converted by Prompt B. Confirm their
   actual scale behavior and list them as exceptions; do not imply every modal or
   secondary screen is covered.
-- `ui/home/` remains unconverted and pinned to `1f`, including all Home-origin
-  editors and the shared `AppPickerSheet`.
+- `ui/home/` text literals use `.scaledSp` so Schedule's override applies to the
+  screen and editors; the shared `AppPickerSheet` already inherits its caller.
 - A shared screen or modal must not be silently assigned General merely because
   its file is outside a tab directory. Verify its route/callers and use the
   caller-scale rule above where it is in scope.
 
-## 13. Separate Settings destination: Guarded Adjustments
+## 13. Full Settings guide and guarded-adjustment content
 
-The user also requested a dedicated Settings row that opens a separate,
-full-screen **Guarded Adjustments** guide. Its content uses grouped, expandable
-question-and-answer entries to explain existing guard-related popups and locked
-states; the page itself is not a popup. This is separate from text-size scaling:
-text-size controls are not PIN-protected and must not be moved into or described
-as guarded.
+The Settings **How to Use** action opens a separate full-screen guide implemented
+in `SettingsGuideScreen.kt`. It includes the practical mode and PIN guidance
+from the onboarding `HowToUseScreen.kt` plus the verified guarded-adjustment
+Q&As formerly shown on the standalone Guarded Adjustments screen. Keep the
+onboarding screen and its onboarding flow intact; the Settings guide is a
+separate file and route with more content. The old Guarded Adjustments Settings
+row, route, and screen are retired after their content is migrated.
 
-Track this companion feature in
+Text-size controls remain separate: the Appearance **Text Size** action opens
+`TextSizeSettingsScreen.kt`, which reuses `TextSizeSection`. Text size is not
+PIN-protected and must not be described as a guarded adjustment.
+
+Track this Settings guide and its source audit in
 [`PROTECTED_ADJUSTMENTS_PLAN.md`](PROTECTED_ADJUSTMENTS_PLAN.md),
 [`PROTECTED_ADJUSTMENTS_TRACKER.md`](PROTECTED_ADJUSTMENTS_TRACKER.md), and
 [`AGENT_PRE_PROTECTED_ADJUSTMENTS.md`](AGENT_PRE_PROTECTED_ADJUSTMENTS.md).

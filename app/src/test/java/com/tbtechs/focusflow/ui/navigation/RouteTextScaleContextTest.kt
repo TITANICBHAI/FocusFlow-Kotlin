@@ -8,6 +8,7 @@ import org.junit.Test
 class RouteTextScaleContextTest {
     private val settings = AppSettings(
         generalTextScale = 1.1f,
+        homeTextScale = 1.6f,
         focusTextScale = 1.2f,
         statsTextScale = 1.3f,
         settingsTextScale = 1.4f,
@@ -22,7 +23,7 @@ class RouteTextScaleContextTest {
             Routes.PERMISSIONS,
         )
         val tabScales = listOf(
-            Routes.HOME to 1f,
+            Routes.HOME to 1.6f,
             Routes.FOCUS to 1.2f,
             Routes.STATS to 1.3f,
             Routes.SETTINGS to 1.4f,
@@ -50,7 +51,8 @@ class RouteTextScaleContextTest {
     @Test
     fun tabOwnedDestinationsUseOwnerWhenReachedInternallyAndGeneralWhenDirect() {
         val ownerRoutes = listOf(
-            Routes.GUARDED_ADJUSTMENTS to Routes.SETTINGS,
+            Routes.TEXT_SIZE_SETTINGS to Routes.SETTINGS,
+            Routes.SETTINGS_GUIDE to Routes.SETTINGS,
             Routes.USER_PROFILE to Routes.SETTINGS,
             Routes.CHANGELOG to Routes.SETTINGS,
             Routes.PRIVACY_POLICY to Routes.SETTINGS,
@@ -88,8 +90,17 @@ class RouteTextScaleContextTest {
     }
 
     @Test
-    fun homeAndHomeOriginSharedNavigationStayAtOneHundredPercent() {
-        assertEquals(1f, RouteTextScaleContext.scaleFor(Routes.HOME, Routes.SETTINGS, settings), 0f)
+    fun homeAndHomeOriginSharedNavigationUseScheduleScale() {
+        assertEquals(
+            1.6f,
+            RouteTextScaleContext.scaleFor(Routes.HOME, Routes.SETTINGS, settings),
+            0f,
+        )
+        assertEquals(
+            1.1f,
+            RouteTextScaleContext.scaleFor(Routes.HOME, Routes.SETTINGS, AppSettings(generalTextScale = 1.1f)),
+            0f,
+        )
         assertEquals(
             Routes.HOME,
             RouteTextScaleContext.sourceTabForDestination(Routes.HOME, null, Routes.ACTIVE),
@@ -138,6 +149,13 @@ class RouteTextScaleContextTest {
             Routes.DEFENSE,
             RouteTextScaleContext.sourceTabForDestination(Routes.STATS, null, Routes.BLOCK_DEFENSE),
         )
+        listOf(Routes.TEXT_SIZE_SETTINGS, Routes.SETTINGS_GUIDE).forEach { route ->
+            assertEquals(
+                "$route belongs to Settings when opened from another tab",
+                Routes.SETTINGS,
+                RouteTextScaleContext.sourceTabForDestination(Routes.STATS, null, route),
+            )
+        }
         assertNull(
             RouteTextScaleContext.sourceTabForDestination(Routes.ACTIVE, null, Routes.PERMISSIONS),
         )

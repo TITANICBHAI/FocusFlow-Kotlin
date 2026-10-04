@@ -42,7 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.model.Task
@@ -102,7 +102,7 @@ fun TaskDetailModal(
                 Text(
                     task.title,
                     modifier = Modifier.weight(1f),
-                    fontSize = 22.sp,
+                    fontSize = 22.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                     maxLines = 1,
@@ -133,20 +133,20 @@ fun TaskDetailModal(
                 ReferenceSectionLabel("SCHEDULE")
                 Text(
                     "${task.startTime.asLocalTime()} – ${task.endTime.asLocalTime()}",
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = RefText,
                 )
                 Text(
                     task.startTime.asLocalDate(),
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     color = RefSecondary,
                 )
 
                 ReferenceSectionLabel("PRIORITY")
                 Text(
                     task.priority.replaceFirstChar(Char::titlecase),
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = priorityColor(task.priority),
                 )
@@ -154,7 +154,7 @@ fun TaskDetailModal(
                 ReferenceSectionLabel("STATUS")
                 Text(
                     task.status.replaceFirstChar(Char::titlecase),
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = when (task.status.lowercase()) {
                         "completed" -> RefGreen
@@ -167,7 +167,7 @@ fun TaskDetailModal(
                     ReferenceSectionLabel("NOTES")
                     Text(
                         notes,
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         color = RefSecondary,
                     )
                 }
@@ -185,7 +185,7 @@ fun TaskDetailModal(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Shield, contentDescription = "Start focus", tint = BrandPrimary, modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Start Focus", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                            Text("Start Focus", fontSize = 15.scaledSp, fontWeight = FontWeight.SemiBold, color = RefText)
                         }
                     }
                 }

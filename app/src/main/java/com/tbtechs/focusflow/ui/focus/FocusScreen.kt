@@ -431,6 +431,7 @@ fun FocusScreen(
                 task == null && isFocusing -> OrphanedFocusPanel(onStop = ::requestStop)
 
                 task == null -> ReadyToFocusPanel(
+                    modifier = Modifier.weight(1f),
                     presets = settings.launcherPresets,
                     onOpenSchedule = onOpenSchedule,
                     onOpenStandalone = { showStandaloneEditor = true },
@@ -719,16 +720,17 @@ private enum class PendingPinAction { STOP, EMERGENCY }
  */
 @Composable
 private fun ReadyToFocusPanel(
+    modifier: Modifier = Modifier,
     presets: List<AllowedAppPreset>,
     onOpenSchedule: () -> Unit,
     onOpenStandalone: () -> Unit,
     onQuickPreset: (AllowedAppPreset) -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterVertically),
     ) {
         item {
             Spacer(Modifier.height(16.dp))

@@ -44,10 +44,12 @@ Add a batch here whenever a new workstream or agent job is planned.
 | 03 | Text Size source-tab context for secondary routes and overlays (Prompt A) | Replit Agent | Implemented; verification blocked | 02 |
 | 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Replit Agent | Implemented; verification blocked | 02, 03 |
 | 05 | Text Size integration, verification, and final handoff | Replit Agent | Implemented; verification blocked | 02–04 |
+| 06 | Settings Text Size screen and combined How to Use guide | Replit Agent | Implemented; verification blocked | 00, 02, 03 |
+| 07 | Schedule text scaling and Focus/Defense layout cleanup | Replit Agent | Implemented; verification blocked | 02, 03, 04, 06 |
 
-The current work folder contains the two workstreams listed above. Add later
-workstreams here rather than treating either feature-specific tracker as the
-project-wide list.
+The work folder records Text Size, guarded-adjustment content, and their Settings
+navigation consolidation. Add later workstreams here rather than treating a
+feature-specific tracker as the project-wide list.
 
 ---
 
@@ -57,6 +59,10 @@ project-wide list.
 **Last updated:** 2026-10-04  
 **Status:** Implemented; Android verification blocked  
 **Detailed record:** [Protected Adjustments tracker](PROTECTED_ADJUSTMENTS_TRACKER.md)
+
+> The standalone page recorded in this historical batch was superseded by
+> Batch 06. Its audited Q&A content remains in the new Settings guide; its former
+> Settings row, route, and screen are removed.
 
 - [x] Audit PIN- and active-block-guarded actions and exact conditions.
   **Evidence:** [source-audit record](PROTECTED_ADJUSTMENTS_TRACKER.md#source-audit-record).
@@ -86,9 +92,9 @@ project-wide list.
 - [x] Revalidate the inventory against the current checked-out source before
   implementation; record any stale names, routes, or assumptions.
   **Evidence:** `Routes.kt`, `FocusFlowNavGraph.kt`, `MainActivity.kt`,
-  `ProtectedAdjustmentsScreen.kt`, and tab/modal call sites; §12 now records
-  Home → `ACTIVE`, Settings-guide routes, shared-route callers, and top-level
-  `QuickBlockSheet`.
+  `SettingsGuideScreen.kt`, `TextSizeSettingsScreen.kt`, and tab/modal call
+  sites; §12 now records Home → `ACTIVE`, Settings-owned routes, shared-route
+  callers, and top-level `QuickBlockSheet`.
 - [x] Confirm route ownership and scale behavior for secondary destinations,
   shared destinations, caller-owned dialogs/sheets, direct entries, and all
   Home-origin flows.
@@ -125,10 +131,11 @@ project-wide list.
   `MainScaffold` and Home is pinned to `1f`.
 - [x] Add Settings scale controls, “Matches General” behavior, and reset-to-
   inherit actions.
-  **Evidence:** `ui/settings/TextSizeSection.kt` and its insertion in
-  `SettingsScreen.kt`; 80–150% one-percent sliders, inherited values, and
-  “Use General” reset actions were source-reviewed. `SettingsViewModel
-  `updateSettings()` persists changed `AppSettings` through the existing
+  **Evidence:** `ui/settings/TextSizeSection.kt`; 80–150% one-percent sliders,
+  inherited values, and “Use General” reset actions were source-reviewed.
+  Batch 06 moves the controls out of `SettingsScreen.kt` and into
+  `TextSizeSettingsScreen.kt`. `SettingsViewModel.updateSettings()` persists
+  changed `AppSettings` through the existing
   `setNotificationPreferences()` path.
 - [x] Apply the persisted scale to the non-Compose block overlay.
   **Evidence:** `BlockOverlayActivity.kt` reads Defense scale with General
@@ -352,6 +359,69 @@ files in the current Prompt B source diff are:
 instrumentation execution remain unverified because no Java runtime or Android
 SDK is available; no Android verification is claimed.
 
+## Batch 06 — Settings Text Size screen and combined How to Use guide
+
+**Agent:** Replit Agent
+
+**Last updated:** 2026-10-04
+
+**Status:** Implemented; verification blocked
+**Depends on:** Batches 00, 02, and 03
+
+- [x] Move the existing Text Size sliders off the Settings list and open them
+  from an Appearance action row. **Evidence:** `SettingsScreen.kt` and new
+  `TextSizeSettingsScreen.kt`; settings values, persistence, and slider behavior
+  remain in `TextSizeSection.kt`.
+- [x] Add a fuller How to Use destination in Settings About. **Evidence:** new
+  `SettingsGuideScreen.kt` contains all onboarding guide sections plus the five
+  audited guarded-adjustment Q&A groups and owner-flow links. The onboarding
+  `HowToUseScreen.kt` and onboarding navigation remain separate.
+- [x] Remove the former Guarded Adjustments section, route, and screen after
+  migrating its content. **Evidence:** `SettingsScreen.kt`, `Routes.kt`,
+  `RouteTextScaleContext.kt`, and `FocusFlowNavGraph.kt`; only a regression
+  assertion for the retired external slug remains.
+- [x] Cover the new routes' Settings text-scale ownership and internal-only
+  status in route tests. **Evidence:** `RouteTextScaleContextTest.kt` and
+  `RoutesTest.kt`; JUnit execution is still blocked.
+- [x] Run available static checks. `git diff --check`, the retired-route and
+  destination-wiring scans, the exact content comparison (all 25 onboarding
+  entries and 18 guard Q&As), and LSP diagnostics for all eight changed Kotlin
+  files pass.
+- [ ] Run Android compilation and unit tests.
+  **Blocked:** `java` is absent from PATH, `JAVA_HOME` is unset, and Android SDK
+  environment variables are empty. Do not claim Android verification unless
+  those checks actually run.
+
+## Batch 07 — Schedule text scaling and Focus/Defense layout cleanup
+
+**Agent:** Replit Agent
+
+**Last updated:** 2026-10-04
+
+**Status:** Implemented; verification blocked
+
+**Depends on:** Batches 02, 03, 04, and 06
+
+- [x] Add a Schedule text-size override matching the other tab sliders.
+  **Evidence:** `AppSettings.homeTextScale`, `home_text_scale` persistence,
+  `TextSizeSection.kt`, root Schedule provider, and route-owner mapping; null
+  inherits General and “Use General” clears the override.
+- [x] Apply Schedule scaling to Home screen text and Home-origin shared routes
+  while leaving bottom-navigation labels outside the scale provider.
+  **Evidence:** all Compose `.sp` values in `ui/home/` now use `.scaledSp`;
+  `RouteTextScaleContextTest.kt` covers Schedule override and General fallback.
+- [x] Keep “Ready to focus?”, “Open Schedule,” and “Block Apps Without a Task”
+  centered in the available Focus content area as permission and hint banners
+  appear or disappear. **Evidence:** weighted `ReadyToFocusPanel` with centered
+  vertical arrangement in `FocusScreen.kt`.
+- [x] Remove Defense's general hint/help cards while preserving the active
+  protection-status banner. Keep the Focus tab's dismissible Defense hint.
+  **Evidence:** `DefenseScreen.kt`; retired dismissal-only settings were removed
+  from `AppSettings` and `SettingsRepository`.
+- [x] Run static checks. **Evidence:** pending final verification.
+- [ ] Run Android compilation and tests.
+  **Blocked:** Java/`JAVA_HOME` and Android SDK setup remain unavailable.
+
 ## Update log
 
 | Date | Batch | Agent | Progress and evidence | Blockers |
@@ -363,3 +433,5 @@ SDK is available; no Android verification is claimed.
 | 2026-10-04 | 04 | Replit Agent (dependency check only) | Checked the Prompt B gate; did not claim the batch or edit conversion files. Batch 04 remains unassigned and blocked. | Batches 02 and 03 are still “Implemented; verification blocked”; Prompt B prohibits starting until both are complete. |
 | 2026-10-04 | 04 | Replit Agent | At the user's direction, converted 547 eligible Prompt B literals in 32 scoped Kotlin files; exact-scope, transformation, composable-context, and excluded-surface audits passed. `git diff --check` and LSP diagnostics are clean. | Android compilation/tests remain unrun because Java, `JAVA_HOME`, and Android SDK setup are unavailable; no Android verification is claimed. |
 | 2026-10-04 | 05 | Replit Agent | Audited persistence/reset wiring, Home and bottom-bar scope, route-source context, exact Prompt B coverage, and current excluded literals; completed the handoff and recorded the 528-versus-547 plan mismatch. Static assertions and `git diff --check` pass. | Gradle build, JVM tests, and instrumentation tests remain unrun: the wrapper exits before startup because no `java`/`JAVA_HOME` is available; Android SDK and `adb` are absent. |
+| 2026-10-04 | 06 | Replit Agent | Moved sliders to a dedicated Settings destination, added a separate full guide combining onboarding and guarded-adjustment content, and retired the old guard-only route/screen. All 43 prior guide entries are retained verbatim; route tests, LSP diagnostics, static route scans, and `git diff --check` pass. | Android build/JUnit checks remain unrun because Java is missing and Android SDK variables are empty. |
+| 2026-10-04 | 07 | Replit Agent | Added a saved Schedule text-size override and applied it across Schedule content; centered the Focus empty state and removed Defense's general hint/help cards. | Final static checks and LSP pending; Android tests remain blocked by the missing Java/Android SDK toolchain. |

@@ -42,7 +42,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import androidx.compose.runtime.setValue
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
@@ -102,7 +102,7 @@ internal fun FocusFlowInternalHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontSize = 18.sp,
+                fontSize = 18.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = RefText,
                 maxLines = 1,
@@ -111,7 +111,7 @@ internal fun FocusFlowInternalHeader(
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     color = RefSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -184,7 +184,7 @@ internal fun FocusFlowPrimaryButton(
         Text(
             text = text,
             color = Color.White,
-            fontSize = 14.sp,
+            fontSize = 14.scaledSp,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -217,7 +217,7 @@ internal fun FocusFlowSecondaryButton(
         Text(
             text = text,
             color = if (enabled) RefSecondary else RefMuted,
-            fontSize = 12.5.sp,
+            fontSize = 12.5.scaledSp,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -240,7 +240,7 @@ internal fun FocusFlowModalField(
         singleLine = true,
         textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
             color = RefText,
-            fontSize = 14.sp,
+            fontSize = 14.scaledSp,
         ),
         visualTransformation = if (secure && !passwordVisible) {
             PasswordVisualTransformation()
@@ -263,7 +263,7 @@ internal fun FocusFlowModalField(
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     if (value.isEmpty()) {
-                         Text(placeholder, color = RefMuted, fontSize = 14.sp)
+                         Text(placeholder, color = RefMuted, fontSize = 14.scaledSp)
                     }
                     innerTextField()
                 }
@@ -291,7 +291,7 @@ internal fun ReferencePill(
     selected: Boolean,
     modifier: Modifier = Modifier,
     selectedColor: Color = BrandPrimary,
-    fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 14.scaledSp,
     horizontalPadding: androidx.compose.ui.unit.Dp = 10.dp,
     onClick: (() -> Unit)? = null,
 ) {
@@ -326,7 +326,7 @@ internal fun ReferenceSectionLabel(
     Text(
         text = text,
         modifier = modifier,
-        fontSize = 11.sp,
+        fontSize = 11.scaledSp,
         fontWeight = FontWeight.SemiBold,
         color = RefSecondary,
     )
@@ -350,7 +350,7 @@ internal fun ReferenceField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
-            fontSize = 14.sp,
+            fontSize = 14.scaledSp,
             color = RefText,
         ),
         modifier = modifier
@@ -369,7 +369,7 @@ internal fun ReferenceField(
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     if (value.isEmpty() && placeholder.isNotEmpty()) {
-                        Text(placeholder, color = RefMuted, fontSize = 14.sp)
+                         Text(placeholder, color = RefMuted, fontSize = 14.scaledSp)
                     }
                     innerTextField()
                 }
@@ -395,9 +395,9 @@ internal fun ReferenceToggleCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+            Text(title, fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold, color = RefText)
             Spacer(Modifier.size(2.dp))
-            Text(description, fontSize = 12.sp, color = RefSecondary)
+            Text(description, fontSize = 12.scaledSp, color = RefSecondary)
         }
         FocusFlowSwitch(
             checked = checked,
@@ -434,6 +434,6 @@ internal fun ReferenceTaskAction(
             )
         }
         Spacer(Modifier.size(4.dp))
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = color)
+        Text(label, fontSize = 11.scaledSp, fontWeight = FontWeight.SemiBold, color = color)
     }
 }

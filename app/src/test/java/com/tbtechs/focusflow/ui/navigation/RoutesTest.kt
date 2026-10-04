@@ -12,8 +12,11 @@ class RoutesTest {
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("onboarding"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("active"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("guarded_adjustments"))
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath(Routes.TEXT_SIZE_SETTINGS))
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath(Routes.SETTINGS_GUIDE))
         assertFalse(Routes.IMPORT_CONFIRM in Routes.externalLinkableRoutes)
-        assertFalse(Routes.GUARDED_ADJUSTMENTS in Routes.externalLinkableRoutes)
+        assertFalse(Routes.TEXT_SIZE_SETTINGS in Routes.externalLinkableRoutes)
+        assertFalse(Routes.SETTINGS_GUIDE in Routes.externalLinkableRoutes)
     }
 
     @Test

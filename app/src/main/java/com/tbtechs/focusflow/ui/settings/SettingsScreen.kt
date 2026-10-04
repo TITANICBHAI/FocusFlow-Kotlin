@@ -33,11 +33,13 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.RocketLaunch
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Smartphone
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -104,7 +106,8 @@ fun SettingsScreen(
     focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
     appBootViewModel: AppBootViewModel = viewModel(factory = AppBootViewModel.Factory),
     onOpenActiveBlocks: () -> Unit = {},
-    onOpenGuardedAdjustments: () -> Unit = {},
+    onOpenTextSize: () -> Unit = {},
+    onOpenGuide: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
     onExportBackup: (() -> Unit)? = null,
@@ -257,21 +260,17 @@ fun SettingsScreen(
                             },
                         )
                     }
-                }
-            }
-
-            // 3. TEXT SIZE
-            item {
-                SettingsSectionHeader("TEXT SIZE")
-                SettingsCard {
-                    TextSizeSection(
-                        settings = settings,
-                        onUpdate = settingsViewModel::updateSettings,
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.TextFields,
+                        title = "Text Size",
+                        description = "Adjust text size for FocusFlow screens",
+                        onClick = onOpenTextSize,
                     )
                 }
             }
 
-            // 4. NOTIFICATIONS
+            // 3. NOTIFICATIONS
             item {
                 SettingsSectionHeader("NOTIFICATIONS")
                 SettingsCard {
@@ -309,7 +308,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 5. SCHEDULING
+            // 4. SCHEDULING
             item {
                 SettingsSectionHeader("SCHEDULING")
                 SettingsCard {
@@ -382,7 +381,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 6. FOCUS MODE
+            // 5. FOCUS MODE
             item {
                 SettingsSectionHeader("FOCUS MODE")
                 SettingsCard {
@@ -412,20 +411,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 7. PROTECTION
-            item {
-                SettingsSectionHeader("PROTECTION")
-                SettingsCard {
-                    SettingsActionRow(
-                        icon = Icons.Outlined.Shield,
-                        title = "Guarded Adjustments",
-                        description = "Understand PIN prompts and changes locked during a block",
-                        onClick = onOpenGuardedAdjustments,
-                    )
-                }
-            }
-
-            // 8. BLOCK OVERLAY
+            // 6. BLOCK OVERLAY
             item {
                 SettingsSectionHeader("BLOCK OVERLAY")
                 SettingsCard {
@@ -438,7 +424,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 9. POMODORO MODE
+            // 7. POMODORO MODE
             item {
                 SettingsSectionHeader("POMODORO MODE")
                 SettingsCard {
@@ -477,7 +463,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 10. BACKUP & DATA
+            // 8. BACKUP & DATA
             item {
                 SettingsSectionHeader("BACKUP & DATA")
                 SettingsCard {
@@ -506,7 +492,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 11. PERMISSIONS
+            // 9. PERMISSIONS
             item {
                 SettingsSectionHeader("PERMISSIONS")
                 SettingsCard {
@@ -519,7 +505,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 12. DIAGNOSTICS
+            // 10. DIAGNOSTICS
             item {
                 SettingsSectionHeader("DIAGNOSTICS")
                 SettingsCard {
@@ -538,7 +524,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 13. DATA
+            // 11. DATA
             item {
                 SettingsSectionHeader("DATA")
                 SettingsCard {
@@ -552,7 +538,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 14. ABOUT
+            // 12. ABOUT
             item {
                 SettingsSectionHeader("ABOUT")
                 SettingsCard {
@@ -561,6 +547,13 @@ fun SettingsScreen(
                         title = "Stats",
                         description = "Yesterday's digest, focus time, completed tasks, blocked apps, streak",
                         onClick = onOpenStats,
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Info,
+                        title = "How to Use",
+                        description = "Full guide to modes, protection, and guarded changes",
+                        onClick = onOpenGuide,
                     )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsActionRow(

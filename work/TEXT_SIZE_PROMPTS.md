@@ -1,5 +1,9 @@
 # Text Size Settings — Agent Prompts
 
+> Historical instructions for the original text-size rollout. Batch 07 later
+> added Schedule/Home scaling at the user's request, superseding the Home
+> exclusions in Prompt A and Prompt B.
+
 Two independent jobs. Background/rationale for both is in `TEXT_SIZE_PLAN.md` —
 paste that alongside if the receiving agent can use extra context, but each
 prompt below is written to stand on its own. Batch-level progress and evidence

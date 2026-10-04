@@ -36,6 +36,7 @@ class TextScaleSettingsPersistenceTest {
         try {
             val defaults = repository.readAppSettings()
             assertEquals(1f, defaults.generalTextScale, 0f)
+            assertNull(defaults.homeTextScale)
             assertNull(defaults.focusTextScale)
             assertNull(defaults.statsTextScale)
             assertNull(defaults.settingsTextScale)
@@ -43,6 +44,7 @@ class TextScaleSettingsPersistenceTest {
 
             val configured = defaults.copy(
                 generalTextScale = 1.27f,
+                homeTextScale = 1.08f,
                 focusTextScale = 0.81f,
                 statsTextScale = 1.25f,
                 settingsTextScale = 0.94f,
@@ -52,10 +54,12 @@ class TextScaleSettingsPersistenceTest {
 
             val persisted = repository.readAppSettings()
             assertEquals(configured.generalTextScale, persisted.generalTextScale, 0f)
+            assertEquals(configured.homeTextScale!!, persisted.homeTextScale!!, 0f)
             assertEquals(configured.focusTextScale!!, persisted.focusTextScale!!, 0f)
             assertEquals(configured.statsTextScale!!, persisted.statsTextScale!!, 0f)
             assertEquals(configured.settingsTextScale!!, persisted.settingsTextScale!!, 0f)
             assertEquals(configured.defenseTextScale!!, persisted.defenseTextScale!!, 0f)
+            assertTrue(testPreferences.contains("home_text_scale"))
             assertTrue(testPreferences.contains("focus_text_scale"))
             assertTrue(testPreferences.contains("stats_text_scale"))
             assertTrue(testPreferences.contains("settings_text_scale"))
@@ -63,6 +67,7 @@ class TextScaleSettingsPersistenceTest {
 
             repository.setNotificationPreferences(
                 persisted.copy(
+                    homeTextScale = null,
                     focusTextScale = null,
                     statsTextScale = null,
                     settingsTextScale = null,
@@ -72,10 +77,12 @@ class TextScaleSettingsPersistenceTest {
 
             val reset = repository.readAppSettings()
             assertEquals(1.27f, reset.generalTextScale, 0f)
+            assertNull(reset.homeTextScale)
             assertNull(reset.focusTextScale)
             assertNull(reset.statsTextScale)
             assertNull(reset.settingsTextScale)
             assertNull(reset.defenseTextScale)
+            assertFalse(testPreferences.contains("home_text_scale"))
             assertFalse(testPreferences.contains("focus_text_scale"))
             assertFalse(testPreferences.contains("stats_text_scale"))
             assertFalse(testPreferences.contains("settings_text_scale"))

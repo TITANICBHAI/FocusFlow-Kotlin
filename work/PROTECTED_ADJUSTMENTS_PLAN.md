@@ -2,16 +2,16 @@
 
 ## Goal
 
-Add a dedicated screen opened from a row in Settings where users can review the
-adjustments and actions that FocusFlow protects. Use grouped sections with
-expandable question-and-answer entries. Explain what is protected, when a PIN
-or active-block lock applies, and where the user can manage the setting.
+Include the verified Guarded Adjustments content in a full Settings **How to
+Use** guide. The guide is a new file and full-screen Settings destination,
+separate from the shorter onboarding `HowToUseScreen`. It combines the current
+onboarding guide content with grouped, expandable questions about guarded
+adjustments, PIN prompts, and active-block locks. It links to existing owner
+flows; it does not replace or duplicate their controls or security checks.
 
-This is its own full-screen destination, not a popup. It explains the existing
-guard-related popups, dialogs, and locked states; those prompts still appear only
-from their current owner flows. This is an informational/navigation guide, not a
-second implementation of the underlying controls. Existing owning screens and
-their PIN/active-state checks remain authoritative.
+The existing onboarding screen and flow remain unchanged. After the content is
+migrated, remove the old Guarded Adjustments Settings entry, route, and standalone
+screen.
 
 ## Audit baseline (before implementation)
 
@@ -24,15 +24,15 @@ implementation below adds the Settings-only guide route.
 
 ## Required user flow
 
-1. Add one clearly labeled Settings action row: **Guarded Adjustments**, with a
-   concise description that says it explains protected changes and their rules.
-2. Tapping the row opens a new full-screen destination, not a modal.
-3. The new page has a back action that returns to Settings.
-4. Present the content as grouped sections with expandable question-and-answer
-   entries. Use a question as each entry heading and a concise, practical answer
-   beneath it. The page itself must not open a PIN dialog or act as another
-   popup.
-5. Group entries by guard type or owning area. Each answer states:
+1. Add a **How to Use** action in Settings' About section. Its description makes
+   clear that this is a fuller guide to modes and protected changes.
+2. Tapping the row opens a new full-screen guide, not a modal; the existing
+   onboarding guide stays separate and unchanged.
+3. The guide has a back action that returns to Settings.
+4. Include the onboarding guide's practical mode and PIN sections, followed by
+   grouped, expandable guarded-adjustment questions and answers. The page itself
+   must not open a PIN dialog or act as another popup.
+5. Group guard entries by type or owning area. Each answer states:
    - The adjustment/action that is protected.
    - The exact condition that triggers the Defense PIN, Focus PIN, or active
      block lock.
@@ -71,14 +71,12 @@ the app. Each answer states its own condition; PIN types are not interchangeable
 - Add one internal route constant in `ui/navigation/Routes.kt` and one
   `composable` destination in `ui/navigation/FocusFlowNavGraph.kt`; the Settings
   row is the planned entry point.
-- Keep the new route out of `Routes.externalLinkableRoutes` unless a later
-  product decision explicitly requires external deep links.
+- Keep the new Settings-guide route out of `Routes.externalLinkableRoutes`;
+  remove the retired Guarded Adjustments route.
 - Pass a Settings-scale context if text scaling has already been implemented;
   see §12 of `TEXT_SIZE_PLAN.md`. Do not duplicate any text-size controls here.
-- If this screen is created after the Prompt B conversion has already run,
-  record `ProtectedAdjustmentsScreen.kt` as a follow-up in-scope
-  `ui/settings/` file; otherwise Prompt B's `ui/settings/ (all files)` rule
-  already includes it. Do not claim its text respects the slider until checked.
+- The Settings guide is Settings-owned for text scaling. Keep the Text Size
+  controls on their separate Settings destination; do not put them in the guide.
 - Provide direct links to existing owner screens where practical. If a guarded
   action lives in a modal inside another screen, navigate to its owner screen;
   let the existing UI open the modal through its established path.
@@ -89,9 +87,11 @@ the app. Each answer states its own condition; PIN types are not interchangeable
 ## Likely files
 
 - `app/src/main/java/com/tbtechs/focusflow/ui/settings/SettingsScreen.kt` —
-  add the Settings action row and navigation callback.
-- `app/src/main/java/com/tbtechs/focusflow/ui/settings/ProtectedAdjustmentsScreen.kt` —
-  new explanatory/navigation screen.
+  add the About action; remove the former Guarded Adjustments section.
+- `app/src/main/java/com/tbtechs/focusflow/ui/support/SettingsGuideScreen.kt` —
+  new full guide combining onboarding and protected-adjustment content.
+- `app/src/main/java/com/tbtechs/focusflow/ui/support/HowToUseScreen.kt` —
+  keep the existing onboarding flow separate and unchanged.
 - `app/src/main/java/com/tbtechs/focusflow/ui/navigation/Routes.kt` and
   `FocusFlowNavGraph.kt` — internal route and back/navigation wiring.
 - Guard-owner screens named in the inventory — inspect first; edit only if
@@ -99,7 +99,11 @@ the app. Each answer states its own condition; PIN types are not interchangeable
 
 ## Done when
 
-- [x] Settings has one clearly named action that opens the new full-screen page.
+- [x] Settings' About section has a **How to Use** action that opens the full guide.
+- [x] The guide includes onboarding content and all audited guard Q&As in a new
+  file; the original onboarding guide remains a separate flow.
+- [x] The old Guarded Adjustments Settings entry, route, and standalone screen
+  are removed after migrating their content.
 - [x] Back navigation returns to Settings without losing the existing stack.
 - [x] Every live PIN- or active-block-guarded adjustment and related user-visible
   popup/locked state is represented once, with its exact condition and owner
