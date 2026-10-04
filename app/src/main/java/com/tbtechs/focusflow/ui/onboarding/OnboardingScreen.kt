@@ -1,7 +1,6 @@
 package com.tbtechs.focusflow.ui.onboarding
 
 import android.Manifest
-import android.content.Intent
 import android.net.VpnService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,32 +18,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,23 +51,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
-import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
-import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.permissions.AccessibilityRestrictedRecovery
 import com.tbtechs.focusflow.ui.permissions.PermissionCard
 import com.tbtechs.focusflow.ui.permissions.PermissionDefinition
 import com.tbtechs.focusflow.ui.permissions.PermissionId
 import com.tbtechs.focusflow.ui.permissions.PermissionStatus
+import com.tbtechs.focusflow.ui.permissions.UsageAccessRecovery
 import com.tbtechs.focusflow.ui.permissions.checkPermission
 import com.tbtechs.focusflow.ui.permissions.openPermissionSettings
 import com.tbtechs.focusflow.ui.permissions.permissionDefinitions
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
-import com.tbtechs.focusflow.ui.theme.DarkBorder
-import com.tbtechs.focusflow.ui.theme.DarkCard
 import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
@@ -88,8 +72,6 @@ import com.tbtechs.focusflow.ui.theme.InfoBorder
 import com.tbtechs.focusflow.ui.theme.InfoSurface
 import com.tbtechs.focusflow.ui.theme.InfoText
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
-import com.tbtechs.focusflow.ui.theme.StatusOptionalBg
-import com.tbtechs.focusflow.ui.theme.StatusOptionalText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -98,24 +80,18 @@ private enum class OnboardingStep { CORE, OPTIONAL }
 
 @Composable
 fun OnboardingScreen(
-    settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
     onFinished: () -> Unit = {},
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
-    val settings by settingsViewModel.settings.collectAsState()
     var step by remember { mutableStateOf(OnboardingStep.CORE) }
     var statuses by remember { mutableStateOf<Map<PermissionId, PermissionStatus>>(emptyMap()) }
     var expanded by remember { mutableStateOf<PermissionId?>(null) }
     var loading by remember { mutableStateOf<PermissionId?>(null) }
+    var usageAttempted by remember { mutableStateOf(false) }
     var accessibilityAttempted by remember { mutableStateOf(false) }
-    var pinChoice by remember { mutableStateOf(false) }
-    var defensePinSet by remember { mutableStateOf(false) }
-    var pinDialog by remember { mutableStateOf(false) }
-    var pin by remember { mutableStateOf("") }
-    var pinConfirm by remember { mutableStateOf("") }
 
     val onboardingPermissions = remember {
         val definitionsById = permissionDefinitions.associateBy { it.id }
@@ -179,6 +155,10 @@ fun OnboardingScreen(
             }
             PermissionId.ACCESSIBILITY -> {
                 accessibilityAttempted = true
+                scope.launch { openPermissionSettings(context, permission.id); loading = null }
+            }
+            PermissionId.USAGE -> {
+                usageAttempted = true
                 scope.launch { openPermissionSettings(context, permission.id); loading = null }
             }
             else -> scope.launch { openPermissionSettings(context, permission.id); loading = null }
@@ -325,10 +305,6 @@ fun OnboardingScreen(
                     )
                 }
 
-                item {
-                    AccessibilityRestrictedRecovery(accessibilityAttempted = accessibilityAttempted)
-                }
-
                 // Bottom setup note
                 item {
                     Box(
@@ -415,118 +391,6 @@ fun OnboardingScreen(
                     )
                 }
 
-                item {
-                    Text(
-                        text = "SECURITY PREFERENCE",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.8.sp,
-                        color = DarkTextMuted,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-
-                // PIN Protection Card
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(DarkCard)
-                            .border(1.dp, DarkBorder.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
-                            .padding(16.dp),
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(StatusOptionalBg),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Lock,
-                                        contentDescription = null,
-                                        tint = StatusOptionalText,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "PIN Protection",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = DarkTextPrimary,
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Require a password to disable block enforcement toggles. Prevents impulsive self-sabotage mid-session.",
-                                        fontSize = 13.sp,
-                                        lineHeight = 18.sp,
-                                        color = DarkTextSecondary,
-                                    )
-                                }
-
-                                Switch(
-                                    checked = pinChoice,
-                                    onCheckedChange = { pinChoice = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = BrandPrimary,
-                                        uncheckedThumbColor = DarkTextMuted,
-                                        uncheckedTrackColor = DarkSurfaceVariant,
-                                    ),
-                                )
-                            }
-
-                            if (pinChoice && !defensePinSet) {
-                                Button(
-                                    onClick = { pinDialog = true },
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 44.dp),
-                                ) {
-                                    Text("Set Password Now", fontWeight = FontWeight.Bold)
-                                }
-                            }
-
-                            // Inner callout box
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(DarkSurfaceVariant.copy(alpha = 0.6f))
-                                    .padding(12.dp),
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Info,
-                                        contentDescription = null,
-                                        tint = DarkTextSecondary,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Text(
-                                        text = if (pinChoice && defensePinSet) "Defense Password set — your protections are locked."
-                                        else "You can enable this anytime in Settings → PIN Protection or Block Enforcement.",
-                                        fontSize = 12.5.sp,
-                                        color = DarkTextSecondary,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             // Bottom CTA Button
@@ -537,7 +401,6 @@ fun OnboardingScreen(
                         if (step == OnboardingStep.CORE) {
                             step = OnboardingStep.OPTIONAL
                         } else {
-                            settingsViewModel.updateSettings(settings.copy(pinProtectionEnabled = pinChoice))
                             scope.launch {
                                 val setupPersistence = SetupPersistenceManager(context)
                                 setupPersistence.setUserConsentedBackgroundService(true)
@@ -586,60 +449,6 @@ fun OnboardingScreen(
         }
     }
 
-    if (pinDialog) {
-        AlertDialog(
-            onDismissRequest = { pinDialog = false },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = DarkCard,
-            titleContentColor = DarkTextPrimary,
-            textContentColor = DarkTextSecondary,
-            title = { Text("Set Defense Password", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = pin,
-                        onValueChange = { pin = it },
-                        label = { Text("Password") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = pinConfirm,
-                        onValueChange = { pinConfirm = it },
-                        label = { Text("Confirm password") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (pin.isNotEmpty() && pin != pinConfirm) {
-                        Text("Passwords do not match", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (pin.length >= 4 && pin == pinConfirm) {
-                            settingsViewModel.setPin(pin)
-                            defensePinSet = true
-                            pinChoice = true
-                            pinDialog = false
-                            pin = ""
-                            pinConfirm = ""
-                        }
-                    },
-                    enabled = pin.length >= 4 && pin == pinConfirm,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                ) { Text("Set Password", color = Color.White, fontWeight = FontWeight.SemiBold) }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { pinDialog = false },
-                    shape = RoundedCornerShape(14.dp),
-                ) { Text("Set later", color = DarkTextSecondary) }
-            },
-        )
-    }
+    AccessibilityRestrictedRecovery(accessibilityAttempted = accessibilityAttempted)
+    UsageAccessRecovery(usageAccessAttempted = usageAttempted)
 }

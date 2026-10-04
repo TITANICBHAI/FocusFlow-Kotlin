@@ -17,7 +17,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +41,7 @@ import com.tbtechs.focusflow.ui.home.RefText
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class RecoveryStage { QUESTION, GREYED_ENTRY, APP_INFO, FALLBACK, ENABLE, CHECKING, SKIPPED }
 
@@ -70,24 +70,36 @@ fun AccessibilityRestrictedRecovery(
             when (event) {
                 Lifecycle.Event.ON_STOP -> if (accessibilityAttempted) leftAfterAttempt = true
                 Lifecycle.Event.ON_RESUME -> if (leftAfterAttempt) {
-                    returned = true
                     leftAfterAttempt = false
-                    if (currentStage == RecoveryStage.CHECKING) {
-                        scope.launch {
-                            val granted = UsageStatsRepository(context).hasAccessibilityPermission()
-                            val stillRestricted = UsageStatsRepository(context).isRestrictedSettingsBlocked()
-                            if (currentDismissed) return@launch
-                            if (granted) completed = true
-                            else {
-                                restricted = stillRestricted
-                                stage = if (stillRestricted) RecoveryStage.APP_INFO else RecoveryStage.ENABLE
+                    scope.launch {
+                        val repository = UsageStatsRepository(context)
+                        val stageAtReturn = currentStage
+                        val (granted, stillRestricted) = withContext(Dispatchers.IO) {
+                            val enabled = repository.hasAccessibilityPermission()
+                            enabled to if (!enabled && stageAtReturn == RecoveryStage.CHECKING) {
+                                repository.isRestrictedSettingsBlocked()
+                            } else {
+                                false
                             }
                         }
-                    } else if (currentStage == RecoveryStage.GREYED_ENTRY) {
-                        greyedReturned = true
-                    } else if (currentStage == RecoveryStage.FALLBACK) {
-                        fallbackReturned = true
-                        stage = RecoveryStage.APP_INFO
+                        if (currentDismissed) return@launch
+                        if (granted) {
+                            completed = true
+                        } else {
+                            returned = true
+                            when (stageAtReturn) {
+                                RecoveryStage.CHECKING -> {
+                                    restricted = stillRestricted
+                                    stage = if (stillRestricted) RecoveryStage.APP_INFO else RecoveryStage.ENABLE
+                                }
+                                RecoveryStage.GREYED_ENTRY -> greyedReturned = true
+                                RecoveryStage.FALLBACK -> {
+                                    fallbackReturned = true
+                                    stage = RecoveryStage.APP_INFO
+                                }
+                                else -> Unit
+                            }
+                        }
                     }
                 }
                 else -> Unit

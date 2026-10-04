@@ -524,7 +524,6 @@ fun FocusFlowNavGraph(
             composable(Routes.ONBOARDING) {
                 ScreenBoundary(Routes.ONBOARDING) {
                     OnboardingScreen(
-                        settingsViewModel = settingsViewModel,
                         onFinished = {
                             navController.navigate("${Routes.HOW_TO_USE}?onboarding=true") {
                                 popUpTo(Routes.ONBOARDING) { inclusive = true }
