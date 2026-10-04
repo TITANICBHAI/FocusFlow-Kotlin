@@ -259,7 +259,18 @@ fun SettingsScreen(
                 }
             }
 
-            // 3. NOTIFICATIONS
+            // 3. TEXT SIZE
+            item {
+                SettingsSectionHeader("TEXT SIZE")
+                SettingsCard {
+                    TextSizeSection(
+                        settings = settings,
+                        onUpdate = settingsViewModel::updateSettings,
+                    )
+                }
+            }
+
+            // 4. NOTIFICATIONS
             item {
                 SettingsSectionHeader("NOTIFICATIONS")
                 SettingsCard {
@@ -297,7 +308,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 4. SCHEDULING
+            // 5. SCHEDULING
             item {
                 SettingsSectionHeader("SCHEDULING")
                 SettingsCard {
@@ -370,7 +381,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 5. FOCUS MODE
+            // 6. FOCUS MODE
             item {
                 SettingsSectionHeader("FOCUS MODE")
                 SettingsCard {
@@ -400,7 +411,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 6. PROTECTION
+            // 7. PROTECTION
             item {
                 SettingsSectionHeader("PROTECTION")
                 SettingsCard {
@@ -413,7 +424,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 7. BLOCK OVERLAY
+            // 8. BLOCK OVERLAY
             item {
                 SettingsSectionHeader("BLOCK OVERLAY")
                 SettingsCard {
@@ -426,7 +437,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 8. POMODORO MODE
+            // 9. POMODORO MODE
             item {
                 SettingsSectionHeader("POMODORO MODE")
                 SettingsCard {
@@ -465,7 +476,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 9. BACKUP & DATA
+            // 10. BACKUP & DATA
             item {
                 SettingsSectionHeader("BACKUP & DATA")
                 SettingsCard {
@@ -494,7 +505,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 10. PERMISSIONS
+            // 11. PERMISSIONS
             item {
                 SettingsSectionHeader("PERMISSIONS")
                 SettingsCard {
@@ -507,7 +518,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 11. DIAGNOSTICS
+            // 12. DIAGNOSTICS
             item {
                 SettingsSectionHeader("DIAGNOSTICS")
                 SettingsCard {
@@ -526,7 +537,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 12. DATA
+            // 13. DATA
             item {
                 SettingsSectionHeader("DATA")
                 SettingsCard {
@@ -540,7 +551,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 13. ABOUT
+            // 14. ABOUT
             item {
                 SettingsSectionHeader("ABOUT")
                 SettingsCard {

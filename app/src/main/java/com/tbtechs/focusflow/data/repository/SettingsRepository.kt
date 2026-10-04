@@ -112,6 +112,11 @@ class SettingsRepository(
         private const val KEY_ALWAYS_ON_VPN_PACKAGES = "always_on_vpn_packages"
         private const val KEY_OVERLAY_QUOTES = "block_overlay_quotes"
         private const val KEY_DARK_MODE_ENABLED = "dark_mode_enabled"
+        private const val KEY_GENERAL_TEXT_SCALE = "general_text_scale"
+        private const val KEY_FOCUS_TEXT_SCALE = "focus_text_scale"
+        private const val KEY_STATS_TEXT_SCALE = "stats_text_scale"
+        private const val KEY_SETTINGS_TEXT_SCALE = "settings_text_scale"
+        private const val KEY_DEFENSE_TEXT_SCALE = "defense_text_scale"
         private const val KEY_MORNING_DIGEST_ENABLED = "morning_digest_enabled"
         private const val KEY_ACHIEVEMENT_NOTIFICATIONS_ENABLED = "achievement_notifications_enabled"
         private const val KEY_PATTERN_INSIGHT_NOTIFICATIONS_ENABLED = "pattern_insight_notifications_enabled"
@@ -986,6 +991,7 @@ class SettingsRepository(
         }
         prefs.edit()
             .putBoolean(KEY_DARK_MODE_ENABLED, settings.darkModeEnabled)
+            .putFloat(KEY_GENERAL_TEXT_SCALE, settings.generalTextScale)
             .putBoolean(KEY_MORNING_DIGEST_ENABLED, settings.morningDigestEnabled)
             .putBoolean(KEY_ACHIEVEMENT_NOTIFICATIONS_ENABLED, settings.achievementNotificationsEnabled)
             .putBoolean(KEY_PATTERN_INSIGHT_NOTIFICATIONS_ENABLED, settings.patternInsightNotificationsEnabled)
@@ -1014,6 +1020,26 @@ class SettingsRepository(
             .putBoolean(KEY_ALWAYS_ON_INFO_DISMISSED, settings.alwaysOnInfoDismissed)
             .putBoolean(KEY_PROTECTION_STATUS_BANNER_DISMISSED, settings.protectionStatusBannerDismissed)
             .apply {
+                if (settings.focusTextScale == null) {
+                    remove(KEY_FOCUS_TEXT_SCALE)
+                } else {
+                    putFloat(KEY_FOCUS_TEXT_SCALE, settings.focusTextScale)
+                }
+                if (settings.statsTextScale == null) {
+                    remove(KEY_STATS_TEXT_SCALE)
+                } else {
+                    putFloat(KEY_STATS_TEXT_SCALE, settings.statsTextScale)
+                }
+                if (settings.settingsTextScale == null) {
+                    remove(KEY_SETTINGS_TEXT_SCALE)
+                } else {
+                    putFloat(KEY_SETTINGS_TEXT_SCALE, settings.settingsTextScale)
+                }
+                if (settings.defenseTextScale == null) {
+                    remove(KEY_DEFENSE_TEXT_SCALE)
+                } else {
+                    putFloat(KEY_DEFENSE_TEXT_SCALE, settings.defenseTextScale)
+                }
                 if (settings.lastShownDebriefSessionId == null) {
                     remove(KEY_LAST_SHOWN_DEBRIEF_SESSION_ID)
                 } else {
@@ -1103,6 +1129,27 @@ class SettingsRepository(
             autoRescheduleEnabled = prefs.getBoolean(KEY_AUTO_RESCHEDULE_ENABLED, false),
             autoCopyToAlwaysOn = prefs.getBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, false),
             darkModeEnabled = prefs.getBoolean(KEY_DARK_MODE_ENABLED, true),
+            generalTextScale = prefs.getFloat(KEY_GENERAL_TEXT_SCALE, 1f),
+            focusTextScale = if (prefs.contains(KEY_FOCUS_TEXT_SCALE)) {
+                prefs.getFloat(KEY_FOCUS_TEXT_SCALE, 1f)
+            } else {
+                null
+            },
+            statsTextScale = if (prefs.contains(KEY_STATS_TEXT_SCALE)) {
+                prefs.getFloat(KEY_STATS_TEXT_SCALE, 1f)
+            } else {
+                null
+            },
+            settingsTextScale = if (prefs.contains(KEY_SETTINGS_TEXT_SCALE)) {
+                prefs.getFloat(KEY_SETTINGS_TEXT_SCALE, 1f)
+            } else {
+                null
+            },
+            defenseTextScale = if (prefs.contains(KEY_DEFENSE_TEXT_SCALE)) {
+                prefs.getFloat(KEY_DEFENSE_TEXT_SCALE, 1f)
+            } else {
+                null
+            },
             morningDigestEnabled = prefs.getBoolean(KEY_MORNING_DIGEST_ENABLED, true),
             achievementNotificationsEnabled = prefs.getBoolean(
                 KEY_ACHIEVEMENT_NOTIFICATIONS_ENABLED,

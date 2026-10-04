@@ -258,12 +258,43 @@ the original root-tab wiring and file list do not fully describe.
 
 | Entry point | Current screens / overlays to account for | Text-size rule |
 |---|---|---|
-| Home/Schedule | `HomeScreen`; task detail/edit/quick-add and allowed-app dialogs; `AppPickerSheet` when opened from Home | Pin the entire Home-origin flow to `1f`, including shared sheets. |
-| Focus | `FocusScreen`; its extension, session-debrief, standalone-block, and PIN dialogs; `Routes.ACTIVE`; `Routes.PERMISSIONS` | Focus-owned content uses the Focus override. Shared destinations use the caller's scale. |
+| Home/Schedule | `HomeScreen`; task detail/edit/quick-add and allowed-app dialogs; `AppPickerSheet` when opened from Home; shared `Routes.ACTIVE` | Pin the entire Home-origin flow to `1f`, including shared destinations and sheets. |
+| Focus | `FocusScreen`; its extension, session-debrief, standalone-block, and PIN dialogs; shared `Routes.ACTIVE`; `Routes.PERMISSIONS` | Focus-owned content uses the Focus override. Shared destinations use the caller's scale. |
 | Stats | `StatsScreen`; `Routes.REPORTS` / `Routes.REPORT`; the top-level `QuickBlockSheet`; shared `Routes.ACTIVE` | Stats-specific `.sp` coverage is not in Prompt B. Keep this a visible v1 limitation; do not claim the Stats override works for raw literals or the quick-block sheet. |
-| Settings | `SettingsScreen`; profile, permissions, changelog, privacy/terms, and backup/import destinations; overlay-appearance, allowed-apps, report-issue, PIN, import-choice, and destructive-confirmation dialogs | Settings-owned destinations use the Settings override. Inline dialogs inherit their caller unless their source file is an explicit exception. |
+| Settings | `SettingsScreen`; Guarded Adjustments; profile, permissions, changelog, privacy/terms, and backup/import destinations; overlay-appearance, allowed-apps, report-issue, PIN, import-choice, and destructive-confirmation dialogs | Settings-owned destinations use the Settings override. Inline dialogs inherit their caller unless their source file is an explicit exception. |
 | Defense | `DefenseScreen`; Always-On, standalone-block setup, keyword blocker, VPN list, password protection, permissions, launcher setup, and How-to-Use destinations; daily-allowance, schedule, blocked-word, standalone-block, VPN-consent, and PIN dialogs | Defense-owned destinations use the Defense override. Shared destinations use the caller's scale. The existing launcher-setup exclusion remains explicit. |
 | Enforcement overlay | `BlockOverlayActivity`, a plain Android Activity with programmatic `TextView`s | It cannot inherit a Compose local; use the direct preference-read path in §10. |
+
+**Current-source revalidation (2026-10-04):** The route and caller inventory was
+checked against `Routes.kt`, `FocusFlowNavGraph.kt`, `MainActivity.kt`,
+`ProtectedAdjustmentsScreen.kt`, and current screen/modal call sites. Source
+mismatches were corrected: `Routes.ACTIVE` is opened from all five root tabs,
+including Home/Schedule (`HomeScreen`'s status indicator), and from the Settings
+Guarded Adjustments guide. Home-origin use must remain at `1f`; Focus, Stats,
+Settings, and Defense origins use their respective source scale. The Settings
+guide also links to `Routes.PERMISSIONS` and Defense-owned secondary routes.
+
+`Routes.PERMISSIONS` is opened from Focus, Settings, and Defense, as well as from
+the Settings Guarded Adjustments guide. Its launcher-configuration action opens
+`Routes.HOME_LAUNCHER_SETUP`, so launcher setup is reachable from each of those
+origins, not only directly from Defense. `ActiveScreen` can also navigate onward
+to Focus, Defense, Always-On, Keyword Blocker, and the VPN list; `ALWAYS_ON`,
+`KEYWORD_BLOCKER`, and `VPN_BLOCK_LIST` are additionally linked from the Settings
+guide, while `ALWAYS_ON` is also opened by the Stats quick-block flow. Preserve
+the Home pin across Home-origin shared flows; shared `ACTIVE` and `PERMISSIONS`
+use their caller's scale; tab-owned routes use the owning tab's scale; direct
+external/deep-link entries without a source tab use General (except Home, which
+is always `1f`).
+
+`AppPickerSheet` is invoked inline through `ui/home/AllowedAppsDialog.kt` (Home),
+`ui/launcher/AllowedAppsModal.kt` (Settings), and
+`ui/settings/DailyAllowanceModal.kt` (Defense); those sheets inherit their
+caller's composition. `QuickBlockSheet` is rendered after the NavHost in
+`FocusFlowNavGraph.kt`, is opened from Stats, and does not inherit a tab-local
+provider; it needs explicit Stats context or must remain an uncovered surface.
+External/deep-link entry is resolved by `MainActivity.routeFromIntent()` and
+`Routes.fromPath()` without a source-tab marker. The five root destinations alone
+render `MainScaffold`; its tab labels are outside the inner screen content.
 
 **Important navigation gap:** A `CompositionLocalProvider` wrapped around one
 `composable()` body does not automatically scope a different NavHost destination.

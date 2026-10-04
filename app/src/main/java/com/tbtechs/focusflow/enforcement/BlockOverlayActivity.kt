@@ -104,6 +104,7 @@ class BlockOverlayActivity : Activity() {
     }
 
     private lateinit var prefs: SharedPreferences
+    private var textScale: Float = 1f
     private val handler = Handler(Looper.getMainLooper())
     private var blockedName: String = ""
     private var blockReason: String = ""
@@ -151,6 +152,11 @@ class BlockOverlayActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(AppBlockerAccessibilityService.PREFS_NAME, MODE_PRIVATE)
+        textScale = if (prefs.contains("defense_text_scale")) {
+            prefs.getFloat("defense_text_scale", 1f)
+        } else {
+            prefs.getFloat("general_text_scale", 1f)
+        }
         blockedName = intent?.getStringExtra(EXTRA_BLOCKED_NAME) ?: ""
         blockReason = intent?.getStringExtra(EXTRA_BLOCK_REASON) ?: ""
 
@@ -415,7 +421,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildLockEmoji(): TextView = TextView(this).apply {
         text = "\uD83D\uDD12"
-        textSize = 52f
+        textSize = 52f * textScale
         gravity = Gravity.CENTER
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -425,7 +431,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildBlockedLabel(): TextView = TextView(this).apply {
         text = if (blockedName.isNotEmpty()) "\u201C$blockedName\u201D is blocked" else "App Blocked"
-        textSize = 15f
+        textSize = 15f * textScale
         setTextColor(Color.parseColor("#FF6B6B"))
         gravity = Gravity.CENTER
         letterSpacing = 0.12f
@@ -437,7 +443,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildReasonHeading(): TextView = TextView(this).apply {
         text = "WHY THIS APP IS BLOCKED"
-        textSize = 11f
+        textSize = 11f * textScale
         setTextColor(Color.parseColor("#D7D7F0"))
         gravity = Gravity.CENTER
         letterSpacing = 0.08f
@@ -449,7 +455,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildReasonLabel(): TextView = TextView(this).apply {
         text = blockReason
-        textSize = 13f
+        textSize = 13f * textScale
         setTextColor(Color.parseColor("#F1F1FA"))
         gravity = Gravity.CENTER
         setLineSpacing(0f, 1.4f)
@@ -467,7 +473,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildQuoteView(): TextView = TextView(this).apply {
         text = "\u201C${resolveQuote()}\u201D"
-        textSize = 20f
+        textSize = 20f * textScale
         setTextColor(Color.parseColor("#E8E8F0"))
         gravity = Gravity.CENTER
         setLineSpacing(0f, 1.55f)
@@ -479,7 +485,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildCountdownView(): LinearLayout {
         countdownLabel = TextView(this).apply {
-            textSize = 12f
+            textSize = 12f * textScale
             setTextColor(Color.parseColor("#AAAACC"))
             gravity = Gravity.CENTER
             letterSpacing = 0.04f
@@ -517,7 +523,7 @@ class BlockOverlayActivity : Activity() {
 
     private fun buildSubLabel(): TextView = TextView(this).apply {
         text = "Stay focused. You\u2019ve got this."
-        textSize = 13f
+        textSize = 13f * textScale
         setTextColor(Color.parseColor("#55556A"))
         gravity = Gravity.CENTER
         layoutParams = LinearLayout.LayoutParams(
@@ -533,7 +539,7 @@ class BlockOverlayActivity : Activity() {
      */
     private fun buildXButton(): TextView = TextView(this).apply {
         text = "\u2715"    // ✕
-        textSize = 20f
+        textSize = 20f * textScale
         setTextColor(Color.parseColor("#AAAACC"))
         gravity = Gravity.CENTER
         setPadding(dp(16), dp(16), dp(16), dp(16))

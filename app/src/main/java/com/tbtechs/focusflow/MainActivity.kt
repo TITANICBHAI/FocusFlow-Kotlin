@@ -449,6 +449,7 @@ private fun FocusFlowRoot(
 
     com.tbtechs.focusflow.ui.theme.FocusFlowTheme(
         darkTheme = settings.darkModeEnabled,
+        generalTextScale = settings.generalTextScale,
     ) {
         Box(
             modifier = Modifier

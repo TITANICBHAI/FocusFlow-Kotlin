@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -86,6 +87,7 @@ import com.tbtechs.focusflow.ui.stats.StatsScreen
 import com.tbtechs.focusflow.ui.support.ChangelogScreen
 import com.tbtechs.focusflow.ui.support.HowToUseScreen
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowTextScale
 import com.tbtechs.focusflow.ui.home.RefBorder
 import com.tbtechs.focusflow.ui.home.RefHeader
 import com.tbtechs.focusflow.ui.home.RefSecondary
@@ -173,79 +175,96 @@ fun FocusFlowNavGraph(
         ) {
             composable(Routes.HOME) {
                 MainScaffold(currentRoute, ::navigate) {
-                    ScreenBoundary(Routes.HOME) {
-                        HomeScreen(
-                            taskViewModel = taskViewModel,
-                            settingsViewModel = settingsViewModel,
-                            focusSessionViewModel = focusSessionViewModel,
-                            appBootViewModel = appBootViewModel,
-                            onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                        )
+                    CompositionLocalProvider(LocalFocusFlowTextScale provides 1f) {
+                        ScreenBoundary(Routes.HOME) {
+                            HomeScreen(
+                                taskViewModel = taskViewModel,
+                                settingsViewModel = settingsViewModel,
+                                focusSessionViewModel = focusSessionViewModel,
+                                appBootViewModel = appBootViewModel,
+                                onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                            )
+                        }
                     }
                 }
             }
             composable(Routes.FOCUS) {
                 MainScaffold(currentRoute, ::navigate) {
-                    ScreenBoundary(Routes.FOCUS) {
-                        FocusScreen(
-                            taskViewModel = taskViewModel,
-                            settingsViewModel = settingsViewModel,
-                            focusSessionViewModel = focusSessionViewModel,
-                            onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                            onOpenSchedule = { navigate(Routes.HOME) },
-                            onOpenPermissions = { navigate(Routes.PERMISSIONS) },
-                        )
+                    CompositionLocalProvider(
+                        LocalFocusFlowTextScale provides
+                            (settings.focusTextScale ?: settings.generalTextScale),
+                    ) {
+                        ScreenBoundary(Routes.FOCUS) {
+                            FocusScreen(
+                                taskViewModel = taskViewModel,
+                                settingsViewModel = settingsViewModel,
+                                focusSessionViewModel = focusSessionViewModel,
+                                onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                                onOpenSchedule = { navigate(Routes.HOME) },
+                                onOpenPermissions = { navigate(Routes.PERMISSIONS) },
+                            )
+                        }
                     }
                 }
             }
             composable(Routes.STATS) {
                 MainScaffold(currentRoute, ::navigate) {
-                    ScreenBoundary(Routes.STATS) {
-                        StatsScreen(
-                            statsViewModel = statsViewModel,
-                            onOpenUsageAccessSettings = {
-                                scope.launch {
-                                    AppModule.usageStatsRepository.openUsageAccessSettings()
-                                }
-                            },
-                            onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                            onOpenQuickBlock = { packageName ->
-                                if (!packageName.isNullOrBlank()) {
-                                    pendingQuickBlockPackage = packageName
-                                    pendingQuickBlockAppName = runCatching {
-                                        context.packageManager
-                                            .getApplicationLabel(
-                                                context.packageManager.getApplicationInfo(packageName, 0),
-                                            )
-                                            .toString()
-                                    }.getOrDefault(packageName)
-                                }
-                            },
-                            focusDayRating = focusDayRating,
-                        )
+                    CompositionLocalProvider(
+                        LocalFocusFlowTextScale provides
+                            (settings.statsTextScale ?: settings.generalTextScale),
+                    ) {
+                        ScreenBoundary(Routes.STATS) {
+                            StatsScreen(
+                                statsViewModel = statsViewModel,
+                                onOpenUsageAccessSettings = {
+                                    scope.launch {
+                                        AppModule.usageStatsRepository.openUsageAccessSettings()
+                                    }
+                                },
+                                onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                                onOpenQuickBlock = { packageName ->
+                                    if (!packageName.isNullOrBlank()) {
+                                        pendingQuickBlockPackage = packageName
+                                        pendingQuickBlockAppName = runCatching {
+                                            context.packageManager
+                                                .getApplicationLabel(
+                                                    context.packageManager.getApplicationInfo(packageName, 0),
+                                                )
+                                                .toString()
+                                        }.getOrDefault(packageName)
+                                    }
+                                },
+                                focusDayRating = focusDayRating,
+                            )
+                        }
                     }
                 }
             }
             composable(Routes.SETTINGS) {
                 MainScaffold(currentRoute, ::navigate) {
-                    ScreenBoundary(Routes.SETTINGS) {
-                        SettingsScreen(
-                            settingsViewModel = settingsViewModel,
-                            taskViewModel = taskViewModel,
-                            focusSessionViewModel = focusSessionViewModel,
-                            appBootViewModel = appBootViewModel,
-                            onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                            onOpenGuardedAdjustments = { navigate(Routes.GUARDED_ADJUSTMENTS) },
-                            onExportBackup = backupCoordinator?.let { onExportBackup },
-                            onImportBackup = backupCoordinator?.let { onImportBackup },
-                            onOpenProfile = { navigate(Routes.USER_PROFILE) },
-                            onOpenPermissions = { navigate(Routes.PERMISSIONS) },
-                            onOpenStats = { navigate(Routes.STATS) },
-                            onOpenChangelog = { navigate(Routes.CHANGELOG) },
-                            onOpenPrivacyTerms = {
-                                navigate("${Routes.PRIVACY_POLICY}?revisit=true")
-                            },
-                        )
+                    CompositionLocalProvider(
+                        LocalFocusFlowTextScale provides
+                            (settings.settingsTextScale ?: settings.generalTextScale),
+                    ) {
+                        ScreenBoundary(Routes.SETTINGS) {
+                            SettingsScreen(
+                                settingsViewModel = settingsViewModel,
+                                taskViewModel = taskViewModel,
+                                focusSessionViewModel = focusSessionViewModel,
+                                appBootViewModel = appBootViewModel,
+                                onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                                onOpenGuardedAdjustments = { navigate(Routes.GUARDED_ADJUSTMENTS) },
+                                onExportBackup = backupCoordinator?.let { onExportBackup },
+                                onImportBackup = backupCoordinator?.let { onImportBackup },
+                                onOpenProfile = { navigate(Routes.USER_PROFILE) },
+                                onOpenPermissions = { navigate(Routes.PERMISSIONS) },
+                                onOpenStats = { navigate(Routes.STATS) },
+                                onOpenChangelog = { navigate(Routes.CHANGELOG) },
+                                onOpenPrivacyTerms = {
+                                    navigate("${Routes.PRIVACY_POLICY}?revisit=true")
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -259,20 +278,25 @@ fun FocusFlowNavGraph(
             }
             composable(Routes.DEFENSE) {
                 MainScaffold(currentRoute, ::navigate) {
-                    ScreenBoundary(Routes.DEFENSE) {
-                        DefenseScreen(
-                            settingsViewModel = settingsViewModel,
-                            isFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
-                            vpnRepository = vpnRepository,
-                            onOpenAlwaysOn = { navigate(Routes.ALWAYS_ON) },
-                            onOpenKeywordBlocker = { navigate(Routes.KEYWORD_BLOCKER) },
-                            onOpenVpnBlockList = { navigate(Routes.VPN_BLOCK_LIST) },
-                            onOpenPasswordProtection = { navigate(Routes.PASSWORD_PROTECTION) },
-                            onOpenPermissions = { navigate(Routes.PERMISSIONS) },
-                            onOpenHowToUse = { navigate(Routes.HOW_TO_USE) },
-                            onOpenLauncher = { navigate(Routes.HOME_LAUNCHER_SETUP) },
-                            onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
-                        )
+                    CompositionLocalProvider(
+                        LocalFocusFlowTextScale provides
+                            (settings.defenseTextScale ?: settings.generalTextScale),
+                    ) {
+                        ScreenBoundary(Routes.DEFENSE) {
+                            DefenseScreen(
+                                settingsViewModel = settingsViewModel,
+                                isFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
+                                vpnRepository = vpnRepository,
+                                onOpenAlwaysOn = { navigate(Routes.ALWAYS_ON) },
+                                onOpenKeywordBlocker = { navigate(Routes.KEYWORD_BLOCKER) },
+                                onOpenVpnBlockList = { navigate(Routes.VPN_BLOCK_LIST) },
+                                onOpenPasswordProtection = { navigate(Routes.PASSWORD_PROTECTION) },
+                                onOpenPermissions = { navigate(Routes.PERMISSIONS) },
+                                onOpenHowToUse = { navigate(Routes.HOW_TO_USE) },
+                                onOpenLauncher = { navigate(Routes.HOME_LAUNCHER_SETUP) },
+                                onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                            )
+                        }
                     }
                 }
             }

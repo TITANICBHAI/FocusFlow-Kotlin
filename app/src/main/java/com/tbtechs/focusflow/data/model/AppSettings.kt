@@ -100,6 +100,15 @@ data class AppSettings(
     /** App-wide theme preference. True uses the dark Material 3 palette. */
     val darkModeEnabled: Boolean = true,
 
+    // ── Text size ─────────────────────────────────────────────────────────────
+    /** Default scale for Focus, Stats, Settings, and Defense. Home/Schedule stays at 1f. */
+    val generalTextScale: Float = 1f,
+    /** null inherits generalTextScale; a value replaces it for that tab. */
+    val focusTextScale: Float? = null,
+    val statsTextScale: Float? = null,
+    val settingsTextScale: Float? = null,
+    val defenseTextScale: Float? = null,
+
     /**
      * Notification toggles used by the analytics-driven notification layer.
      * These are deliberately explicit so older settings snapshots can continue

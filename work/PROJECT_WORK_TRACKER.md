@@ -75,47 +75,65 @@ project-wide list.
 
 ## Batch 01 — Text Size route and modal audit
 
-**Agent:** Unassigned  
-**Last updated:** Not recorded  
-**Status:** In progress  
+**Agent:** Replit Agent
+**Last updated:** 2026-10-04
+**Status:** Complete
 **Detailed record:** [Text Size tracker](TEXT_SIZE_TRACKER.md) and
 [route/modal inventory](TEXT_SIZE_PLAN.md#12-screen-route-and-modal-coverage-audit)
 
 - [x] Document the known route, caller, screen, overlay, and exception inventory.
   **Evidence:** `TEXT_SIZE_PLAN.md` §12.
-- [ ] Revalidate the inventory against the current checked-out source before
+- [x] Revalidate the inventory against the current checked-out source before
   implementation; record any stale names, routes, or assumptions.
-  **Evidence required:** updated inventory and a concise mismatch note here or
-  in the detailed tracker.
-- [ ] Confirm route ownership and scale behavior for secondary destinations,
+  **Evidence:** `Routes.kt`, `FocusFlowNavGraph.kt`, `MainActivity.kt`,
+  `ProtectedAdjustmentsScreen.kt`, and tab/modal call sites; §12 now records
+  Home → `ACTIVE`, Settings-guide routes, shared-route callers, and top-level
+  `QuickBlockSheet`.
+- [x] Confirm route ownership and scale behavior for secondary destinations,
   shared destinations, caller-owned dialogs/sheets, direct entries, and all
   Home-origin flows.
-  **Evidence required:** source/call-site references and explicit outcomes for
-  each case in the detailed tracker.
-- [ ] Reconfirm the v1 exclusions and record any changed decisions.
-  **Evidence:** `TEXT_SIZE_PLAN.md` §§8–9 and §12, reconciled with current source.
+  **Evidence:** §12 records root-tab ownership, caller-owned `ACTIVE` and
+  `PERMISSIONS`, Home's `1f` pin, inline sheet inheritance, direct-entry
+  General behavior, and the Stats top-level overlay exception.
+- [x] Reconfirm the v1 exclusions and record any changed decisions.
+  **Evidence:** Prompt B's directories/files and excluded paths exist in the
+  checked-out tree; §§8–9 and §12 retain the exclusions. `LauncherSetupScreen`
+  and `QuickBlockSheet` remain excluded even though shared navigation can reach
+  them from additional source contexts.
 
 ## Batch 02 — Text Size core settings, theme, UI, and block overlay
 
-**Agent:** Unassigned  
-**Last updated:** Not recorded  
-**Status:** Not started  
+**Agent:** Replit Agent
+**Last updated:** 2026-10-04
+**Status:** Implemented; Android verification blocked
 **Prompt:** Prompt A in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md)  
 **Depends on:** Batch 01
 
-- [ ] Add General and nullable per-tab scale settings, persistence, and
+- [x] Add General and nullable per-tab scale settings, persistence, and
   read/write round-trip behavior, including resetting overrides to `null`.
-  **Evidence required:** changed-file list and test/result for persistence.
-- [ ] Add the scale composition local, `.scaledSp`, and General-scaled
+  **Evidence:** `AppSettings.kt`, `SettingsRepository.kt`, and
+  `TextScaleSettingsPersistenceTest.kt`; the instrumentation test was added but
+  cannot run until a JDK/Android build environment is available.
+- [x] Add the scale composition local, `.scaledSp`, and General-scaled
   typography without changing existing style properties other than size/line
-  height. **Evidence required:** source references and compile/test result.
-- [ ] Wire General and tab scales while keeping Home/Schedule at `1f` and
+  height. **Evidence:** `ui/theme/Theme.kt`; LSP reports no diagnostics. Gradle
+  cannot start because this workspace has no Java executable.
+- [x] Wire General and tab scales while keeping Home/Schedule at `1f` and
   leaving `MainScaffold` outside the tab-scale providers.
-  **Evidence required:** source references and route/UI verification.
-- [ ] Add Settings scale controls, “Matches General” behavior, and reset-to-
-  inherit actions. **Evidence required:** source references and behavior check.
-- [ ] Apply the persisted scale to the non-Compose block overlay.
-  **Evidence required:** source references and build/test result.
+  **Evidence:** `MainActivity.kt` and the five root destinations in
+  `FocusFlowNavGraph.kt`; source review confirms each provider is inside
+  `MainScaffold` and Home is pinned to `1f`.
+- [x] Add Settings scale controls, “Matches General” behavior, and reset-to-
+  inherit actions.
+  **Evidence:** `ui/settings/TextSizeSection.kt` and its insertion in
+  `SettingsScreen.kt`; 80–150% one-percent sliders, inherited values, and
+  “Use General” reset actions were source-reviewed. `SettingsViewModel
+  `updateSettings()` persists changed `AppSettings` through the existing
+  `setNotificationPreferences()` path.
+- [x] Apply the persisted scale to the non-Compose block overlay.
+  **Evidence:** `BlockOverlayActivity.kt` reads Defense scale with General
+  fallback and multiplies all eight `TextView` sizes. Android build/test
+  verification is blocked by the missing Java toolchain.
 
 ## Batch 03 — Text Size source-tab context for secondary routes and overlays
 
@@ -183,3 +201,5 @@ route/caller rules in [TEXT_SIZE_PLAN.md §12](TEXT_SIZE_PLAN.md#12-screen-route
 | Date | Batch | Agent | Progress and evidence | Blockers |
 |---|---|---|---|---|
 | 2026-10-04 | 00 | Not recorded in the existing handoff | Baseline imported from the [Protected Adjustments tracker](PROTECTED_ADJUSTMENTS_TRACKER.md); implementation and source-level checks are documented there. | Android compilation/unit tests need a configured JDK and Android SDK. |
+| 2026-10-04 | 01 | Replit Agent | Completed source revalidation; updated `TEXT_SIZE_PLAN.md` §12 to include Home → ACTIVE and current shared/deep-link/modal caller edges. | None. |
+| 2026-10-04 | 02 | Replit Agent | Implemented settings, persistence, theme scaling, root-tab providers, controls, and overlay scaling; added a persistence round-trip/reset instrumentation test. `git diff --check` and LSP diagnostics pass. | `bash ./gradlew :app:compileDebugKotlin :app:assembleDebugAndroidTest` stops before compilation: no `java` command / `JAVA_HOME`; Android tests remain unrun. |

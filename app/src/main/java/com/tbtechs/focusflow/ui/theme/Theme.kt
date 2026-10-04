@@ -16,6 +16,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -41,6 +42,10 @@ private val DarkPaletteInfoText = Color(0xFFD7D9FF)
 private val DarkPaletteInfoBodyText = Color(0xFFB9BDEB)
 
 private val LocalFocusFlowDarkTheme = staticCompositionLocalOf { true }
+val LocalFocusFlowTextScale = staticCompositionLocalOf { 1f }
+
+val Number.scaledSp: TextUnit
+    @Composable get() = (toFloat() * LocalFocusFlowTextScale.current).sp
 
 /**
  * Compatibility names used throughout the existing screens.
@@ -196,99 +201,109 @@ val FocusFlowShapes = Shapes(
     extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
 )
 
-val FocusFlowTypography = Typography(
-    displaySmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Bold,
-        fontSize = 30.sp,
-        lineHeight = 36.sp,
-        letterSpacing = (-0.25).sp,
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Bold,
-        fontSize = 25.sp,
-        lineHeight = 31.sp,
-        letterSpacing = (-0.2).sp,
-    ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 21.sp,
-        lineHeight = 27.sp,
-        letterSpacing = (-0.1).sp,
-    ),
-    titleMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 17.sp,
-        lineHeight = 23.sp,
-        letterSpacing = 0.sp,
-    ),
-    titleSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.sp,
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp,
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.sp,
-    ),
-    bodySmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 12.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.sp,
-    ),
-    labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.sp,
-    ),
-    labelMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.sp,
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.sp,
-    ),
-)
+private fun focusFlowTypography(scale: Float): Typography {
+    fun TextStyle.scaled() = copy(
+        fontSize = fontSize * scale,
+        lineHeight = lineHeight * scale,
+    )
+
+    return Typography(
+        displaySmall = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp,
+            lineHeight = 36.sp,
+            letterSpacing = (-0.25).sp,
+        ).scaled(),
+        headlineSmall = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.Bold,
+            fontSize = 25.sp,
+            lineHeight = 31.sp,
+            letterSpacing = (-0.2).sp,
+        ).scaled(),
+        titleLarge = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 21.sp,
+            lineHeight = 27.sp,
+            letterSpacing = (-0.1).sp,
+        ).scaled(),
+        titleMedium = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 17.sp,
+            lineHeight = 23.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        titleSmall = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        bodyLarge = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontSize = 16.sp,
+            lineHeight = 24.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        bodyMedium = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        bodySmall = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        labelLarge = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        labelMedium = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+        labelSmall = TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.sp,
+        ).scaled(),
+    )
+}
 
 @Composable
 fun FocusFlowTheme(
     darkTheme: Boolean = true,
+    generalTextScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) FocusFlowDarkColorScheme else FocusFlowLightColorScheme
     val dimensions = focusFlowDimensionsForWidth(LocalConfiguration.current.screenWidthDp)
 
-    CompositionLocalProvider(LocalFocusFlowDimensions provides dimensions) {
-        CompositionLocalProvider(LocalFocusFlowDarkTheme provides darkTheme) {
-            MaterialTheme(
-                colorScheme = colorScheme,
-                typography = FocusFlowTypography,
-                shapes = FocusFlowShapes,
-                content = content,
-            )
+    CompositionLocalProvider(LocalFocusFlowTextScale provides generalTextScale) {
+        CompositionLocalProvider(LocalFocusFlowDimensions provides dimensions) {
+            CompositionLocalProvider(LocalFocusFlowDarkTheme provides darkTheme) {
+                MaterialTheme(
+                    colorScheme = colorScheme,
+                    typography = focusFlowTypography(generalTextScale),
+                    shapes = FocusFlowShapes,
+                    content = content,
+                )
+            }
         }
     }
 }
