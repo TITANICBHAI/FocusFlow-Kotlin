@@ -375,7 +375,8 @@ private fun FocusFlowRoot(
     ) {
         if (!isDbReady) return@LaunchedEffect
         val currentRoute = navController.currentBackStackEntry?.destination?.route
-        val isCurrentlyInHowToUse = currentRoute?.contains(Routes.HOW_TO_USE) == true
+        val isCurrentlyInHowToUse =
+            RouteTextScaleContext.routeBase(currentRoute) == Routes.HOW_TO_USE
 
         val guardedRoute = when {
             !privacyAccepted && requestedRoute != Routes.PRIVACY_POLICY -> Routes.PRIVACY_POLICY

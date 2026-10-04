@@ -50,7 +50,8 @@ class RouteTextScaleContextTest {
     @Test
     fun tabOwnedDestinationsUseOwnerWhenReachedInternallyAndGeneralWhenDirect() {
         val ownerRoutes = listOf(
-            Routes.GUARDED_ADJUSTMENTS to Routes.SETTINGS,
+            Routes.TEXT_SIZE_SETTINGS to Routes.SETTINGS,
+            Routes.SETTINGS_HOW_TO_USE to Routes.SETTINGS,
             Routes.USER_PROFILE to Routes.SETTINGS,
             Routes.CHANGELOG to Routes.SETTINGS,
             Routes.PRIVACY_POLICY to Routes.SETTINGS,

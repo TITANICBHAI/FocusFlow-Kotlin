@@ -62,10 +62,22 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.scaledSp
 
-private data class GuideStep(val heading: String, val body: String)
-private data class GuideSection(val title: String, val icon: ImageVector, val iconBg: Color, val iconTint: Color, val steps: List<GuideStep>)
+data class GuideStep(
+    val heading: String,
+    val body: String,
+    val destination: String? = null,
+    val destinationLabel: String? = null,
+)
 
-private val GUIDE = listOf(
+data class GuideSection(
+    val title: String,
+    val icon: ImageVector,
+    val iconBg: Color,
+    val iconTint: Color,
+    val steps: List<GuideStep>,
+)
+
+internal val GUIDE = listOf(
     GuideSection(
         "All Modes",
         Icons.Outlined.Layers,
@@ -139,9 +151,13 @@ fun HowToUseScreen(
     isOnboarding: Boolean = false,
     onBack: () -> Unit,
     onGetStarted: () -> Unit,
+    additionalSections: List<GuideSection> = emptyList(),
+    additionalNote: String? = null,
+    onOpenRoute: (String) -> Unit = {},
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     var expanded by remember { mutableStateOf<Int?>(null) }
+    val sections = remember(additionalSections) { GUIDE + additionalSections }
     if (isOnboarding) {
         BackHandler { onGetStarted() }
     }
@@ -196,17 +212,32 @@ fun HowToUseScreen(
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    text = if (isOnboarding) "A quick tour before you get started" else "Understanding blocking modes and defenses",
+                    text = if (isOnboarding) {
+                        "A quick tour before you get started"
+                    } else {
+                        "Blocking modes, protection rules, and where to find each setting"
+                    },
                     fontSize = 14.scaledSp,
                     color = DarkTextSecondary,
                     textAlign = TextAlign.Center,
                 )
             }
 
+            if (!additionalNote.isNullOrBlank()) {
+                Text(
+                    text = additionalNote,
+                    fontSize = 12.scaledSp,
+                    lineHeight = 17.scaledSp,
+                    color = DarkTextMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             Spacer(modifier = Modifier.height(6.dp))
 
             // 5 Accordion Cards matching 2.jpg
-            GUIDE.forEachIndexed { index, section ->
+            sections.forEachIndexed { index, section ->
                 val isOpen = expanded == index
                 Box(
                     modifier = Modifier
@@ -284,6 +315,18 @@ fun HowToUseScreen(
                                                 lineHeight = 18.scaledSp,
                                                 color = DarkTextSecondary,
                                             )
+                                            val destination = step.destination
+                                            val destinationLabel = step.destinationLabel
+                                            if (destination != null && destinationLabel != null) {
+                                                TextButton(onClick = { onOpenRoute(destination) }) {
+                                                    Text(
+                                                        text = destinationLabel,
+                                                        fontSize = 13.scaledSp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = BrandPrimary,
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }

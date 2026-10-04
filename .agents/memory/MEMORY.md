@@ -12,3 +12,4 @@
 - [Backup contract authority](backup-contract-authority.md) — v14 is the only product spec; don't invent behavior absent from its documented TypeScript facts.
 - [Replit config side effects](replit-config-side-effects.md) — invoking an unconfigured runtime can add a module to `.replit`; use the validated replacement flow to restore config.
 - [Compose scope audits](kotlin-compose-scope-audits.md) — stop expression-bodied local functions at their expression end when checking `@Composable` call scope.
+- [Settings help and text-size destinations](settings-guides.md) — keep sliders on a separate Settings screen and integrate guarded-change help into the expanded How to Use guide.

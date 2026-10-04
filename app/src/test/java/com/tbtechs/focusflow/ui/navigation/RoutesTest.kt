@@ -13,7 +13,8 @@ class RoutesTest {
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("active"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("guarded_adjustments"))
         assertFalse(Routes.IMPORT_CONFIRM in Routes.externalLinkableRoutes)
-        assertFalse(Routes.GUARDED_ADJUSTMENTS in Routes.externalLinkableRoutes)
+        assertFalse(Routes.TEXT_SIZE_SETTINGS in Routes.externalLinkableRoutes)
+        assertFalse(Routes.SETTINGS_HOW_TO_USE in Routes.externalLinkableRoutes)
     }
 
     @Test
