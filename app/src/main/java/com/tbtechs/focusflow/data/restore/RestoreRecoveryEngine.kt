@@ -93,6 +93,7 @@ class RestoreRecoveryEngine(
 
         var failuresThisRun = 0
         var pendingImportCleared = false
+        var terminalResultPersisted = false
         while (true) {
             try {
                 if (!pendingImportCleared) {
@@ -115,7 +116,10 @@ class RestoreRecoveryEngine(
                         journal = advance(journal, RestorePhase.RECONCILED)
                     }
                     RestorePhase.RECONCILED -> {
-                        actions.persistLastResult(journal.plan(), interrupted)
+                        if (!terminalResultPersisted) {
+                            actions.persistLastResult(journal.plan(), interrupted)
+                            terminalResultPersisted = true
+                        }
                         journalStore.deleteJournal()
                         gate.reopen()
                         _state.value = RestoreUiState.Completed(

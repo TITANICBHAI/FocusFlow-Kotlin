@@ -198,11 +198,14 @@ fun detectSessionSweetSpot(sessions: List<SessionOverrideCountRow>): FindingEnti
     val eligible = stats.filter { (_, stat) -> stat.total >= 3 }
     if (eligible.size < 2) return null
 
-    val peakEntry = eligible.maxByOrNull { (_, stat) ->
-        stat.clean.toDouble() / stat.total
-    } ?: return null
-    val peakBin = peakEntry.key
-    val peakRate = peakEntry.value.clean.toDouble() / peakEntry.value.total
+    val peakBin = eligible.keys.maxWithOrNull(
+        compareBy<DurationBin> { bin ->
+            val stat = stats.getValue(bin)
+            stat.clean.toDouble() / stat.total
+        }.thenBy { bin -> DURATION_BINS.indexOf(bin) },
+    ) ?: return null
+    val peakStat = stats.getValue(peakBin)
+    val peakRate = peakStat.clean.toDouble() / peakStat.total
     val peakIndex = DURATION_BINS.indexOf(peakBin)
 
     val dropOff = DURATION_BINS

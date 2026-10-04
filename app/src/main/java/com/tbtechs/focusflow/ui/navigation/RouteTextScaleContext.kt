@@ -96,7 +96,11 @@ internal object RouteTextScaleContext {
         } else {
             source?.let { ownerTabByRoute[base] ?: it }
         }
-        val screenOverride = scaleOwner?.let { owner ->
+        val screenOverrideOwner = source?.takeIf { owner ->
+            base !in Routes.tabRoutes &&
+                (ownerTabByRoute[base] == null || ownerTabByRoute[base] == owner)
+        }
+        val screenOverride = screenOverrideOwner?.let { owner ->
             settings.screenTextScales[screenScaleKey(owner, base)]
         }
         if (screenOverride != null) return screenOverride

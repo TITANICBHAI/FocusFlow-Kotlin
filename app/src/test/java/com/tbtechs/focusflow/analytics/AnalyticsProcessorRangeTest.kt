@@ -15,7 +15,7 @@ class AnalyticsProcessorRangeTest {
     )
 
     @Test
-    fun dynamicWeekEndsAtTheObservedCurrentTime() {
+    fun dynamicWeekUsesRollingSevenDaysAndEndsAtTheObservedCurrentTime() {
         val range = getAnalyticsRange(
             window = ANALYTICS_WEEK,
             now = now,
@@ -23,7 +23,7 @@ class AnalyticsProcessorRangeTest {
             weekMode = WEEK_MODE_DYNAMIC,
         )
 
-        assertEquals(LocalDate.of(2026, 9, 28), range.start.toLocalDate())
+        assertEquals(LocalDate.of(2026, 9, 23), range.start.toLocalDate())
         assertEquals(now, range.end)
     }
 
