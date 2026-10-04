@@ -66,6 +66,7 @@ import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.NuclearModeRepository
 import com.tbtechs.focusflow.enforcement.receivers.FocusDayDeviceAdminReceiver
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -76,9 +77,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.scaledSp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Nuclear Mode modal for uninstallation of distracting apps.
@@ -96,8 +95,18 @@ fun NuclearModeModal(
     if (!visible) return
     val dimensions = LocalFocusFlowDimensions.current
     val context = LocalContext.current
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
+    var appCatalogRefreshToken by remember { mutableStateOf(0) }
+    var hasPausedSinceVisible by remember { mutableStateOf(false) }
+    val installedAppsState = rememberInstalledApps(
+        remember(context) { InstalledAppsRepository(context) },
+        refreshToken = appCatalogRefreshToken,
+    )
+    val apps = remember(installedAppsState.apps, blockedPackages) {
+        installedAppsState.apps
+            .filter { it.packageName in blockedPackages }
+            .sortedBy { it.appName.lowercase() }
+    }
+    val loading = installedAppsState.loading
     var pending by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -111,31 +120,22 @@ fun NuclearModeModal(
     var deviceAdminActive by remember(context) {
         mutableStateOf(devicePolicyManager?.isAdminActive(adminComponent) == true)
     }
-    suspend fun reloadApps() {
-        loading = true
-        error = null
-        val result = withContext(Dispatchers.IO) {
-            runCatching {
-                InstalledAppsRepository(context).getInstalledApps()
-                    .filter { it.packageName in blockedPackages }
-                    .sortedBy { it.appName.lowercase() }
-            }
-        }
-        result.onSuccess { apps = it }
-            .onFailure {
-                apps = emptyList()
-                error = it.message ?: "FocusFlow couldn't read the installed app list."
-            }
+    LaunchedEffect(visible, blockedPackages) {
         deviceAdminActive = devicePolicyManager?.isAdminActive(adminComponent) == true
-        loading = false
     }
-
-    LaunchedEffect(visible, blockedPackages) { reloadApps() }
 
     DisposableEffect(lifecycleOwner, visible, blockedPackages) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && visible) {
-                scope.launch { reloadApps() }
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> hasPausedSinceVisible = true
+                Lifecycle.Event.ON_RESUME -> if (visible) {
+                    deviceAdminActive = devicePolicyManager?.isAdminActive(adminComponent) == true
+                    if (hasPausedSinceVisible) {
+                        hasPausedSinceVisible = false
+                        appCatalogRefreshToken += 1
+                    }
+                }
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -268,6 +268,23 @@ fun NuclearModeModal(
                     CircularProgressIndicator(color = Color(0xFFEF4444), modifier = Modifier.size(32.dp))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Loading blocked apps…", color = DarkTextSecondary, fontSize = 13.scaledSp)
+                }
+            } else if (installedAppsState.error != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkSurfaceVariant)
+                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        installedAppsState.error.message
+                            ?: "FocusFlow couldn't read the installed app list.",
+                        color = Color(0xFFEF4444),
+                        fontSize = 13.scaledSp,
+                    )
                 }
             } else if (apps.isEmpty()) {
                 Box(

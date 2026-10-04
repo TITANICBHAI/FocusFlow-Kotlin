@@ -72,6 +72,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.ui.common.InstalledAppsLoadState
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
+import com.tbtechs.focusflow.ui.common.resolve
+import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
@@ -85,9 +89,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Block schedules modal and editor.
@@ -113,8 +115,22 @@ fun GreyoutScheduleModal(
     var editing by remember { mutableStateOf<ScheduleDraft?>(null) }
     var confirmDelete by remember { mutableStateOf<Int?>(null) }
     var pinPrompt by remember { mutableStateOf<PendingScheduleAction?>(null) }
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
-    var appsLoading by remember { mutableStateOf(true) }
+    val installedAppsState = rememberInstalledApps(
+        remember(context) { InstalledAppsRepository(context) },
+    )
+    val apps = installedAppsState.apps
+    val appInfoByPackage = remember(
+        installedAppsState.apps,
+        installedAppsState.loading,
+        installedAppsState.error,
+        localWindows,
+    ) {
+        val resolved = installedAppsState.apps.associateBy { it.packageName }.toMutableMap()
+        localWindows.flatMap { it.packages }.distinct().forEach { packageName ->
+            installedAppsState.resolve(packageName)?.let { resolved[packageName] = it }
+        }
+        resolved
+    }
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
@@ -234,7 +250,8 @@ fun GreyoutScheduleModal(
                         itemsIndexed(localWindows) { index, schedule ->
                             ScheduleCard(
                                 schedule = schedule,
-                                appNames = apps.associate { it.packageName to it.appName },
+                                appInfoByPackage = appInfoByPackage,
+                                loading = installedAppsState.loading,
                                 onEdit = {
                                     val action = { editing = ScheduleDraft.from(schedule, index) }
                                     if (requireDefensePin != null) {
@@ -280,6 +297,7 @@ fun GreyoutScheduleModal(
         ScheduleEditor(
             context = context,
             draft = draft,
+            catalogState = installedAppsState,
             requireDefensePin = requireDefensePin,
             vpnRepository = vpnRepository,
             onNetworkProtectionRequired = onNetworkProtectionRequired,
@@ -295,23 +313,6 @@ fun GreyoutScheduleModal(
                 editing = null
             },
         )
-    }
-
-    LaunchedEffect(visible) {
-        if (!visible) return@LaunchedEffect
-        appsLoading = true
-        apps = emptyList()
-        runCatching {
-            withContext(Dispatchers.IO) {
-                InstalledAppsRepository(context).getInstalledApps { app ->
-                    withContext(Dispatchers.Main.immediate) {
-                        apps = (apps + app).distinctBy { it.packageName }
-                        appsLoading = false
-                    }
-                }
-            }
-        }
-        appsLoading = false
     }
 
     confirmDelete?.let { index ->
@@ -374,7 +375,8 @@ fun GreyoutScheduleModal(
 @Composable
 private fun ScheduleCard(
     schedule: RecurringBlockSchedule,
-    appNames: Map<String, String>,
+    appInfoByPackage: Map<String, InstalledAppInfo>,
+    loading: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -391,10 +393,18 @@ private fun ScheduleCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            val firstPackage = schedule.packages.firstOrNull()
+            val firstApp = firstPackage?.let(appInfoByPackage::get)
+            if (firstPackage != null) {
+                AppIcon(firstApp?.icon, size = 30.dp)
+            }
             Column(modifier = Modifier.weight(1f)) {
-                val appLabel = schedule.packages.firstOrNull()?.let { appNames[it] }
-                    ?: schedule.packages.firstOrNull()?.substringAfterLast('.')
-                    ?: "(no app)"
+                val appLabel = when {
+                    firstPackage == null -> "(no app)"
+                    firstApp != null -> firstApp.appName
+                    loading -> "Loading app details…"
+                    else -> "App details unavailable"
+                }
                 Text(
                     text = if (schedule.packages.size > 1) "$appLabel +${schedule.packages.size - 1} more" else appLabel,
                     fontSize = 15.scaledSp,
@@ -403,6 +413,15 @@ private fun ScheduleCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (firstPackage != null && (firstApp == null || !firstApp.isInstalled)) {
+                    Text(
+                        text = firstPackage,
+                        fontSize = 10.scaledSp,
+                        color = DarkTextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -541,6 +560,7 @@ private data class ScheduleDraft(
 private fun ScheduleEditor(
     context: Context,
     draft: ScheduleDraft,
+    catalogState: InstalledAppsLoadState,
     requireDefensePin: ((String, String, () -> Unit) -> Unit)?,
     vpnRepository: VpnRepository?,
     onNetworkProtectionRequired: () -> Unit,
@@ -549,20 +569,19 @@ private fun ScheduleEditor(
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     var current by remember(draft) { mutableStateOf(draft) }
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
+    val apps = catalogState.apps
     var search by remember { mutableStateOf("") }
     var validationError by remember(draft) { mutableStateOf<String?>(null) }
     var vpnConsentVisible by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val activity = context as? Activity
-    LaunchedEffect(Unit) {
-        apps = withContext(Dispatchers.IO) {
-            runCatching { InstalledAppsRepository(context).getInstalledApps() }.getOrDefault(emptyList())
-        }
-        val names = apps.associate { it.packageName to it.appName }
-        if (current.appNames != current.packages.map { it } || current.appNames.isEmpty()) {
+    LaunchedEffect(catalogState.apps, catalogState.loading, catalogState.error) {
+        if (!catalogState.loading) {
             current = current.copy(
-                appNames = current.packages.map { names[it] ?: it.substringAfterLast('.') },
+                appNames = current.packages.map { packageName ->
+                    catalogState.resolve(packageName)?.appName
+                        ?: "App details unavailable"
+                },
             )
         }
     }
@@ -666,6 +685,7 @@ private fun ScheduleEditor(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                AppIcon(app.icon, size = 28.dp)
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(app.appName, fontSize = 13.scaledSp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
                                     Text(app.packageName, fontSize = 11.scaledSp, color = DarkTextSecondary)
@@ -712,11 +732,27 @@ private fun ScheduleEditor(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
+                                    val appInfo = catalogState.resolve(pkg)
+                                    AppIcon(appInfo?.icon, size = 18.dp)
                                     Text(
-                                        text = current.appNames.getOrNull(index) ?: pkg,
+                                        text = current.appNames.getOrNull(index)
+                                            ?.takeIf { it != pkg }
+                                            ?: appInfo?.appName
+                                            ?: if (catalogState.loading) {
+                                                "Loading app details…"
+                                            } else {
+                                                "App details unavailable"
+                                            },
                                         fontSize = 12.scaledSp,
                                         color = DarkTextPrimary,
                                     )
+                                    if (appInfo == null || !appInfo.isInstalled) {
+                                        Text(
+                                            pkg,
+                                            fontSize = 9.scaledSp,
+                                            color = DarkTextSecondary,
+                                        )
+                                    }
                                     Icon(
                                         Icons.Outlined.Clear,
                                         contentDescription = "Remove",

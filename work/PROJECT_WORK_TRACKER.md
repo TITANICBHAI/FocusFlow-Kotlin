@@ -44,8 +44,9 @@ Add a batch here whenever a new workstream or agent job is planned.
 | 03 | Text Size source-tab context for secondary routes and overlays (Prompt A) | Replit Agent | Implemented; verification blocked | 02 |
 | 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Replit Agent | Implemented; verification blocked | 02, 03 |
 | 05 | Text Size integration, verification, and final handoff | Replit Agent | Implemented; verification blocked | 02–04 |
-| 06 | Tab-screen customization and installed-app data-wiring audit | Replit Agent | In progress | 07 |
+| 06 | Tab-screen customization and installed-app data-wiring audit | Replit Agent | Implemented; verification blocked | 07 |
 | 07 | Schedule text size and Focus/Defense layout fixes | Replit Agent | Implemented; verification blocked | 02, 03 |
+| 08 | Reuse the installed-app catalog in remaining tab surfaces | Replit Agent | Implemented; verification blocked | 07 |
 
 The work folder contains the Text Size and Guarded Adjustments workstreams,
 plus the tab-customization plan. Add later workstreams here rather than treating
@@ -357,8 +358,8 @@ SDK is available; no Android verification is claimed.
 ## Batch 06 — Tab-screen customization and installed-app data-wiring audit
 
 **Agent:** Replit Agent
-**Last updated:** 2026-10-04
-**Status:** In progress
+**Last updated:** 2026-10-05
+**Status:** Implemented; verification blocked
 **Depends on:** Batch 07
 **Plan:** [Tab Screen Customization and Data-Wiring Plan](TAB_SCREEN_CUSTOMIZATION_PLAN.md)
 
@@ -366,11 +367,56 @@ SDK is available; no Android verification is claimed.
   expandable tab groups and screen-specific customization destinations.
 - [x] Record the shared installed-app metadata approach while keeping app
   selections and configuration local to each feature.
-- [ ] Inventory all tab-owned screens, dialogs, pickers, data sources, and
-  state/save paths before changing the broader UI.
-- [ ] Implement the audited app-label/icon and screen-customization work in
+- [x] Inventory tab-owned routes and key nested surfaces, data owners, and
+  commit/back behavior before changing the broader UI.
+  **Evidence:** [checked-out source audit](TAB_SCREEN_CUSTOMIZATION_PLAN.md)
+  records the five tabs, secondary surfaces, owner repositories, and existing
+  text-size/catalog coverage.
+- [x] Implement the audited app-label/icon and screen-customization work in
   separately tracked batches; do not bulk-replace feature-specific selection
-  logic.
+  logic. **Existing hierarchy and Schedule slider are already implemented;**
+  no additional persisted display option was found. **Evidence:** existing
+  Text Size hierarchy remains unchanged; remaining catalog work is completed
+  under Batch 08.
+
+## Batch 08 — Reuse the installed-app catalog in remaining tab surfaces
+
+**Agent:** Replit Agent
+**Last updated:** 2026-10-05
+**Status:** Implemented; verification blocked
+**Depends on:** Batch 07
+**Plan:** [Tab Screen Customization and Data-Wiring Plan](TAB_SCREEN_CUSTOMIZATION_PLAN.md)
+
+- [x] Confirm the existing shared repository and batched Compose loader; reuse
+  them rather than introducing a second catalog.
+  **Evidence:** `InstalledAppsRepository.kt`, `InstalledAppsLoader.kt`, and
+  existing adoption in the Allowed During Focus, Always-On, VPN Block List, and
+  Daily Allowance surfaces.
+- [x] Move remaining tab app-list consumers onto the existing batched loader
+  where their lifecycle permits; preserve each screen's local selected state
+  and Launcher Setup's resume refresh. **Evidence:** `ActiveScreen`,
+  `StandaloneBlockModal`, `GreyoutScheduleModal`, `NuclearModeModal`, and
+  `LauncherSetupScreen` use `rememberInstalledApps`; Launcher Setup and Nuclear
+  Mode refresh the repository after returning from Android system screens.
+- [x] Replace package-suffix/raw-package fallbacks in app summaries with
+  explicit installed, missing, or unavailable presentation; keep real labels
+  and icons from the shared catalog. **Evidence:** Active Blocks and scheduled
+  summary/editor surfaces resolve labels/icons and show explicit missing or
+  unavailable states with the full package ID as a secondary identifier.
+- [x] Add focused source-level tests/checks for metadata fallback and confirm
+  no feature selection or persistence path was coupled.
+  **Evidence:** `InstalledAppsLoaderTest.kt` covers installed, loading, missing,
+  and catalog-error resolution; source diff shows feature-owned selections and
+  save actions remain unchanged.
+- [x] Run `git diff --check` and available source checks.
+  **Evidence:** `git diff --check` and Kotlin LSP diagnostics pass for the
+  changed sources and test; searches find no direct `getInstalledApps()` calls
+  or package-suffix display fallbacks in the tab UI.
+- [ ] Run Android unit tests/build.
+  **Blocked:** `bash ./gradlew :app:testDebugUnitTest` exits before Gradle starts
+  because `JAVA_HOME` is unset and no `java` command is on `PATH`; Android SDK
+  variables and `local.properties` are also absent. Do not claim Android
+  verification.
 
 ## Batch 07 — Schedule text size and Focus/Defense layout fixes
 
@@ -421,3 +467,6 @@ Android compilation and tests are not claimed as passing.
 | 2026-10-04 | 05 | Replit Agent | Audited persistence/reset wiring, Home and bottom-bar scope, route-source context, exact Prompt B coverage, and current excluded literals; completed the handoff and recorded the 528-versus-547 plan mismatch. Static assertions and `git diff --check` pass. | Gradle build, JVM tests, and instrumentation tests remain unrun: the wrapper exits before startup because no `java`/`JAVA_HOME` is available; Android SDK and `adb` are absent. |
 | 2026-10-04 | 06 | Replit Agent (plan only) | Added the staged per-tab customization and shared app-catalog plan in `TAB_SCREEN_CUSTOMIZATION_PLAN.md`; no broad audit/customization implementation is claimed. | None. |
 | 2026-10-04 | 07 | Replit Agent | Implemented Schedule scaling with expandable tab groups, centered the Ready to Focus layout, and removed Defense informational banners; `git diff --check` and targeted source audits pass. | Route/persistence tests and Android compilation remain blocked because no Java executable or `JAVA_HOME` is configured. |
+| 2026-10-05 | 06 | Replit Agent | Recorded the current-source tab/state, text-size, and app-catalog audit in `TAB_SCREEN_CUSTOMIZATION_PLAN.md`; existing Schedule slider and hierarchy are explicitly treated as complete, not reimplemented. | App-catalog adoption and missing-app presentation remain in Batch 08. |
+| 2026-10-05 | 08 | Replit Agent | Began the remaining catalog-consumer work using the existing cached repository and batched loader; no second catalog planned. | Android build/test verification remains subject to the documented missing Java/Android SDK toolchain. |
+| 2026-10-05 | 06, 08 | Replit Agent | Migrated remaining tab app-list screens to the shared progressive loader, added explicit app metadata resolution and icons to Active Blocks/scheduled summaries, preserved system-screen refreshes, and added metadata fallback tests. Updated the plan and tracker with the audit and evidence. | `git diff --check` and Kotlin LSP diagnostics pass; `:app:testDebugUnitTest` cannot start without Java/`JAVA_HOME`, and Android SDK setup is absent. |

@@ -66,6 +66,7 @@ import com.tbtechs.focusflow.data.repository.LauncherController
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -95,8 +96,14 @@ fun LauncherSetupScreen(
     val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
     val settings by settingsViewModel.settings.collectAsState()
-    var installedApps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
-    var appsLoading by remember { mutableStateOf(true) }
+    var appCatalogRefreshToken by remember { mutableStateOf(0) }
+    var hasPausedSinceResume by remember { mutableStateOf(false) }
+    val installedAppsState = rememberInstalledApps(
+        installedAppsRepository,
+        refreshToken = appCatalogRefreshToken,
+    )
+    val installedApps = installedAppsState.apps
+    val appsLoading = installedAppsState.loading
     var defaultLauncher by remember { mutableStateOf<Boolean?>(null) }
     var search by remember { mutableStateOf("") }
     var hideWarning by remember { mutableStateOf<String?>(null) }
@@ -105,24 +112,26 @@ fun LauncherSetupScreen(
         settings.standaloneBlockPackages.isNotEmpty() &&
         settings.standaloneBlockUntilMs > System.currentTimeMillis()
 
-    fun refresh() {
+    fun refreshDefaultLauncher() {
         scope.launch {
-            appsLoading = true
-            try {
-                defaultLauncher = runCatching { settingsRepository.isDefaultLauncher() }.getOrNull()
-                installedApps = runCatching {
-                    installedAppsRepository.getInstalledApps().sortedBy { it.appName.lowercase() }
-                }.getOrDefault(emptyList())
-            } finally {
-                appsLoading = false
-            }
+            defaultLauncher = runCatching { settingsRepository.isDefaultLauncher() }.getOrNull()
         }
     }
 
-    LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(Unit) { refreshDefaultLauncher() }
     DisposableEffect(activity) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) refresh()
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> hasPausedSinceResume = true
+                Lifecycle.Event.ON_RESUME -> {
+                    if (hasPausedSinceResume) {
+                        hasPausedSinceResume = false
+                        appCatalogRefreshToken += 1
+                    }
+                    refreshDefaultLauncher()
+                }
+                else -> Unit
+            }
         }
         activity?.lifecycle?.addObserver(observer)
         onDispose { activity?.lifecycle?.removeObserver(observer) }
@@ -403,6 +412,18 @@ fun LauncherSetupScreen(
                                 modifier = Modifier.size(28.dp),
                             )
                         }
+                    }
+                }
+                if (!appsLoading && installedAppsState.error != null) {
+                    item {
+                        Text(
+                            "Installed apps could not be loaded. Return to this screen to retry.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            fontSize = 12.sp,
+                            color = DarkTextSecondary,
+                        )
                     }
                 }
 

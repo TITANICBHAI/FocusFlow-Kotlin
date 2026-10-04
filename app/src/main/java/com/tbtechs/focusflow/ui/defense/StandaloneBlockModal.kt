@@ -64,7 +64,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -80,10 +79,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
-import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.BrandPrimaryLight
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -94,8 +93,6 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.scaledSp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Calendar
 
@@ -127,9 +124,16 @@ fun StandaloneBlockModal(
 ) {
     if (!visible) return
     val context = LocalContext.current
+    val installedAppsState = rememberInstalledApps(
+        remember(context) { InstalledAppsRepository(context) },
+    )
+    val apps = remember(installedAppsState.apps, context.packageName) {
+        installedAppsState.apps
+            .filterNot { isNeverBlockPackage(it.packageName, context.packageName) }
+            .sortedBy { it.appName.lowercase() }
+    }
     var showStrongerBlockHint by remember(visible, hintDismissed) { mutableStateOf(!hintDismissed) }
 
-    var apps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
     var selected by remember(visible, blockedPackages) {
         mutableStateOf(
             blockedPackages
@@ -154,22 +158,9 @@ fun StandaloneBlockModal(
     var pendingSave by remember { mutableStateOf(false) }
     var clearPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var loadingApps by remember { mutableStateOf(false) }
+    val loadingApps = installedAppsState.loading
     var expandedAllowancePackage by remember(visible, dailyAllowanceEntries) {
         mutableStateOf(dailyAllowanceEntries.firstOrNull()?.packageName)
-    }
-
-    LaunchedEffect(visible) {
-        if (!visible) return@LaunchedEffect
-        loadingApps = true
-        apps = withContext(Dispatchers.IO) {
-            runCatching {
-                InstalledAppsRepository(context).getInstalledApps()
-                    .filterNot { isNeverBlockPackage(it.packageName, context.packageName) }
-                    .sortedBy { it.appName.lowercase() }
-            }.getOrDefault(emptyList())
-        }
-        loadingApps = false
     }
 
     val results = apps.filter {
@@ -878,6 +869,18 @@ fun StandaloneBlockModal(
                                 )
                             }
                         }
+                    }
+                }
+                if (!loadingApps && installedAppsState.error != null) {
+                    item {
+                        Text(
+                            "Installed apps could not be loaded. Close and reopen this screen to retry.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            fontSize = 12.scaledSp,
+                            color = DarkTextSecondary,
+                        )
                     }
                 }
 

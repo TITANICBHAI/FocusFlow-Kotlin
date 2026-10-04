@@ -80,6 +80,9 @@ import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
+import com.tbtechs.focusflow.ui.common.rememberInstalledApps
+import com.tbtechs.focusflow.ui.common.resolve
+import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -128,7 +131,7 @@ fun ActiveScreen(
     val todayFocusMinutes by focusSessionViewModel.todayFocusMinutes.collectAsState()
     val todayOverrideCount by focusSessionViewModel.todayOverrideCount.collectAsState()
 
-    var installedApps by remember { mutableStateOf<List<InstalledAppInfo>>(emptyList()) }
+    val installedAppsState = rememberInstalledApps(installedAppsRepository)
     var vpnSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var vpnStatus by remember { mutableStateOf<NetworkBlockStatus?>(null) }
     var expanded by remember { mutableStateOf("") }
@@ -140,17 +143,11 @@ fun ActiveScreen(
     var focusPin by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        installedApps = runCatching { installedAppsRepository.getInstalledApps() }
-            .getOrDefault(emptyList())
         while (true) {
             vpnSettings = runCatching { resolvedVpnRepo.getNetworkBlockSettings() }.getOrNull()
             vpnStatus = runCatching { resolvedVpnRepo.getNetworkBlockStatus() }.getOrNull()
             delay(5_000)
         }
-    }
-
-    val appNames = remember(installedApps) {
-        installedApps.associate { it.packageName to it.appName }
     }
 
     val focusTask = session?.taskId?.let { taskId ->
@@ -164,6 +161,21 @@ fun ActiveScreen(
     val allowancePackages = settings.dailyAllowancePackages()
 
     val vpnPackages = (vpnSettings?.packages ?: emptyList()) + (vpnSettings?.standalonePackages ?: emptyList())
+    val appInfoByPackage = remember(
+        installedAppsState.apps,
+        installedAppsState.loading,
+        installedAppsState.error,
+        settings.alwaysBlockPackages,
+        vpnPackages,
+        allowancePackages,
+    ) {
+        (settings.alwaysBlockPackages + vpnPackages + allowancePackages)
+            .distinct()
+            .mapNotNull { packageName ->
+                installedAppsState.resolve(packageName)?.let { packageName to it }
+            }
+            .toMap()
+    }
     val vpnConfigured = vpnPackages.isNotEmpty() || settings.networkBlockEnabled
     val vpnRunning = vpnStatus?.running == true
     val vpnNeedsAttention = vpnStatus != null && (
@@ -329,7 +341,11 @@ fun ActiveScreen(
                         else "${settings.alwaysBlockPackages.size} blocked continuously",
                     )
                     if (expanded == "always") {
-                        PackageList(settings.alwaysBlockPackages, appNames)
+                        PackageList(
+                            packages = settings.alwaysBlockPackages,
+                            appInfoByPackage = appInfoByPackage,
+                            loading = installedAppsState.loading,
+                        )
                     }
                     Spacer(Modifier.height(4.dp))
                     ManageButton(
@@ -362,7 +378,8 @@ fun ActiveScreen(
                         allowancePackages.forEach { pkg ->
                             AllowanceRow(
                                 packageName = pkg,
-                                appName = appNames[pkg],
+                                appInfo = appInfoByPackage[pkg],
+                                loading = installedAppsState.loading,
                                 usage = allowanceSnapshot.usageByPackage[pkg],
                                 isActiveSession = allowanceSnapshot.activeSessionPackage == pkg,
                             )
@@ -795,7 +812,11 @@ private fun ManageButton(
 }
 
 @Composable
-private fun PackageList(packages: List<String>, appNames: Map<String, String>) {
+private fun PackageList(
+    packages: List<String>,
+    appInfoByPackage: Map<String, InstalledAppInfo>,
+    loading: Boolean,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -805,11 +826,23 @@ private fun PackageList(packages: List<String>, appNames: Map<String, String>) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         packages.forEach { pkg ->
-            Text(
-                appNames[pkg] ?: pkg.substringAfterLast('.'),
-                fontSize = 11.scaledSp,
-                color = DarkTextPrimary,
-            )
+            val appInfo = appInfoByPackage[pkg]
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AppIcon(appInfo?.icon, size = 22.dp)
+                Column {
+                    Text(
+                        appInfo?.appName ?: if (loading) "Loading app details…" else "App details unavailable",
+                        fontSize = 11.scaledSp,
+                        color = DarkTextPrimary,
+                    )
+                    if (appInfo == null || appInfo.isInstalled.not()) {
+                        Text(pkg, fontSize = 9.scaledSp, color = DarkTextMuted)
+                    }
+                }
+            }
         }
     }
 }
@@ -817,7 +850,8 @@ private fun PackageList(packages: List<String>, appNames: Map<String, String>) {
 @Composable
 private fun AllowanceRow(
     packageName: String,
-    appName: String?,
+    appInfo: InstalledAppInfo?,
+    loading: Boolean,
     usage: AllowanceUsage?,
     isActiveSession: Boolean,
 ) {
@@ -829,14 +863,21 @@ private fun AllowanceRow(
     }
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            appName ?: packageName.substringAfterLast('.'),
-        fontSize = 11.scaledSp,
-            fontWeight = FontWeight.Medium,
-            color = DarkTextPrimary,
-        )
+        AppIcon(appInfo?.icon, size = 22.dp)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                appInfo?.appName ?: if (loading) "Loading app details…" else "App details unavailable",
+                fontSize = 11.scaledSp,
+                fontWeight = FontWeight.Medium,
+                color = DarkTextPrimary,
+            )
+            if (appInfo == null || appInfo.isInstalled.not()) {
+                Text(packageName, fontSize = 9.scaledSp, color = DarkTextMuted)
+            }
+        }
         Text(
             "$usageLabel${if (isActiveSession) " · in use" else ""}",
             fontSize = 11.scaledSp,
