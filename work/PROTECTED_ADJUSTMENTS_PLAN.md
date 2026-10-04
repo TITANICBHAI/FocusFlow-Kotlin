@@ -4,9 +4,8 @@
 
 Add a dedicated screen opened from a row in Settings where users can review the
 adjustments and actions that FocusFlow protects. Use grouped sections with
-expandable, question-style entries, following the interaction pattern of
-**How to Use FocusFlow**. Explain what is protected, when a PIN or active-block
-lock applies, and where the user can manage the setting.
+expandable question-and-answer entries. Explain what is protected, when a PIN
+or active-block lock applies, and where the user can manage the setting.
 
 This is its own full-screen destination, not a popup. It explains the existing
 guard-related popups, dialogs, and locked states; those prompts still appear only
@@ -16,28 +15,12 @@ their PIN/active-state checks remain authoritative.
 
 ## Audit baseline (before implementation)
 
-At audit start, the live app had a Settings tab (`Routes.SETTINGS`) and a
-How-to-Use screen (`Routes.HOW_TO_USE`), but no Settings destination that
-collected guarded adjustments. `SettingsScreen` contained independent sections
-and local dialogs. The navigation graph already had separate destinations for
-Focus, Defense, permissions, Always-On, keyword blocking, VPN lists, schedules,
-password protection, and related flows. The implementation below adds the
-Settings-only guide route.
-
-`HowToUseScreen.kt` already describes these broad guard categories:
-
-- Ending an active Focus session early and changing the full-duration Focus rule.
-- Disabling protected Defense options, sometimes only while a block is active
-  and otherwise with a Defense PIN.
-- Removing apps from Always-On or VPN lists and removing protected keywords.
-- Editing, shortening, or deleting group schedules.
-- Changing other settings that reduce active protection.
-- Actions that intentionally remain easier, such as adding more apps or
-  keywords in the documented lists.
-
-The source implements these checks in more than one UI path. The guide is useful
-context, but it is not proof that its wording fully matches every live check.
-The implementing agent must re-trace the behavior before finalizing the list.
+At audit start, the live app had a Settings tab (`Routes.SETTINGS`), but no
+Settings destination that collected guarded adjustments. `SettingsScreen`
+contained independent sections and local dialogs. The navigation graph already
+had separate destinations for Focus, Defense, permissions, Always-On, keyword
+blocking, VPN lists, schedules, password protection, and related flows. The
+implementation below adds the Settings-only guide route.
 
 ## Required user flow
 
@@ -46,9 +29,9 @@ The implementing agent must re-trace the behavior before finalizing the list.
 2. Tapping the row opens a new full-screen destination, not a modal.
 3. The new page has a back action that returns to Settings.
 4. Present the content as grouped sections with expandable question-and-answer
-   entries, following the existing How to Use section/card pattern. Use a
-   question as each entry heading and a concise, practical answer beneath it.
-   The page itself must not open a PIN dialog or act as another popup.
+   entries. Use a question as each entry heading and a concise, practical answer
+   beneath it. The page itself must not open a PIN dialog or act as another
+   popup.
 5. Group entries by guard type or owning area. Each answer states:
    - The adjustment/action that is protected.
    - The exact condition that triggers the Defense PIN, Focus PIN, or active
@@ -58,9 +41,8 @@ The implementing agent must re-trace the behavior before finalizing the list.
      in-app navigation action when that destination can be reached safely.
 6. Include a short note that the password protects changes that weaken a block;
    do not imply that every Settings value requires a PIN.
-7. Keep the explanations aligned with How to Use. Correct stale or inaccurate
-   guide text when the live source proves a mismatch. How to Use is the design
-   and copy reference, not an additional entry point to this screen.
+7. Keep every explanation aligned with the live guard-owner source. Correct
+   inaccurate wording in this guide when the source proves a mismatch.
 
 ## Guarded popup and lock-state inventory
 
@@ -112,10 +94,6 @@ the app. Each answer states its own condition; PIN types are not interchangeable
   new explanatory/navigation screen.
 - `app/src/main/java/com/tbtechs/focusflow/ui/navigation/Routes.kt` and
   `FocusFlowNavGraph.kt` — internal route and back/navigation wiring.
-- `app/src/main/java/com/tbtechs/focusflow/ui/support/HowToUseScreen.kt` —
-  compare its existing sections and guard explanations with the verified rules;
-  update inaccurate copy if needed. Do not add a link from How to Use as another
-  entry point unless the product decision changes.
 - Guard-owner screens named in the inventory — inspect first; edit only if
   needed to expose a safe destination or correct a guide/source mismatch.
 
@@ -129,12 +107,12 @@ the app. Each answer states its own condition; PIN types are not interchangeable
 - [x] Safe additions and unguarded changes are not falsely described as locked.
 - [x] Every destination link lands on the existing owner flow; no parallel
   controls or security bypasses were added.
-- [x] How-to-Use content and the new page agree with current source behavior.
+- [x] Guide answers reflect the verified source behavior.
 - [x] Add route/UI behavior tests or focused source-level checks, then run
   available project checks. Record unavailable Android tooling separately.
 
 ## Related work
 
 - [Tracker](PROTECTED_ADJUSTMENTS_TRACKER.md)
-- [Context-first agent pre-read](AGENT_PRE_PROTECTED_ADJUSTMENTS.md)
+- [Read-only agent context pre-prompt](AGENT_PRE_PROTECTED_ADJUSTMENTS.md)
 - [Text-size plan and route/modal audit](TEXT_SIZE_PLAN.md)

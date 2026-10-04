@@ -293,11 +293,11 @@ Home-origin content remains pinned to `1f`.
 ## 13. Separate Settings destination: Guarded Adjustments
 
 The user also requested a dedicated Settings row that opens a separate,
-full-screen **Guarded Adjustments** guide. Its content should use grouped,
-expandable question-and-answer entries modeled on How to Use and explain the
-existing guard-related popups and locked states; the page itself is not a popup.
-This is separate from text-size scaling: text-size controls are not
-PIN-protected and must not be moved into or described as guarded.
+full-screen **Guarded Adjustments** guide. Its content uses grouped, expandable
+question-and-answer entries to explain existing guard-related popups and locked
+states; the page itself is not a popup. This is separate from text-size scaling:
+text-size controls are not PIN-protected and must not be moved into or described
+as guarded.
 
 Track this companion feature in
 [`PROTECTED_ADJUSTMENTS_PLAN.md`](PROTECTED_ADJUSTMENTS_PLAN.md),
