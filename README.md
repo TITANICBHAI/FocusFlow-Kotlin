@@ -74,9 +74,7 @@ settings and device-specific protection.
 
 ## Build the debug APK
 
-**Requirements:** JDK 17 and Android SDK Platform 35 with Build Tools 35.0.0. Android Studio can install these through SDK Manager.
-
-### Build with automatic JDK setup
+### Build with automatic JDK and Android SDK setup
 
 On Linux, run this from the repository root:
 
@@ -84,9 +82,21 @@ On Linux, run this from the repository root:
 bash scripts/build-apk-with-java.sh
 ```
 
-The script uses an existing JDK 17 when available. Otherwise, it downloads and caches JDK 17 from Adoptium, sets `JAVA_HOME` for the build, and runs the checked-in Gradle wrapper. The wrapper downloads the Gradle version configured for this project automatically.
+The script uses an existing JDK 17 when available; otherwise, it downloads and caches JDK 17 from Adoptium. It also downloads Google's Android SDK command-line tools when needed, accepts the SDK package licenses, installs Platform 35, Build Tools 35.0.0, and Platform Tools with Android CLI metrics disabled, then runs the checked-in Gradle wrapper. Gradle downloads the version configured for this project automatically.
 
-The script does **not** install the Android SDK. SDK Platform 35 and Build Tools 35.0.0 must still be installed and discoverable through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or `local.properties`.
+The SDK is cached outside the Git repository at `$HOME/.cache/focusflow/android-sdk` by default. You can select another external location with `FOCUSFLOW_ANDROID_SDK_ROOT`, `ANDROID_SDK_ROOT`, or `ANDROID_HOME`; the script refuses SDK paths inside the repository. The root `.gitignore` also excludes common accidental in-repository SDK locations and `local.properties`. SDK files are not added to GitHub by the build or GitHub sync scripts.
+
+To run the Android compilation, JVM tests, instrumentation-test APK assembly, and connected instrumentation tests in one invocation:
+
+```bash
+bash scripts/build-apk-with-java.sh \
+  :app:compileDebugKotlin \
+  :app:testDebugUnitTest \
+  :app:assembleDebugAndroidTest \
+  :app:connectedDebugAndroidTest
+```
+
+Connected instrumentation tests still require a running emulator or connected Android device.
 
 ### Build directly with Gradle
 

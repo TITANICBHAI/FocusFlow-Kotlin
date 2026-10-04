@@ -1,9 +1,13 @@
 # Android / Gradle
 .gradle/
 .cache/
+.kotlin/
 build/
 */build/
 local.properties
+/.android-sdk/
+/android-sdk/
+/sdk/
 *.iml
 .idea/
 

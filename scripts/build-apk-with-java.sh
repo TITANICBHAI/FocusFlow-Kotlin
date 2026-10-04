@@ -2,10 +2,22 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT_DIR"
 
-echo "== FocusFlow debug APK build (JDK bootstrap) =="
+JDK_DOWNLOAD_DIR=""
+SDK_DOWNLOAD_DIR=""
+cleanup() {
+  if [[ -n "$JDK_DOWNLOAD_DIR" ]]; then
+    rm -rf -- "$JDK_DOWNLOAD_DIR"
+  fi
+  if [[ -n "$SDK_DOWNLOAD_DIR" ]]; then
+    rm -rf -- "$SDK_DOWNLOAD_DIR"
+  fi
+}
+trap cleanup EXIT
+
+echo "== FocusFlow debug APK build (JDK and Android SDK bootstrap) =="
 echo "Started: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
 if [[ "$(uname -s)" != "Linux" ]]; then
@@ -22,12 +34,37 @@ case "$(uname -m)" in
     ;;
 esac
 
-for tool in curl tar readlink; do
+for tool in curl tar readlink unzip sha1sum yes; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "ERROR: Required tool '$tool' was not found in PATH." >&2
     exit 1
   fi
 done
+
+canonical_path() {
+  local candidate="$1"
+  if [[ "$candidate" != /* ]]; then
+    candidate="$ROOT_DIR/$candidate"
+  fi
+  readlink -m -- "$candidate"
+}
+
+assert_path_outside_repo() {
+  local candidate
+  local label="$2"
+  candidate="$(canonical_path "$1")"
+  case "$candidate" in
+    "$ROOT_DIR"|"$ROOT_DIR"/*)
+      echo "ERROR: $label must be outside the Git repository." >&2
+      echo "Refusing path: $candidate" >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_sdk_outside_repo() {
+  assert_path_outside_repo "$1" "Android SDK paths"
+}
 
 java_major_version() {
   local java_bin="$1"
@@ -77,17 +114,16 @@ else
       fi
     done
 
-    DOWNLOAD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/focusflow-jdk17.XXXXXX")"
-    trap 'rm -rf "$DOWNLOAD_DIR"' EXIT
-    mkdir -p "$DOWNLOAD_DIR/extracted"
+    JDK_DOWNLOAD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/focusflow-jdk17.XXXXXX")"
+    mkdir -p "$JDK_DOWNLOAD_DIR/extracted"
 
     JDK_URL="https://api.adoptium.net/v3/binary/latest/17/ga/linux/${ADOPTIUM_ARCH}/jdk/hotspot/normal/eclipse"
     echo "No JDK 17 found; downloading one from Adoptium..."
     curl --fail --location --retry 3 --connect-timeout 20 \
-      "$JDK_URL" --output "$DOWNLOAD_DIR/jdk-17.tar.gz"
-    tar -xzf "$DOWNLOAD_DIR/jdk-17.tar.gz" -C "$DOWNLOAD_DIR/extracted"
+      "$JDK_URL" --output "$JDK_DOWNLOAD_DIR/jdk-17.tar.gz"
+    tar -xzf "$JDK_DOWNLOAD_DIR/jdk-17.tar.gz" -C "$JDK_DOWNLOAD_DIR/extracted"
 
-    EXTRACTED_JDK="$(find "$DOWNLOAD_DIR/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    EXTRACTED_JDK="$(find "$JDK_DOWNLOAD_DIR/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit)"
     if [[ -z "$EXTRACTED_JDK" || ! -x "$EXTRACTED_JDK/bin/java" ]]; then
       echo "ERROR: The downloaded archive did not contain a usable JDK." >&2
       exit 1
@@ -108,14 +144,100 @@ else
   fi
 fi
 
+SDK_ROOT_CANDIDATE="${FOCUSFLOW_ANDROID_SDK_ROOT:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}}"
+LOCAL_SDK_ROOT=""
+if [[ -f local.properties ]]; then
+  LOCAL_SDK_ROOT="$(sed -nE 's/^[[:space:]]*sdk\.dir[[:space:]]*=[[:space:]]*//p' local.properties | tail -n 1)"
+  if [[ "$LOCAL_SDK_ROOT" == *\\* ]]; then
+    LOCAL_SDK_ROOT="$(printf '%s\n' "$LOCAL_SDK_ROOT" | sed -e 's/\\ / /g' -e 's/\\:/:/g' -e 's/\\\\/\\/g')"
+  fi
+fi
+if [[ -n "$LOCAL_SDK_ROOT" ]]; then
+  if [[ -n "$SDK_ROOT_CANDIDATE" ]] &&
+    [[ "$(canonical_path "$SDK_ROOT_CANDIDATE")" != "$(canonical_path "$LOCAL_SDK_ROOT")" ]]; then
+    echo "ERROR: local.properties sdk.dir conflicts with ANDROID_SDK_ROOT/ANDROID_HOME." >&2
+    echo "Set both to the same external SDK directory, or remove the local sdk.dir entry." >&2
+    exit 1
+  fi
+  SDK_ROOT_CANDIDATE="$LOCAL_SDK_ROOT"
+fi
+if [[ -z "$SDK_ROOT_CANDIDATE" ]]; then
+  SDK_ROOT_CANDIDATE="${HOME:-/tmp}/.cache/focusflow/android-sdk"
+fi
+
+assert_sdk_outside_repo "$SDK_ROOT_CANDIDATE"
+SDK_ROOT="$(canonical_path "$SDK_ROOT_CANDIDATE")"
+mkdir -p "$SDK_ROOT"
+SDK_ROOT="$(cd -P "$SDK_ROOT" && pwd -P)"
+assert_sdk_outside_repo "$SDK_ROOT"
+SDK_TEMP_BASE="$(canonical_path "${TMPDIR:-/tmp}")"
+if [[ "$SDK_TEMP_BASE" == "$ROOT_DIR" || "$SDK_TEMP_BASE" == "$ROOT_DIR/"* ]]; then
+  SDK_TEMP_BASE="$(canonical_path /tmp)"
+fi
+assert_path_outside_repo "$SDK_TEMP_BASE" "Android SDK download temporary directories"
+mkdir -p "$SDK_TEMP_BASE"
+export TMPDIR="$SDK_TEMP_BASE"
+
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
+export ANDROID_HOME="$SDK_ROOT"
+export ANDROID_SDK_ROOT="$SDK_ROOT"
 echo "JAVA_HOME=$JAVA_HOME"
 "$JAVA_HOME/bin/java" -version
 
-if [[ -z "${ANDROID_HOME:-}" && -z "${ANDROID_SDK_ROOT:-}" && ! -f local.properties ]]; then
-  echo "NOTE: Android SDK was not detected. Gradle still requires SDK Platform 35 to build the APK." >&2
+echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT (outside the Git repository)"
+
+# Pinned command-line tools archive and digest from Google's official SDK repository.
+ANDROID_CMDLINE_TOOLS_REVISION="16111833"
+ANDROID_CMDLINE_TOOLS_SHA1="e025545c62a8e64c7559119566a569fb1dec5f60"
+ANDROID_CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_CMDLINE_TOOLS_REVISION}_latest.zip"
+ANDROID_CLI="$SDK_ROOT/cmdline-tools/latest/bin/android"
+
+if [[ ! -x "$ANDROID_CLI" ]]; then
+  SDK_DOWNLOAD_DIR="$(mktemp -d "${SDK_TEMP_BASE%/}/focusflow-android-sdk.XXXXXX")"
+  echo "Downloading Android SDK command-line tools from Google..."
+  curl --fail --location --retry 3 --connect-timeout 20 \
+    "$ANDROID_CMDLINE_TOOLS_URL" \
+    --output "$SDK_DOWNLOAD_DIR/commandline-tools.zip"
+  printf '%s  %s\n' "$ANDROID_CMDLINE_TOOLS_SHA1" "$SDK_DOWNLOAD_DIR/commandline-tools.zip" \
+    | sha1sum --check
+  unzip -tq "$SDK_DOWNLOAD_DIR/commandline-tools.zip"
+  mkdir -p "$SDK_DOWNLOAD_DIR/extracted" "$SDK_ROOT/cmdline-tools"
+  unzip -q "$SDK_DOWNLOAD_DIR/commandline-tools.zip" -d "$SDK_DOWNLOAD_DIR/extracted"
+  if [[ ! -x "$SDK_DOWNLOAD_DIR/extracted/cmdline-tools/bin/android" ]]; then
+    echo "ERROR: The Android command-line tools archive has an unexpected layout." >&2
+    exit 1
+  fi
+
+  TOOLS_STAGING="$SDK_ROOT/cmdline-tools/.latest-install-$$"
+  TOOLS_BACKUP="$SDK_ROOT/cmdline-tools/.latest-backup-$$"
+  rm -rf -- "$TOOLS_STAGING" "$TOOLS_BACKUP"
+  mv "$SDK_DOWNLOAD_DIR/extracted/cmdline-tools" "$TOOLS_STAGING"
+  if [[ -e "$SDK_ROOT/cmdline-tools/latest" ]]; then
+    mv "$SDK_ROOT/cmdline-tools/latest" "$TOOLS_BACKUP"
+  fi
+  if ! mv "$TOOLS_STAGING" "$SDK_ROOT/cmdline-tools/latest"; then
+    if [[ -e "$TOOLS_BACKUP" && ! -e "$SDK_ROOT/cmdline-tools/latest" ]]; then
+      mv "$TOOLS_BACKUP" "$SDK_ROOT/cmdline-tools/latest"
+    fi
+    echo "ERROR: Could not install Android SDK command-line tools." >&2
+    exit 1
+  fi
+  rm -rf -- "$TOOLS_BACKUP"
 fi
+
+if [[ ! -x "$ANDROID_CLI" ]]; then
+  echo "ERROR: Android CLI was not installed at $ANDROID_CLI." >&2
+  exit 1
+fi
+
+echo "Installing Android SDK packages with metrics disabled; accepting required SDK licenses..."
+set +o pipefail
+yes | "$ANDROID_CLI" --no-metrics --sdk="$SDK_ROOT" sdk install \
+  platforms/android-35 \
+  build-tools/35.0.0 \
+  platform-tools
+set -o pipefail
 
 ./gradlew :app:assembleDebug --no-daemon --console=plain --stacktrace "$@"
 
