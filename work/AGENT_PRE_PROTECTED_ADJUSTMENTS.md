@@ -20,12 +20,14 @@ chat; do not make code or documentation changes.
 
 1. `work/PROTECTED_ADJUSTMENTS_PLAN.md`
 2. `work/PROTECTED_ADJUSTMENTS_TRACKER.md`
-3. `app/src/main/java/com/tbtechs/focusflow/ui/settings/SettingsScreen.kt`
-4. `app/src/main/java/com/tbtechs/focusflow/ui/settings/ProtectedAdjustmentsScreen.kt`
-5. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/Routes.kt`
-6. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/FocusFlowNavGraph.kt`
-7. The guard-owner source files listed in the tracker’s source-audit record.
-8. `work/TEXT_SIZE_PLAN.md` §12 only if Settings route-scale context is needed.
+3. `work/PROJECT_WORK_TRACKER.md` — read the Guarded Adjustments batch status,
+   assigned agent, unchecked items, and blockers; do not edit it.
+4. `app/src/main/java/com/tbtechs/focusflow/ui/settings/SettingsScreen.kt`
+5. `app/src/main/java/com/tbtechs/focusflow/ui/settings/ProtectedAdjustmentsScreen.kt`
+6. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/Routes.kt`
+7. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/FocusFlowNavGraph.kt`
+8. The guard-owner source files listed in the tracker’s source-audit record.
+9. `work/TEXT_SIZE_PLAN.md` §12 only if Settings route-scale context is needed.
 
 ## Report in chat
 
@@ -33,6 +35,9 @@ chat; do not make code or documentation changes.
 - The live guard behavior by action, including the exact PIN/active-block
   condition and any allowed additions or exceptions.
 - Which owner screens are responsible for each guard.
+- The Guarded Adjustments batch's current status, unchecked verification, and
+  blockers in the project-wide tracker, noting any mismatch with the detailed
+  feature tracker.
 - Any mismatch between the written audit and current source, any excluded
   surfaces, and any unresolved uncertainty.
 - Existing verification notes and current toolchain limitations. Do not start a
