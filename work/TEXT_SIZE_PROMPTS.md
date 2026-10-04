@@ -1,6 +1,9 @@
 # Text Size Settings — Agent Prompts
 
-Two independent jobs. Background/rationale for both is in `TEXT_SIZE_PLAN.md` — paste that alongside if the receiving agent can use extra context, but each prompt below is written to stand on its own.
+Two independent jobs. Background/rationale for both is in `TEXT_SIZE_PLAN.md` —
+paste that alongside if the receiving agent can use extra context, but each
+prompt below is written to stand on its own. Batch-level progress and evidence
+must be recorded in `PROJECT_WORK_TRACKER.md`.
 
 ---
 
@@ -10,6 +13,17 @@ Two independent jobs. Background/rationale for both is in `TEXT_SIZE_PLAN.md` �
 Add a text-size setting to FocusFlow: one General % scale plus optional per-tab
 overrides for Focus, Stats, Settings, and Defense. Home/Schedule must NOT be
 affected — it's being tuned by hand separately.
+
+TRACKING IS REQUIRED: Before editing, read work/PROJECT_WORK_TRACKER.md and
+claim Batch 01 with your actual agent name/handle and date if you are completing
+its open audit items. Record the audit evidence, then mark Batch 01 complete
+before starting code work. Claim Batch 02 and set it to In progress before
+starting core wiring. Complete Batch 02 before claiming and starting Batch 03.
+As checklist items are completed, tick them and add inspectable evidence on the
+same line. At handoff, update only the batches you worked on, record exact
+checks/results and blockers, append a dated update-log row, and synchronize
+work/TEXT_SIZE_TRACKER.md. Do not mark a later batch In progress before its
+dependency is complete.
 
 Before writing anything, open and read in full: data/model/AppSettings.kt,
 data/repository/SettingsRepository.kt, ui/SettingsViewModel.kt,
@@ -173,6 +187,15 @@ out.
 Mechanical, repository-wide find-and-replace. No design judgment needed — if
 something doesn't cleanly match the rule below, skip it and list it at the
 end rather than guessing.
+
+TRACKING IS REQUIRED: Before editing, read work/PROJECT_WORK_TRACKER.md and
+confirm Batches 02 and 03 are complete. If either is still open, record the
+dependency blocker and do not start the conversion. Otherwise, claim Batch 04
+with your actual agent name/handle and date and set its status to In progress.
+As checklist items are completed, tick them and add inspectable evidence on the
+same line. At handoff, update the batch status, record exact counts, checks,
+exceptions, and blockers, append a dated update-log row, and synchronize
+work/TEXT_SIZE_TRACKER.md.
 
 SCOPE — convert every file below. Nothing else, not even other files that
 happen to sit in the same directory as one of these.

@@ -113,6 +113,7 @@ the app. Each answer states its own condition; PIN types are not interchangeable
 
 ## Related work
 
+- [Project-wide work tracker](PROJECT_WORK_TRACKER.md)
 - [Tracker](PROTECTED_ADJUSTMENTS_TRACKER.md)
 - [Read-only agent context pre-prompt](AGENT_PRE_PROTECTED_ADJUSTMENTS.md)
 - [Text-size plan and route/modal audit](TEXT_SIZE_PLAN.md)

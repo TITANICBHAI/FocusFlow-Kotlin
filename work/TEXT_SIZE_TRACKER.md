@@ -1,7 +1,12 @@
 # Text Size Work Tracker
 
+> Project-wide batch progress is tracked in
+> [PROJECT_WORK_TRACKER.md](PROJECT_WORK_TRACKER.md). Use this file for the
+> detailed Text Size status and evidence; keep both records synchronized.
+
 ## Reference documents
 
+- [Project work tracker](PROJECT_WORK_TRACKER.md) — batch-level owners, progress, evidence, and blockers.
 - [Architecture plan](TEXT_SIZE_PLAN.md) — feature architecture, boundaries, and implementation scope.
 - [Agent prompts](TEXT_SIZE_PROMPTS.md) — separate core-wiring and mechanical-rollout instructions.
 - [Agent pre-read](AGENT_PRE_TEXT_SIZE.md) — required reading, constraints, and handoff checks.

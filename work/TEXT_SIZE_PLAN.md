@@ -304,4 +304,5 @@ Track this companion feature in
 [`PROTECTED_ADJUSTMENTS_TRACKER.md`](PROTECTED_ADJUSTMENTS_TRACKER.md), and
 [`AGENT_PRE_PROTECTED_ADJUSTMENTS.md`](AGENT_PRE_PROTECTED_ADJUSTMENTS.md).
 The text-size implementation must not add or weaken any security guards as part
-of its work.
+of its work. Project batch progress for both workstreams is tracked in
+[`PROJECT_WORK_TRACKER.md`](PROJECT_WORK_TRACKER.md).

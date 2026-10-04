@@ -6,6 +6,7 @@ Implement the FocusFlow text-size feature described in:
 
 - `work/TEXT_SIZE_PLAN.md` — architecture, scope, and verified decisions
 - `work/TEXT_SIZE_PROMPTS.md` — executable prompts for the two implementation jobs
+- `work/PROJECT_WORK_TRACKER.md` — batch owner, checkboxes, evidence, and blockers
 
 The feature is one General percentage scale plus optional overrides for Focus,
 Stats, Settings, and Defense. Home/Schedule is intentionally excluded.
@@ -23,11 +24,24 @@ Keep these as separate jobs even if the same agent performs both:
 
 1. **Core wiring (Prompt A):** settings model and persistence, theme
    CompositionLocal, root and per-tab wiring, Settings UI, and the non-Compose
-   block overlay.
+   block overlay. Track core wiring as Batch 02 and source-tab context as Batch
+   03 in `PROJECT_WORK_TRACKER.md`.
 2. **Mechanical rollout (Prompt B):** only the explicitly listed `.sp` files and
-   directories, changing numeric text-sizing literals to `.scaledSp`.
+   directories, changing numeric text-sizing literals to `.scaledSp`. Track it
+   as Batch 04.
 
 Do not let the mechanical rollout expand into unrelated UI cleanup.
+
+## Required progress updates
+
+Before work, claim the relevant batch in `work/PROJECT_WORK_TRACKER.md` with
+your actual agent name/handle and date. As each checklist item is completed,
+tick it and add inspectable evidence on the same line. Record blockers without
+marking blocked work complete. At handoff, update the batch status and include
+changed files, checks and results, exceptions, and remaining blockers. Keep the
+feature-specific `TEXT_SIZE_TRACKER.md` synchronized with detailed evidence.
+Append a dated row to the master tracker's update log at each meaningful
+milestone and handoff.
 
 ## Non-negotiable constraints
 

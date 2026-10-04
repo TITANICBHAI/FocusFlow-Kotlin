@@ -1,7 +1,12 @@
 # Protected Adjustments Work Tracker
 
+> Project-wide batch progress is tracked in
+> [PROJECT_WORK_TRACKER.md](PROJECT_WORK_TRACKER.md). This file keeps the
+> feature-specific audit, conditions, and verification evidence.
+
 ## Reference documents
 
+- [Project work tracker](PROJECT_WORK_TRACKER.md) — batch-level owners, progress, evidence, and blockers.
 - [Plan](PROTECTED_ADJUSTMENTS_PLAN.md) — screen behavior, source audit, navigation, and completion criteria.
 - [Agent context pre-prompt](AGENT_PRE_PROTECTED_ADJUSTMENTS.md) — read-only context gathering for the main agent; no implementation or subagents.
 - [Text-size plan](TEXT_SIZE_PLAN.md) — adjacent Settings work and route/modal scale context; text size is not a guarded adjustment.
