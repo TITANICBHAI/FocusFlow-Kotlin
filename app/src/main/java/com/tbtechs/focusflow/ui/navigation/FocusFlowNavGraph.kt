@@ -203,7 +203,10 @@ fun FocusFlowNavGraph(
         ) {
             composable(Routes.HOME) {
                 MainScaffold(currentRoute, ::navigate) {
-                    CompositionLocalProvider(LocalFocusFlowTextScale provides 1f) {
+                    CompositionLocalProvider(
+                        LocalFocusFlowTextScale provides
+                            (settings.homeTextScale ?: settings.generalTextScale),
+                    ) {
                         ScreenBoundary(Routes.HOME) {
                             HomeScreen(
                                 taskViewModel = taskViewModel,
@@ -349,7 +352,6 @@ fun FocusFlowNavGraph(
                                 onOpenVpnBlockList = { navigate(Routes.VPN_BLOCK_LIST) },
                                 onOpenPasswordProtection = { navigate(Routes.PASSWORD_PROTECTION) },
                                 onOpenPermissions = { navigate(Routes.PERMISSIONS) },
-                                onOpenHowToUse = { navigate(Routes.HOW_TO_USE) },
                                 onOpenLauncher = { navigate(Routes.HOME_LAUNCHER_SETUP) },
                                 onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
                             )

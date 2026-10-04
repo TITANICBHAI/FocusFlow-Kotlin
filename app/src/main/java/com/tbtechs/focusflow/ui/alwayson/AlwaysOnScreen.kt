@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.VpnRepository
@@ -162,7 +163,35 @@ fun AlwaysOnScreen(
         mutableStateOf(!settings.protectionStatusBannerDismissed)
     }
     val installedAppsState = rememberInstalledApps(installedAppsRepository)
-    val apps = installedAppsState.apps.filterNot { it.packageName in systemNeverBlock }
+    val apps = remember(
+        installedAppsState.apps,
+        installedAppsState.loading,
+        installedAppsState.error,
+        selected,
+        vpnSelected,
+    ) {
+        val catalogPackages = installedAppsState.apps.mapTo(mutableSetOf()) { it.packageName }
+        val installed = installedAppsState.apps.filterNot { it.packageName in systemNeverBlock }
+        val missing = if (installedAppsState.loading) {
+            emptyList()
+        } else {
+            (selected + vpnSelected).asSequence()
+                .filterNot { it in catalogPackages }
+                .distinct()
+                .map { packageName ->
+                    missingInstalledAppInfo(
+                        packageName,
+                        if (installedAppsState.error == null) {
+                            "App not installed"
+                        } else {
+                            "App details unavailable"
+                        },
+                    )
+                }
+                .toList()
+        }
+        installed + missing
+    }
     val loading = settingsLoading || installedAppsState.loading
 
     LaunchedEffect(Unit) {

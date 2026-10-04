@@ -23,7 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.data.model.Task
 
 /**
@@ -35,8 +35,8 @@ import com.tbtechs.focusflow.data.model.Task
 fun TimelineView(tasks: List<Task>, onTaskClick: (Task) -> Unit, modifier: Modifier = Modifier) {
     if (tasks.isEmpty()) {
         Column(modifier = modifier.fillMaxWidth()) {
-            Text("Nothing on today’s timeline", fontSize = 15.sp, color = RefText)
-            Text("Add a task to see it here.", fontSize = 11.sp, color = RefSecondary)
+            Text("Nothing on today’s timeline", fontSize = 15.scaledSp, color = RefText)
+            Text("Add a task to see it here.", fontSize = 11.scaledSp, color = RefSecondary)
         }
     } else {
         LazyColumn(modifier = modifier) {
@@ -59,10 +59,10 @@ fun TimelineView(tasks: List<Task>, onTaskClick: (Task) -> Unit, modifier: Modif
                             .background(priorityColor(task.priority)),
                     )
                     Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text(task.title, fontSize = 13.sp, color = RefText)
+                        Text(task.title, fontSize = 13.scaledSp, color = RefText)
                         Text(
                             "${task.startTime.asLocalTime()} · ${task.durationMinutes.asDurationLabel()} · ${task.endTime.asLocalTime()}",
-                            fontSize = 11.sp,
+                            fontSize = 11.scaledSp,
                             color = RefSecondary,
                         )
                     }

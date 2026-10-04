@@ -728,10 +728,9 @@ private fun ReadyToFocusPanel(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
     ) {
         item {
-            Spacer(Modifier.height(16.dp))
             // Big elevated timer icon badge
             Box(
                 modifier = Modifier

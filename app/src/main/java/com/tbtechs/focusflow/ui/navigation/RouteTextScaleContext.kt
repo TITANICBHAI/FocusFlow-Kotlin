@@ -10,6 +10,9 @@ import com.tbtechs.focusflow.data.model.AppSettings
  */
 internal object RouteTextScaleContext {
     const val SOURCE_TAB_ARGUMENT = "sourceTab"
+    const val HOME_QUICK_ADD_SCREEN = "schedule:quick_add"
+    const val HOME_TASK_DETAILS_SCREEN = "schedule:task_details"
+    const val HOME_EDIT_TASK_SCREEN = "schedule:edit_task"
 
     private val sharedRoutes = setOf(
         Routes.ACTIVE,
@@ -38,6 +41,9 @@ internal object RouteTextScaleContext {
     private val sourceContextRoutes = sharedRoutes + ownerTabByRoute.keys
 
     fun routeBase(route: String?): String? = route?.substringBefore('?')
+
+    fun screenScaleKey(tabRoute: String, screenId: String): String =
+        "$tabRoute::$screenId"
 
     fun routePattern(routePattern: String): String {
         val separator = if ('?' in routePattern) '&' else '?'
@@ -85,9 +91,18 @@ internal object RouteTextScaleContext {
     ): Float {
         val base = routeBase(route) ?: return settings.generalTextScale
         val source = rootTabRoute(sourceTab)
+        val scaleOwner = if (base in Routes.tabRoutes) {
+            null
+        } else {
+            source?.let { ownerTabByRoute[base] ?: it }
+        }
+        val screenOverride = scaleOwner?.let { owner ->
+            settings.screenTextScales[screenScaleKey(owner, base)]
+        }
+        if (screenOverride != null) return screenOverride
 
         return when (base) {
-            Routes.HOME -> 1f
+            Routes.HOME -> settings.homeTextScale ?: settings.generalTextScale
             Routes.FOCUS -> settings.focusTextScale ?: settings.generalTextScale
             Routes.STATS -> settings.statsTextScale ?: settings.generalTextScale
             Routes.SETTINGS -> settings.settingsTextScale ?: settings.generalTextScale
@@ -118,7 +133,7 @@ internal object RouteTextScaleContext {
 
     private fun scaleForTab(tabRoute: String, settings: AppSettings): Float =
         when (tabRoute) {
-            Routes.HOME -> 1f
+            Routes.HOME -> settings.homeTextScale ?: settings.generalTextScale
             Routes.FOCUS -> settings.focusTextScale ?: settings.generalTextScale
             Routes.STATS -> settings.statsTextScale ?: settings.generalTextScale
             Routes.SETTINGS -> settings.settingsTextScale ?: settings.generalTextScale

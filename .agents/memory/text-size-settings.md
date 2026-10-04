@@ -3,17 +3,17 @@ name: Text size settings
 description: Durable product constraints for FocusFlow's text scaling feature.
 ---
 
-The text-size feature must preserve Home/Schedule at exactly 100% while
-allowing a General scale and nullable per-tab replacement scales for Focus,
-Stats, Settings, and Defense. A null override inherits General; a non-null
-override replaces it rather than stacking with it.
+The text-size feature uses a General scale and nullable per-tab replacement
+scales for Schedule, Focus, Stats, Settings, and Defense. A null override
+inherits General; a non-null override replaces it rather than stacking with it.
 
-**Why:** Home/Schedule is being tuned independently, and scaling shared or root
-content into it would create unintended visual changes.
+**Why:** The user superseded the earlier Home/Schedule 100% pin and asked for
+Schedule to receive the same independent override as the other tabs.
 
-**How to apply:** Keep Home pinned to 1f, wrap only tab content rather than the
-bottom navigation scaffold, and treat the mechanical `.sp` rollout as a
-strictly scoped job. Plain Android views such as the block overlay need direct
+**How to apply:** Keep the bottom navigation scaffold outside each tab's scale
+provider. Put controls on the separate Text Size screen, grouped in expandable
+tab accordions rather than a flat list. Audit before adding screen-level
+customization; plain Android views such as the block overlay need direct
 preference reads instead of Compose locals.
 
 The feature has two distinct implementation shapes: interconnected model,

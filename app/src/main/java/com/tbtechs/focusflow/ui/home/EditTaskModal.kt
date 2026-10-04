@@ -64,7 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -234,7 +234,7 @@ fun EditTaskModal(
                     "Edit Task",
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    fontSize = 20.sp,
+                    fontSize = 20.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                 )
@@ -275,9 +275,9 @@ fun EditTaskModal(
             ) {
                  Icon(Icons.Outlined.Description, contentDescription = "Notes", tint = RefSecondary, modifier = Modifier.size(22.dp))
                  Spacer(Modifier.width(10.dp))
-                 Text("Notes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RefText)
+                 Text("Notes", fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold, color = RefText)
                  Spacer(Modifier.width(6.dp))
-                 Text("Optional", fontSize = 12.sp, color = RefSecondary, modifier = Modifier.weight(1f))
+                 Text("Optional", fontSize = 12.scaledSp, color = RefSecondary, modifier = Modifier.weight(1f))
                 Icon(
                     if (notesExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (notesExpanded) "Collapse notes" else "Expand notes",
@@ -312,9 +312,9 @@ fun EditTaskModal(
                     Icon(Icons.Outlined.Schedule, contentDescription = "Start time", tint = RefSecondary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                         Text(time.asDisplayTime(), fontSize = 16.sp, color = RefText)
+                         Text(time.asDisplayTime(), fontSize = 16.scaledSp, color = RefText)
                     }
-                     Text("Change", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                     Text("Change", fontSize = 12.scaledSp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -360,7 +360,7 @@ fun EditTaskModal(
                             text = opt.replaceFirstChar(Char::titlecase),
                             selected = isSelected,
                             modifier = Modifier.weight(1f),
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             horizontalPadding = 4.dp,
                             selectedColor = if (opt == "medium") RefBlue else BrandPrimary,
                             onClick = { priority = opt },
@@ -387,9 +387,9 @@ fun EditTaskModal(
                                     .padding(horizontal = 10.dp, vertical = 5.dp),
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("#$tag", fontSize = 14.sp, color = BrandPrimary, fontWeight = FontWeight.Medium)
+                                    Text("#$tag", fontSize = 14.scaledSp, color = BrandPrimary, fontWeight = FontWeight.Medium)
                                     Spacer(Modifier.width(4.dp))
-                                    Text("×", fontSize = 16.sp, color = RefMuted)
+                                    Text("×", fontSize = 16.scaledSp, color = RefMuted)
                                 }
                             }
                         }
@@ -404,7 +404,7 @@ fun EditTaskModal(
                 )
                 Text(
                     "Press return to add each tag.",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     color = RefSecondary,
                 )
             }
@@ -434,10 +434,10 @@ fun EditTaskModal(
                         Icon(Icons.Outlined.Shield, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                             Text("Allowed Apps", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RefText)
-                             Text(allowedAppsDescription, fontSize = 12.sp, color = RefSecondary)
+                             Text("Allowed Apps", fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold, color = RefText)
+                             Text(allowedAppsDescription, fontSize = 12.scaledSp, color = RefSecondary)
                         }
-                         Text("Customize", fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                         Text("Customize", fontSize = 12.scaledSp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -446,7 +446,7 @@ fun EditTaskModal(
                 Text(
                     "Enter a title, valid time, and a duration of at least 5 minutes.",
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                 )
             }
 
@@ -462,7 +462,7 @@ fun EditTaskModal(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Delete, contentDescription = "Delete task", tint = RefRed, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Delete Task", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = RefRed)
+                    Text("Delete Task", fontSize = 18.scaledSp, fontWeight = FontWeight.SemiBold, color = RefRed)
                 }
             }
 

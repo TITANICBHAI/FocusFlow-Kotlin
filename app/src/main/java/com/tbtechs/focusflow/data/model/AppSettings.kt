@@ -101,13 +101,16 @@ data class AppSettings(
     val darkModeEnabled: Boolean = true,
 
     // ── Text size ─────────────────────────────────────────────────────────────
-    /** Default scale for Focus, Stats, Settings, and Defense. Home/Schedule stays at 1f. */
+    /** Default scale for all tabs; nullable per-tab values replace it when set. */
     val generalTextScale: Float = 1f,
     /** null inherits generalTextScale; a value replaces it for that tab. */
+    val homeTextScale: Float? = null,
     val focusTextScale: Float? = null,
     val statsTextScale: Float? = null,
     val settingsTextScale: Float? = null,
     val defenseTextScale: Float? = null,
+    /** Optional per-screen scales keyed by tab route and destination ID. */
+    val screenTextScales: Map<String, Float> = emptyMap(),
 
     /**
      * Notification toggles used by the analytics-driven notification layer.
@@ -139,8 +142,6 @@ data class AppSettings(
     val pomodoroBreakMinutes: Int = 5,
     val focusDefenseHintDismissed: Boolean = false,
     val localAnalyticsNoticeDismissed: Boolean = false,
-    val defenseHintDismissed: Boolean = false,
-    val defenseHelpDismissed: Boolean = false,
     val standaloneBlockHintDismissed: Boolean = false,
     val alwaysOnInfoDismissed: Boolean = false,
     val protectionStatusBannerDismissed: Boolean = false,

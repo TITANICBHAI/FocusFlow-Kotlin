@@ -23,6 +23,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,7 +47,14 @@ internal fun TextSizeSettingsScreen(
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
-    BackHandler(onBack = onBack)
+    var selectedScreen by remember { mutableStateOf<TextSizeTarget?>(null) }
+    BackHandler {
+        if (selectedScreen != null) {
+            selectedScreen = null
+        } else {
+            onBack()
+        }
+    }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -52,17 +62,25 @@ internal fun TextSizeSettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Text Size",
+                        text = selectedScreen?.title ?: "Text Size",
                         fontSize = 20.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = {
+                            if (selectedScreen != null) selectedScreen = null else onBack()
+                        },
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back to Settings",
+                            contentDescription = if (selectedScreen != null) {
+                                "Back to text size settings"
+                            } else {
+                                "Back to Settings"
+                            },
                             tint = DarkTextPrimary,
                         )
                     }
@@ -96,6 +114,8 @@ internal fun TextSizeSettingsScreen(
                 TextSizeSection(
                     settings = settings,
                     onUpdate = settingsViewModel::updateSettings,
+                    selectedScreen = selectedScreen,
+                    onSelectScreen = { selectedScreen = it },
                 )
             }
         }

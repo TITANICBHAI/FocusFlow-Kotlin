@@ -35,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.tbtechs.focusflow.ui.focus.ActiveStatusIndicator
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,7 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.AppBootViewModel
@@ -62,6 +63,9 @@ import com.tbtechs.focusflow.ui.theme.DarkCard
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowTextScale
+import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
+import com.tbtechs.focusflow.ui.navigation.Routes
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -144,7 +148,7 @@ fun HomeScreen(
                         ) {
                             Text(
                                 text = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d")),
-                                fontSize = 22.sp,
+                                fontSize = 22.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = RefText,
                                 modifier = Modifier.weight(1f),
@@ -164,7 +168,7 @@ fun HomeScreen(
                                 val skipped = todayTasks.count { it.status == "skipped" }
                                 "$completed/${todayTasks.size} tasks done · $skipped skipped"
                             },
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = RefSecondary,
                         )
                     }
@@ -227,37 +231,70 @@ fun HomeScreen(
     }
 
     if (addOpen) {
-        QuickAddModal(
-            onDismiss = { addOpen = false },
-            onSave = taskViewModel::addTask,
-            settingsViewModel = settingsViewModel,
-        )
+        CompositionLocalProvider(
+            LocalFocusFlowTextScale provides (
+                settings.screenTextScales[
+                    RouteTextScaleContext.screenScaleKey(
+                        Routes.HOME,
+                        RouteTextScaleContext.HOME_QUICK_ADD_SCREEN,
+                    )
+                ] ?: LocalFocusFlowTextScale.current
+                ),
+        ) {
+            QuickAddModal(
+                onDismiss = { addOpen = false },
+                onSave = taskViewModel::addTask,
+                settingsViewModel = settingsViewModel,
+            )
+        }
     }
     detailTask?.let { task ->
-        TaskDetailModal(
-            task = task,
-            onDismiss = { detailTask = null },
-            onComplete = { completeAndMaybeStop(task); detailTask = null },
-            onSkip = { detailTask = null; skipTask = task },
-            onExtend = { detailTask = null; extendTask = task },
-            onStartFocus = { focusSessionViewModel.startFocusMode(task.id); detailTask = null },
-            onEdit = { detailTask = null; editTask = task },
-        )
+        CompositionLocalProvider(
+            LocalFocusFlowTextScale provides (
+                settings.screenTextScales[
+                    RouteTextScaleContext.screenScaleKey(
+                        Routes.HOME,
+                        RouteTextScaleContext.HOME_TASK_DETAILS_SCREEN,
+                    )
+                ] ?: LocalFocusFlowTextScale.current
+                ),
+        ) {
+            TaskDetailModal(
+                task = task,
+                onDismiss = { detailTask = null },
+                onComplete = { completeAndMaybeStop(task); detailTask = null },
+                onSkip = { detailTask = null; skipTask = task },
+                onExtend = { detailTask = null; extendTask = task },
+                onStartFocus = { focusSessionViewModel.startFocusMode(task.id); detailTask = null },
+                onEdit = { detailTask = null; editTask = task },
+            )
+        }
     }
     editTask?.let { task ->
-        EditTaskModal(
-            task = task,
-            onDismiss = { editTask = null },
-            onSave = { taskViewModel.updateTask(it); editTask = null },
-            onDelete = {
-                if (settingsViewModel.isFocusPinSet()) {
-                    deleteTask = task
-                } else {
-                    taskViewModel.deleteTask(task.id)
-                    editTask = null
-                }
-            },
-        )
+        CompositionLocalProvider(
+            LocalFocusFlowTextScale provides (
+                settings.screenTextScales[
+                    RouteTextScaleContext.screenScaleKey(
+                        Routes.HOME,
+                        RouteTextScaleContext.HOME_EDIT_TASK_SCREEN,
+                    )
+                ] ?: LocalFocusFlowTextScale.current
+                ),
+        ) {
+            EditTaskModal(
+                task = task,
+                onDismiss = { editTask = null },
+                onSave = { taskViewModel.updateTask(it); editTask = null },
+                onDelete = {
+                    if (settingsViewModel.isFocusPinSet()) {
+                        deleteTask = task
+                    } else {
+                        taskViewModel.deleteTask(task.id)
+                        editTask = null
+                    }
+                },
+            )
+        }
     }
     extendTask?.let { task ->
         ExtendTaskDialog(
@@ -315,7 +352,7 @@ private fun LoadingSchedule() = Column(
 ) {
     CircularProgressIndicator(color = BrandPrimary)
     Spacer(Modifier.height(16.dp))
-    Text("Loading your schedule…", fontSize = 16.sp, color = DarkTextSecondary)
+    Text("Loading your schedule…", fontSize = 16.scaledSp, color = DarkTextSecondary)
 }
 
 @Composable
@@ -336,14 +373,14 @@ private fun DatabaseUnavailable(onRetry: () -> Unit) = Column(
     Spacer(Modifier.height(12.dp))
     Text(
         "Your schedule is unavailable",
-        fontSize = 20.sp,
+        fontSize = 20.scaledSp,
         fontWeight = FontWeight.Bold,
         color = DarkTextPrimary,
     )
     Spacer(Modifier.height(6.dp))
     Text(
         "Your tasks are safe. FocusFlow could not open its local database.",
-        fontSize = 14.sp,
+        fontSize = 14.scaledSp,
         color = DarkTextSecondary,
     )
     Spacer(Modifier.height(16.dp))
@@ -379,14 +416,14 @@ private fun EmptySchedule(
         Spacer(Modifier.height(8.dp))
         Text(
             "No tasks scheduled for today",
-            fontSize = 18.sp,
+            fontSize = 18.scaledSp,
             fontWeight = FontWeight.SemiBold,
             color = RefSecondary,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             "Tap + to add your first task",
-            fontSize = 13.sp,
+            fontSize = 13.scaledSp,
             color = RefMuted,
         )
     }

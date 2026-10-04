@@ -8,6 +8,7 @@ import org.junit.Test
 class RouteTextScaleContextTest {
     private val settings = AppSettings(
         generalTextScale = 1.1f,
+        homeTextScale = 1.6f,
         focusTextScale = 1.2f,
         statsTextScale = 1.3f,
         settingsTextScale = 1.4f,
@@ -22,7 +23,7 @@ class RouteTextScaleContextTest {
             Routes.PERMISSIONS,
         )
         val tabScales = listOf(
-            Routes.HOME to 1f,
+            Routes.HOME to 1.6f,
             Routes.FOCUS to 1.2f,
             Routes.STATS to 1.3f,
             Routes.SETTINGS to 1.4f,
@@ -89,8 +90,8 @@ class RouteTextScaleContextTest {
     }
 
     @Test
-    fun homeAndHomeOriginSharedNavigationStayAtOneHundredPercent() {
-        assertEquals(1f, RouteTextScaleContext.scaleFor(Routes.HOME, Routes.SETTINGS, settings), 0f)
+    fun homeAndHomeOriginSharedNavigationUseTheScheduleOverride() {
+        assertEquals(1.6f, RouteTextScaleContext.scaleFor(Routes.HOME, Routes.SETTINGS, settings), 0f)
         assertEquals(
             Routes.HOME,
             RouteTextScaleContext.sourceTabForDestination(Routes.HOME, null, Routes.ACTIVE),
@@ -98,6 +99,30 @@ class RouteTextScaleContextTest {
         assertEquals(
             Routes.HOME,
             RouteTextScaleContext.sourceTabForDestination(Routes.ACTIVE, Routes.HOME, Routes.PERMISSIONS),
+        )
+    }
+
+    @Test
+    fun screenOverrideWinsForItsTabAndDirectEntryStillUsesGeneral() {
+        val reportScaleKey = RouteTextScaleContext.screenScaleKey(Routes.STATS, Routes.REPORTS)
+        val configured = settings.copy(
+            screenTextScales = mapOf(reportScaleKey to 0.87f),
+        )
+
+        assertEquals(
+            0.87f,
+            RouteTextScaleContext.scaleFor(Routes.REPORTS, Routes.STATS, configured),
+            0f,
+        )
+        assertEquals(
+            1.3f,
+            RouteTextScaleContext.scaleFor(Routes.REPORTS, Routes.HOME, configured),
+            0f,
+        )
+        assertEquals(
+            1.1f,
+            RouteTextScaleContext.scaleFor(Routes.REPORTS, null, configured),
+            0f,
         )
     }
 

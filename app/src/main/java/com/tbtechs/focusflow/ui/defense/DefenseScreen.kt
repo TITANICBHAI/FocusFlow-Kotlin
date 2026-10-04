@@ -26,12 +26,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.FormatListBulleted
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Lock
@@ -97,7 +94,7 @@ import kotlinx.coroutines.launch
  * The Defense destination.
  *
  * Implements the React design system with matching cards, icons, color tokens,
- * floating protection notices, and guarded toggle security checks.
+ * and guarded toggle security checks.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +107,6 @@ fun DefenseScreen(
     onOpenVpnBlockList: () -> Unit = {},
     onOpenPasswordProtection: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
-    onOpenHowToUse: () -> Unit = {},
     onOpenLauncher: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
 ) {
@@ -119,11 +115,6 @@ fun DefenseScreen(
     val allowanceUsage by settingsViewModel.allowanceUsage.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showHint by remember(settings.defenseHintDismissed) { mutableStateOf(!settings.defenseHintDismissed) }
-    var showHelp by remember(settings.defenseHelpDismissed) { mutableStateOf(!settings.defenseHelpDismissed) }
-    var showProtectionStatus by remember(settings.protectionStatusBannerDismissed) {
-        mutableStateOf(!settings.protectionStatusBannerDismissed)
-    }
     var allowanceVisible by remember { mutableStateOf(false) }
     var schedulesVisible by remember { mutableStateOf(false) }
     var nuclearVisible by remember { mutableStateOf(false) }
@@ -236,169 +227,6 @@ fun DefenseScreen(
                 verticalArrangement = Arrangement.spacedBy(dimensions.sectionSpacing),
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
-
-                if (blockActive && showProtectionStatus) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF064E3B).copy(alpha = 0.45f))
-                            .border(1.dp, Color(0xFF34D399).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                            .padding(12.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Shield,
-                                contentDescription = null,
-                                tint = Color(0xFF34D399),
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Protection is active",
-                                    fontSize = 14.scaledSp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkTextPrimary,
-                                )
-                                Text(
-                                    "This screen is still responsive. Settings that could weaken the active block are protected or require your defense password.",
-                                    fontSize = 12.scaledSp,
-                                    lineHeight = 17.scaledSp,
-                                    color = DarkTextSecondary,
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    showProtectionStatus = false
-                                    update(settings.copy(protectionStatusBannerDismissed = true))
-                                },
-                                modifier = Modifier.size(40.dp),
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Close,
-                                    contentDescription = "Dismiss protection status",
-                                    tint = DarkTextMuted,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Hint Banner matching 3a.jpg
-                if (showHint) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                             .clip(RoundedCornerShape(10.dp))
-                            .background(BrandPrimary.copy(alpha = 0.12f))
-                             .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                             .padding(12.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Info,
-                                contentDescription = null,
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Text(
-                                text = "Password Protection has its own page below the blocking tools, so your security settings stay easy to find.",
-                                fontSize = 13.scaledSp,
-                                lineHeight = 18.scaledSp,
-                                color = DarkTextPrimary,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Dismiss",
-                                tint = DarkTextMuted,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable {
-                                        showHint = false
-                                        update(settings.copy(defenseHintDismissed = true))
-                                    },
-                            )
-                        }
-                    }
-                }
-
-                // Help Banner matching 3a.jpg
-                if (showHelp) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                             .clip(RoundedCornerShape(10.dp))
-                            .background(BrandPrimary.copy(alpha = 0.12f))
-                             .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                             .padding(12.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Icon(
-                                Icons.Outlined.HelpOutline,
-                                contentDescription = null,
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    text = "Not sure what to do?",
-                                    fontSize = 14.scaledSp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkTextPrimary,
-                                )
-                                Text(
-                                    text = "Start with Focus to schedule a task, or open How to Use for a quick walkthrough of blocking and protection.",
-                                    fontSize = 12.scaledSp,
-                                    lineHeight = 17.scaledSp,
-                                    color = DarkTextSecondary,
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable(onClick = onOpenHowToUse)
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Text(
-                                        text = "Open How to Use",
-                                        fontSize = 13.scaledSp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = BrandPrimary,
-                                    )
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.ArrowForward,
-                                        contentDescription = null,
-                                        tint = BrandPrimary,
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                }
-                            }
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Dismiss",
-                                tint = DarkTextMuted,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable {
-                                        showHelp = false
-                                        update(settings.copy(defenseHelpDismissed = true))
-                                    },
-                            )
-                        }
-                    }
-                }
 
                 // Section: ALWAYS-ON BLOCKING
                 DefenseSection("ALWAYS-ON BLOCKING") {

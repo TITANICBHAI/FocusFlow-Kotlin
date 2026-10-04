@@ -1,6 +1,13 @@
 # Text Size Settings — Architecture Plan
 
-Scope: adjustable text size in FocusFlow, via a continuous % slider — one **General** default plus optional per-tab overrides for **Focus, Stats, Settings, Defense**. **Home/Schedule is deliberately excluded and insulated** — Himanshu is tuning its sizes by hand, so this system must never touch it, even indirectly.
+> **Scope update — 2026-10-04:** The earlier Home/Schedule 100% pin and flat
+> slider layout are superseded by [Batch 07](PROJECT_WORK_TRACKER.md#batch-07--schedule-text-size-and-focusdefense-layout-fixes)
+> and the [Tab Screen Customization Plan](TAB_SCREEN_CUSTOMIZATION_PLAN.md).
+> Schedule now has an optional override, and text-size controls are to be
+> organized by expandable tab and screen hierarchy. Where this historical
+> architecture note conflicts, follow the current plan.
+
+Scope: adjustable text size in FocusFlow, via a continuous % slider — one **General** default plus optional per-tab overrides for **Schedule, Focus, Stats, Settings, Defense**.
 
 Everything below was verified directly against `main.zip` (the uploaded Kotlin/Compose source) — file paths, line numbers, and existing patterns are quoted from the real files, not assumed.
 

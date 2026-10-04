@@ -4,6 +4,15 @@
 > [PROJECT_WORK_TRACKER.md](PROJECT_WORK_TRACKER.md). Use this file for the
 > detailed Text Size status and evidence; keep both records synchronized.
 
+## Current scope update — 2026-10-04
+
+The original Home/Schedule 100% pin and flat slider arrangement are superseded
+by [Batch 07](PROJECT_WORK_TRACKER.md#batch-07--schedule-text-size-and-focusdefense-layout-fixes)
+and the [tab customization plan](TAB_SCREEN_CUSTOMIZATION_PLAN.md). Schedule
+now needs its own optional override, while tab/screen controls must be organized
+hierarchically rather than displayed as one flat list. Source changes are
+implemented, with Android compilation and tests still unverified.
+
 ## Reference documents
 
 - [Project work tracker](PROJECT_WORK_TRACKER.md) — batch-level owners, progress, evidence, and blockers.
@@ -21,6 +30,7 @@ The two uploaded references were filed under their stable names with the numeric
 | Work item | Source | Status | Notes |
 |---|---|---|---|
 | Core settings, persistence, theme, tab wiring, settings controls, and block overlay | Prompt A in `TEXT_SIZE_PROMPTS.md` | Implemented; Android verification blocked | Batch 02 source changes are in place; a SharedPreferences round-trip/reset instrumentation test was added. Gradle cannot start because no Java executable or `JAVA_HOME` is configured. |
+| Schedule override and hierarchical tab controls | Batch 07 in `PROJECT_WORK_TRACKER.md` | Implemented; Android verification blocked | Schedule has a nullable inheriting override and its UI is grouped under expandable tab rows. Route/persistence test source was updated; the Gradle wrapper cannot start without Java/`JAVA_HOME`. Per-screen customization remains planned in Batch 06. |
 | Scoped `.sp` to `.scaledSp` rollout | Prompt B in `TEXT_SIZE_PROMPTS.md` | Implemented; Android verification blocked | 547 eligible literals converted in 32 Prompt B files. User directed source-only work to proceed while Batches 02 and 03 Android verification remains blocked; this does not claim those checks passed. |
 | Route-origin scale context for secondary screens and shared dialogs/sheets | §12 in `TEXT_SIZE_PLAN.md`; Prompt A | Implemented; Android verification blocked | Batch 03 maps tab-owned destinations to their owning tab, shared `ACTIVE`, `PERMISSIONS`, and `HOW_TO_USE` to the opening tab, and direct entries to General. Inline surfaces inherit; global SideMenu and Stats QuickBlockSheet receive explicit context. |
 | Integration, verification, and final handoff | Batch 05 in `PROJECT_WORK_TRACKER.md` | Implemented; Android verification blocked | Static source and scope checks pass; persistence/route tests and Android build could not run because Java and Android SDK tooling are absent. See the Batch 05 record below. |
@@ -29,7 +39,7 @@ The two uploaded references were filed under their stable names with the numeric
 
 ## Completion checks
 
-- [ ] Complete Prompt A and verify General and per-tab preference persistence, reset-to-inherit, and Home remaining at 100%. The persistence test is present, but runtime verification remains blocked; see Batch 05.
+- [ ] Verify General and all tab override persistence/reset behavior, including Schedule inheriting General until customized. Android runtime verification remains blocked; see Batches 05 and 07.
 - [x] Complete Prompt B only in its listed files and report replacements and skipped exceptions. 547 conversions, zero skipped exception sites; Android compilation remains unverified, and Batches 02 and 03 remain “Implemented; verification blocked.”
 - [x] Verify the route/provider mapping across §12, including shared destinations, caller-owned sheets, and Home-origin UI. `RouteTextScaleContextTest` covers caller mapping; Android execution remains blocked.
 - [x] Confirm Stats override limitations and all other documented scope boundaries. The current exact scan finds 82 Stats, 41 shared-common, 65 Home, 23 onboarding, and other out-of-scope raw targets; Stats/shared typography is not fully covered by per-tab overrides.

@@ -71,6 +71,7 @@ import com.tbtechs.focusflow.data.model.AllowedAppPreset
 import com.tbtechs.focusflow.data.model.BLOCK_ALL_SENTINEL
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -159,9 +160,28 @@ fun AppPickerSheet(
         }
     }
 
-    val filteredApps = remember(apps, search) {
+    val missingSelectedApps = remember(selected, apps, loading, loadError) {
+        if (loading) {
+            emptyList()
+        } else {
+            val installedPackages = apps.mapTo(mutableSetOf()) { it.packageName }
+            selected.asSequence()
+                .filterNot { it in installedPackages }
+                .map { packageName ->
+                    missingInstalledAppInfo(
+                        packageName = packageName,
+                        label = if (loadError == null) "App not installed" else "App details unavailable",
+                    )
+                }
+                .toList()
+        }
+    }
+    val displayedApps = remember(apps, missingSelectedApps) {
+        (apps + missingSelectedApps).distinctBy { it.packageName }
+    }
+    val filteredApps = remember(displayedApps, search) {
         val query = search.trim().lowercase()
-        apps.filter { app ->
+        displayedApps.filter { app ->
             val matchesSearch = query.isEmpty() ||
                 app.appName.lowercase().contains(query) ||
                 app.packageName.lowercase().contains(query)

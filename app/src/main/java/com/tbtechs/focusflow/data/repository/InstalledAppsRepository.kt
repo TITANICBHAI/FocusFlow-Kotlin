@@ -2,8 +2,11 @@ package com.tbtechs.focusflow.data.repository
 
 import android.content.Context
 import android.graphics.drawable.Drawable
-import android.view.inputmethod.InputMethodManager
 import android.content.pm.PackageManager
+import android.os.SystemClock
+import android.view.inputmethod.InputMethodManager
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * An installed application visible to FocusFlow's app-selection surfaces.
@@ -16,7 +19,20 @@ data class InstalledAppInfo(
     val appName: String,
     val isIme: Boolean,
     val icon: Drawable?,
+    val isInstalled: Boolean = true,
 )
+
+fun missingInstalledAppInfo(
+    packageName: String,
+    label: String = "App not installed",
+): InstalledAppInfo =
+    InstalledAppInfo(
+        packageName = packageName,
+        appName = label,
+        isIme = false,
+        icon = null,
+        isInstalled = false,
+    )
 
 /**
  * InstalledAppsRepository
@@ -30,6 +46,39 @@ class InstalledAppsRepository(context: Context) {
 
     suspend fun getInstalledApps(
         onAppLoaded: (suspend (InstalledAppInfo) -> Unit)? = null,
+    ): List<InstalledAppInfo> {
+        var servedFromCache = false
+        val apps = cacheMutex.withLock {
+            val now = SystemClock.elapsedRealtime()
+            val cached = cachedCatalog
+                ?.takeIf {
+                    it.packageName == appContext.packageName &&
+                        now - it.createdAtElapsedMs < CACHE_TTL_MS
+                }
+            if (cached != null) {
+                servedFromCache = true
+                cached.apps
+            } else {
+                loadInstalledApps(onAppLoaded).also { loaded ->
+                    cachedCatalog = CachedCatalog(
+                        packageName = appContext.packageName,
+                        createdAtElapsedMs = SystemClock.elapsedRealtime(),
+                        apps = loaded,
+                    )
+                }
+            }
+        }
+        if (servedFromCache) apps.forEach { onAppLoaded?.invoke(it) }
+        return apps
+    }
+
+    /** Forces the next request to refresh package metadata from Android. */
+    fun invalidateCache() {
+        cachedCatalog = null
+    }
+
+    private suspend fun loadInstalledApps(
+        onAppLoaded: (suspend (InstalledAppInfo) -> Unit)?,
     ): List<InstalledAppInfo> {
         val packageManager = appContext.packageManager
         val imePackages = try {
@@ -62,7 +111,7 @@ class InstalledAppsRepository(context: Context) {
                 val appName = try {
                     packageManager.getApplicationLabel(application).toString()
                 } catch (_: Exception) {
-                    application.packageName
+                    "App name unavailable"
                 }
 
                 val icon = try {
@@ -81,7 +130,7 @@ class InstalledAppsRepository(context: Context) {
                 onAppLoaded?.invoke(app)
             }
         }
-        return result
+        return result.sortedBy { it.appName.lowercase() }
     }
 
     /**
@@ -108,5 +157,19 @@ class InstalledAppsRepository(context: Context) {
             onBatchLoaded(pending.toList())
         }
         return result
+    }
+
+    private data class CachedCatalog(
+        val packageName: String,
+        val createdAtElapsedMs: Long,
+        val apps: List<InstalledAppInfo>,
+    )
+
+    private companion object {
+        private const val CACHE_TTL_MS = 60_000L
+        private val cacheMutex = Mutex()
+
+        @Volatile
+        private var cachedCatalog: CachedCatalog? = null
     }
 }

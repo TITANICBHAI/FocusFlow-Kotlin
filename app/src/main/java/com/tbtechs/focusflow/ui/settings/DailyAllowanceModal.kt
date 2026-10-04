@@ -69,6 +69,7 @@ import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.repository.AllowanceUsage
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.ui.launcher.AppPickerSheet
 import com.tbtechs.focusflow.ui.common.rememberInstalledApps
@@ -228,12 +229,14 @@ fun DailyAllowanceModal(
         val query = search.trim().lowercase()
         val manualApps = drafts
             .filter { draft -> installedApps.none { it.packageName == draft.packageName } }
-            .map {
-                InstalledAppInfo(
-                    packageName = it.packageName,
-                    appName = it.packageName,
-                    isIme = false,
-                    icon = null,
+            .map { draft ->
+                missingInstalledAppInfo(
+                    packageName = draft.packageName,
+                    label = when {
+                        appsLoading -> "Checking app"
+                        installedAppsState.error != null -> "App details unavailable"
+                        else -> "App not installed"
+                    },
                 )
             }
         (installedApps + manualApps)
