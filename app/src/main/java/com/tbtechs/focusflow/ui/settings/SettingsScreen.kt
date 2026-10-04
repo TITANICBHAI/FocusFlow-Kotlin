@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Notifications
@@ -115,6 +116,7 @@ fun SettingsScreen(
     onReportIssue: (() -> Unit)? = null,
     onOpenStats: () -> Unit = {},
     onOpenChangelog: () -> Unit = {},
+    onOpenFocusFlowFileGuide: () -> Unit = {},
     onOpenPrivacyTerms: () -> Unit = {},
 ) {
     val dimensions = LocalFocusFlowDimensions.current
@@ -554,6 +556,13 @@ fun SettingsScreen(
                         title = "How to Use",
                         description = "Learn the modes, protections, and settings",
                         onClick = onOpenHowToUse,
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Description,
+                        title = "FocusFlow File Guide",
+                        description = "Project references and a copy-ready guide for coding agents",
+                        onClick = onOpenFocusFlowFileGuide,
                     )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsActionRow(

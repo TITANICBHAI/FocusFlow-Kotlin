@@ -13,6 +13,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val TEXT_SIZE_SETTINGS = "text_size_settings"
     const val SETTINGS_HOW_TO_USE = "settings_how_to_use"
+    const val FOCUSFLOW_FILE_GUIDE = "focusflow_file_guide"
     const val DEFENSE = "defense"
     const val ACTIVE = "active"
     const val ALWAYS_ON = "always_on"
@@ -43,6 +44,7 @@ object Routes {
         SETTINGS,
         TEXT_SIZE_SETTINGS,
         SETTINGS_HOW_TO_USE,
+        FOCUSFLOW_FILE_GUIDE,
         DEFENSE,
         ACTIVE,
         ALWAYS_ON,

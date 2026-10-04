@@ -80,8 +80,9 @@ import com.tbtechs.focusflow.ui.onboarding.OnboardingScreen
 import com.tbtechs.focusflow.ui.permissions.PermissionsScreen
 import com.tbtechs.focusflow.ui.profile.PasswordProtectionScreen
 import com.tbtechs.focusflow.ui.profile.UserProfileScreen
-import com.tbtechs.focusflow.ui.settings.SettingsScreen
+import com.tbtechs.focusflow.ui.settings.FocusFlowFileGuideScreen
 import com.tbtechs.focusflow.ui.settings.SettingsHowToUseScreen
+import com.tbtechs.focusflow.ui.settings.SettingsScreen
 import com.tbtechs.focusflow.ui.settings.TextSizeSettingsScreen
 import com.tbtechs.focusflow.ui.stats.ReportScreen
 import com.tbtechs.focusflow.ui.stats.ReportsScreen
@@ -292,6 +293,7 @@ fun FocusFlowNavGraph(
                                 onOpenPermissions = { navigate(Routes.PERMISSIONS) },
                                 onOpenStats = { navigate(Routes.STATS) },
                                 onOpenChangelog = { navigate(Routes.CHANGELOG) },
+                                onOpenFocusFlowFileGuide = { navigate(Routes.FOCUSFLOW_FILE_GUIDE) },
                                 onOpenPrivacyTerms = {
                                     navigate("${Routes.PRIVACY_POLICY}?revisit=true")
                                 },
@@ -333,6 +335,21 @@ fun FocusFlowNavGraph(
                             onBack = ::back,
                             onOpenRoute = ::navigate,
                         )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.FOCUSFLOW_FILE_GUIDE),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.FOCUSFLOW_FILE_GUIDE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.FOCUSFLOW_FILE_GUIDE) {
+                        FocusFlowFileGuideScreen(onBack = ::back)
                     }
                 }
             }

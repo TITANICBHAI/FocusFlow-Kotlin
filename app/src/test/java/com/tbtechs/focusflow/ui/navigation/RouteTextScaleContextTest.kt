@@ -157,6 +157,19 @@ class RouteTextScaleContextTest {
     }
 
     @Test
+    fun focusFlowFileGuideUsesSettingsTextScale() {
+        assertEquals(
+            1.4f,
+            RouteTextScaleContext.scaleFor(
+                Routes.FOCUSFLOW_FILE_GUIDE,
+                Routes.SETTINGS,
+                settings,
+            ),
+            0f,
+        )
+    }
+
+    @Test
     fun navigationCarriesSharedSourceAndSwitchesToOwnedTabForOwnedDestinations() {
         val activeCallers = listOf(
             Routes.HOME,

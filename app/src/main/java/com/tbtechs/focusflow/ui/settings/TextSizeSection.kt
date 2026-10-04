@@ -118,6 +118,7 @@ internal fun TextSizeSection(
             scale = settings.settingsTextScale,
             screens = listOf(
                 TextSizeTarget(Routes.SETTINGS, "Settings", "How to Use", Routes.SETTINGS_HOW_TO_USE, "The Settings guide."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "FocusFlow File Guide", Routes.FOCUSFLOW_FILE_GUIDE, "The copy-ready project guide opened from Settings."),
                 TextSizeTarget(Routes.SETTINGS, "Settings", "Profile", Routes.USER_PROFILE, "Your profile screen."),
                 TextSizeTarget(Routes.SETTINGS, "Settings", "Changelog", Routes.CHANGELOG, "The app changelog."),
                 TextSizeTarget(Routes.SETTINGS, "Settings", "Privacy Policy", Routes.PRIVACY_POLICY, "The privacy policy screen."),
