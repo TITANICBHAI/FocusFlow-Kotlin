@@ -39,6 +39,7 @@ import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
 import com.tbtechs.focusflow.ui.home.RefRed
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -129,7 +130,7 @@ fun AccessibilityRestrictedRecovery(
             ) {
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Lock, contentDescription = null, tint = RefText, modifier = Modifier.size(22.dp))
-                    Text("Accessibility recovery", modifier = Modifier.padding(start = 8.dp), color = RefText, fontSize = 18.sp)
+                    Text("Accessibility recovery", modifier = Modifier.padding(start = 8.dp), color = RefText, fontSize = 18.scaledSp)
                 }
                 Icon(
                     Icons.Outlined.Close,
@@ -148,35 +149,35 @@ fun AccessibilityRestrictedRecovery(
                 Text(
                     "Some Android installs need one extra step before FocusFlow can enable Accessibility.",
                     color = RefSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 17.sp,
+                    fontSize = 13.scaledSp,
+                    lineHeight = 17.scaledSp,
                 )
                 when (stage) {
                     RecoveryStage.QUESTION -> {
-                        Text("Did you tap the greyed-out FocusFlow entry in Accessibility settings?", color = RefText, fontSize = 13.sp)
+                        Text("Did you tap the greyed-out FocusFlow entry in Accessibility settings?", color = RefText, fontSize = 13.scaledSp)
                         FocusFlowPrimaryButton(text = "Yes, I tapped it", onClick = { stage = RecoveryStage.APP_INFO })
                         FocusFlowSecondaryButton(text = "No, I haven't tapped it", onClick = { stage = RecoveryStage.GREYED_ENTRY })
                         FocusFlowSecondaryButton(text = "Skip Accessibility", onClick = ::dismissRecovery)
                     }
                     RecoveryStage.GREYED_ENTRY -> {
-                        Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, read Android's explanation, then return here.", color = RefSecondary, fontSize = 13.sp, lineHeight = 17.sp)
+                        Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, read Android's explanation, then return here.", color = RefSecondary, fontSize = 13.scaledSp, lineHeight = 17.scaledSp)
                         if (!greyedReturned) {
                             FocusFlowPrimaryButton(text = "Open Accessibility Settings", icon = Icons.Outlined.OpenInNew, onClick = { openAccessibility(RecoveryStage.GREYED_ENTRY) })
                         } else {
-                            Text("Welcome back. Continue when you have tapped the greyed-out entry.", color = RefText, fontSize = 13.sp)
+                            Text("Welcome back. Continue when you have tapped the greyed-out entry.", color = RefText, fontSize = 13.scaledSp)
                             FocusFlowPrimaryButton(text = "I'm done — continue", onClick = { stage = RecoveryStage.APP_INFO })
                             FocusFlowSecondaryButton(text = "Open settings again", onClick = { openAccessibility(RecoveryStage.GREYED_ENTRY) })
                         }
                     }
                     RecoveryStage.APP_INFO -> {
-                        Text("In App Info, tap the three-dot menu and choose Allow restricted settings.", color = RefSecondary, fontSize = 13.sp, lineHeight = 17.sp)
-                        if (restricted) Text("Restricted settings are still blocked. Finish the steps, then check again.", color = RefRed, fontSize = 11.sp)
+                        Text("In App Info, tap the three-dot menu and choose Allow restricted settings.", color = RefSecondary, fontSize = 13.scaledSp, lineHeight = 17.scaledSp)
+                        if (restricted) Text("Restricted settings are still blocked. Finish the steps, then check again.", color = RefRed, fontSize = 11.scaledSp)
                         FocusFlowPrimaryButton(text = "Open FocusFlow App Info", icon = Icons.Outlined.OpenInNew, onClick = ::openAppInfo)
-                        Text("1. Open the three-dot menu\n2. Tap Allow restricted settings\n3. Return and check again", color = RefSecondary, fontSize = 11.sp, lineHeight = 17.sp)
+                        Text("1. Open the three-dot menu\n2. Tap Allow restricted settings\n3. Return and check again", color = RefSecondary, fontSize = 11.scaledSp, lineHeight = 17.scaledSp)
                         if (!fallbackExpanded) {
                             FocusFlowSecondaryButton(text = "Didn't tap the greyed-out entry?", onClick = { fallbackExpanded = true })
                         } else {
-                            Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, then come back.", color = RefSecondary, fontSize = 11.sp, lineHeight = 17.sp)
+                            Text("Open Accessibility settings, tap the greyed-out FocusFlow entry, then come back.", color = RefSecondary, fontSize = 11.scaledSp, lineHeight = 17.scaledSp)
                             if (!fallbackReturned) {
                                 FocusFlowPrimaryButton(text = "Open Accessibility Settings", icon = Icons.Outlined.OpenInNew, onClick = {
                                     fallbackReturned = false
@@ -203,16 +204,16 @@ fun AccessibilityRestrictedRecovery(
                     }
                     RecoveryStage.CHECKING -> {
                         CircularProgressIndicator(color = RefText, modifier = Modifier.size(22.dp))
-                        Text("Checking Android settings…", color = RefSecondary, fontSize = 13.sp)
+                        Text("Checking Android settings…", color = RefSecondary, fontSize = 13.scaledSp)
                     }
                     RecoveryStage.ENABLE -> {
                         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                             Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF34D399), modifier = Modifier.size(22.dp))
-                            Text("Restricted settings are ready.", modifier = Modifier.padding(start = 8.dp), color = RefText, fontSize = 13.sp)
+                            Text("Restricted settings are ready.", modifier = Modifier.padding(start = 8.dp), color = RefText, fontSize = 13.scaledSp)
                         }
-                        Text("One last step: return to Accessibility settings and enable FocusFlow.", color = RefSecondary, fontSize = 13.sp)
+                        Text("One last step: return to Accessibility settings and enable FocusFlow.", color = RefSecondary, fontSize = 13.scaledSp)
                         FocusFlowPrimaryButton(text = "Open Accessibility Settings", icon = Icons.Outlined.OpenInNew, onClick = { openAccessibility(RecoveryStage.ENABLE) })
-                        Text("The recovery stays open until Accessibility is actually enabled.", color = RefSecondary, fontSize = 11.sp)
+                        Text("The recovery stays open until Accessibility is actually enabled.", color = RefSecondary, fontSize = 11.scaledSp)
                     }
                     RecoveryStage.FALLBACK, RecoveryStage.SKIPPED -> Unit
                 }

@@ -53,6 +53,7 @@ import com.tbtechs.focusflow.ui.home.RefRed
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -182,7 +183,7 @@ fun VpnPermissionLostBanner(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             statusTitle(status),
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                             color = RefText,
                             maxLines = 1,
@@ -190,8 +191,8 @@ fun VpnPermissionLostBanner(
                         )
                         Text(
                             statusMessage(status),
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
+                            fontSize = 11.scaledSp,
+                            lineHeight = 16.scaledSp,
                             color = RefSecondary,
                         )
                     }
@@ -217,7 +218,7 @@ fun VpnPermissionLostBanner(
                             } else {
                                 Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
                             }
-                            Text("Restore VPN", color = Color.White, fontSize = 12.sp)
+                            Text("Restore VPN", color = Color.White, fontSize = 12.scaledSp)
                         }
                     }
                 }

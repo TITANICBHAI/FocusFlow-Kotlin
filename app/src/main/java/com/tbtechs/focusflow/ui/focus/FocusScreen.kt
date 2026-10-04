@@ -101,6 +101,7 @@ import com.tbtechs.focusflow.ui.theme.WarningBorder
 import com.tbtechs.focusflow.ui.theme.WarningIcon
 import com.tbtechs.focusflow.ui.theme.WarningSurface
 import com.tbtechs.focusflow.ui.theme.WarningText
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -349,9 +350,9 @@ fun FocusScreen(
                         Text(
                             "Always-On Blocking and related protection tools have moved to the Defense tab.",
                             modifier = Modifier.weight(1f),
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextPrimary,
-                            lineHeight = 18.sp,
+                            lineHeight = 18.scaledSp,
                         )
                         IconButton(
                             onClick = {
@@ -397,15 +398,15 @@ fun FocusScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Accessibility permission needed",
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = WarningText,
                             )
                             Text(
                                 "Focus Mode can't block apps without Accessibility access. Tap to open Settings.",
-                                fontSize = 12.sp,
+                                fontSize = 12.scaledSp,
                                 color = WarningText.copy(alpha = 0.88f),
-                                lineHeight = 16.sp,
+                                lineHeight = 16.scaledSp,
                             )
                         }
                         Icon(
@@ -624,7 +625,7 @@ fun FocusScreen(
                         ),
                     )
                     focusPinError?.let {
-                        Text(it, color = Color(0xFFF87171), fontSize = 12.sp)
+                        Text(it, color = Color(0xFFF87171), fontSize = 12.scaledSp)
                     }
                 }
             },
@@ -750,16 +751,16 @@ private fun ReadyToFocusPanel(
             Spacer(Modifier.height(12.dp))
             Text(
                 "Ready to focus?",
-                fontSize = 22.sp,
+                fontSize = 22.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 "Choose a task from Schedule to start a focused session.",
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 color = DarkTextSecondary,
-                lineHeight = 22.sp,
+                lineHeight = 22.scaledSp,
             )
             Spacer(Modifier.height(18.dp))
 
@@ -773,7 +774,7 @@ private fun ReadyToFocusPanel(
             ) {
                  Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Open Schedule", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("Open Schedule", fontSize = 15.scaledSp, fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(Modifier.height(12.dp))
@@ -810,13 +811,13 @@ private fun ReadyToFocusPanel(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             "Block Apps Without a Task",
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkTextPrimary,
                         )
                         Text(
                             "Start a standalone block",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -860,15 +861,15 @@ private fun OrphanedFocusPanel(onStop: () -> Unit) {
         }
         Text(
             "Focus session needs attention",
-            fontSize = 20.sp,
+            fontSize = 20.scaledSp,
             fontWeight = FontWeight.Bold,
             color = DarkTextPrimary,
         )
         Text(
             "A focus session is active, but its task is no longer available. Stop the session here to clear blocking safely.",
-            fontSize = 14.sp,
+            fontSize = 14.scaledSp,
             color = DarkTextSecondary,
-            lineHeight = 20.sp,
+            lineHeight = 20.scaledSp,
         )
         Button(
             onClick = onStop,
@@ -948,7 +949,7 @@ private fun TaskFocusPanel(
                         displayOverdue -> "Task ended — choose next action"
                         else -> "Task scheduled"
                     },
-                    fontSize = 14.sp,
+                    fontSize = 14.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isFocusing) Color(0xFF34D399) else if (displayOverdue) Color(0xFFF87171) else DarkTextSecondary,
                 )
@@ -973,27 +974,27 @@ private fun TaskFocusPanel(
                 ) {
                     Text(
                         text = task.remainingLabel(now),
-                        fontSize = 46.sp,
+                        fontSize = 46.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = (-1).sp,
+                        letterSpacing = (-1).scaledSp,
                         color = if (displayOverdue) Color(0xFFF87171) else BrandPrimary,
                     )
                     Text(
                         text = if (displayOverdue) "overdue" else "remaining",
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextMuted,
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = task.title,
-                        fontSize = 22.sp,
+                        fontSize = 22.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
                     Text(
                         text = "${task.startLabel()} – ${task.endLabel()}",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         color = DarkTextSecondary,
                     )
                     Spacer(Modifier.height(4.dp))
@@ -1012,13 +1013,13 @@ private fun TaskFocusPanel(
                     ) {
                         Text(
                              text = if (displayOverdue) "Overdue" else "${(progress * 100).toInt()}% complete",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = DarkTextSecondary,
                         )
                         if (task.tags.isNotEmpty()) {
                             Text(
                                 text = task.tags.joinToString(" ") { "#$it" },
-                                fontSize = 12.sp,
+                                fontSize = 12.scaledSp,
                                 color = BrandPrimary,
                             )
                         }
@@ -1073,13 +1074,13 @@ private fun TaskFocusPanel(
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             "Time's up — what next?",
-                            fontSize = 16.sp,
+                            fontSize = 16.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFFCA5A5),
                         )
                         Text(
                             "This task ran past its scheduled end. Choose an action to resolve it.",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = Color(0xFFFCA5A5).copy(alpha = 0.85f),
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1135,7 +1136,7 @@ private fun TaskFocusPanel(
                     ) {
                         Icon(Icons.Outlined.Security, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Activate Focus", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Activate Focus", fontSize = 16.scaledSp, fontWeight = FontWeight.SemiBold)
                     }
                 } else {
                     OutlinedButton(
@@ -1150,7 +1151,7 @@ private fun TaskFocusPanel(
                     ) {
                         Icon(Icons.Outlined.StopCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Stop Focus", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Stop Focus", fontSize = 15.scaledSp, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -1204,13 +1205,13 @@ private fun TaskFocusPanel(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     "Block apps while I work",
-                                    fontSize = 14.sp,
+                                    fontSize = 14.scaledSp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = DarkTextPrimary,
                                 )
                                 Text(
                                     "Run a standalone block alongside this task",
-                                    fontSize = 12.sp,
+                                    fontSize = 12.scaledSp,
                                     color = DarkTextSecondary,
                                 )
                             }
@@ -1246,7 +1247,7 @@ private fun TaskFocusPanel(
                         Text(
                             "Block running · ${settings.standaloneBlockPackages.size} apps · tap to manage",
                             color = Color(0xFFF87171),
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                         )
                     }
                 }
@@ -1260,9 +1261,9 @@ private fun TaskFocusPanel(
                     text = if (session?.allowedPackages.isNullOrEmpty()) "Allowed: all apps"
                     else "Allowed: ${session?.allowedPackages?.joinToString()}",
                     modifier = Modifier.padding(horizontal = 24.dp),
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     color = DarkTextMuted,
-                    lineHeight = 16.sp,
+                    lineHeight = 16.scaledSp,
                 )
             }
         }
@@ -1305,14 +1306,14 @@ private fun PomodoroStrip(
             ) {
                 Text(
                     if (breakActive) "☕ BREAK" else "🎯 WORK",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = if (breakActive) Color(0xFF10B981) else BrandPrimary,
                 )
                 Text(
                     if (breakActive) "${breakRemaining.focusDuration()} left"
                     else "${((workMs - elapsed).coerceAtLeast(0L)).focusDuration()} left",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                 )
@@ -1325,7 +1326,7 @@ private fun PomodoroStrip(
                 } else {
                     "${((workMs - elapsed).coerceAtLeast(0L)).focusDuration()} left in work session · $breakMinutes min break follows"
                 },
-                fontSize = 12.sp,
+                fontSize = 12.scaledSp,
                 color = DarkTextSecondary,
             )
             if (breakActive) {
@@ -1426,16 +1427,16 @@ private fun StandaloneBlockPanel(
             Spacer(Modifier.height(10.dp))
             Text(
                 "Apps Blocked",
-                fontSize = 22.sp,
+                fontSize = 22.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 "Standalone block is running. You can add more apps or extend the time, but cannot stop the block early.",
-                fontSize = 14.sp,
+                fontSize = 14.scaledSp,
                 color = DarkTextSecondary,
-                lineHeight = 20.sp,
+                lineHeight = 20.scaledSp,
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
             Spacer(Modifier.height(12.dp))
@@ -1456,17 +1457,17 @@ private fun StandaloneBlockPanel(
                 ) {
                     Text(
                         "BLOCK EXPIRES IN",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFF87171),
-                        letterSpacing = 1.sp,
+                        letterSpacing = 1.scaledSp,
                     )
                     Text(
                         text = remaining.focusDuration(),
-                        fontSize = 48.sp,
+                        fontSize = 48.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        letterSpacing = (-1).sp,
+                        letterSpacing = (-1).scaledSp,
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1480,7 +1481,7 @@ private fun StandaloneBlockPanel(
                         )
                         Text(
                             "${settings.standaloneBlockPackages.size} app${if (settings.standaloneBlockPackages.size == 1) "" else "s"} blocked · cannot stop early",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = DarkTextMuted,
                         )
                     }
@@ -1496,10 +1497,10 @@ private fun StandaloneBlockPanel(
             ) {
                 Text(
                     "ADD TIME",
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextMuted,
-                    letterSpacing = 0.8.sp,
+                    letterSpacing = 0.8.scaledSp,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1518,7 +1519,7 @@ private fun StandaloneBlockPanel(
                         ) {
                             Text(
                                 if (minutes >= 60) "+${minutes / 60}h" else "+${minutes}m",
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = BrandPrimary,
                             )
@@ -1548,7 +1549,7 @@ private fun StandaloneBlockPanel(
             ) {
                 Icon(Icons.Outlined.Block, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Add More Apps to Block", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("Add More Apps to Block", fontSize = 15.scaledSp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -1564,15 +1565,15 @@ private fun QuickPresetStrip(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
                 "QUICK PRESETS",
-                fontSize = 12.sp,
+                fontSize = 12.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextMuted,
-                letterSpacing = 0.8.sp,
+                letterSpacing = 0.8.scaledSp,
             )
             if (active) {
                 Text(
                     "adds apps +1h",
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     color = DarkTextMuted,
                 )
             }
@@ -1580,7 +1581,7 @@ private fun QuickPresetStrip(
         if (presets.isEmpty()) {
             Text(
                 "No saved presets yet. Use Add apps to create one.",
-                fontSize = 13.sp,
+                fontSize = 13.scaledSp,
                 color = DarkTextMuted,
             )
         } else {
@@ -1602,13 +1603,13 @@ private fun QuickPresetStrip(
                         Column {
                             Text(
                                 preset.name,
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = DarkTextPrimary,
                             )
                             Text(
                                 "${preset.packages.size} app${if (preset.packages.size == 1) "" else "s"} · ${if (active) "add +1h" else "starts 1 hour"}",
-                                fontSize = 11.sp,
+                                fontSize = 11.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }

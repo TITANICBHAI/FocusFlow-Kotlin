@@ -62,6 +62,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private data class KeywordPreset(
     val label: String,
@@ -179,15 +180,15 @@ fun KeywordBlockerScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Block by keyword",
-                                fontSize = 15.sp,
+                                fontSize = 15.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "When a blocked word appears in a URL, search bar, or on-screen text, the Accessibility Service redirects away from the content.",
-                                fontSize = 11.sp,
-                                lineHeight = 18.sp,
+                                fontSize = 11.scaledSp,
+                                lineHeight = 18.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -223,7 +224,7 @@ fun KeywordBlockerScreen(
                                 )
                                 Text(
                                     text = if (active) "Active" else "Inactive",
-                                    fontSize = 15.sp,
+                                    fontSize = 15.scaledSp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = if (active) Color(0xFF34D399) else DarkTextSecondary,
                                 )
@@ -232,7 +233,7 @@ fun KeywordBlockerScreen(
                             Text(
                                 text = if (active) "${words.size} keyword${if (words.size == 1) "" else "s"} on the block list"
                                 else "Add keywords below to start filtering content",
-                                fontSize = 11.sp,
+                                fontSize = 11.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -273,7 +274,7 @@ fun KeywordBlockerScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (active) "Manage Keywords" else "Add Keywords",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                     )
@@ -289,7 +290,7 @@ fun KeywordBlockerScreen(
                         Text(
                             text = "Clear all keywords",
                             color = Color(0xFFEF4444),
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                         )
                     }
                 }
@@ -313,7 +314,7 @@ fun KeywordBlockerScreen(
                             Text(
                                 "Locked — block is active. Keywords cannot be removed until it ends.",
                                 color = Color(0xFFFBBF24),
-                                 fontSize = 11.sp,
+                                 fontSize = 11.scaledSp,
                             )
                         }
                     }
@@ -325,15 +326,15 @@ fun KeywordBlockerScreen(
                 Column(modifier = Modifier.padding(top = 8.dp)) {
                     Text(
                         text = "QUICK PRESETS",
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
+                        letterSpacing = 1.scaledSp,
                         color = DarkTextSecondary,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Tap a category to add a curated set of keywords. You can edit the full list anytime.",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         color = DarkTextMuted,
                     )
                 }
@@ -371,21 +372,21 @@ fun KeywordBlockerScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = preset.label,
-                                fontSize = 15.sp,
+                                fontSize = 15.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = DarkTextPrimary,
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = preset.description,
-                                fontSize = 11.sp,
-                                lineHeight = 17.sp,
+                                fontSize = 11.scaledSp,
+                                lineHeight = 17.scaledSp,
                                 color = DarkTextSecondary,
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = if (allAdded) "All added ✓" else "+${preset.words.size} keywords",
-                                fontSize = 11.sp,
+                                fontSize = 11.scaledSp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (allAdded) Color(0xFF10B981) else BrandPrimary,
                             )
@@ -424,8 +425,8 @@ fun KeywordBlockerScreen(
                     )
                     Text(
                         text = "Keyword detection runs entirely on-device. Nothing is sent to the cloud. Accessibility service is required.",
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 12.scaledSp,
+                        lineHeight = 16.scaledSp,
                         color = DarkTextMuted,
                     )
                 }
@@ -483,7 +484,7 @@ fun KeywordBlockerScreen(
             title = { Text("Defense Password Required") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Enter your defense password to clear blocked keywords.", fontSize = 13.sp)
+                    Text("Enter your defense password to clear blocked keywords.", fontSize = 13.scaledSp)
                     OutlinedTextField(
                         value = pin,
                         onValueChange = { pin = it },
@@ -536,7 +537,7 @@ fun KeywordBlockerScreen(
                     else "Add ${preset.label}?",
                 )
             },
-            text = { Text(preset.description, fontSize = 13.sp) },
+            text = { Text(preset.description, fontSize = 13.scaledSp) },
             confirmButton = {
                 if (preset.words.isNotEmpty()) {
                     Button(

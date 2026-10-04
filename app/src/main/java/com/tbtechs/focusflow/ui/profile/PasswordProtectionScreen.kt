@@ -62,6 +62,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 /**
  * Password Protection hub.
@@ -93,7 +94,7 @@ fun PasswordProtectionScreen(
                 title = {
                     Text(
                         text = "Password Protection",
-                        fontSize = 18.sp,
+                        fontSize = 18.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -151,15 +152,15 @@ fun PasswordProtectionScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Dual-layer security",
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Focus Session Password locks in-progress sessions. Defense Password secures your block lists, settings, and prevents disabling protection.",
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
+                            fontSize = 13.scaledSp,
+                            lineHeight = 18.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -224,7 +225,7 @@ fun PasswordProtectionScreen(
                 Text(
                     text = it,
                     color = Color(0xFFEF4444),
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
@@ -275,7 +276,7 @@ fun PasswordProtectionScreen(
                 titleContentColor = DarkTextPrimary,
                 textContentColor = DarkTextSecondary,
                 title = { Text("Remove ${active.pinType.label} Password?") },
-                text = { Text("This removes password authentication. Features will no longer be locked behind this password.", fontSize = 13.sp) },
+                text = { Text("This removes password authentication. Features will no longer be locked behind this password.", fontSize = 13.scaledSp) },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -337,7 +338,7 @@ private fun PasswordCard(
             ) {
                 Text(
                     text = title,
-                    fontSize = 16.sp,
+                    fontSize = 16.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                 )
@@ -356,7 +357,7 @@ private fun PasswordCard(
                         }
                         Text(
                             text = badge,
-                            fontSize = 11.sp,
+                            fontSize = 11.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                             color = if (isSet) Color(0xFF34D399) else DarkTextMuted,
                         )
@@ -366,8 +367,8 @@ private fun PasswordCard(
 
             Text(
                 text = description,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+                fontSize = 13.scaledSp,
+                lineHeight = 18.scaledSp,
                 color = DarkTextSecondary,
             )
 

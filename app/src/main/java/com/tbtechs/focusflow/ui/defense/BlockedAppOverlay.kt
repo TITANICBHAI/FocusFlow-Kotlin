@@ -22,6 +22,7 @@ import com.tbtechs.focusflow.ui.home.RefBackground
 import com.tbtechs.focusflow.ui.home.RefMuted
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 /**
  * Compose counterpart for the mapped BlockedAppOverlay component.
@@ -50,15 +51,15 @@ fun BlockedAppOverlay(
         Text(
             "$appName is blocked",
             color = RefText,
-            fontSize = 22.sp,
+            fontSize = 22.scaledSp,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             modifier = Modifier.padding(top = 16.dp),
         )
         Text(
             "FocusFlow is protecting your current focus plan.",
             color = RefSecondary,
-            fontSize = 13.sp,
-            lineHeight = 19.sp,
+            fontSize = 13.scaledSp,
+            lineHeight = 19.scaledSp,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
         )
         FocusFlowPrimaryButton(
@@ -69,7 +70,7 @@ fun BlockedAppOverlay(
         Text(
             "This restriction will lift when the active focus plan ends.",
             color = RefMuted,
-            fontSize = 11.sp,
+            fontSize = 11.scaledSp,
             modifier = Modifier.padding(top = 12.dp),
         )
     }

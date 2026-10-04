@@ -60,6 +60,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private data class GuideStep(val heading: String, val body: String)
 private data class GuideSection(val title: String, val icon: ImageVector, val iconBg: Color, val iconTint: Color, val steps: List<GuideStep>)
@@ -162,7 +163,7 @@ fun HowToUseScreen(
                         TextButton(onClick = onGetStarted) {
                             Text(
                                 text = "Skip",
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = DarkTextSecondary,
                             )
@@ -189,14 +190,14 @@ fun HowToUseScreen(
             ) {
                 Text(
                     text = if (isOnboarding) "Welcome to FocusFlow" else "How to Use FocusFlow",
-                    fontSize = 24.sp,
+                    fontSize = 24.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = if (isOnboarding) "A quick tour before you get started" else "Understanding blocking modes and defenses",
-                    fontSize = 14.sp,
+                    fontSize = 14.scaledSp,
                     color = DarkTextSecondary,
                     textAlign = TextAlign.Center,
                 )
@@ -241,7 +242,7 @@ fun HowToUseScreen(
                             // Title
                             Text(
                                 text = section.title,
-                                fontSize = 16.sp,
+                                fontSize = 16.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                                 modifier = Modifier.weight(1f),
@@ -266,21 +267,21 @@ fun HowToUseScreen(
                                     ) {
                                         Text(
                                             text = "${stepIndex + 1}.",
-                                            fontSize = 14.sp,
+                                            fontSize = 14.scaledSp,
                                             fontWeight = FontWeight.Bold,
                                             color = BrandPrimary,
                                         )
                                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                             Text(
                                                 text = step.heading,
-                                                fontSize = 14.sp,
+                                                fontSize = 14.scaledSp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = DarkTextPrimary,
                                             )
                                             Text(
                                                 text = step.body,
-                                                fontSize = 13.sp,
-                                                lineHeight = 18.sp,
+                                                fontSize = 13.scaledSp,
+                                                lineHeight = 18.scaledSp,
                                                 color = DarkTextSecondary,
                                             )
                                         }
@@ -310,7 +311,7 @@ fun HowToUseScreen(
                     ) {
                         Text(
                             text = "Got it — let's start",
-                            fontSize = 16.sp,
+                            fontSize = 16.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                         )

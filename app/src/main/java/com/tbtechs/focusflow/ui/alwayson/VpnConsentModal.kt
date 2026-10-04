@@ -35,6 +35,7 @@ import com.tbtechs.focusflow.ui.home.RefCard
 import com.tbtechs.focusflow.ui.home.RefMuted
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 /**
  * Plain-language explanation shown immediately before Android's VPN consent
@@ -75,7 +76,7 @@ fun VpnConsentModal(
                     .fillMaxWidth()
                     .padding(top = 16.dp),
                 color = RefText,
-                fontSize = 18.sp,
+                fontSize = 18.scaledSp,
                 fontWeight = FontWeight.Bold,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
@@ -85,8 +86,8 @@ fun VpnConsentModal(
                     .fillMaxWidth()
                     .padding(top = 12.dp),
                 color = RefSecondary,
-                fontSize = 13.sp,
-                lineHeight = 20.sp,
+                fontSize = 13.scaledSp,
+                lineHeight = 20.scaledSp,
             )
             Column(
                 modifier = Modifier.padding(top = 12.dp),
@@ -113,8 +114,8 @@ fun VpnConsentModal(
                     Text(
                         "Android only allows one active VPN at a time. If you use a work or privacy VPN, FocusFlow may need to temporarily take over for the session.",
                         color = RefSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 13.scaledSp,
+                        lineHeight = 20.scaledSp,
                     )
                 }
             }
@@ -146,6 +147,6 @@ private fun ConsentFact(
             contentDescription = null,
             tint = RefBlue,
         )
-        Text(text, color = RefSecondary, fontSize = 13.sp, lineHeight = 20.sp)
+        Text(text, color = RefSecondary, fontSize = 13.scaledSp, lineHeight = 20.scaledSp)
     }
 }

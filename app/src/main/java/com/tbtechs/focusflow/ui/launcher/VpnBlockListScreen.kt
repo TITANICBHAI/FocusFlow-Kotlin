@@ -69,6 +69,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
@@ -224,7 +225,7 @@ fun VpnBlockListScreen(
                             text = if (selected.isEmpty()) "Save (No apps selected)"
                             else "Save ${selected.size} Blocked App${if (selected.size == 1) "" else "s"}",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             color = Color.White,
                         )
                     }
@@ -269,15 +270,15 @@ fun VpnBlockListScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "24/7 Network Isolation",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Selected apps have all internet access routed to an offline loopback VPN. No external servers or sessions required. Operates in addition to visual overlays.",
-                            fontSize = 11.sp,
-                            lineHeight = 17.sp,
+                            fontSize = 11.scaledSp,
+                            lineHeight = 17.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -296,7 +297,7 @@ fun VpnBlockListScreen(
                     Text(
                         "Removing blocked apps is locked while Focus Mode or Standalone Block is active.",
                         color = Color(0xFFFBBF24),
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                     )
                 }
             }
@@ -317,7 +318,7 @@ fun VpnBlockListScreen(
                         }
                     }
                 },
-                placeholder = { Text("Search installed apps", color = DarkTextMuted, fontSize = 13.sp) },
+                placeholder = { Text("Search installed apps", color = DarkTextMuted, fontSize = 13.scaledSp) },
                 shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = DarkSurfaceVariant,
@@ -330,7 +331,7 @@ fun VpnBlockListScreen(
             )
 
             error?.let {
-                Text(it, color = Color(0xFFEF4444), fontSize = 12.sp)
+                Text(it, color = Color(0xFFEF4444), fontSize = 12.scaledSp)
             }
 
             if (loading && apps.isEmpty()) {
@@ -350,7 +351,7 @@ fun VpnBlockListScreen(
                     Text(
                         if (search.isBlank()) "No installed apps found" else "No apps match \"$search\"",
                         color = DarkTextSecondary,
-                        fontSize = 14.sp,
+                        fontSize = 14.scaledSp,
                     )
                 }
             } else {
@@ -385,7 +386,7 @@ fun VpnBlockListScreen(
                                     ) {
                                         Text(
                                             text = app.appName,
-                                    fontSize = 13.sp,
+                                    fontSize = 13.scaledSp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkTextPrimary,
                                             maxLines = 1,
@@ -400,7 +401,7 @@ fun VpnBlockListScreen(
                                             ) {
                                                 Text(
                                                     "Overlay",
-                                                    fontSize = 9.sp,
+                                                    fontSize = 9.scaledSp,
                                                     color = Color(0xFFD1D5DB),
                                                     fontWeight = FontWeight.Bold,
                                                 )
@@ -409,7 +410,7 @@ fun VpnBlockListScreen(
                                     }
                                     Text(
                                         text = app.packageName,
-                                        fontSize = 11.sp,
+                                        fontSize = 11.scaledSp,
                                         color = DarkTextSecondary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -439,7 +440,7 @@ fun VpnBlockListScreen(
                                     strokeWidth = 2.dp,
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.sp)
+                                Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.scaledSp)
                             }
                         }
                     }
@@ -455,7 +456,7 @@ fun VpnBlockListScreen(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Clear VPN Block List?") },
-            text = { Text("This will re-enable network connectivity for all apps on this list.", fontSize = 13.sp) },
+            text = { Text("This will re-enable network connectivity for all apps on this list.", fontSize = 13.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -489,7 +490,7 @@ fun VpnBlockListScreen(
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = it },
-                    placeholder = { Text("Enter Defense Password", color = DarkTextMuted, fontSize = 13.sp) },
+                    placeholder = { Text("Enter Defense Password", color = DarkTextMuted, fontSize = 13.scaledSp) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(

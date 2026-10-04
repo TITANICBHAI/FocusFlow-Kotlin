@@ -65,6 +65,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.ui.home.FocusFlowModalField
 
 private class PendingWordAction(val action: () -> Unit)
@@ -129,7 +130,7 @@ fun BlockedWordsModal(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onClose) {
-                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
+                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.scaledSp)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -143,7 +144,7 @@ fun BlockedWordsModal(
                     )
                     Text(
                         text = "Blocked Keywords",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -153,7 +154,7 @@ fun BlockedWordsModal(
                         text = "Save",
                         color = BrandPrimary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                     )
                 }
             }
@@ -175,15 +176,15 @@ fun BlockedWordsModal(
                         Text(
                             "Block is active — existing keywords are locked. You can add new keywords.",
                             color = Color(0xFFFBBF24),
-                            fontSize = 11.sp,
+                            fontSize = 11.scaledSp,
                         )
                     }
                 }
             } else {
                 Text(
                     text = "If a blocked word appears in a URL, search, or on-screen text during an active block, FocusFlow redirects away.",
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
+                    fontSize = 12.scaledSp,
+                    lineHeight = 16.scaledSp,
                     color = DarkTextSecondary,
                 )
             }
@@ -198,7 +199,7 @@ fun BlockedWordsModal(
                     value = input,
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Add word or phrase…", color = DarkTextMuted, fontSize = 14.sp) },
+                    placeholder = { Text("Add word or phrase…", color = DarkTextMuted, fontSize = 14.scaledSp) },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -240,13 +241,13 @@ fun BlockedWordsModal(
             ) {
                 Text(
                     text = if (localWords.isEmpty()) "No keywords added" else "${localWords.size} keyword${if (localWords.size == 1) "" else "s"}",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     fontWeight = FontWeight.Medium,
                     color = DarkTextSecondary,
                 )
                 if (localWords.isNotEmpty() && !locked) {
                     TextButton(onClick = { requestRemoval { confirmClear = true } }) {
-                        Text("Clear all", color = Color(0xFFEF4444), fontSize = 12.sp)
+                        Text("Clear all", color = Color(0xFFEF4444), fontSize = 12.scaledSp)
                     }
                 }
             }
@@ -276,14 +277,14 @@ fun BlockedWordsModal(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "No keywords yet",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         fontWeight = FontWeight.SemiBold,
                         color = DarkTextPrimary,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Add trigger words or phrases above to block them.",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         color = DarkTextMuted,
                     )
                 }
@@ -312,7 +313,7 @@ fun BlockedWordsModal(
                             ) {
                                 Text(
                                     text = word,
-                                    fontSize = 13.sp,
+                                    fontSize = 13.scaledSp,
                                     color = DarkTextPrimary,
                                 )
                                 Icon(
@@ -340,7 +341,7 @@ fun BlockedWordsModal(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Clear All Keywords", fontWeight = FontWeight.Bold) },
-            text = { Text("Remove all blocked keywords from this list?", fontSize = 13.sp, lineHeight = 18.sp) },
+            text = { Text("Remove all blocked keywords from this list?", fontSize = 13.scaledSp, lineHeight = 18.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -376,7 +377,7 @@ fun BlockedWordsModal(
             title = { Text("Defense Password Required", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Enter your defense password to remove keywords.", fontSize = 13.sp, lineHeight = 18.sp)
+                    Text("Enter your defense password to remove keywords.", fontSize = 13.scaledSp, lineHeight = 18.scaledSp)
                     OutlinedTextField(
                         value = pin,
                         onValueChange = { pin = it; pinError = null },
@@ -394,7 +395,7 @@ fun BlockedWordsModal(
                             unfocusedTextColor = DarkTextPrimary,
                         ),
                     )
-                    pinError?.let { Text(it, color = Color(0xFFF87171), fontSize = 12.sp) }
+                    pinError?.let { Text(it, color = Color(0xFFF87171), fontSize = 12.scaledSp) }
                 }
             },
             confirmButton = {
@@ -434,7 +435,7 @@ fun BlockedWordsModal(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text(title, fontWeight = FontWeight.Bold) },
-            text = { Text(body, fontSize = 13.sp, lineHeight = 18.sp) },
+            text = { Text(body, fontSize = 13.scaledSp, lineHeight = 18.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = { message = null },

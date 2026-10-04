@@ -57,6 +57,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.ui.settings.dailyAllowanceEntriesFromJson
 import kotlinx.coroutines.delay
 import java.text.DateFormat
@@ -162,17 +163,17 @@ fun StandaloneBlockSetupScreen(
                                 ) {
                                     Text(
                                         text = if (active) "BLOCK ACTIVE" else "STANDALONE",
-                                        fontSize = 10.sp,
+                                        fontSize = 10.scaledSp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (active) Color(0xFFF87171) else BrandPrimary,
-                                        letterSpacing = 0.8.sp,
+                                        letterSpacing = 0.8.scaledSp,
                                     )
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = if (active) "Enforcing Restrictions" else "Block Apps Without a Task",
-                                fontSize = 15.sp,
+                                fontSize = 15.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
@@ -191,20 +192,20 @@ fun StandaloneBlockSetupScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     "TIME REMAINING",
-                                    fontSize = 11.sp,
+                                    fontSize = 11.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkTextMuted,
-                                    letterSpacing = 0.8.sp,
+                                    letterSpacing = 0.8.scaledSp,
                                 )
                                 Text(
                                     text = "${remainingMinutes / 60}h ${remainingMinutes % 60}m",
-                                    fontSize = 28.sp,
+                                    fontSize = 28.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFFF87171),
                                 )
                                 Text(
                                     text = "${settings.standaloneBlockPackages.size} app${if (settings.standaloneBlockPackages.size == 1) "" else "s"} blocked until ${DateFormat.getTimeInstance(DateFormat.SHORT).format(settings.standaloneBlockUntilMs)}",
-                                    fontSize = 13.sp,
+                                    fontSize = 13.scaledSp,
                                     color = DarkTextSecondary,
                                 )
                             }
@@ -214,10 +215,10 @@ fun StandaloneBlockSetupScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 "QUICK EXTEND",
-                                fontSize = 11.sp,
+                                fontSize = 11.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextMuted,
-                                letterSpacing = 0.8.sp,
+                                letterSpacing = 0.8.scaledSp,
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -246,7 +247,7 @@ fun StandaloneBlockSetupScreen(
                                     ) {
                                         Text(
                                             text = label,
-                                            fontSize = 13.sp,
+                                            fontSize = 13.scaledSp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = BrandPrimary,
                                         )
@@ -257,9 +258,9 @@ fun StandaloneBlockSetupScreen(
                     } else {
                         Text(
                             text = "Block selected apps until a time you choose.",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
-                            lineHeight = 18.sp,
+                            lineHeight = 18.scaledSp,
                         )
 
                         // Feature Highlights
@@ -271,9 +272,9 @@ fun StandaloneBlockSetupScreen(
                                 .background(DarkSurfaceVariant.copy(alpha = 0.5f))
                                 .padding(12.dp),
                         ) {
-                            Text("• Cannot end early once active", fontSize = 12.sp, color = DarkTextSecondary)
-                            Text("• Optional daily limits per app", fontSize = 12.sp, color = DarkTextSecondary)
-                            Text("• Optional network blocking", fontSize = 12.sp, color = DarkTextSecondary)
+                            Text("• Cannot end early once active", fontSize = 12.scaledSp, color = DarkTextSecondary)
+                            Text("• Optional daily limits per app", fontSize = 12.scaledSp, color = DarkTextSecondary)
+                            Text("• Optional network blocking", fontSize = 12.scaledSp, color = DarkTextSecondary)
                         }
                     }
                 }

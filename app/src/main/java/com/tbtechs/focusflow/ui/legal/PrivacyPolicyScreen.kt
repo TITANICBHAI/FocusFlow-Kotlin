@@ -83,6 +83,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -220,13 +221,13 @@ fun PrivacyPolicyScreen(
                 }
                 Text(
                     text = if (chinese) "隐私与条款" else "Privacy & Terms",
-                    fontSize = 24.sp,
+                    fontSize = 24.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                 )
                 Text(
                     text = if (chinese) "您的数据绝不会离开此设备。" else "Your data never leaves this device.",
-                    fontSize = 14.sp,
+                    fontSize = 14.scaledSp,
                     color = DarkTextSecondary,
                     textAlign = TextAlign.Center,
                 )
@@ -264,7 +265,7 @@ fun PrivacyPolicyScreen(
                         )
                         Text(
                             text = if (chinese) "隐私政策" else "Privacy Policy",
-                            fontSize = 14.sp,
+                            fontSize = 14.scaledSp,
                             fontWeight = if (isPrivacy) FontWeight.Bold else FontWeight.Medium,
                             color = if (isPrivacy) BrandPrimary else DarkTextSecondary,
                         )
@@ -293,7 +294,7 @@ fun PrivacyPolicyScreen(
                         )
                         Text(
                             text = if (chinese) "服务条款" else "Terms of Service",
-                            fontSize = 14.sp,
+                            fontSize = 14.scaledSp,
                             fontWeight = if (isTerms) FontWeight.Bold else FontWeight.Medium,
                             color = if (isTerms) BrandPrimary else DarkTextSecondary,
                         )
@@ -347,8 +348,8 @@ fun PrivacyPolicyScreen(
                         Text(
                             text = if (chinese) "我已阅读并同意隐私政策和服务条款。" else "I have read and agree to the Privacy Policy and Terms of Service.",
                             color = DarkTextPrimary,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
+                            fontSize = 14.scaledSp,
+                            lineHeight = 20.scaledSp,
                             modifier = Modifier.clickable { accepted = !accepted },
                         )
                     }
@@ -377,7 +378,7 @@ fun PrivacyPolicyScreen(
                         ) {
                             Text(
                                 text = if (chinese) "我理解并继续" else "I Understand and Continue",
-                                fontSize = 16.sp,
+                                fontSize = 16.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (accepted) Color.White else DarkTextMuted,
                             )
@@ -414,7 +415,7 @@ fun PrivacyPolicyScreen(
                         )
                         Text(
                             text = if (chinese) "拒绝并退出" else "Decline & Exit",
-                            fontSize = 14.sp,
+                            fontSize = 14.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkTextSecondary,
                         )
@@ -507,15 +508,15 @@ private fun PolicyCardRow(title: String, body: String, icon: ImageVector) {
                 }
                 Text(
                     text = title,
-                    fontSize = 16.sp,
+                    fontSize = 16.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                 )
             }
             Text(
                 text = body,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
+                fontSize = 14.scaledSp,
+                lineHeight = 20.scaledSp,
                 color = DarkTextSecondary,
             )
         }
@@ -546,7 +547,7 @@ private fun ExternalLinkPill(label: String, onClick: () -> Unit) {
             )
             Text(
                 text = label,
-                fontSize = 14.sp,
+                fontSize = 14.scaledSp,
                 fontWeight = FontWeight.SemiBold,
                 color = BrandPrimary,
             )

@@ -93,6 +93,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
@@ -279,7 +280,7 @@ fun StandaloneBlockModal(
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                             ) {
-                                Text("Cancel", color = DarkTextSecondary, fontSize = 15.sp)
+                                Text("Cancel", color = DarkTextSecondary, fontSize = 15.scaledSp)
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -295,7 +296,7 @@ fun StandaloneBlockModal(
                                 }
                                 Text(
                                     text = if (locked) "Block Active" else "Standalone Blocking",
-                                    fontSize = 18.sp,
+                                    fontSize = 18.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkTextPrimary,
                                 )
@@ -350,9 +351,9 @@ fun StandaloneBlockModal(
                                     )
                                     Text(
                                         text = "The expiry and existing blocked apps are locked. You can still add apps and extend the block.",
-                                        fontSize = 13.sp,
+                                        fontSize = 13.scaledSp,
                                         color = Color(0xFFFDE68A),
-                                        lineHeight = 18.sp,
+                                        lineHeight = 18.scaledSp,
                                     )
                                 }
                             }
@@ -370,7 +371,7 @@ fun StandaloneBlockModal(
                                     .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                                     .padding(12.dp),
                             ) {
-                                Text(msg, color = Color(0xFFFCA5A5), fontSize = 13.sp)
+                                Text(msg, color = Color(0xFFFCA5A5), fontSize = 13.scaledSp)
                             }
                         }
                     }
@@ -402,14 +403,14 @@ fun StandaloneBlockModal(
                                     ) {
                                         Text(
                                             text = "Want a stronger block?",
-                                            fontSize = 14.sp,
+                                            fontSize = 14.scaledSp,
                                             fontWeight = FontWeight.Bold,
                                             color = DarkTextPrimary,
                                         )
                                         Text(
                                             text = "1. Select Settings in this app list.\n2. In the Defense tab, turn on Protect system controls.",
-                                            fontSize = 12.sp,
-                                            lineHeight = 17.sp,
+                                            fontSize = 12.scaledSp,
+                                            lineHeight = 17.scaledSp,
                                             color = DarkTextSecondary,
                                         )
                                     }
@@ -441,10 +442,10 @@ fun StandaloneBlockModal(
                     ) {
                         Text(
                             text = if (locked) "BLOCK UNTIL (LOCKED)" else "BLOCK EXPIRY",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextMuted,
-                            letterSpacing = 0.8.sp,
+                            letterSpacing = 0.8.scaledSp,
                         )
 
                         Row(
@@ -482,7 +483,7 @@ fun StandaloneBlockModal(
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         DateFormat.getDateInstance(DateFormat.MEDIUM).format(until),
-                                        fontSize = 14.sp,
+                                        fontSize = 14.scaledSp,
                                     )
                                 }
 
@@ -507,7 +508,7 @@ fun StandaloneBlockModal(
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         DateFormat.getTimeInstance(DateFormat.SHORT).format(until),
-                                        fontSize = 14.sp,
+                                        fontSize = 14.scaledSp,
                                     )
                                 }
                             }
@@ -521,7 +522,7 @@ fun StandaloneBlockModal(
                             ) {
                                 Text(
                                     "Add time:",
-                                    fontSize = 13.sp,
+                                    fontSize = 13.scaledSp,
                                     color = DarkTextSecondary,
                                     fontWeight = FontWeight.Medium,
                                 )
@@ -536,7 +537,7 @@ fun StandaloneBlockModal(
                                     ) {
                                         Text(
                                             "+${if (minutes >= 60) "${minutes / 60}h" else "${minutes}m"}",
-                                            fontSize = 13.sp,
+                                            fontSize = 13.scaledSp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = BrandPrimary,
                                         )
@@ -571,14 +572,14 @@ fun StandaloneBlockModal(
                                 ) {
                                     Text(
                                         text = "PRESETS",
-                                        fontSize = 12.sp,
+                                        fontSize = 12.scaledSp,
                                         fontWeight = FontWeight.Bold,
                                         color = DarkTextMuted,
-                                        letterSpacing = 0.8.sp,
+                                        letterSpacing = 0.8.scaledSp,
                                     )
                                     Text(
                                         text = "+ Save current selection",
-                                        fontSize = 12.sp,
+                                        fontSize = 12.scaledSp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = if (selected.isNotEmpty()) BrandPrimary else DarkTextMuted,
                                         modifier = Modifier
@@ -594,8 +595,8 @@ fun StandaloneBlockModal(
                                     Text(
                                         "Select apps below, then tap “+ Save current selection” to create your first preset.",
                                         color = DarkTextSecondary,
-                                        fontSize = 12.sp,
-                                        lineHeight = 17.sp,
+                                        fontSize = 12.scaledSp,
+                                        lineHeight = 17.scaledSp,
                                     )
                                 } else {
                                     FlowRow(
@@ -619,7 +620,7 @@ fun StandaloneBlockModal(
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Text(
                                                         "${preset.name} (${preset.packages.size})",
-                                                        fontSize = 13.sp,
+                                                        fontSize = 13.scaledSp,
                                                         color = DarkTextPrimary,
                                                     )
                                                     IconButton(
@@ -719,7 +720,7 @@ fun StandaloneBlockModal(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 "Advanced",
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 modifier = Modifier.weight(1f),
                             )
                             Icon(
@@ -813,7 +814,7 @@ fun StandaloneBlockModal(
                             } else {
                                 "${selected.size} app${if (selected.size == 1) "" else "s"} selected — tap to toggle"
                             },
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                             fontWeight = FontWeight.Medium,
                         )
@@ -840,13 +841,13 @@ fun StandaloneBlockModal(
                                 )
                                 Text(
                                     text = "Loading installed apps…",
-                                    fontSize = 14.sp,
+                                    fontSize = 14.scaledSp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = DarkTextPrimary,
                                 )
                                 Text(
                                     text = "Scanning device applications",
-                                    fontSize = 12.sp,
+                                    fontSize = 12.scaledSp,
                                     color = DarkTextMuted,
                                 )
                             }
@@ -872,7 +873,7 @@ fun StandaloneBlockModal(
                                 )
                                 Text(
                                     text = if (search.isNotBlank()) "No apps matching \"$search\"" else "No installed apps found",
-                                    fontSize = 13.5.sp,
+                                    fontSize = 13.5.scaledSp,
                                     color = DarkTextSecondary,
                                 )
                             }
@@ -912,13 +913,13 @@ fun StandaloneBlockModal(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = "Manual Package",
-                                        fontSize = 14.5.sp,
+                                        fontSize = 14.5.scaledSp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = DarkTextPrimary,
                                     )
                                     Text(
                                         text = pkg,
-                                        fontSize = 11.5.sp,
+                                        fontSize = 11.5.scaledSp,
                                         color = DarkTextMuted,
                                     )
                                 }
@@ -971,14 +972,14 @@ fun StandaloneBlockModal(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = app.appName,
-                                            fontSize = 14.sp,
+                                            fontSize = 14.scaledSp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkTextPrimary,
                                             maxLines = 1,
                                         )
                                         Text(
                                             text = app.packageName,
-                                            fontSize = 11.sp,
+                                            fontSize = 11.scaledSp,
                                             color = DarkTextMuted,
                                             maxLines = 1,
                                         )
@@ -1034,7 +1035,7 @@ fun StandaloneBlockModal(
                                     )
                                     Text(
                                         text = if (allowance == null) "Add daily allowance" else allowanceSummary(allowance),
-                                        fontSize = 11.sp,
+                                        fontSize = 11.scaledSp,
                                         color = if (allowance != null) Color(0xFFFBBF24) else DarkTextSecondary,
                                         modifier = Modifier.weight(1f),
                                     )
@@ -1068,7 +1069,7 @@ fun StandaloneBlockModal(
                                 )
                                 Text(
                                     text = if (vpnBlocked) "Blocked from internet (VPN)" else "Add network block (VPN)",
-                                    fontSize = 11.sp,
+                                    fontSize = 11.scaledSp,
                                     color = if (vpnBlocked) BrandPrimaryLight else DarkTextSecondary,
                                     modifier = Modifier.weight(1f),
                                 )
@@ -1260,7 +1261,7 @@ private fun ExpiryLockedChip(
             Text(
                 text = text,
                 color = Color(0xFF6B7280),
-                fontSize = 14.sp,
+                fontSize = 14.scaledSp,
                 maxLines = 1,
             )
         }
@@ -1329,14 +1330,14 @@ private fun InlineAllowanceEditor(
                 Text(
                     "Daily allowance:",
                     color = Color(0xFFF59E0B),
-                    fontSize = 12.5.sp,
+                    fontSize = 12.5.scaledSp,
                     fontWeight = FontWeight.Bold,
                 )
             }
             Text(
                 allowanceSummary(entry),
                 color = Color(0xFFFBBF24),
-                fontSize = 12.5.sp,
+                fontSize = 12.5.scaledSp,
                 fontWeight = FontWeight.Bold,
             )
             IconButton(
@@ -1430,7 +1431,7 @@ private fun AllowanceModeButton(
         Text(
             label,
             color = if (selected) Color(0xFFF59E0B) else Color(0xFF8B929C),
-            fontSize = 11.5.sp,
+            fontSize = 11.5.scaledSp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
         )
     }
@@ -1451,14 +1452,14 @@ private fun AllowanceStepperRow(
             label,
             modifier = Modifier.weight(1f),
             color = DarkTextSecondary,
-            fontSize = 12.5.sp,
+            fontSize = 12.5.scaledSp,
         )
         StepperButton(icon = Icons.Outlined.Remove, contentDescription = "Decrease", onClick = onDecrease)
         Text(
             value,
             modifier = Modifier.width(64.dp),
             color = Color(0xFFFBBF24),
-            fontSize = 12.5.sp,
+            fontSize = 12.5.scaledSp,
             fontWeight = FontWeight.Bold,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
@@ -1519,13 +1520,13 @@ private fun StandaloneAllowanceDialog(
                 Column {
                     Text(
                         text = "Daily Allowance",
-                        fontSize = 16.sp,
+                        fontSize = 16.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
                     Text(
                         text = app.appName,
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         color = DarkTextSecondary,
                         maxLines = 1,
                     )
@@ -1539,7 +1540,7 @@ private fun StandaloneAllowanceDialog(
             ) {
                 Text(
                     text = "Allow limited daily access during active block periods.",
-                    fontSize = 12.5.sp,
+                    fontSize = 12.5.scaledSp,
                     color = DarkTextSecondary,
                 )
 
@@ -1570,7 +1571,7 @@ private fun StandaloneAllowanceDialog(
                         ) {
                             Text(
                                 text = label,
-                                fontSize = 11.5.sp,
+                                fontSize = 11.5.scaledSp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) Color.White else DarkTextSecondary,
                             )
@@ -1582,7 +1583,7 @@ private fun StandaloneAllowanceDialog(
                     "time_budget" -> {
                         Text(
                             text = "Daily Time Budget",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             fontWeight = FontWeight.Medium,
                             color = DarkTextPrimary,
                         )
@@ -1606,7 +1607,7 @@ private fun StandaloneAllowanceDialog(
                                 ) {
                                     Text(
                                         text = "${mins}m",
-                                        fontSize = 12.sp,
+                                        fontSize = 12.scaledSp,
                                         fontWeight = FontWeight.Medium,
                                         color = if (isSelected) Color.White else DarkTextPrimary,
                                     )
@@ -1617,7 +1618,7 @@ private fun StandaloneAllowanceDialog(
                     "count" -> {
                         Text(
                             text = "Max Launches Per Day",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             fontWeight = FontWeight.Medium,
                             color = DarkTextPrimary,
                         )
@@ -1642,7 +1643,7 @@ private fun StandaloneAllowanceDialog(
                                 ) {
                                     Text(
                                         text = "$c",
-                                        fontSize = 13.sp,
+                                        fontSize = 13.scaledSp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isSelected) Color.White else DarkTextPrimary,
                                     )
@@ -1653,7 +1654,7 @@ private fun StandaloneAllowanceDialog(
                     "interval" -> {
                         Text(
                             text = "Cooldown Interval Between Opens",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             fontWeight = FontWeight.Medium,
                             color = DarkTextPrimary,
                         )
@@ -1678,7 +1679,7 @@ private fun StandaloneAllowanceDialog(
                                 ) {
                                     Text(
                                         text = "${mins}m",
-                                        fontSize = 12.sp,
+                                        fontSize = 12.scaledSp,
                                         fontWeight = FontWeight.Medium,
                                         color = if (isSelected) Color.White else DarkTextPrimary,
                                     )
@@ -1735,7 +1736,7 @@ private fun StandaloneAllowanceDialog(
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     ) {
-                        Text("Remove", color = Color(0xFFEF4444), fontSize = 13.sp)
+                        Text("Remove", color = Color(0xFFEF4444), fontSize = 13.scaledSp)
                     }
                 }
                 TextButton(
@@ -1743,7 +1744,7 @@ private fun StandaloneAllowanceDialog(
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                 ) {
-                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
+                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.scaledSp)
                 }
             }
         },

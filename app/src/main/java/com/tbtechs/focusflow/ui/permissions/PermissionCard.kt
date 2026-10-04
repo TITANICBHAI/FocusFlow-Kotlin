@@ -67,6 +67,7 @@ import com.tbtechs.focusflow.ui.theme.StatusOptionalText
 import com.tbtechs.focusflow.ui.theme.StatusReady
 import com.tbtechs.focusflow.ui.theme.StatusReadyBg
 import com.tbtechs.focusflow.ui.theme.StatusReadyText
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 @Composable
 fun PermissionCard(
@@ -228,8 +229,8 @@ fun PermissionCard(
 
                     Text(
                         text = permission.description,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 12.scaledSp,
+                        lineHeight = 16.scaledSp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -272,7 +273,7 @@ fun PermissionCard(
                             )
                             Text(
                                 text = permission.actionLabel,
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                             )
@@ -296,14 +297,14 @@ fun PermissionCard(
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 text = "Why this is needed",
-                                fontSize = 13.sp,
+                                fontSize = 13.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
                             Text(
                                 text = permission.whyNeeded,
-                                fontSize = 12.5.sp,
-                                lineHeight = 18.sp,
+                                fontSize = 12.5.scaledSp,
+                                lineHeight = 18.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -321,7 +322,7 @@ fun PermissionCard(
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
                                     text = "Without this permission:",
-                                    fontSize = 13.sp,
+                                    fontSize = 13.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = StatusMissingText,
                                 )
@@ -338,8 +339,8 @@ fun PermissionCard(
                                         )
                                         Text(
                                             text = item,
-                                            fontSize = 12.sp,
-                                            lineHeight = 17.sp,
+                                            fontSize = 12.scaledSp,
+                                            lineHeight = 17.scaledSp,
                                             color = DarkTextSecondary,
                                         )
                                     }

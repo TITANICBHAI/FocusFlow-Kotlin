@@ -63,6 +63,7 @@ import com.tbtechs.focusflow.ui.home.RefMuted
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -179,8 +180,8 @@ fun OverlayAppearanceModal(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Overlay Appearance", modifier = Modifier.weight(1f), color = RefText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                TextButton(onClick = onClose) { Text("Close", color = RefSecondary, fontSize = 13.sp) }
+                Text("Overlay Appearance", modifier = Modifier.weight(1f), color = RefText, fontSize = 18.scaledSp, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onClose) { Text("Close", color = RefSecondary, fontSize = 13.scaledSp) }
             }
             if (loading) {
                 Column(
@@ -189,7 +190,7 @@ fun OverlayAppearanceModal(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     CircularProgressIndicator(color = RefText, modifier = Modifier.size(24.dp))
-                    Text("Loading overlay settings", color = RefSecondary, fontSize = 13.sp)
+                    Text("Loading overlay settings", color = RefSecondary, fontSize = 13.scaledSp)
                 }
             } else {
                 LazyColumn(
@@ -211,12 +212,12 @@ fun OverlayAppearanceModal(
                                     if (wallpaperPath.isBlank()) "Using built-in gradient background" else wallpaperPath,
                                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                                     color = RefSecondary,
-                                    fontSize = 13.sp,
+                                    fontSize = 13.scaledSp,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 if (wallpaperPath.isNotBlank()) {
-                                    TextButton(onClick = ::removeWallpaper) { Text("Remove", color = Color(0xFFF87171), fontSize = 13.sp) }
+                                    TextButton(onClick = ::removeWallpaper) { Text("Remove", color = Color(0xFFF87171), fontSize = 13.scaledSp) }
                                 }
                             }
                             FocusFlowPrimaryButton(
@@ -241,7 +242,7 @@ fun OverlayAppearanceModal(
                                     value = draftQuote,
                                     onValueChange = { draftQuote = it },
                                     modifier = Modifier.weight(1f).heightIn(min = 44.dp, max = 120.dp),
-                                    textStyle = androidx.compose.material3.LocalTextStyle.current.copy(color = RefText, fontSize = 13.sp),
+                                    textStyle = androidx.compose.material3.LocalTextStyle.current.copy(color = RefText, fontSize = 13.scaledSp),
                                     maxLines = 5,
                                     decorationBox = { inner ->
                                         Box(
@@ -250,7 +251,7 @@ fun OverlayAppearanceModal(
                                                 .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
                                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                                         ) {
-                                            if (draftQuote.isBlank()) Text("Type a motivating quote", color = RefMuted, fontSize = 13.sp)
+                                            if (draftQuote.isBlank()) Text("Type a motivating quote", color = RefMuted, fontSize = 13.scaledSp)
                                             inner()
                                         }
                                     },
@@ -271,7 +272,7 @@ fun OverlayAppearanceModal(
                                 }
                             }
                             if (quotes.isEmpty()) {
-                                Text("No custom quotes — built-in pool active", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = RefSecondary, fontSize = 11.sp)
+                                Text("No custom quotes — built-in pool active", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = RefSecondary, fontSize = 11.scaledSp)
                             }
                         }
                     }
@@ -280,7 +281,7 @@ fun OverlayAppearanceModal(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("“$quote”", modifier = Modifier.weight(1f), color = RefText, fontSize = 13.sp, lineHeight = 20.sp, fontStyle = FontStyle.Italic)
+                            Text("“$quote”", modifier = Modifier.weight(1f), color = RefText, fontSize = 13.scaledSp, lineHeight = 20.scaledSp, fontStyle = FontStyle.Italic)
                             Icon(
                                 Icons.Outlined.Delete,
                                 contentDescription = "Delete quote",
@@ -290,7 +291,7 @@ fun OverlayAppearanceModal(
                         }
                     }
                     item {
-                        Text("Changes apply immediately. The next block overlay will use these settings.", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = RefSecondary, fontSize = 11.sp, lineHeight = 16.sp)
+                        Text("Changes apply immediately. The next block overlay will use these settings.", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = RefSecondary, fontSize = 11.scaledSp, lineHeight = 16.scaledSp)
                     }
                 }
             }
@@ -303,8 +304,8 @@ fun OverlayAppearanceModal(
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             FocusFlowModalCard(modifier = Modifier.fillMaxWidth().padding(16.dp), radius = 16.dp, contentPadding = 16.dp) {
-                Text(notice.title, color = RefText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(notice.body, color = RefSecondary, fontSize = 11.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(notice.title, color = RefText, fontSize = 18.scaledSp, fontWeight = FontWeight.Bold)
+                Text(notice.body, color = RefSecondary, fontSize = 11.scaledSp, lineHeight = 17.scaledSp, modifier = Modifier.padding(top = 8.dp))
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (notice.showSettings) {
                         FocusFlowSecondaryButton(text = "Cancel", onClick = { message = null }, modifier = Modifier.weight(1f))
@@ -327,15 +328,15 @@ private fun OverlaySection(
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             title,
-            fontSize = 11.sp,
+            fontSize = 11.scaledSp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.8.sp,
+            letterSpacing = 0.8.scaledSp,
             color = RefSecondary,
         )
         Text(
             description,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
+            fontSize = 11.scaledSp,
+            lineHeight = 16.scaledSp,
             color = RefSecondary,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )

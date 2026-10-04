@@ -86,6 +86,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.InfoBodyText
 import com.tbtechs.focusflow.ui.theme.InfoSurface
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import org.json.JSONArray
 
 private val SunAmber = Color(0xFFF59E0B)
@@ -256,7 +257,7 @@ fun DailyAllowanceModal(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onClose) {
-                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
+                    Text("Cancel", color = DarkTextSecondary, fontSize = 13.scaledSp)
                 }
                 Row(
                     modifier = Modifier.weight(1f),
@@ -265,10 +266,10 @@ fun DailyAllowanceModal(
                 ) {
                     Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = SunAmber, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Daily Allowance", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                    Text("Daily Allowance", fontSize = 15.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 }
                 TextButton(onClick = ::save) {
-                    Text("Save", color = BrandPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Save", color = BrandPrimary, fontWeight = FontWeight.Bold, fontSize = 13.scaledSp)
                 }
             }
         },
@@ -299,8 +300,8 @@ fun DailyAllowanceModal(
                             Text(
                                 "Block is active — existing allowances are locked. You can add new apps but cannot remove them until the block expires.",
                                 modifier = Modifier.weight(1f),
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp,
+                                fontSize = 11.scaledSp,
+                                lineHeight = 16.scaledSp,
                                 color = SunAmber,
                             )
                         }
@@ -324,8 +325,8 @@ fun DailyAllowanceModal(
                             Text(
                                 "Removing apps from the allowance list requires your defense password.",
                                 modifier = Modifier.weight(1f),
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp,
+                                fontSize = 11.scaledSp,
+                                lineHeight = 16.scaledSp,
                                 color = InfoBodyText,
                             )
                         }
@@ -347,8 +348,8 @@ fun DailyAllowanceModal(
                         Icon(Icons.Outlined.Info, contentDescription = null, tint = SunAmber, modifier = Modifier.size(14.dp))
                         Text(
                             "Tap an app to enable its allowance. Tap again to expand its mode settings. Long-press to remove.",
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
+                            fontSize = 11.scaledSp,
+                            lineHeight = 16.scaledSp,
                             color = SunAmber,
                         )
                     }
@@ -368,7 +369,7 @@ fun DailyAllowanceModal(
                             .fillMaxWidth()
                             .heightIn(min = 44.dp),
                         singleLine = true,
-                        placeholder = { Text("Search apps...", color = DarkTextMuted, fontSize = 13.sp) },
+                        placeholder = { Text("Search apps...", color = DarkTextMuted, fontSize = 13.scaledSp) },
                         leadingIcon = {
                              Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(16.dp))
                         },
@@ -407,12 +408,12 @@ fun DailyAllowanceModal(
                     Text(
                         text = if (drafts.isEmpty()) "No allowances configured"
                         else "${drafts.size} app${if (drafts.size == 1) "" else "s"} with daily allowance",
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextSecondary,
                     )
                     TextButton(onClick = { packageDraft = ""; manualPackageDialogVisible = true }) {
-                        Text("Add package", color = BrandPrimary, fontSize = 12.sp)
+                        Text("Add package", color = BrandPrimary, fontSize = 12.scaledSp)
                     }
                 }
             }
@@ -425,7 +426,7 @@ fun DailyAllowanceModal(
                     ) {
                         CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(32.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Loading apps…", color = DarkTextSecondary, fontSize = 13.sp)
+                        Text("Loading apps…", color = DarkTextSecondary, fontSize = 13.scaledSp)
                     }
                 }
             }
@@ -439,7 +440,7 @@ fun DailyAllowanceModal(
                         Text(
                             if (search.isBlank()) "No apps found" else "No apps match \"$search\"",
                             color = DarkTextSecondary,
-                            fontSize = 14.sp,
+                            fontSize = 14.scaledSp,
                         )
                     }
                 }
@@ -493,7 +494,7 @@ fun DailyAllowanceModal(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = app.appName,
-                                 fontSize = 13.sp,
+                                 fontSize = 13.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = DarkTextPrimary,
                                 maxLines = 1,
@@ -501,7 +502,7 @@ fun DailyAllowanceModal(
                             )
                             Text(
                                 text = app.packageName,
-                                 fontSize = 11.sp,
+                                 fontSize = 11.scaledSp,
                                 color = DarkTextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -520,7 +521,7 @@ fun DailyAllowanceModal(
                                     )
                                     Text(
                                         text = draft.summary(),
-                                 fontSize = 11.sp,
+                                 fontSize = 11.scaledSp,
                                         fontWeight = FontWeight.Medium,
                                         color = SunAmber,
                                     )
@@ -585,7 +586,7 @@ fun DailyAllowanceModal(
                             strokeWidth = 2.dp,
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.sp)
+                        Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.scaledSp)
                     }
                 }
             }
@@ -601,7 +602,7 @@ fun DailyAllowanceModal(
                     ) {
                         Text(
                             if (locked) "Clear new allowances" else "Clear all daily allowances",
-                             fontSize = 13.sp,
+                             fontSize = 13.scaledSp,
                             fontWeight = FontWeight.Medium,
                         )
                     }
@@ -621,7 +622,7 @@ fun DailyAllowanceModal(
                 radius = 16.dp,
                 contentPadding = 16.dp,
             ) {
-                Text("Add package manually", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text("Add package manually", fontSize = 18.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 FocusFlowModalField(
                     value = packageDraft,
                     onValueChange = { packageDraft = it },
@@ -662,7 +663,7 @@ fun DailyAllowanceModal(
                 radius = 16.dp,
                 contentPadding = 16.dp,
             ) {
-                Text("Defense password required", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text("Defense password required", fontSize = 18.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         if (pending is PendingAllowanceRemoval.All) {
@@ -670,7 +671,7 @@ fun DailyAllowanceModal(
                         } else {
                             "Enter your defense password to remove this app from the daily allowance list."
                         },
-                        fontSize = 11.sp,
+                        fontSize = 11.scaledSp,
                         color = DarkTextSecondary,
                     )
                     FocusFlowModalField(
@@ -725,8 +726,8 @@ fun DailyAllowanceModal(
                 radius = 16.dp,
                 contentPadding = 16.dp,
             ) {
-                Text(notice.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
-                Text(notice.body, fontSize = 11.sp, lineHeight = 17.sp, color = DarkTextSecondary, modifier = Modifier.padding(top = 8.dp))
+                Text(notice.title, fontSize = 18.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text(notice.body, fontSize = 11.scaledSp, lineHeight = 17.scaledSp, color = DarkTextSecondary, modifier = Modifier.padding(top = 8.dp))
                 FocusFlowPrimaryButton(
                     text = "OK",
                     onClick = { message = null },
@@ -774,7 +775,7 @@ private fun AllowanceConfiguration(
         if (locked) {
             Text(
                 "Values locked while block is active",
-                fontSize = 12.sp,
+                fontSize = 12.scaledSp,
                 color = SunAmber,
             )
         }
@@ -782,7 +783,7 @@ private fun AllowanceConfiguration(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 "ALLOWANCE MODE",
-                fontSize = 11.sp,
+                fontSize = 11.scaledSp,
                 fontWeight = FontWeight.SemiBold,
                 color = DarkTextMuted,
             )
@@ -827,7 +828,7 @@ private fun AllowanceConfiguration(
                             )
                             Text(
                                 text = mode.label,
-                                fontSize = 11.sp,
+                                fontSize = 11.scaledSp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) SunAmber else DarkTextSecondary,
                                 maxLines = 1,
@@ -874,7 +875,7 @@ private fun AllowanceConfiguration(
                 )
                 Text(
                     "App is allowed for ${draft.intervalMinutes} min every ${draft.intervalHours} hour${if (draft.intervalHours == 1) "" else "s"}.",
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     color = DarkTextSecondary,
                 )
             }
@@ -899,7 +900,7 @@ private fun StepperRow(
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            fontSize = 13.sp,
+            fontSize = 13.scaledSp,
             color = DarkTextSecondary,
         )
         Row(
@@ -919,7 +920,7 @@ private fun StepperRow(
             }
             Text(
                 text = value,
-                fontSize = 13.sp,
+                fontSize = 13.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
                 modifier = Modifier.width(52.dp),

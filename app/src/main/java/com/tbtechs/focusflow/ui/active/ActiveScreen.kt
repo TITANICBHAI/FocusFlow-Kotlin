@@ -88,6 +88,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import java.time.Instant
@@ -226,14 +227,14 @@ fun ActiveScreen(
                     if (session?.isActive == true) {
                         Text(
                             "Task: ${focusTask?.title ?: "Task in progress"}",
-                            fontSize = 14.sp,
+                            fontSize = 14.scaledSp,
                             color = DarkTextPrimary,
                             fontWeight = FontWeight.Medium,
                         )
                         focusTask?.let {
                             Text(
                                 "Ends at ${it.endTime.formatActiveTime()}",
-                                fontSize = 13.sp,
+                                fontSize = 13.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -250,7 +251,7 @@ fun ActiveScreen(
                     } else {
                         Text(
                             "No task-based focus session is running.",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -354,7 +355,7 @@ fun ActiveScreen(
                     if (allowancePackages.isEmpty()) {
                         Text(
                             "No per-app daily limits are configured.",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                     } else if (expanded == "allowance") {
@@ -369,7 +370,7 @@ fun ActiveScreen(
                     } else {
                         Text(
                             "${allowancePackages.size} apps tracked · tap card to see usage",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -401,7 +402,7 @@ fun ActiveScreen(
                     if (expanded == "keywords" && settings.blockedWords.isNotEmpty()) {
                         Text(
                             settings.blockedWords.joinToString(", "),
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextPrimary,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -446,7 +447,7 @@ fun ActiveScreen(
                         Text(
                             "${vpnStatus?.failedPackages?.size} apps could not be registered",
                             color = Color(0xFFF87171),
-                            fontSize = 12.5.sp,
+                            fontSize = 12.5.scaledSp,
                         )
                     }
                     if (expanded == "vpn" && vpnPackages.isNotEmpty()) {
@@ -479,14 +480,14 @@ fun ActiveScreen(
                     if (settings.recurringBlockSchedules.isEmpty()) {
                         Text(
                             "No recurring scheduled blocks are configured.",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                     } else if (expanded == "schedules") {
                         settings.recurringBlockSchedules.forEach { schedule ->
                             Text(
                                 "Scheduled block · ${schedule.packages.size} apps · ${schedule.startHour}:00–${schedule.endHour}:00",
-                                fontSize = 13.sp,
+                                fontSize = 13.scaledSp,
                                 color = DarkTextPrimary,
                                 modifier = Modifier.padding(vertical = 2.dp),
                             )
@@ -494,7 +495,7 @@ fun ActiveScreen(
                     } else {
                         Text(
                             "${settings.recurringBlockSchedules.size} scheduled blocks configured",
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -654,14 +655,14 @@ private fun ActiveSummaryBanner(nothingActive: Boolean) {
             Column {
                 Text(
                     if (nothingActive) "Nothing blocking right now" else "Protection is active",
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                 )
                 Text(
                     if (nothingActive) "Start Focus or configure a protection layer in Defense."
                     else "Protection is active, but this screen remains interactive and updates automatically.",
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     color = DarkTextSecondary,
                 )
             }
@@ -716,7 +717,7 @@ private fun ActiveSectionCard(
                 Spacer(Modifier.width(12.dp))
                 Text(
                     title,
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                     modifier = Modifier.weight(1f),
@@ -737,7 +738,7 @@ private fun ActiveSectionCard(
                 ) {
                     Text(
                         status,
-                        fontSize = 11.sp,
+                        fontSize = 11.scaledSp,
                         fontWeight = FontWeight.SemiBold,
                         color = statusColor,
                     )
@@ -764,8 +765,8 @@ private fun KeyValueRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, fontSize = 11.sp, color = DarkTextSecondary)
-        Text(value, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = DarkTextPrimary)
+        Text(label, fontSize = 11.scaledSp, color = DarkTextSecondary)
+        Text(value, fontSize = 11.scaledSp, fontWeight = FontWeight.Medium, color = DarkTextPrimary)
     }
 }
 
@@ -789,7 +790,7 @@ private fun ManageButton(
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = BrandPrimary)
         Spacer(Modifier.width(8.dp))
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = BrandPrimary)
+        Text(label, fontSize = 11.scaledSp, fontWeight = FontWeight.Medium, color = BrandPrimary)
     }
 }
 
@@ -806,7 +807,7 @@ private fun PackageList(packages: List<String>, appNames: Map<String, String>) {
         packages.forEach { pkg ->
             Text(
                 appNames[pkg] ?: pkg.substringAfterLast('.'),
-                fontSize = 11.sp,
+                fontSize = 11.scaledSp,
                 color = DarkTextPrimary,
             )
         }
@@ -832,13 +833,13 @@ private fun AllowanceRow(
     ) {
         Text(
             appName ?: packageName.substringAfterLast('.'),
-        fontSize = 11.sp,
+        fontSize = 11.scaledSp,
             fontWeight = FontWeight.Medium,
             color = DarkTextPrimary,
         )
         Text(
             "$usageLabel${if (isActiveSession) " · in use" else ""}",
-            fontSize = 11.sp,
+            fontSize = 11.scaledSp,
             color = if (isActiveSession) Color(0xFF10B981) else DarkTextSecondary,
         )
     }
@@ -873,14 +874,14 @@ private fun ActiveTodayFooter(
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 "TODAY",
-                fontSize = 11.5.sp,
+                fontSize = 11.5.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextMuted,
-                letterSpacing = 0.8.sp,
+                letterSpacing = 0.8.scaledSp,
             )
             Text(
                 "$completedCount/$todayTasks tasks · ${todayFocusMinutes}m focus · $todayOverrideCount blocked attempts",
-                fontSize = 14.sp,
+                fontSize = 14.scaledSp,
                 fontWeight = FontWeight.Medium,
                 color = DarkTextPrimary,
             )

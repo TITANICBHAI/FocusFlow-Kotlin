@@ -89,6 +89,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import org.json.JSONObject
 
 /**
@@ -193,7 +194,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         "Settings",
-                        fontSize = 28.sp,
+                        fontSize = 28.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -320,7 +321,7 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 "Default Task Duration",
-                                fontSize = 15.sp,
+                                fontSize = 15.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = DarkTextPrimary,
                             )
@@ -332,7 +333,7 @@ fun SettingsScreen(
                             }
                             Text(
                                 durationLabel,
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandPrimary,
                             )
@@ -370,7 +371,7 @@ fun SettingsScreen(
                                 ) {
                                     Text(
                                         label,
-                                        fontSize = 12.5.sp,
+                                        fontSize = 12.5.scaledSp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isSelected) Color.White else DarkTextSecondary,
                                     )
@@ -460,8 +461,8 @@ fun SettingsScreen(
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("Work Duration", fontSize = 14.sp, color = DarkTextSecondary)
-                            Text("${settings.pomodoroWorkMinutes}m", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                            Text("Work Duration", fontSize = 14.scaledSp, color = DarkTextSecondary)
+                            Text("${settings.pomodoroWorkMinutes}m", fontSize = 14.scaledSp, fontWeight = FontWeight.Bold, color = BrandPrimary)
                         }
                         Row(
                             modifier = Modifier
@@ -469,8 +470,8 @@ fun SettingsScreen(
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("Break Duration", fontSize = 14.sp, color = DarkTextSecondary)
-                            Text("${settings.pomodoroBreakMinutes}m", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                            Text("Break Duration", fontSize = 14.scaledSp, color = DarkTextSecondary)
+                            Text("${settings.pomodoroBreakMinutes}m", fontSize = 14.scaledSp, fontWeight = FontWeight.Bold, color = BrandPrimary)
                         }
                     }
                 }
@@ -596,13 +597,13 @@ fun SettingsScreen(
                 ) {
                     Text(
                         "FocusFlow v1.1.4 (build 13)",
-                        fontSize = 12.5.sp,
+                        fontSize = 12.5.scaledSp,
                         color = DarkTextMuted,
                         textAlign = TextAlign.Center,
                     )
                     Text(
                         "All data stored locally on device",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         color = DarkTextMuted,
                         textAlign = TextAlign.Center,
                     )
@@ -770,10 +771,10 @@ fun SettingsScreen(
 private fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
-        fontSize = 11.sp,
+        fontSize = 11.scaledSp,
         fontWeight = FontWeight.Bold,
         color = DarkTextMuted,
-        letterSpacing = 0.8.sp,
+        letterSpacing = 0.8.scaledSp,
         modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
     )
 }
@@ -839,7 +840,7 @@ private fun SettingsActionRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (destructive) Color(0xFFEF4444) else DarkTextPrimary,
             )
@@ -847,9 +848,9 @@ private fun SettingsActionRow(
                 Spacer(Modifier.height(1.dp))
                 Text(
                     description,
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     color = DarkTextSecondary,
-                    lineHeight = 16.sp,
+                    lineHeight = 16.scaledSp,
                 )
             }
         }
@@ -878,7 +879,7 @@ private fun SettingsToggleRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 fontWeight = FontWeight.SemiBold,
                 color = DarkTextPrimary,
             )
@@ -886,9 +887,9 @@ private fun SettingsToggleRow(
                 Spacer(Modifier.height(1.dp))
                 Text(
                     description,
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     color = DarkTextSecondary,
-                    lineHeight = 16.sp,
+                    lineHeight = 16.scaledSp,
                 )
             }
         }

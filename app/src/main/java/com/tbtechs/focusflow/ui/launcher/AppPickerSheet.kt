@@ -80,6 +80,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private data class SensitiveApp(
     val reason: String,
@@ -218,7 +219,7 @@ fun AppPickerSheet(
                         modifier = Modifier.width(68.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) {
-                        Text("Cancel", fontSize = 14.sp, color = DarkTextSecondary)
+                        Text("Cancel", fontSize = 14.scaledSp, color = DarkTextSecondary)
                     }
                     Box(
                         modifier = Modifier.weight(1f),
@@ -226,7 +227,7 @@ fun AppPickerSheet(
                     ) {
                         Text(
                             title,
-                            fontSize = 16.sp,
+                            fontSize = 16.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                             maxLines = 1,
@@ -240,7 +241,7 @@ fun AppPickerSheet(
                         modifier = Modifier.width(68.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) {
-                        Text("Save", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                        Text("Save", fontSize = 14.scaledSp, fontWeight = FontWeight.Bold, color = BrandPrimary)
                     }
                 }
 
@@ -262,9 +263,9 @@ fun AppPickerSheet(
                         ) {
                         Text(
                             "PRESETS",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
+                            letterSpacing = 0.8.scaledSp,
                             color = DarkTextMuted,
                         )
                         TextButton(
@@ -285,7 +286,7 @@ fun AppPickerSheet(
                                 modifier = Modifier.size(14.dp),
                             )
                             Spacer(Modifier.width(4.dp))
-                            Text("Save current", fontSize = 11.sp, color = BrandPrimary)
+                            Text("Save current", fontSize = 11.scaledSp, color = BrandPrimary)
                         }
                         }
                     }
@@ -294,7 +295,7 @@ fun AppPickerSheet(
                             item {
                                 Text(
                             "No presets yet — save the current selection as a named preset.",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = DarkTextMuted,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                 )
@@ -330,7 +331,7 @@ fun AppPickerSheet(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                                     ) {
-                                        Text(preset.name, fontSize = 11.sp, color = DarkTextPrimary)
+                                        Text(preset.name, fontSize = 11.scaledSp, color = DarkTextPrimary)
                                         Icon(
                                             Icons.Outlined.Delete,
                                             contentDescription = "Delete preset",
@@ -357,7 +358,7 @@ fun AppPickerSheet(
                                 onValueChange = { presetName = it.take(32) },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                placeholder = { Text("Preset name", color = DarkTextMuted, fontSize = 11.sp) },
+                                placeholder = { Text("Preset name", color = DarkTextMuted, fontSize = 11.scaledSp) },
                                 shape = RoundedCornerShape(10.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedContainerColor = DarkCard,
@@ -402,7 +403,7 @@ fun AppPickerSheet(
                     item {
                         Text(
                         selectionSummary,
-                        fontSize = 14.sp,
+                        fontSize = 14.scaledSp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextSecondary,
                         )
@@ -450,7 +451,7 @@ fun AppPickerSheet(
                                 modifier = Modifier.size(18.dp),
                             )
                         },
-                        placeholder = { Text("Search by name or package...", color = DarkTextMuted, fontSize = 14.sp) },
+                        placeholder = { Text("Search by name or package...", color = DarkTextMuted, fontSize = 14.scaledSp) },
                         trailingIcon = {
                             if (search.isNotBlank()) {
                                 IconButton(onClick = { search = "" }) {
@@ -496,8 +497,8 @@ fun AppPickerSheet(
                                 Text(
                                     "Checked apps are allowed during Focus. Sensitive apps warn before blocking. Phone, launcher, and WhatsApp protections stay usable.",
                                     modifier = Modifier.weight(1f),
-                                    fontSize = 10.sp,
-                                    lineHeight = 14.sp,
+                                    fontSize = 10.scaledSp,
+                                    lineHeight = 14.scaledSp,
                                     color = DarkTextMuted,
                                 )
                                 IconButton(
@@ -537,7 +538,7 @@ fun AppPickerSheet(
                                 modifier = Modifier.fillMaxWidth().padding(18.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(loadError.orEmpty(), fontSize = 12.sp, color = DarkTextSecondary)
+                                Text(loadError.orEmpty(), fontSize = 12.scaledSp, color = DarkTextSecondary)
                             }
                         }
                         filteredApps.isEmpty() && !loading -> item {
@@ -547,7 +548,7 @@ fun AppPickerSheet(
                             ) {
                                 Icon(Icons.Outlined.Apps, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(28.dp))
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Text("No matching apps found", fontSize = 13.sp, color = DarkTextSecondary)
+                                Text("No matching apps found", fontSize = 13.scaledSp, color = DarkTextSecondary)
                             }
                         }
                         else -> items(filteredApps, key = { it.packageName }) { app ->
@@ -575,7 +576,7 @@ fun AppPickerSheet(
                             ) {
                                 CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Loading more apps…", fontSize = 10.sp, color = DarkTextMuted)
+                                Text("Loading more apps…", fontSize = 10.scaledSp, color = DarkTextMuted)
                             }
                         }
                     }
@@ -595,7 +596,7 @@ fun AppPickerSheet(
             text = {
                 Text(
                     "Blocking this system app can prevent incoming phone calls, verification messages, or alarms. Are you sure you want to block it?",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                 )
             },
             confirmButton = {
@@ -632,7 +633,7 @@ fun AppPickerSheet(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Delete preset?") },
-            text = { Text("Delete preset “${preset.name}”?", fontSize = 13.sp) },
+            text = { Text("Delete preset “${preset.name}”?", fontSize = 13.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -674,7 +675,7 @@ private fun PickerAction(
     ) {
         Text(
             label,
-            fontSize = 13.sp,
+            fontSize = 13.scaledSp,
             fontWeight = FontWeight.SemiBold,
             color = if (enabled) BrandPrimary else DarkTextMuted,
         )
@@ -709,7 +710,7 @@ private fun AppPickerRow(
                 ) {
                     Text(
                         app.appName,
-                        fontSize = 14.sp,
+                        fontSize = 14.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                         maxLines = 1,
@@ -724,7 +725,7 @@ private fun AppPickerRow(
                         ) {
                             Text(
                                 "Sensitive",
-                                fontSize = 8.sp,
+                                fontSize = 8.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF6D5BD0),
                             )
@@ -733,7 +734,7 @@ private fun AppPickerRow(
                 }
                 Text(
                     app.packageName,
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     color = DarkTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

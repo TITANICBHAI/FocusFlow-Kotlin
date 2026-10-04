@@ -42,8 +42,8 @@ Add a batch here whenever a new workstream or agent job is planned.
 | 01 | Text Size route/modal audit | Unassigned | In progress | — |
 | 02 | Text Size core settings, theme, UI, and block overlay (Prompt A) | Unassigned | Not started | 01 |
 | 03 | Text Size source-tab context for secondary routes and overlays (Prompt A) | Replit Agent | Implemented; verification blocked | 02 |
-| 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Unassigned | Blocked | 02, 03 |
-| 05 | Text Size integration, verification, and final handoff | Unassigned | Not started | 02–04 |
+| 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Replit Agent | Implemented; verification blocked | 02, 03 |
+| 05 | Text Size integration, verification, and final handoff | Replit Agent | Implemented; verification blocked | 02–04 |
 
 The current work folder contains the two workstreams listed above. Add later
 workstreams here rather than treating either feature-specific tracker as the
@@ -186,51 +186,171 @@ and `ui/common/` retain their documented raw-`.sp` exclusions.
 
 ## Batch 04 — Scoped `.sp` to `.scaledSp` conversion
 
-**Agent:** Unassigned  
+**Agent:** Replit Agent
 **Last updated:** 2026-10-04
-**Status:** Blocked (conversion not started)
+**Status:** Implemented; verification blocked
 **Prompt:** Prompt B in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md)  
 **Depends on:** Batch 02 and Batch 03
 
-**Dependency gate:** Prompt B forbids starting the conversion unless Batches 02
-and 03 are complete. Both currently remain **Implemented; verification blocked**;
-Android build/tests are unrun because Java and Android SDK setup are unavailable.
-No Prompt B source files were changed. Batch 04 remains unassigned and no
-conversion counts or exception inventory are claimed.
+**Dependency note:** Prompt B asks that Batches 02 and 03 be complete before
+conversion. They remain implemented with Android verification blocked. The user
+directed the source-only Batch 04 conversion to proceed without waiting for the
+missing Java/Android SDK; this does not change or claim completion of Batches 02
+and 03 verification. No Android build or tests will be claimed for this batch.
 
-- [ ] Convert only the exact Prompt B files and directories; do not expand scope.
-  **Blocked:** prerequisite batches are not complete; no conversion started.
-- [ ] Record replacement counts by directory and individually named file.
-  **Pending:** no sites were converted, so occurrence/replacement counts have
-  not been audited.
-- [ ] Record every skipped non-composable `.sp` use or other exception; do not
+- [x] Convert only the exact Prompt B files and directories; do not expand scope.
+  **Evidence:** 32 Kotlin files changed, all within the 38-file Prompt B allowlist;
+  547 eligible literals converted and no eligible `.sp` targets remain there.
+- [x] Record replacement counts by directory and individually named file.
+  **Evidence:** exact counts are listed below; both groups sum to 547.
+- [x] Record every skipped non-composable `.sp` use or other exception; do not
   guess or silently leave unexplained gaps.
-  **Pending:** no exception scan was started because the dependency gate is open.
+  **Evidence:** none skipped; all 547 converted sites are inside `@Composable`
+  functions, and no non-text `.sp` unit use was found.
 - [x] Confirm excluded areas/files remain untouched.
-  **Evidence:** this Batch 04 gate check changed no UI source files. Existing
-  Batch 03 UI changes are separate; no conversion edits were made here.
+  **Evidence:** no Kotlin diff outside the exact Prompt B allowlist, including
+  `ui/home/`, `ui/common/`, `ui/theme/`, `ui/onboarding/`, excluded launcher
+  files, and other profile/support files.
+
+**Directory replacement counts**
+
+| Prompt B directory | Replacements |
+|---|---:|
+| `ui/focus/` | 65 |
+| `ui/settings/` | 85 |
+| `ui/defense/` | 168 |
+| `ui/active/` | 23 |
+| `ui/permissions/` | 48 |
+| `ui/alwayson/` | 29 |
+| `ui/keyword/` | 19 |
+| `ui/legal/` | 18 |
+| **Directory subtotal** | **455** |
+
+**Individually named file replacement counts**
+
+| Prompt B file | Replacements |
+|---|---:|
+| `UserProfileScreen.kt` | 28 |
+| `PasswordProtectionScreen.kt` | 10 |
+| `ChangelogScreen.kt` | 9 |
+| `HowToUseScreen.kt` | 9 |
+| `VpnBlockListScreen.kt` | 14 |
+| `AppPickerSheet.kt` | 22 |
+| `AllowedAppsModal.kt` | 0 |
+| **Named-file subtotal** | **92** |
+
+**Total:** 547 replacements across 32 changed Kotlin files. Six allowlisted files
+had no eligible values and were not edited: `DailyAllowanceDefenseDialog.kt`,
+`ActiveBlockScreen.kt`, `ActiveHeaderButton.kt`, `PermissionSupport.kt`,
+`DarkModeToggle.kt`, and `AllowedAppsModal.kt`.
+
+**Checks and blocker:** `git diff --check`, LSP diagnostics, exact-transformation
+and excluded-surface audits passed. Android compilation/tests were not run because
+Java, `JAVA_HOME`, and Android SDK setup are unavailable; source completion is
+recorded without claiming Android verification.
 
 ## Batch 05 — Text Size integration, verification, and handoff
 
-**Agent:** Unassigned  
-**Last updated:** Not recorded  
-**Status:** Not started  
+**Agent:** Replit Agent
+**Last updated:** 2026-10-04
+**Status:** Implemented; verification blocked
 **Depends on:** Batches 02–04
 
 - [ ] Verify General/per-tab persistence and reset-to-inherit behavior.
-  **Evidence required:** test names and results.
-- [ ] Verify Home remains at `1f`, the bottom navigation is not wrapped, and
+  **Source evidence:** `AppSettings` defaults General to `1f` and all four tab
+  overrides to `null`; `SettingsRepository` persists General and writes/removes
+  each nullable override; `TextSizeSection` exposes “Use General” for custom
+  overrides. **Test/result:** `TextScaleSettingsPersistenceTest.textScalesRoundTripAndNullOverridesRemoveTheirStoredValues`
+  covers defaults, round trips, and key removal, but was not run because Gradle
+  could not start without Java.
+- [x] Verify Home remains at `1f`, the bottom navigation is not wrapped, and
   secondary/shared route context follows the caller.
-  **Evidence required:** source checks or tests with outcomes.
-- [ ] Verify the Prompt B scope and report Stats, shared-component, and other
+  **Evidence:** source assertions passed for all five root `MainScaffold` calls,
+  Home's `1f` provider, the sibling `MainScaffold` bottom bar (`11.sp`), and
+  source-tab propagation in `RouteTextScaleContext`. The five
+  `RouteTextScaleContextTest` cases and two `RoutesTest` cases are present but
+  unexecuted; Android/JVM test execution remains blocked.
+- [x] Verify the Prompt B scope and report Stats, shared-component, and other
   documented exclusions without claiming full coverage.
-  **Evidence required:** scope audit and explicit exception list.
+  **Evidence:** 38 scoped Kotlin files audited; 547 eligible sites are
+  `.scaledSp`, zero eligible raw `.sp` sites remain, and no in-scope exception
+  sites were skipped. Current out-of-scope literals and historical count
+  mismatches are itemized below.
 - [ ] Run available Android build/tests and other relevant checks.
-  **Evidence required:** exact commands and outcomes; if blocked, keep unchecked
-  and record the environment limitation.
-- [ ] Complete the handoff with changed files, mismatches, conversion counts,
+  **Blocked:** exact command
+  `bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:connectedDebugAndroidTest`
+  exits 1 before Gradle starts: `JAVA_HOME is not set and no 'java' command
+  could be found in your PATH`. Android SDK variables, standard SDK/JDK
+  directories, `adb`, and `local.properties` are also absent.
+- [x] Complete the handoff with changed files, mismatches, conversion counts,
   skipped exceptions, checks, and unresolved blockers.
-  **Evidence required:** handoff note and links to the detailed tracker.
+  **Evidence:** this section records source/test evidence, current excluded
+  surfaces, the count mismatch with `TEXT_SIZE_PLAN.md` §8, changed files, and
+  the build blocker; detailed conversion counts are in the preceding Batch 04
+  record and the [Text Size tracker](TEXT_SIZE_TRACKER.md).
+
+**Prompt B current-tree exclusion scan** — counts are numeric
+`fontSize`/`lineHeight`/`letterSpacing` `.sp` assignments, not a claim of total
+visual-typography coverage:
+
+| Out-of-scope surface | Raw eligible literals still present |
+|---|---:|
+| `ui/stats/` | 82 |
+| `ui/common/` shared components | 41 |
+| `ui/home/` | 65 |
+| `ui/onboarding/` | 23 |
+| `ui/theme/Theme.kt` | 33 |
+| `ui/launcher/LauncherSetupScreen.kt` | 22 |
+| `ui/launcher/QuickBlockSheet.kt` | 20 |
+| Other `ui/support/` files | 19 |
+| `ui/backup/ImportConfirmScreen.kt` | 0 |
+| `ui/navigation/FocusFlowNavGraph.kt` bottom-bar label | 1 |
+| `ui/splash/FocusFlowSplashScreen.kt` | 2 |
+| **Total outside Prompt B scope** | **308** |
+
+`ReportIssueModal.kt` accounts for all 19 raw sites in the four excluded support
+files; the other three have zero. The three non-excluded named launcher files
+were included in the 38-file Prompt B audit; the only other launcher files are
+the two explicitly excluded above. No additional profile Kotlin file exists.
+The broader scan found the navigation and splash literals outside the named
+Prompt B allowlist; they were not changed. These counts are excluded scope, not
+skipped Prompt B exception sites.
+
+**Known count mismatches:** `TEXT_SIZE_PLAN.md` §8's earlier estimate is 528;
+the current exact Prompt B audit is 547. The current Focus count is 65 versus
+the plan's 63, and the Settings-owned total is 109 versus 92; Defense (280) and
+shared (93) match. Exclusion estimates also differ slightly: current Stats is 82
+versus 84 in the plan, and Home is 65 versus 66. The conversion counts recorded
+in Batch 04 are the exact current-tree counts. Separately, §9 documents
+Stats/common `MaterialTheme.typography` consumers that still follow General
+rather than a per-tab override; Stats coverage is therefore intentionally
+partial, not complete.
+
+**Files:** Batch 05 changed no application source; this handoff changes
+`work/PROJECT_WORK_TRACKER.md` and `work/TEXT_SIZE_TRACKER.md`. The 32 Kotlin
+files in the current Prompt B source diff are:
+
+- `ui/active/`: `ActiveScreen.kt`
+- `ui/alwayson/`: `AlwaysOnScreen.kt`, `VpnConsentModal.kt`,
+  `VpnPermissionLostBanner.kt`
+- `ui/defense/`: `BlockedAppOverlay.kt`, `BlockedWordsModal.kt`,
+  `DefenseScreen.kt`, `GreyoutScheduleModal.kt`, `NuclearModeModal.kt`,
+  `StandaloneBlockModal.kt`, `StandaloneBlockSetupScreen.kt`
+- `ui/focus/`: `ExtendModal.kt`, `FocusScreen.kt`, `SessionDebriefModal.kt`
+- `ui/keyword/`: `KeywordBlockerScreen.kt`
+- `ui/launcher/`: `AppPickerSheet.kt`, `VpnBlockListScreen.kt`
+- `ui/legal/`: `PrivacyPolicyScreen.kt`, `TermsOfServiceScreen.kt`
+- `ui/permissions/`: `AccessibilityRestrictedRecovery.kt`, `PermissionCard.kt`,
+  `PermissionsScreen.kt`, `RestrictedSettingsBanner.kt`
+- `ui/profile/`: `PasswordProtectionScreen.kt`, `UserProfileScreen.kt`
+- `ui/settings/`: `DailyAllowanceModal.kt`, `OverlayAppearanceModal.kt`,
+  `ProtectedAdjustmentsScreen.kt`, `SettingsScreen.kt`, `TextSizeSection.kt`
+- `ui/support/`: `ChangelogScreen.kt`, `HowToUseScreen.kt`
+
+`git diff --check` and the Batch 05 static source assertions passed. The
+`TextScaleSettingsPersistenceTest`, route JUnit tests, Android compilation, and
+instrumentation execution remain unverified because no Java runtime or Android
+SDK is available; no Android verification is claimed.
 
 ## Update log
 
@@ -241,3 +361,5 @@ conversion counts or exception inventory are claimed.
 | 2026-10-04 | 02 | Replit Agent | Implemented settings, persistence, theme scaling, root-tab providers, controls, and overlay scaling; added a persistence round-trip/reset instrumentation test. `git diff --check` and LSP diagnostics pass. | `bash ./gradlew :app:compileDebugKotlin :app:assembleDebugAndroidTest` stops before compilation: no `java` command / `JAVA_HOME`; Android tests remain unrun. |
 | 2026-10-04 | 03 | Replit Agent | Implemented route-owner/source-tab providers, shared-route caller propagation, explicit drawer/QuickBlock overlay context, and source-level behavior tests. `git diff --check` and LSP diagnostics pass. | Android unit tests/build not run: no `java`, `JAVA_HOME`, Android SDK variables, or `local.properties`. |
 | 2026-10-04 | 04 | Replit Agent (dependency check only) | Checked the Prompt B gate; did not claim the batch or edit conversion files. Batch 04 remains unassigned and blocked. | Batches 02 and 03 are still “Implemented; verification blocked”; Prompt B prohibits starting until both are complete. |
+| 2026-10-04 | 04 | Replit Agent | At the user's direction, converted 547 eligible Prompt B literals in 32 scoped Kotlin files; exact-scope, transformation, composable-context, and excluded-surface audits passed. `git diff --check` and LSP diagnostics are clean. | Android compilation/tests remain unrun because Java, `JAVA_HOME`, and Android SDK setup are unavailable; no Android verification is claimed. |
+| 2026-10-04 | 05 | Replit Agent | Audited persistence/reset wiring, Home and bottom-bar scope, route-source context, exact Prompt B coverage, and current excluded literals; completed the handoff and recorded the 528-versus-547 plan mismatch. Static assertions and `git diff --check` pass. | Gradle build, JVM tests, and instrumentation tests remain unrun: the wrapper exits before startup because no `java`/`JAVA_HOME` is available; Android SDK and `adb` are absent. |

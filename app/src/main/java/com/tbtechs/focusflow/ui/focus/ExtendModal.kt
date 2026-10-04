@@ -45,6 +45,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private val extendOptions = listOf(10, 15, 20, 30, 45, 60)
 
@@ -91,13 +92,13 @@ fun ExtendModal(
                 Column {
                     Text(
                         "Need more time?",
-                        fontSize = 18.sp,
+                        fontSize = 18.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
                     Text(
                         "Extend “$taskName”",
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -105,9 +106,9 @@ fun ExtendModal(
 
             Text(
                 "Choose how much extra time to add. Subsequent tasks will shift forward automatically.",
-                fontSize = 13.sp,
+                fontSize = 13.scaledSp,
                 color = DarkTextSecondary,
-                lineHeight = 20.sp,
+                lineHeight = 20.scaledSp,
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -132,7 +133,7 @@ fun ExtendModal(
                             ) {
                                 Text(
                                     "+$minutes m",
-                                    fontSize = 15.sp,
+                                    fontSize = 15.scaledSp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = BrandPrimary,
                                 )
@@ -150,7 +151,7 @@ fun ExtendModal(
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 40.dp),
             ) {
-                Text("Cancel", color = DarkTextSecondary, fontSize = 13.sp)
+                Text("Cancel", color = DarkTextSecondary, fontSize = 13.scaledSp)
             }
 
             Spacer(Modifier.height(8.dp))

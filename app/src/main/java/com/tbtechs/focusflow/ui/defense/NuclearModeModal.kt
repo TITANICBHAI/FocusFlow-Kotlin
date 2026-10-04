@@ -75,6 +75,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -184,7 +185,7 @@ fun NuclearModeModal(
                     )
                     Text(
                         text = "Nuclear Mode",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -216,15 +217,15 @@ fun NuclearModeModal(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Permanent action",
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFF87171),
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Uninstalling removes all local data and accounts for that app. Android will display a confirmation dialog before proceeding.",
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
+                            fontSize = 12.scaledSp,
+                            lineHeight = 16.scaledSp,
                             color = Color(0xFFFECACA),
                         )
                     }
@@ -243,17 +244,17 @@ fun NuclearModeModal(
                     Text(
                         "Device Admin is active. Android may prevent uninstalling some protected apps; if needed, temporarily revoke the admin permission.",
                         color = Color(0xFFFBBF24),
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 12.scaledSp,
+                        lineHeight = 16.scaledSp,
                     )
                 }
             }
 
             Text(
                 text = "APPS FROM YOUR BLOCK LIST",
-                fontSize = 12.sp,
+                fontSize = 12.scaledSp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
+                letterSpacing = 1.scaledSp,
                 color = DarkTextSecondary,
             )
 
@@ -266,7 +267,7 @@ fun NuclearModeModal(
                 ) {
                     CircularProgressIndicator(color = Color(0xFFEF4444), modifier = Modifier.size(32.dp))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Loading blocked apps…", color = DarkTextSecondary, fontSize = 13.sp)
+                    Text("Loading blocked apps…", color = DarkTextSecondary, fontSize = 13.scaledSp)
                 }
             } else if (apps.isEmpty()) {
                 Box(
@@ -283,7 +284,7 @@ fun NuclearModeModal(
                     ) {
                         Text(
                             "No blocked apps installed",
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkTextPrimary,
                         )
@@ -294,7 +295,7 @@ fun NuclearModeModal(
                             } else {
                                 "All apps in your block lists have already been uninstalled."
                             },
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -324,7 +325,7 @@ fun NuclearModeModal(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = app.appName,
-                                        fontSize = 14.sp,
+                                        fontSize = 14.scaledSp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = DarkTextPrimary,
                                         maxLines = 1,
@@ -332,7 +333,7 @@ fun NuclearModeModal(
                                     )
                                     Text(
                                         text = app.packageName,
-                                        fontSize = 11.sp,
+                                        fontSize = 11.scaledSp,
                                         color = DarkTextSecondary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -347,7 +348,7 @@ fun NuclearModeModal(
                                 ) {
                                     Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Uninstall", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Uninstall", fontSize = 12.scaledSp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                             }
                         }
@@ -356,7 +357,7 @@ fun NuclearModeModal(
             }
 
             error?.let { message ->
-                Text(message, color = Color(0xFFEF4444), fontSize = 12.sp)
+                Text(message, color = Color(0xFFEF4444), fontSize = 12.scaledSp)
             }
 
             Row(
@@ -369,7 +370,7 @@ fun NuclearModeModal(
                 Icon(Icons.Outlined.Info, contentDescription = null, tint = DarkTextMuted, modifier = Modifier.size(14.dp))
                 Text(
                     "To add apps here, add them to your Standalone Block or Always-On lists.",
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     color = DarkTextMuted,
                 )
             }
@@ -387,7 +388,7 @@ fun NuclearModeModal(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Uninstall ${app.appName}?", fontWeight = FontWeight.Bold) },
-            text = { Text("Android will open its system uninstallation prompt for confirmation.", fontSize = 13.sp, lineHeight = 18.sp) },
+            text = { Text("Android will open its system uninstallation prompt for confirmation.", fontSize = 13.scaledSp, lineHeight = 18.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = {

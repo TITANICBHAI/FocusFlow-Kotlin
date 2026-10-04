@@ -28,6 +28,7 @@ import com.tbtechs.focusflow.ui.home.RefAmber
 import com.tbtechs.focusflow.ui.home.RefGreen
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import java.time.Duration
 import java.time.Instant
 
@@ -88,7 +89,7 @@ fun SessionDebriefModal(
                             .padding(end = 10.dp)
                             .size(40.dp),
                     )
-                    Text(title, modifier = Modifier.weight(1f), color = RefText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(title, modifier = Modifier.weight(1f), color = RefText, fontSize = 18.scaledSp, fontWeight = FontWeight.Bold)
                     IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
                         Icon(Icons.Outlined.Close, contentDescription = "Dismiss session debrief", tint = RefSecondary)
                     }
@@ -96,23 +97,23 @@ fun SessionDebriefModal(
                 Text(
                     "SESSION DEBRIEF",
                     color = RefSecondary,
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.8.sp,
+                    letterSpacing = 0.8.scaledSp,
                     modifier = Modifier.padding(top = 16.dp),
                 )
                 Text(
                     session.taskTitle ?: "Focus session",
                     color = RefText,
-                    fontSize = 22.sp,
+                    fontSize = 22.scaledSp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 Text(
                     insight,
                     color = RefSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp,
+                    fontSize = 13.scaledSp,
+                    lineHeight = 20.scaledSp,
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 FocusFlowPrimaryButton(

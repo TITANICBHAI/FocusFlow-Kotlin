@@ -35,6 +35,7 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalCard
 import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
 import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.launch
 
 @Composable
@@ -80,25 +81,25 @@ fun RestrictedSettingsBanner(forceVisible: Boolean? = null) {
                     Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
                 Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                    Text("Permission toggle is locked by Android", fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    Text("One-time unlock needed before Accessibility can be turned on.", fontSize = 11.sp)
+                    Text("Permission toggle is locked by Android", fontSize = 15.scaledSp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("One-time unlock needed before Accessibility can be turned on.", fontSize = 11.scaledSp)
                 }
             }
             Text(
                 "Android 13+ may grey out sensitive toggles for apps installed outside trusted app stores. " +
                     "This is an Android security feature, not a FocusFlow error." +
                     (installerLabel(installer)?.let { " $it." } ?: ""),
-                fontSize = 11.sp,
-                lineHeight = 17.sp,
+                fontSize = 11.scaledSp,
+                lineHeight = 17.scaledSp,
             )
-            Text("Quick fix — takes about 10 seconds:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("Quick fix — takes about 10 seconds:", fontSize = 13.scaledSp, fontWeight = FontWeight.SemiBold)
             Text(
                 "1. Tap Open App Info below.\n" +
                     "2. Tap the three-dot menu in the top-right corner.\n" +
                     "3. Tap Allow restricted settings.\n" +
                     "4. Return here — the Accessibility and Device Admin toggles will work now.",
-                fontSize = 11.sp,
-                lineHeight = 17.sp,
+                fontSize = 11.scaledSp,
+                lineHeight = 17.scaledSp,
             )
             FocusFlowPrimaryButton(
                 text = "Open App Info",
@@ -115,19 +116,19 @@ fun RestrictedSettingsBanner(forceVisible: Boolean? = null) {
                 onClick = { expanded = !expanded },
             )
             if (expanded) {
-                Text("What is this?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("What is this?", fontSize = 13.scaledSp, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Starting in Android 13, Google added Restricted Settings to stop sideloaded apps " +
                         "from quietly granting powerful permissions like Accessibility. The toggle is " +
                         "greyed out because Android is asking you to confirm that you trust this app. " +
                         "Once you allow it from App Info, the unlock stays available for this install.",
                 )
-                Text("Why does it work on Samsung without this?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("Why does it work on Samsung without this?", fontSize = 13.scaledSp, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Samsung One UI often handles this flow more leniently. Pixel, Oppo, OnePlus, " +
                         "Realme, Xiaomi, Vivo, Motorola, and Nothing may enforce it strictly.",
                 )
-                Text("How do I avoid this on the next install?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("How do I avoid this on the next install?", fontSize = 13.scaledSp, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Install FocusFlow from Google Play, Samsung Galaxy Store, Oppo or Realme App Market, " +
                         "Xiaomi GetApps, Vivo App Store, or Huawei AppGallery. These trusted installers " +

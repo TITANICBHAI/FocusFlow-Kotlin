@@ -77,6 +77,7 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 
@@ -302,7 +303,7 @@ fun AlwaysOnScreen(
                         Text(
                             text = if (selected.isEmpty()) "Save (no apps selected)"
                             else "Save ${selected.size} app${if (selected.size == 1) "" else "s"}",
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
@@ -339,14 +340,14 @@ fun AlwaysOnScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "Protection is active",
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
                             Text(
                                 "This screen is not frozen. You can review the lists; removing protected apps is blocked until the active protection ends or is verified.",
-                                fontSize = 12.sp,
-                                lineHeight = 17.sp,
+                                fontSize = 12.scaledSp,
+                                lineHeight = 17.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -401,15 +402,15 @@ fun AlwaysOnScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "These apps are blocked continuously — no session or timer needed. They stay blocked until you untick them here.",
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
+                                fontSize = 13.scaledSp,
+                                lineHeight = 18.scaledSp,
                                 color = DarkTextPrimary,
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "Removing apps requires your defense password (if set). Tap a blocked app to also enable network blocking (VPN).",
-                                fontSize = 12.sp,
-                                lineHeight = 17.sp,
+                                fontSize = 12.scaledSp,
+                                lineHeight = 17.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -438,7 +439,7 @@ fun AlwaysOnScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 singleLine = true,
                 placeholder = {
-                    Text("Search apps…", color = DarkTextMuted, fontSize = 13.sp)
+                    Text("Search apps…", color = DarkTextMuted, fontSize = 13.scaledSp)
                 },
                 leadingIcon = {
                     Icon(
@@ -480,7 +481,7 @@ fun AlwaysOnScreen(
                         .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                         .padding(12.dp),
                 ) {
-                    Text(err, color = Color(0xFFF87171), fontSize = 13.sp)
+                    Text(err, color = Color(0xFFF87171), fontSize = 13.scaledSp)
                 }
             }
 
@@ -494,7 +495,7 @@ fun AlwaysOnScreen(
                 ) {
                     CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(36.dp))
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Loading apps…", color = DarkTextSecondary, fontSize = 14.sp)
+                    Text("Loading apps…", color = DarkTextSecondary, fontSize = 14.scaledSp)
                 }
                 filteredApps.isEmpty() && !loading -> Column(
                     modifier = Modifier
@@ -506,7 +507,7 @@ fun AlwaysOnScreen(
                     Text(
                         if (search.isBlank()) "No apps found" else "No apps match \"$search\"",
                         color = DarkTextSecondary,
-                        fontSize = 14.sp,
+                        fontSize = 14.scaledSp,
                     )
                 }
                 else -> LazyColumn(
@@ -552,7 +553,7 @@ fun AlwaysOnScreen(
                         strokeWidth = 2.dp,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.sp)
+                    Text("Loading more apps…", color = DarkTextMuted, fontSize = 11.scaledSp)
                 }
             }
         }
@@ -617,7 +618,7 @@ fun AlwaysOnScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         "You are removing apps from the Always-On block list. Enter your defense password to confirm.",
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                     )
                     OutlinedTextField(
                         value = pin,
@@ -640,7 +641,7 @@ fun AlwaysOnScreen(
                         ),
                     )
                     pinError?.let {
-                        Text(it, color = Color(0xFFF87171), fontSize = 12.sp)
+                        Text(it, color = Color(0xFFF87171), fontSize = 12.scaledSp)
                     }
                 }
             },
@@ -705,7 +706,7 @@ private fun AlwaysOnAppRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appName,
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                     maxLines = 1,
@@ -713,7 +714,7 @@ private fun AlwaysOnAppRow(
                 )
                 Text(
                     text = app.packageName,
-                    fontSize = 11.sp,
+                    fontSize = 11.scaledSp,
                     color = DarkTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -763,7 +764,7 @@ private fun AlwaysOnAppRow(
                     )
                     Text(
                         text = if (vpnEnabled) "Network block (VPN): on" else "Add network block (VPN)",
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         fontWeight = if (vpnEnabled) FontWeight.Medium else FontWeight.Normal,
                         color = if (vpnEnabled) BrandPrimary else DarkTextSecondary,
                         modifier = Modifier.weight(1f),

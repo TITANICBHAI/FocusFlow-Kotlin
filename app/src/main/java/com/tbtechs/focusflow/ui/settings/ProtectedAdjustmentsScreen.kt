@@ -57,6 +57,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private data class AdjustmentQuestion(
     val heading: String,
@@ -240,7 +241,7 @@ fun ProtectedAdjustmentsScreen(
                 title = {
                     Text(
                         text = "Guarded Adjustments",
-                        fontSize = 20.sp,
+                        fontSize = 20.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -273,22 +274,22 @@ fun ProtectedAdjustmentsScreen(
             ) {
                 Text(
                     text = "Why is this change protected?",
-                    fontSize = 23.sp,
+                    fontSize = 23.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = "Find out when a PIN is needed, what stays locked during a block, and where to manage each setting.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
+                    fontSize = 14.scaledSp,
+                    lineHeight = 20.scaledSp,
                     color = DarkTextSecondary,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = "PINs protect changes that weaken a block; not every Settings value requires one.",
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
+                    fontSize = 12.scaledSp,
+                    lineHeight = 17.scaledSp,
                     color = DarkTextMuted,
                     textAlign = TextAlign.Center,
                 )
@@ -332,7 +333,7 @@ fun ProtectedAdjustmentsScreen(
                         Text(
                             text = section.title,
                             modifier = Modifier.weight(1f),
-                            fontSize = 16.sp,
+                            fontSize = 16.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
@@ -361,7 +362,7 @@ fun ProtectedAdjustmentsScreen(
                                 ) {
                                     Text(
                                         text = "${questionIndex + 1}.",
-                                        fontSize = 14.sp,
+                                        fontSize = 14.scaledSp,
                                         fontWeight = FontWeight.Bold,
                                         color = BrandPrimary,
                                     )
@@ -371,14 +372,14 @@ fun ProtectedAdjustmentsScreen(
                                     ) {
                                         Text(
                                             text = question.heading,
-                                            fontSize = 14.sp,
+                                            fontSize = 14.scaledSp,
                                             fontWeight = FontWeight.Bold,
                                             color = DarkTextPrimary,
                                         )
                                         Text(
                                             text = question.answer,
-                                            fontSize = 13.sp,
-                                            lineHeight = 18.sp,
+                                            fontSize = 13.scaledSp,
+                                            lineHeight = 18.scaledSp,
                                             color = DarkTextSecondary,
                                         )
                                         val destination = question.destination
@@ -387,7 +388,7 @@ fun ProtectedAdjustmentsScreen(
                                             TextButton(onClick = { onOpenRoute(destination) }) {
                                                 Text(
                                                     text = destinationLabel,
-                                                    fontSize = 13.sp,
+                                                    fontSize = 13.scaledSp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = BrandPrimary,
                                                 )

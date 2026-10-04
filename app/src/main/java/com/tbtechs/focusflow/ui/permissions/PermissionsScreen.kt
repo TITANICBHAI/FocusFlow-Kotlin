@@ -72,6 +72,7 @@ import com.tbtechs.focusflow.ui.theme.InfoBorder
 import com.tbtechs.focusflow.ui.theme.InfoSurface
 import com.tbtechs.focusflow.ui.theme.InfoText
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -194,18 +195,18 @@ fun PermissionsScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Icon(Icons.Outlined.Lock, contentDescription = null, tint = BrandPrimary)
-                            Text("Settings Locked", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                            Text("Settings Locked", fontSize = 18.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                         }
                         Text(
                             if (isFocusActive) "Permission settings are disabled while a focus session is running."
                             else "Permission settings are disabled while a standalone block is active.",
-                            fontSize = 14.sp,
+                            fontSize = 14.scaledSp,
                             color = DarkTextSecondary,
                         )
                         Text(
                             "Stop the block first to change permissions.",
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
+                            fontSize = 13.scaledSp,
+                            lineHeight = 18.scaledSp,
                             color = DarkTextMuted,
                         )
                         Button(
@@ -252,15 +253,15 @@ fun PermissionsScreen(
                                 )
                                 Text(
                                     text = "Why these permissions?",
-                                    fontSize = 14.sp,
+                                    fontSize = 14.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = InfoText,
                                 )
                             }
                             Text(
                                 text = "These permissions let FocusFlow block apps reliably.",
-                                 fontSize = 12.sp,
-                                 lineHeight = 17.sp,
+                                 fontSize = 12.scaledSp,
+                                 lineHeight = 17.scaledSp,
                                  color = InfoBodyText,
                             )
                         }
@@ -277,13 +278,13 @@ fun PermissionsScreen(
                         ) {
                             Text(
                                 text = "Required permissions granted",
-                                fontSize = 12.sp,
+                                fontSize = 12.scaledSp,
                                 fontWeight = FontWeight.Medium,
                                 color = DarkTextSecondary,
                             )
                             Text(
                                 text = "$granted / $required",
-                                fontSize = 13.sp,
+                                fontSize = 13.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandPrimary,
                             )
@@ -300,7 +301,7 @@ fun PermissionsScreen(
                         if (granted == required) {
                              Text(
                                 text = "All required permissions are ready.",
-                                fontSize = 12.sp,
+                                fontSize = 12.scaledSp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = com.tbtechs.focusflow.ui.theme.StatusReadyText,
                             )
@@ -328,7 +329,7 @@ fun PermissionsScreen(
                 item {
                     Text(
                         text = "Tap a card for details. Status refreshes when you return.",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         color = DarkTextMuted,
                         modifier = Modifier.padding(bottom = 24.dp),
                     )

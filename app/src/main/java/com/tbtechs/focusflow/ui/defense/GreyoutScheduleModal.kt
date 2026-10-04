@@ -83,6 +83,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -141,7 +142,7 @@ fun GreyoutScheduleModal(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onClose) {
-                        Text("Cancel", color = DarkTextSecondary, fontSize = 14.sp)
+                        Text("Cancel", color = DarkTextSecondary, fontSize = 14.scaledSp)
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -155,7 +156,7 @@ fun GreyoutScheduleModal(
                         )
                         Text(
                             text = "Block Schedules",
-                            fontSize = 17.sp,
+                            fontSize = 17.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
@@ -165,7 +166,7 @@ fun GreyoutScheduleModal(
                             text = "Save",
                             color = BrandPrimary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                         )
                     }
                 }
@@ -181,8 +182,8 @@ fun GreyoutScheduleModal(
                 ) {
                     Text(
                         text = "Scheduled blocks activate automatically at specified hours and days. Configure which apps to block for each window.",
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 12.scaledSp,
+                        lineHeight = 16.scaledSp,
                         color = DarkTextSecondary,
                     )
                 }
@@ -212,14 +213,14 @@ fun GreyoutScheduleModal(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "No schedules yet",
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkTextPrimary,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Create recurring time windows to automatically restrict apps.",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = DarkTextMuted,
                         )
                     }
@@ -267,7 +268,7 @@ fun GreyoutScheduleModal(
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Add Schedule Window", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Add Schedule Window", fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -321,7 +322,7 @@ fun GreyoutScheduleModal(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Remove Window", fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to remove this scheduled block window?", fontSize = 13.sp, lineHeight = 18.sp) },
+            text = { Text("Are you sure you want to remove this scheduled block window?", fontSize = 13.scaledSp, lineHeight = 18.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -355,7 +356,7 @@ fun GreyoutScheduleModal(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Block is Active", fontWeight = FontWeight.Bold) },
-            text = { Text(it.message, fontSize = 13.sp, lineHeight = 18.sp) },
+            text = { Text(it.message, fontSize = 13.scaledSp, lineHeight = 18.scaledSp) },
             confirmButton = {
                 Button(
                     onClick = { pinPrompt = null },
@@ -396,7 +397,7 @@ private fun ScheduleCard(
                     ?: "(no app)"
                 Text(
                     text = if (schedule.packages.size > 1) "$appLabel +${schedule.packages.size - 1} more" else appLabel,
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                     maxLines = 1,
@@ -416,7 +417,7 @@ private fun ScheduleCard(
                     Text(
                         text = "${schedule.startHour.toString().padStart(2, '0')}:${schedule.startMinute.toString().padStart(2, '0')} – " +
                             "${schedule.endHour.toString().padStart(2, '0')}:${schedule.endMinute.toString().padStart(2, '0')}",
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -428,7 +429,7 @@ private fun ScheduleCard(
                 ) {
                     Text(
                         text = schedule.daysOfWeek.toScheduleDayLabel(),
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         color = DarkTextSecondary,
                     )
                     if (schedule.vpnEnabled) {
@@ -438,7 +439,7 @@ private fun ScheduleCard(
                                 .background(Color(0xFF064E3B))
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         ) {
-                            Text("VPN", color = Color(0xFF34D399), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("VPN", color = Color(0xFF34D399), fontSize = 10.scaledSp, fontWeight = FontWeight.Bold)
                         }
                     }
                     if (!schedule.enabled) {
@@ -448,7 +449,7 @@ private fun ScheduleCard(
                                 .background(DarkSurfaceVariant)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         ) {
-                            Text("Disabled", color = DarkTextMuted, fontSize = 10.sp)
+                            Text("Disabled", color = DarkTextMuted, fontSize = 10.scaledSp)
                         }
                     }
                 }
@@ -605,7 +606,7 @@ private fun ScheduleEditor(
                     }
                     Text(
                         text = if (current.index == null) "Add Schedule Window" else "Edit Schedule Window",
-                        fontSize = 17.sp,
+                        fontSize = 17.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -616,9 +617,9 @@ private fun ScheduleEditor(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "TARGET APPS",
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    letterSpacing = 1.scaledSp,
                     color = DarkTextSecondary,
                 )
 
@@ -627,7 +628,7 @@ private fun ScheduleEditor(
                     value = search,
                     onValueChange = { search = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search apps to add…", color = DarkTextMuted, fontSize = 13.sp) },
+                    placeholder = { Text("Search apps to add…", color = DarkTextMuted, fontSize = 13.scaledSp) },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = DarkTextSecondary, modifier = Modifier.size(18.dp)) },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -666,8 +667,8 @@ private fun ScheduleEditor(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(app.appName, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                                    Text(app.packageName, fontSize = 11.sp, color = DarkTextSecondary)
+                                    Text(app.appName, fontSize = 13.scaledSp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
+                                    Text(app.packageName, fontSize = 11.scaledSp, color = DarkTextSecondary)
                                 }
                                 Icon(Icons.Outlined.Add, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                             }
@@ -713,7 +714,7 @@ private fun ScheduleEditor(
                                 ) {
                                     Text(
                                         text = current.appNames.getOrNull(index) ?: pkg,
-                                        fontSize = 12.sp,
+                                        fontSize = 12.scaledSp,
                                         color = DarkTextPrimary,
                                     )
                                     Icon(
@@ -733,9 +734,9 @@ private fun ScheduleEditor(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     "TIME WINDOW",
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    letterSpacing = 1.scaledSp,
                     color = DarkTextSecondary,
                 )
                 TimeStepperRow(
@@ -758,9 +759,9 @@ private fun ScheduleEditor(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "ACTIVE DAYS",
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    letterSpacing = 1.scaledSp,
                     color = DarkTextSecondary,
                 )
                 Row(
@@ -785,7 +786,7 @@ private fun ScheduleEditor(
                         ) {
                             Text(
                                 text = day,
-                                fontSize = 14.sp,
+                                fontSize = 14.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isSelected) Color.White else DarkTextSecondary,
                             )
@@ -810,8 +811,8 @@ private fun ScheduleEditor(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Window Enabled", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                        Text("Turn off to temporarily suspend this schedule", fontSize = 12.sp, color = DarkTextSecondary)
+                        Text("Window Enabled", fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
+                        Text("Turn off to temporarily suspend this schedule", fontSize = 12.scaledSp, color = DarkTextSecondary)
                     }
                     FocusFlowSwitch(
                         checked = current.enabled,
@@ -838,9 +839,9 @@ private fun ScheduleEditor(
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Outlined.VpnKey, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
-                            Text("Block Network (VPN)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
+                            Text("Block Network (VPN)", fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
                         }
-                        Text("Cut internet access for these apps during this window", fontSize = 12.sp, color = DarkTextSecondary)
+                        Text("Cut internet access for these apps during this window", fontSize = 12.scaledSp, color = DarkTextSecondary)
                     }
                     FocusFlowSwitch(
                         checked = current.vpnEnabled,
@@ -887,13 +888,13 @@ private fun ScheduleEditor(
                         "${current.startHour.toString().padStart(2, '0')}:${current.startMinute.toString().padStart(2, '0')} – " +
                         "${current.endHour.toString().padStart(2, '0')}:${current.endMinute.toString().padStart(2, '0')} · " +
                         current.days.toScheduleDayLabel(),
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     color = DarkTextSecondary,
                 )
             }
 
             validationError?.let {
-                Text(it, color = Color(0xFFEF4444), fontSize = 12.sp)
+                Text(it, color = Color(0xFFEF4444), fontSize = 12.scaledSp)
             }
 
             // Commit Button
@@ -930,7 +931,7 @@ private fun ScheduleEditor(
             ) {
                 Text(
                     text = if (current.index == null) "Add Window" else "Update Window",
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
@@ -977,7 +978,7 @@ private fun TimeStepperRow(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f), fontSize = 13.sp, color = DarkTextPrimary)
+        Text(label, modifier = Modifier.weight(1f), fontSize = 13.scaledSp, color = DarkTextPrimary)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -995,7 +996,7 @@ private fun TimeStepperRow(
             }
             Text(
                 text = hour.toString().padStart(2, '0'),
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )
@@ -1010,7 +1011,7 @@ private fun TimeStepperRow(
                 Icon(Icons.Outlined.Add, contentDescription = null, tint = DarkTextPrimary, modifier = Modifier.size(14.dp))
             }
 
-            Text(":", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DarkTextSecondary)
+            Text(":", fontSize = 15.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextSecondary)
 
             // Minutes
             Box(
@@ -1025,7 +1026,7 @@ private fun TimeStepperRow(
             }
             Text(
                 text = minute.toString().padStart(2, '0'),
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )

@@ -31,6 +31,7 @@ import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlin.math.roundToInt
 
 private const val MIN_TEXT_SCALE_PERCENT = 80
@@ -133,15 +134,15 @@ private fun SettingsSliderRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    fontSize = 15.sp,
+                    fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                 )
                 Text(
                     text = description,
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     color = DarkTextSecondary,
-                    lineHeight = 16.sp,
+                    lineHeight = 16.scaledSp,
                 )
             }
             if (onReset != null) {
@@ -149,7 +150,7 @@ private fun SettingsSliderRow(
                     onClick = onReset,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 ) {
-                    Text("Use General", fontSize = 12.sp)
+                    Text("Use General", fontSize = 12.scaledSp)
                 }
             }
         }
@@ -182,7 +183,7 @@ private fun SettingsSliderRow(
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "$sliderValue%",
-                fontSize = 13.sp,
+                fontSize = 13.scaledSp,
                 fontWeight = FontWeight.SemiBold,
                 color = BrandPrimary,
                 textAlign = TextAlign.End,

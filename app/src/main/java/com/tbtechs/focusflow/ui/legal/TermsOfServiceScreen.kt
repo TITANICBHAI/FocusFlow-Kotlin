@@ -49,6 +49,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private const val TERMS_URL = "https://focusflowapp.pages.dev/terms-of-service/"
 
@@ -115,13 +116,13 @@ fun TermsOfServiceScreen(onBack: () -> Unit) {
                 }
                 Text(
                     text = "Terms of Service",
-                    fontSize = 24.sp,
+                    fontSize = 24.scaledSp,
                     fontWeight = FontWeight.Bold,
                     color = DarkTextPrimary,
                 )
                 Text(
                     text = "Last updated: April 2026",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     color = DarkTextSecondary,
                     textAlign = TextAlign.Center,
                 )
@@ -139,14 +140,14 @@ fun TermsOfServiceScreen(onBack: () -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = title,
-                            fontSize = 15.sp,
+                            fontSize = 15.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
                         Text(
                             text = body,
-                            fontSize = 13.sp,
-                            lineHeight = 19.sp,
+                            fontSize = 13.scaledSp,
+                            lineHeight = 19.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
@@ -177,7 +178,7 @@ fun TermsOfServiceScreen(onBack: () -> Unit) {
                     )
                     Text(
                         text = "Read the full Terms of Service online",
-                        fontSize = 14.sp,
+                        fontSize = 14.scaledSp,
                         fontWeight = FontWeight.SemiBold,
                         color = BrandPrimary,
                     )

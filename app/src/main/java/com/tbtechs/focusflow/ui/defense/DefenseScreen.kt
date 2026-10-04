@@ -89,6 +89,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -203,13 +204,13 @@ fun DefenseScreen(
                         Column {
                             Text(
                                 text = "Defense",
-                                 fontSize = 22.sp,
+                                 fontSize = 22.scaledSp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkTextPrimary,
                             )
                             Text(
                                 text = "Make distractions harder to reach",
-                                fontSize = 13.sp,
+                                fontSize = 13.scaledSp,
                                 color = DarkTextSecondary,
                             )
                         }
@@ -258,14 +259,14 @@ fun DefenseScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     "Protection is active",
-                                    fontSize = 14.sp,
+                                    fontSize = 14.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkTextPrimary,
                                 )
                                 Text(
                                     "This screen is still responsive. Settings that could weaken the active block are protected or require your defense password.",
-                                    fontSize = 12.sp,
-                                    lineHeight = 17.sp,
+                                    fontSize = 12.scaledSp,
+                                    lineHeight = 17.scaledSp,
                                     color = DarkTextSecondary,
                                 )
                             }
@@ -309,8 +310,8 @@ fun DefenseScreen(
                             )
                             Text(
                                 text = "Password Protection has its own page below the blocking tools, so your security settings stay easy to find.",
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
+                                fontSize = 13.scaledSp,
+                                lineHeight = 18.scaledSp,
                                 color = DarkTextPrimary,
                                 modifier = Modifier.weight(1f),
                             )
@@ -352,14 +353,14 @@ fun DefenseScreen(
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     text = "Not sure what to do?",
-                                    fontSize = 14.sp,
+                                    fontSize = 14.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkTextPrimary,
                                 )
                                 Text(
                                     text = "Start with Focus to schedule a task, or open How to Use for a quick walkthrough of blocking and protection.",
-                                    fontSize = 12.sp,
-                                    lineHeight = 17.sp,
+                                    fontSize = 12.scaledSp,
+                                    lineHeight = 17.scaledSp,
                                     color = DarkTextSecondary,
                                 )
                                 Row(
@@ -372,7 +373,7 @@ fun DefenseScreen(
                                 ) {
                                     Text(
                                         text = "Open How to Use",
-                                        fontSize = 13.sp,
+                                        fontSize = 13.scaledSp,
                                         fontWeight = FontWeight.Bold,
                                         color = BrandPrimary,
                                     )
@@ -739,9 +740,9 @@ fun DefenseScreen(
                         )
                         Text(
                             text = notice.orEmpty(),
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = Color.White,
-                            lineHeight = 18.sp,
+                            lineHeight = 18.scaledSp,
                         )
                     }
                 }
@@ -858,7 +859,7 @@ internal fun PinPrompt(action: PinAction, onClose: () -> Unit) {
         title = { Text(action.title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(action.description, fontSize = 13.sp, color = DarkTextSecondary)
+                Text(action.description, fontSize = 13.scaledSp, color = DarkTextSecondary)
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = it; invalid = false },
@@ -866,7 +867,7 @@ internal fun PinPrompt(action: PinAction, onClose: () -> Unit) {
                     isError = invalid,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (invalid) Text("Incorrect password", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                if (invalid) Text("Incorrect password", color = MaterialTheme.colorScheme.error, fontSize = 12.scaledSp)
             }
         },
         confirmButton = {
@@ -893,9 +894,9 @@ private fun DefenseSection(title: String, content: @Composable () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
-            fontSize = 11.sp,
+            fontSize = 11.scaledSp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.8.sp,
+            letterSpacing = 0.8.scaledSp,
             color = DarkTextMuted,
             modifier = Modifier.padding(start = 2.dp),
         )
@@ -930,15 +931,15 @@ private fun SettingSwitch(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )
             Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = description,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+                fontSize = 13.scaledSp,
+                lineHeight = 18.scaledSp,
                 color = DarkTextSecondary,
             )
         }
@@ -974,15 +975,15 @@ private fun SettingButton(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                fontSize = 15.sp,
+                fontSize = 15.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = DarkTextPrimary,
             )
             Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = description,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+                fontSize = 13.scaledSp,
+                lineHeight = 18.scaledSp,
                 color = DarkTextSecondary,
             )
         }

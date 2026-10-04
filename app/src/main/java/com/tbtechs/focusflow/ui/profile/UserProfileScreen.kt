@@ -87,6 +87,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -241,7 +242,7 @@ fun UserProfileScreen(
                 title = {
                     Text(
                         if (isEditMode) "Profile" else "Tell Us About You",
-                        fontSize = 18.sp,
+                        fontSize = 18.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -333,7 +334,7 @@ fun UserProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = name.ifBlank { "FocusFlow User" },
-                            fontSize = 20.sp,
+                            fontSize = 20.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
@@ -344,13 +345,13 @@ fun UserProfileScreen(
                             } else {
                                 "Set up your focus profile"
                             },
-                            fontSize = 13.sp,
+                            fontSize = 13.scaledSp,
                             color = DarkTextSecondary,
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = "Daily goal: ${dailyGoalHours}h · ${focusGoals.size} active goals",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = ProfileAccent,
                             fontWeight = FontWeight.Medium,
                         )
@@ -423,7 +424,7 @@ fun UserProfileScreen(
                 ) {
                     Text(
                         "${dailyGoalHours} hours / day",
-                        fontSize = 16.sp,
+                        fontSize = 16.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = ProfileAccent,
                     )
@@ -439,12 +440,12 @@ fun UserProfileScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkTextPrimary),
                         ) {
-                            Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("−", fontSize = 18.scaledSp, fontWeight = FontWeight.Bold)
                         }
 
                         Text(
                             "$dailyGoalHours",
-                            fontSize = 16.sp,
+                            fontSize = 16.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                             modifier = Modifier.padding(horizontal = 4.dp),
@@ -457,7 +458,7 @@ fun UserProfileScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkTextPrimary),
                         ) {
-                            Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("+", fontSize = 18.scaledSp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -617,19 +618,19 @@ fun UserProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             "How your profile is used",
-                            fontSize = 14.5.sp,
+                            fontSize = 14.5.scaledSp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkTextPrimary,
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             "Private, offline, and stored only on this device",
-                            fontSize = 12.sp,
+                            fontSize = 12.scaledSp,
                             color = DarkTextSecondary,
                         )
                     }
 
-                    Text("View →", fontSize = 13.sp, color = ProfileAccent, fontWeight = FontWeight.Bold)
+                    Text("View →", fontSize = 13.scaledSp, color = ProfileAccent, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -646,7 +647,7 @@ fun UserProfileScreen(
                 ) {
                     Text(
                         if (saving) "Saving…" else if (isEditMode) "Save Changes" else "Save & Continue",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -660,7 +661,7 @@ fun UserProfileScreen(
                     Text(
                         "Skip for now — I'll set this up later in Settings",
                         color = DarkTextSecondary,
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                     )
                 }
             }
@@ -707,7 +708,7 @@ fun UserProfileScreen(
                         )
                         Text(
                             "How your profile is used",
-                            fontSize = 18.sp,
+                            fontSize = 18.scaledSp,
                             fontWeight = FontWeight.Bold,
                             color = DarkTextPrimary,
                         )
@@ -847,7 +848,7 @@ private fun ProfileJourneyCard(
                     )
                     Text(
                         text = if (name.isBlank()) "Journey Statistics" else "$name's Journey",
-                        fontSize = 15.sp,
+                        fontSize = 15.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = DarkTextPrimary,
                     )
@@ -855,7 +856,7 @@ private fun ProfileJourneyCard(
 
                 Text(
                     text = "${stats.todayMinutes}m / ${goalHours}h today",
-                    fontSize = 12.5.sp,
+                    fontSize = 12.5.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = ProfileAccent,
                 )
@@ -880,12 +881,12 @@ private fun ProfileJourneyCard(
                 ) {
                     Text(
                         "Today's Goal Progress",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         color = DarkTextSecondary,
                     )
                     Text(
                         "$progressPercent%",
-                        fontSize = 12.sp,
+                        fontSize = 12.scaledSp,
                         fontWeight = FontWeight.Bold,
                         color = if (progressPercent >= 100) Color(0xFF34D399) else ProfileAccent,
                     )
@@ -916,14 +917,14 @@ private fun JourneyStatItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
-            fontSize = 16.sp,
+            fontSize = 16.scaledSp,
             fontWeight = FontWeight.Bold,
             color = DarkTextPrimary,
         )
         Spacer(Modifier.height(2.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 11.scaledSp,
             color = DarkTextMuted,
         )
     }
@@ -944,17 +945,17 @@ private fun ProfileFieldCard(
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = title,
-                fontSize = 12.sp,
+                fontSize = 12.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = ProfileAccent,
-                letterSpacing = 0.5.sp,
+                letterSpacing = 0.5.scaledSp,
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    fontSize = 12.sp,
+                    fontSize = 12.scaledSp,
                     color = DarkTextSecondary,
-                    lineHeight = 16.sp,
+                    lineHeight = 16.scaledSp,
                 )
             }
         }
@@ -1005,7 +1006,7 @@ private fun FlowChoiceChips(
                     }
                     Text(
                         text = label,
-                        fontSize = 13.sp,
+                        fontSize = 13.scaledSp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         color = if (isSelected) Color.White else chipText,
                     )
@@ -1051,7 +1052,7 @@ private fun ProfileUsageItem(
             ) {
                 Text(
                     label,
-                    fontSize = 16.sp,
+                    fontSize = 16.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkTextPrimary,
                     maxLines = 1,
@@ -1059,7 +1060,7 @@ private fun ProfileUsageItem(
                 )
                 Text(
                     detail,
-                    fontSize = 13.5.sp,
+                    fontSize = 13.5.scaledSp,
                     color = DarkTextMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1068,7 +1069,7 @@ private fun ProfileUsageItem(
             Text(
                 value,
                 modifier = Modifier.padding(start = 8.dp),
-                fontSize = 14.sp,
+                fontSize = 14.scaledSp,
                 fontWeight = FontWeight.Bold,
                 color = ProfileAccent,
                 maxLines = 1,

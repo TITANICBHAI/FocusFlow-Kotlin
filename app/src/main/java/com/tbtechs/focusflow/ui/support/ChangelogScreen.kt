@@ -46,6 +46,7 @@ import com.tbtechs.focusflow.ui.theme.DarkCard
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.scaledSp
 
 private data class ChangeSection(val heading: String, val items: List<String>)
 private data class ChangeEntry(val version: String, val date: String, val sections: List<ChangeSection>)
@@ -153,7 +154,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
                         "What's New",
                         color = DarkTextPrimary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
+                        fontSize = 20.scaledSp,
                     )
                 },
                 navigationIcon = {
@@ -193,10 +194,10 @@ fun ChangelogScreen(onBack: () -> Unit) {
                         modifier = Modifier.size(38.dp),
                     )
                 }
-                Text("Changelog", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
+                Text("Changelog", fontSize = 28.scaledSp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 Text(
                     "Every improvement, fix, and new feature across all versions.",
-                    fontSize = 13.sp,
+                    fontSize = 13.scaledSp,
                     color = DarkTextSecondary,
                     textAlign = TextAlign.Center,
                 )
@@ -227,12 +228,12 @@ fun ChangelogScreen(onBack: () -> Unit) {
                             ) {
                                 Text(
                                     if (entry.version.startsWith("c")) entry.version else "v${entry.version}",
-                                    fontSize = 14.sp,
+                                    fontSize = 14.scaledSp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                 )
                             }
-                            Text(entry.date, fontSize = 13.sp, color = DarkTextMuted)
+                            Text(entry.date, fontSize = 13.scaledSp, color = DarkTextMuted)
                         }
                         entry.sections.forEach { section ->
                             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -248,7 +249,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
                                     )
                                     Text(
                                         section.heading,
-                                        fontSize = 16.sp,
+                                        fontSize = 16.scaledSp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = DarkTextPrimary,
                                     )
@@ -268,9 +269,9 @@ fun ChangelogScreen(onBack: () -> Unit) {
                                         Text(
                                             item,
                                             modifier = Modifier.weight(1f),
-                                            fontSize = 14.sp,
+                                            fontSize = 14.scaledSp,
                                             color = DarkTextSecondary,
-                                            lineHeight = 20.sp,
+                                            lineHeight = 20.scaledSp,
                                         )
                                     }
                                 }
@@ -281,7 +282,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
             }
             Text(
                 "Privacy Policy: titanicbhai.github.io/FocusFlow",
-                fontSize = 12.sp,
+                fontSize = 12.scaledSp,
                 color = DarkTextMuted,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
