@@ -468,7 +468,11 @@ fun ActiveScreen(
                         )
                     }
                     if (expanded == "vpn" && vpnPackages.isNotEmpty()) {
-                        PackageList(vpnPackages, appNames)
+                        PackageList(
+                            packages = vpnPackages,
+                            appInfoByPackage = appInfoByPackage,
+                            loading = installedAppsState.loading,
+                        )
                     }
                     Spacer(Modifier.height(4.dp))
                     ManageButton(

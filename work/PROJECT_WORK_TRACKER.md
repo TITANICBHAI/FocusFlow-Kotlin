@@ -44,9 +44,9 @@ Add a batch here whenever a new workstream or agent job is planned.
 | 03 | Text Size source-tab context for secondary routes and overlays (Prompt A) | Replit Agent | Implemented; verification blocked | 02 |
 | 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Replit Agent | Implemented; verification blocked | 02, 03 |
 | 05 | Text Size integration, verification, and final handoff | Replit Agent | Implemented; verification blocked | 02–04 |
-| 06 | Tab-screen customization and installed-app data-wiring audit | Replit Agent | Implemented; verification blocked | 07 |
-| 07 | Schedule text size and Focus/Defense layout fixes | Replit Agent | Implemented; verification blocked | 02, 03 |
-| 08 | Reuse the installed-app catalog in remaining tab surfaces | Replit Agent | Implemented; verification blocked | 07 |
+| 06 | Tab-screen customization and installed-app data-wiring audit | Replit Agent | In progress | 07 |
+| 07 | Schedule text size and Focus/Defense layout fixes | Replit Agent | In progress | 02, 03 |
+| 08 | Reuse the installed-app catalog in remaining tab surfaces | Replit Agent | In progress | 07 |
 
 The work folder contains the Text Size and Guarded Adjustments workstreams,
 plus the tab-customization plan. Add later workstreams here rather than treating
@@ -108,7 +108,7 @@ either feature-specific tracker as the project-wide list.
 
 **Agent:** Replit Agent
 **Last updated:** 2026-10-04
-**Status:** Implemented; verification blocked
+**Status:** In progress
 **Prompt:** Prompt A in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md)  
 **Depends on:** Batch 01
 
@@ -142,7 +142,7 @@ either feature-specific tracker as the project-wide list.
 
 **Agent:** Replit Agent
 **Last updated:** 2026-10-04
-**Status:** Implemented; verification blocked
+**Status:** In progress
 **Prompt:** Prompt A in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md), using the
 route/caller rules in [TEXT_SIZE_PLAN.md §12](TEXT_SIZE_PLAN.md#12-screen-route-and-modal-coverage-audit)  
 **Depends on:** Batch 02
@@ -191,7 +191,7 @@ and `ui/common/` retain their documented raw-`.sp` exclusions.
 
 **Agent:** Replit Agent
 **Last updated:** 2026-10-04
-**Status:** Implemented; verification blocked
+**Status:** In progress
 **Prompt:** Prompt B in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md)  
 **Depends on:** Batch 02 and Batch 03
 
@@ -446,9 +446,11 @@ SDK is available; no Android verification is claimed.
 - [x] Run source checks. **Evidence:** `git diff --check` and targeted searches
   for obsolete Defense banner/settings references and raw Home `.sp` literals
   pass.
-- [ ] Run route/persistence tests and Android compilation. **Blocker:**
-  `bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest` exits before
-  Gradle starts because Java and `JAVA_HOME` are unavailable.
+- [ ] Run route/persistence tests and Android compilation/APK assembly through
+  GitHub Actions, not in Replit. **Evidence so far:** the first remote run
+  reached Kotlin compilation and failed on an outdated Active Blocks call plus a
+  removed `InstalledAppInfo` import; both source fixes are now applied. Rerun
+  is pending.
 
 **Progress note:** Requested source changes are implemented. The separate
 per-screen customization/data-wiring audit remains planned under Batch 06.
@@ -470,3 +472,4 @@ Android compilation and tests are not claimed as passing.
 | 2026-10-05 | 06 | Replit Agent | Recorded the current-source tab/state, text-size, and app-catalog audit in `TAB_SCREEN_CUSTOMIZATION_PLAN.md`; existing Schedule slider and hierarchy are explicitly treated as complete, not reimplemented. | App-catalog adoption and missing-app presentation remain in Batch 08. |
 | 2026-10-05 | 08 | Replit Agent | Began the remaining catalog-consumer work using the existing cached repository and batched loader; no second catalog planned. | Android build/test verification remains subject to the documented missing Java/Android SDK toolchain. |
 | 2026-10-05 | 06, 08 | Replit Agent | Migrated remaining tab app-list screens to the shared progressive loader, added explicit app metadata resolution and icons to Active Blocks/scheduled summaries, preserved system-screen refreshes, and added metadata fallback tests. Updated the plan and tracker with the audit and evidence. | `git diff --check` and Kotlin LSP diagnostics pass; `:app:testDebugUnitTest` cannot start without Java/`JAVA_HOME`, and Android SDK setup is absent. |
+| 2026-10-05 | 06–08 | Replit Agent | Pushed the Batch 06/08 implementation and dispatched the APK Action. Fetched the first failure logs; they identified an outdated Active Blocks call and a missing type import, both now fixed. Updated the Action plan to include unit tests before the next APK build. | Second GitHub run and its logs are pending; no Android build is being run in Replit. |
