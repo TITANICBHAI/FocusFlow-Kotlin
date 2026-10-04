@@ -52,6 +52,7 @@ import androidx.navigation.navArgument
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.LauncherController
 import com.tbtechs.focusflow.data.repository.VpnRepository
+import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.domain.FocusPinManager
 import com.tbtechs.focusflow.ui.AppBootViewModel
@@ -121,6 +122,8 @@ fun FocusFlowNavGraph(
     val focusPinManager = remember { FocusPinManager(context) }
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
+    val currentSourceTab = currentBackStackEntry?.arguments
+        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT)
     val drawerState = androidx.compose.material3.rememberDrawerState(
         androidx.compose.material3.DrawerValue.Closed,
     )
@@ -129,20 +132,38 @@ fun FocusFlowNavGraph(
     val settings by settingsViewModel.settings.collectAsState()
 
     fun navigate(route: String) {
-        if (navController.currentDestination?.route == route) return
-        if (route == Routes.HOME) {
+        val destinationBase = RouteTextScaleContext.routeBase(route) ?: route
+        val nextSourceTab = RouteTextScaleContext.sourceTabForDestination(
+            currentRoute = currentRoute,
+            currentSourceTab = currentSourceTab,
+            destinationRoute = route,
+        )
+        val targetRoute = RouteTextScaleContext.routeWithSourceTab(route, nextSourceTab)
+        val hasNonContextArguments = route.substringAfter('?', "")
+            .split('&')
+            .any { argument ->
+                argument.isNotBlank() &&
+                    argument.substringBefore('=')
+                        .substringAfter('?') != RouteTextScaleContext.SOURCE_TAB_ARGUMENT
+            }
+        val alreadyAtDestination = RouteTextScaleContext.routeBase(currentRoute) == destinationBase &&
+            !hasNonContextArguments &&
+            currentSourceTab == nextSourceTab
+        if (alreadyAtDestination) return
+
+        if (destinationBase == Routes.HOME) {
             // Schedule is also the NavHost start destination. Re-enter it by
             // keeping the root entry and discarding everything above it;
             // restoring saved state here can resurrect the onboarding stack
             // during the first post-onboarding session.
-            navController.navigate(route) {
+            navController.navigate(destinationBase) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = false
                 }
                 launchSingleTop = true
             }
-        } else if (route in Routes.tabRoutes) {
-            navController.navigate(route) {
+        } else if (destinationBase in Routes.tabRoutes) {
+            navController.navigate(destinationBase) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
                 }
@@ -150,7 +171,7 @@ fun FocusFlowNavGraph(
                 restoreState = true
             }
         } else {
-            navController.navigate(route) { launchSingleTop = true }
+            navController.navigate(targetRoute) { launchSingleTop = true }
         }
     }
 
@@ -161,11 +182,17 @@ fun FocusFlowNavGraph(
     androidx.compose.material3.ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            SideMenu(
-                currentRoute = currentRoute,
-                onNavigate = ::navigate,
-                onClose = { scope.launch { drawerState.close() } },
-            )
+            RouteTextScaleProvider(
+                route = currentRoute ?: Routes.HOME,
+                sourceTab = currentSourceTab,
+                settings = settings,
+            ) {
+                SideMenu(
+                    currentRoute = currentRoute,
+                    onNavigate = ::navigate,
+                    onClose = { scope.launch { drawerState.close() } },
+                )
+            }
         },
     ) {
         NavHost(
@@ -268,12 +295,22 @@ fun FocusFlowNavGraph(
                     }
                 }
             }
-            composable(Routes.GUARDED_ADJUSTMENTS) {
-                ScreenBoundary(Routes.GUARDED_ADJUSTMENTS) {
-                    ProtectedAdjustmentsScreen(
-                        onBack = ::back,
-                        onOpenRoute = ::navigate,
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.GUARDED_ADJUSTMENTS),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.GUARDED_ADJUSTMENTS,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.GUARDED_ADJUSTMENTS) {
+                        ProtectedAdjustmentsScreen(
+                            onBack = ::back,
+                            onOpenRoute = ::navigate,
+                        )
+                    }
                 }
             }
             composable(Routes.DEFENSE) {
@@ -300,117 +337,188 @@ fun FocusFlowNavGraph(
                     }
                 }
             }
-            composable(Routes.ACTIVE) {
-                ScreenBoundary(Routes.ACTIVE) {
-                    ActiveScreen(
-                        taskViewModel = taskViewModel,
-                        settingsViewModel = settingsViewModel,
-                        focusSessionViewModel = focusSessionViewModel,
-                        vpnRepository = vpnRepository,
-                        onBack = ::back,
-                        onOpenFocus = { navigate(Routes.FOCUS) },
-                        onOpenAlwaysOn = { navigate(Routes.ALWAYS_ON) },
-                        onOpenDefense = { navigate(Routes.DEFENSE) },
-                        onOpenKeywordBlocker = { navigate(Routes.KEYWORD_BLOCKER) },
-                        onOpenVpnBlockList = { navigate(Routes.VPN_BLOCK_LIST) },
-                    )
-                }
-            }
-            composable(Routes.ALWAYS_ON) {
-                ScreenBoundary(Routes.ALWAYS_ON) {
-                    AlwaysOnScreen(
-                        settingsViewModel = settingsViewModel,
-                        focusSessionViewModel = focusSessionViewModel,
-                        settingsRepository = AppModule.settingsRepository,
-                        vpnRepository = vpnRepository,
-                        installedAppsRepository = installedAppsRepository,
-                        onBack = ::back,
-                    )
-                }
-            }
-            composable(Routes.BLOCK_DEFENSE) {
-                ScreenBoundary(Routes.BLOCK_DEFENSE) {
-                    StandaloneBlockSetupScreen(
-                        settingsViewModel = settingsViewModel,
-                        initialPackage = pendingQuickBlockPackage,
-                        onBack = {
-                            pendingQuickBlockPackage = null
-                            pendingQuickBlockAppName = ""
-                            back()
-                        },
-                    )
-                }
-            }
-            composable(Routes.CHANGELOG) {
-                ScreenBoundary(Routes.CHANGELOG) { ChangelogScreen(onBack = ::back) }
-            }
-            composable(Routes.HOME_LAUNCHER_SETUP) {
-                ScreenBoundary(Routes.HOME_LAUNCHER_SETUP) {
-                    LauncherSetupScreen(
-                        settingsViewModel = settingsViewModel,
-                        settingsRepository = AppModule.settingsRepository,
-                        installedAppsRepository = installedAppsRepository,
-                        launcherController = launcherController,
-                        onBack = ::back,
-                    )
-                }
-            }
-            composable(Routes.IMPORT_CONFIRM) {
-                ScreenBoundary(Routes.IMPORT_CONFIRM) {
-                    ImportConfirmScreen(
-                        pendingGeneration = pendingImportGeneration,
-                        backupCoordinator = backupCoordinator
-                            ?: error("Backup coordinator is required for import confirmation."),
-                        currentFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
-                        initialReplaceTasks = initialReplaceTasks,
-                        onBack = onImportFinished,
-                        onImported = onImportFinished,
-                    )
-                }
-            }
-            composable(Routes.HOW_TO_USE) {
-                ScreenBoundary(Routes.HOW_TO_USE) {
-                    HowToUseScreen(
-                        isOnboarding = false,
-                        onBack = ::back,
-                        onGetStarted = { navigate(Routes.FOCUS) },
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.ACTIVE),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.ACTIVE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.ACTIVE) {
+                        ActiveScreen(
+                            taskViewModel = taskViewModel,
+                            settingsViewModel = settingsViewModel,
+                            focusSessionViewModel = focusSessionViewModel,
+                            vpnRepository = vpnRepository,
+                            onBack = ::back,
+                            onOpenFocus = { navigate(Routes.FOCUS) },
+                            onOpenAlwaysOn = { navigate(Routes.ALWAYS_ON) },
+                            onOpenDefense = { navigate(Routes.DEFENSE) },
+                            onOpenKeywordBlocker = { navigate(Routes.KEYWORD_BLOCKER) },
+                            onOpenVpnBlockList = { navigate(Routes.VPN_BLOCK_LIST) },
+                        )
+                    }
                 }
             }
             composable(
-                route = "${Routes.HOW_TO_USE}?onboarding={onboarding}",
+                route = RouteTextScaleContext.routePattern(Routes.ALWAYS_ON),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.ALWAYS_ON,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.ALWAYS_ON) {
+                        AlwaysOnScreen(
+                            settingsViewModel = settingsViewModel,
+                            focusSessionViewModel = focusSessionViewModel,
+                            settingsRepository = AppModule.settingsRepository,
+                            vpnRepository = vpnRepository,
+                            installedAppsRepository = installedAppsRepository,
+                            onBack = ::back,
+                        )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.BLOCK_DEFENSE),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.BLOCK_DEFENSE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.BLOCK_DEFENSE) {
+                        StandaloneBlockSetupScreen(
+                            settingsViewModel = settingsViewModel,
+                            initialPackage = pendingQuickBlockPackage,
+                            onBack = {
+                                pendingQuickBlockPackage = null
+                                pendingQuickBlockAppName = ""
+                                back()
+                            },
+                        )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.CHANGELOG),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.CHANGELOG,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.CHANGELOG) { ChangelogScreen(onBack = ::back) }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.HOME_LAUNCHER_SETUP),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.HOME_LAUNCHER_SETUP,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.HOME_LAUNCHER_SETUP) {
+                        LauncherSetupScreen(
+                            settingsViewModel = settingsViewModel,
+                            settingsRepository = AppModule.settingsRepository,
+                            installedAppsRepository = installedAppsRepository,
+                            launcherController = launcherController,
+                            onBack = ::back,
+                        )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.IMPORT_CONFIRM),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.IMPORT_CONFIRM,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.IMPORT_CONFIRM) {
+                        ImportConfirmScreen(
+                            pendingGeneration = pendingImportGeneration,
+                            backupCoordinator = backupCoordinator
+                                ?: error("Backup coordinator is required for import confirmation."),
+                            currentFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
+                            initialReplaceTasks = initialReplaceTasks,
+                            onBack = onImportFinished,
+                            onImported = onImportFinished,
+                        )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(
+                    "${Routes.HOW_TO_USE}?onboarding={onboarding}",
+                ),
                 arguments = listOf(
                     navArgument("onboarding") {
                         type = NavType.StringType
-                        defaultValue = "true"
+                        defaultValue = "false"
                     },
+                    sourceTabArgument(),
                 ),
             ) { backStackEntry ->
                 val onboardingParam = backStackEntry.arguments?.getString("onboarding")
                 val isOnboarding = onboardingParam == "true" || onboardingParam == "1"
-                ScreenBoundary(Routes.HOW_TO_USE) {
-                    HowToUseScreen(
-                        isOnboarding = isOnboarding,
-                        onBack = {
-                            if (isOnboarding) {
+                RouteTextScaleProvider(
+                    route = Routes.HOW_TO_USE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.HOW_TO_USE) {
+                        HowToUseScreen(
+                            isOnboarding = isOnboarding,
+                            onBack = {
+                                if (isOnboarding) {
+                                    navigate(Routes.DEFENSE)
+                                } else {
+                                    back()
+                                }
+                            },
+                            onGetStarted = {
+                                onOnboardingTourFinished()
                                 navigate(Routes.DEFENSE)
-                            } else {
-                                back()
-                            }
-                        },
-                        onGetStarted = {
-                            onOnboardingTourFinished()
-                            navigate(Routes.DEFENSE)
-                        },
-                    )
+                            },
+                        )
+                    }
                 }
             }
-            composable(Routes.KEYWORD_BLOCKER) {
-                ScreenBoundary(Routes.KEYWORD_BLOCKER) {
-                    KeywordBlockerScreen(
-                        settingsViewModel = settingsViewModel,
-                        onBack = ::back,
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.KEYWORD_BLOCKER),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.KEYWORD_BLOCKER,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.KEYWORD_BLOCKER) {
+                        KeywordBlockerScreen(
+                            settingsViewModel = settingsViewModel,
+                            onBack = ::back,
+                        )
+                    }
                 }
             }
             composable(Routes.ONBOARDING) {
@@ -425,113 +533,187 @@ fun FocusFlowNavGraph(
                     )
                 }
             }
-            composable(Routes.PASSWORD_PROTECTION) {
-                ScreenBoundary(Routes.PASSWORD_PROTECTION) {
-                    PasswordProtectionScreen(
-                        settingsViewModel = settingsViewModel,
-                        focusPinManager = focusPinManager,
-                        onBack = { navigate(Routes.DEFENSE) },
-                    )
-                }
-            }
-            composable(Routes.PERMISSIONS) {
-                ScreenBoundary(Routes.PERMISSIONS) {
-                    PermissionsScreen(
-                        settingsViewModel = settingsViewModel,
-                        isFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
-                        onBack = ::back,
-                        onConfigureLauncher = { navigate(Routes.HOME_LAUNCHER_SETUP) },
-                    )
-                }
-            }
-            composable(Routes.PRIVACY_POLICY) {
-                val privacyAccepted by settingsViewModel.privacyAccepted.collectAsState()
-                ScreenBoundary(Routes.PRIVACY_POLICY) {
-                    PrivacyPolicyScreen(
-                        settingsRepository = AppModule.settingsRepository,
-                        isRevisit = privacyAccepted,
-                        onBack = ::back,
-                        onAccepted = {
-                            navController.navigate(Routes.ONBOARDING) {
-                                popUpTo(Routes.PRIVACY_POLICY) { inclusive = true }
-                            }
-                        },
-                        onDeclineExit = { (context as? Activity)?.finishAndRemoveTask() },
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.PASSWORD_PROTECTION),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.PASSWORD_PROTECTION,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.PASSWORD_PROTECTION) {
+                        PasswordProtectionScreen(
+                            settingsViewModel = settingsViewModel,
+                            focusPinManager = focusPinManager,
+                            onBack = { navigate(Routes.DEFENSE) },
+                        )
+                    }
                 }
             }
             composable(
-                route = "${Routes.PRIVACY_POLICY}?revisit={revisit}",
+                route = RouteTextScaleContext.routePattern(Routes.PERMISSIONS),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.PERMISSIONS,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.PERMISSIONS) {
+                        PermissionsScreen(
+                            settingsViewModel = settingsViewModel,
+                            isFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
+                            onBack = ::back,
+                            onConfigureLauncher = { navigate(Routes.HOME_LAUNCHER_SETUP) },
+                        )
+                    }
+                }
+            }
+            composable(
+                route = RouteTextScaleContext.routePattern(
+                    "${Routes.PRIVACY_POLICY}?revisit={revisit}",
+                ),
                 arguments = listOf(
                     navArgument("revisit") {
                         type = NavType.StringType
-                        defaultValue = "false"
+                        nullable = true
+                        defaultValue = null
                     },
+                    sourceTabArgument(),
                 ),
             ) { backStackEntry ->
+                val privacyAccepted by settingsViewModel.privacyAccepted.collectAsState()
                 val revisitParam = backStackEntry.arguments?.getString("revisit")
-                val isRevisit = revisitParam == "true" || revisitParam == "1"
-                ScreenBoundary(Routes.PRIVACY_POLICY) {
-                    PrivacyPolicyScreen(
-                        settingsRepository = AppModule.settingsRepository,
-                        isRevisit = isRevisit,
-                        onBack = ::back,
-                        onAccepted = {
-                            navController.navigate(Routes.ONBOARDING) {
-                                popUpTo(Routes.PRIVACY_POLICY) { inclusive = true }
-                            }
-                        },
-                        onDeclineExit = { (context as? Activity)?.finishAndRemoveTask() },
-                    )
+                val isRevisit = when (revisitParam) {
+                    "true", "1" -> true
+                    "false", "0" -> false
+                    else -> privacyAccepted
+                }
+                RouteTextScaleProvider(
+                    route = Routes.PRIVACY_POLICY,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.PRIVACY_POLICY) {
+                        PrivacyPolicyScreen(
+                            settingsRepository = AppModule.settingsRepository,
+                            isRevisit = isRevisit,
+                            onBack = ::back,
+                            onAccepted = {
+                                val currentDestinationId = navController.currentBackStackEntry
+                                    ?.destination
+                                    ?.id
+                                    ?: navController.graph.findStartDestination().id
+                                navController.navigate(Routes.ONBOARDING) {
+                                    popUpTo(currentDestinationId) { inclusive = true }
+                                }
+                            },
+                            onDeclineExit = { (context as? Activity)?.finishAndRemoveTask() },
+                        )
+                    }
                 }
             }
-            composable(Routes.REPORTS) {
-                ScreenBoundary(Routes.REPORTS) {
-                    ReportsScreen(
-                        taskViewModel = taskViewModel,
-                        reportNotesRepository = AppModule.reportNotesRepository,
-                        onBack = ::back,
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.REPORTS),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.REPORTS,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.REPORTS) {
+                        ReportsScreen(
+                            taskViewModel = taskViewModel,
+                            reportNotesRepository = AppModule.reportNotesRepository,
+                            onBack = ::back,
+                        )
+                    }
                 }
             }
-            composable(Routes.REPORT) {
-                ScreenBoundary(Routes.REPORT) {
-                    ReportScreen(
-                        taskViewModel = taskViewModel,
-                        reportNotesRepository = AppModule.reportNotesRepository,
-                        onBack = ::back,
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.REPORT),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.REPORT,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.REPORT) {
+                        ReportScreen(
+                            taskViewModel = taskViewModel,
+                            reportNotesRepository = AppModule.reportNotesRepository,
+                            onBack = ::back,
+                        )
+                    }
                 }
             }
-            composable(Routes.TERMS_OF_SERVICE) {
-                ScreenBoundary(Routes.TERMS_OF_SERVICE) {
-                    TermsOfServiceScreen(onBack = ::back)
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.TERMS_OF_SERVICE),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.TERMS_OF_SERVICE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.TERMS_OF_SERVICE) {
+                        TermsOfServiceScreen(onBack = ::back)
+                    }
                 }
             }
-            composable(Routes.USER_PROFILE) {
-                ScreenBoundary(Routes.USER_PROFILE) {
-                    UserProfileScreen(
-                        settingsRepository = AppModule.settingsRepository,
-                        isEditMode = true,
-                        onBack = ::back,
-                        onFinished = ::back,
-                        onImportBackup = backupCoordinator?.let {
-                            { onImportBackup(false) }
-                        },
-                        focusSessionRepository = AppModule.focusSessionRepository,
-                        settingsViewModel = settingsViewModel,
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.USER_PROFILE),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.USER_PROFILE,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.USER_PROFILE) {
+                        UserProfileScreen(
+                            settingsRepository = AppModule.settingsRepository,
+                            isEditMode = true,
+                            onBack = ::back,
+                            onFinished = ::back,
+                            onImportBackup = backupCoordinator?.let {
+                                { onImportBackup(false) }
+                            },
+                            focusSessionRepository = AppModule.focusSessionRepository,
+                            settingsViewModel = settingsViewModel,
+                        )
+                    }
                 }
             }
-            composable(Routes.VPN_BLOCK_LIST) {
-                ScreenBoundary(Routes.VPN_BLOCK_LIST) {
-                    VpnBlockListScreen(
-                        settingsViewModel = settingsViewModel,
-                        vpnRepository = vpnRepository,
-                        installedAppsRepository = installedAppsRepository,
-                        isFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
-                        onBack = ::back,
-                    )
+            composable(
+                route = RouteTextScaleContext.routePattern(Routes.VPN_BLOCK_LIST),
+                arguments = listOf(sourceTabArgument()),
+            ) { backStackEntry ->
+                RouteTextScaleProvider(
+                    route = Routes.VPN_BLOCK_LIST,
+                    sourceTab = backStackEntry.arguments
+                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                    settings = settings,
+                ) {
+                    ScreenBoundary(Routes.VPN_BLOCK_LIST) {
+                        VpnBlockListScreen(
+                            settingsViewModel = settingsViewModel,
+                            vpnRepository = vpnRepository,
+                            installedAppsRepository = installedAppsRepository,
+                            isFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
+                            onBack = ::back,
+                        )
+                    }
                 }
             }
             composable(Routes.NOT_FOUND) {
@@ -541,29 +723,57 @@ fun FocusFlowNavGraph(
             }
         }
         pendingQuickBlockPackage?.let { packageName ->
-            QuickBlockSheet(
-                visible = true,
-                packageName = packageName,
-                appName = pendingQuickBlockAppName.ifBlank { packageName },
+            // This sheet is composed beside the NavHost, outside Stats'
+            // destination provider, so explicitly restore its caller scale.
+            RouteTextScaleProvider(
+                route = Routes.STATS,
+                sourceTab = Routes.STATS,
                 settings = settings,
-                settingsRepository = AppModule.settingsRepository,
-                onClose = {
-                    pendingQuickBlockPackage = null
-                    pendingQuickBlockAppName = ""
-                },
-                onOpenActive = {
-                    pendingQuickBlockPackage = null
-                    pendingQuickBlockAppName = ""
-                    navigate(Routes.ACTIVE)
-                },
-                onOpenAlwaysOn = {
-                    pendingQuickBlockPackage = null
-                    pendingQuickBlockAppName = ""
-                    navigate(Routes.ALWAYS_ON)
-                },
-            )
+            ) {
+                QuickBlockSheet(
+                    visible = true,
+                    packageName = packageName,
+                    appName = pendingQuickBlockAppName.ifBlank { packageName },
+                    settings = settings,
+                    settingsRepository = AppModule.settingsRepository,
+                    onClose = {
+                        pendingQuickBlockPackage = null
+                        pendingQuickBlockAppName = ""
+                    },
+                    onOpenActive = {
+                        pendingQuickBlockPackage = null
+                        pendingQuickBlockAppName = ""
+                        navigate(Routes.ACTIVE)
+                    },
+                    onOpenAlwaysOn = {
+                        pendingQuickBlockPackage = null
+                        pendingQuickBlockAppName = ""
+                        navigate(Routes.ALWAYS_ON)
+                    },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun RouteTextScaleProvider(
+    route: String,
+    sourceTab: String?,
+    settings: AppSettings,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalFocusFlowTextScale provides RouteTextScaleContext.scaleFor(route, sourceTab, settings),
+    ) {
+        content()
+    }
+}
+
+private fun sourceTabArgument() = navArgument(RouteTextScaleContext.SOURCE_TAB_ARGUMENT) {
+    type = NavType.StringType
+    nullable = true
+    defaultValue = null
 }
 
 @Composable

@@ -61,6 +61,7 @@ import com.tbtechs.focusflow.ui.common.ErrorAlertBanner
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
 import com.tbtechs.focusflow.ui.navigation.FocusFlowNavGraph
 import com.tbtechs.focusflow.ui.navigation.Routes
+import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
 import com.tbtechs.focusflow.ui.stats.StatsViewModel
 import com.tbtechs.focusflow.ui.support.DiagnosticLogEntry
 import com.tbtechs.focusflow.ui.support.DiagnosticLogLevel
@@ -240,7 +241,20 @@ private fun FocusFlowRoot(
                 val staged = backupCoordinator.stageImport(source)
                 if (staged.isSuccess) {
                     pendingImportGeneration += 1
-                    navController.navigate(Routes.IMPORT_CONFIRM) {
+                    val sourceTab = navController.currentBackStackEntry?.let { entry ->
+                        RouteTextScaleContext.sourceTabForDestination(
+                            currentRoute = entry.destination.route,
+                            currentSourceTab = entry.arguments
+                                ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                            destinationRoute = Routes.IMPORT_CONFIRM,
+                        )
+                    }
+                    navController.navigate(
+                        RouteTextScaleContext.routeWithSourceTab(
+                            Routes.IMPORT_CONFIRM,
+                            sourceTab,
+                        ),
+                    ) {
                         launchSingleTop = true
                     }
                 } else {
@@ -268,9 +282,29 @@ private fun FocusFlowRoot(
             privacyAccepted &&
             onboardingComplete &&
             pendingImportAvailable &&
-            navController.currentDestination?.route != Routes.IMPORT_CONFIRM
+            RouteTextScaleContext.routeBase(navController.currentDestination?.route) !=
+            Routes.IMPORT_CONFIRM
         ) {
-            navController.navigate(Routes.IMPORT_CONFIRM) { launchSingleTop = true }
+            val sourceTab = if (pendingImportGeneration > 0) {
+                navController.currentBackStackEntry?.let { entry ->
+                    RouteTextScaleContext.sourceTabForDestination(
+                        currentRoute = entry.destination.route,
+                        currentSourceTab = entry.arguments
+                            ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
+                        destinationRoute = Routes.IMPORT_CONFIRM,
+                    )
+                }
+            } else {
+                null
+            }
+            navController.navigate(
+                RouteTextScaleContext.routeWithSourceTab(
+                    Routes.IMPORT_CONFIRM,
+                    sourceTab,
+                ),
+            ) {
+                launchSingleTop = true
+            }
         }
     }
 
@@ -358,8 +392,10 @@ private fun FocusFlowRoot(
             return@LaunchedEffect
         }
 
-        if (guardedRoute != Routes.HOME &&
-            currentRoute != guardedRoute
+        if (
+            RouteTextScaleContext.routeBase(guardedRoute) != Routes.HOME &&
+            RouteTextScaleContext.routeBase(currentRoute) !=
+            RouteTextScaleContext.routeBase(guardedRoute)
         ) {
             navController.navigate(guardedRoute) {
                 launchSingleTop = true

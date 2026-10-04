@@ -20,6 +20,7 @@ class RoutesTest {
     fun knownPublicDeepLinksStillResolve() {
         assertEquals(Routes.PRIVACY_POLICY, Routes.fromPath("/privacy-policy?source=test"))
         assertEquals(Routes.ALWAYS_ON, Routes.fromPath("always-on?package=com.example.app"))
+        assertEquals(Routes.ALWAYS_ON, Routes.fromPath("always-on?sourceTab=stats"))
         assertEquals(Routes.FOCUS, Routes.fromPath("focus"))
     }
 }

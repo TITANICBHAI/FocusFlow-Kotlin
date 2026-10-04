@@ -262,7 +262,7 @@ the original root-tab wiring and file list do not fully describe.
 | Focus | `FocusScreen`; its extension, session-debrief, standalone-block, and PIN dialogs; shared `Routes.ACTIVE`; `Routes.PERMISSIONS` | Focus-owned content uses the Focus override. Shared destinations use the caller's scale. |
 | Stats | `StatsScreen`; `Routes.REPORTS` / `Routes.REPORT`; the top-level `QuickBlockSheet`; shared `Routes.ACTIVE` | Stats-specific `.sp` coverage is not in Prompt B. Keep this a visible v1 limitation; do not claim the Stats override works for raw literals or the quick-block sheet. |
 | Settings | `SettingsScreen`; Guarded Adjustments; profile, permissions, changelog, privacy/terms, and backup/import destinations; overlay-appearance, allowed-apps, report-issue, PIN, import-choice, and destructive-confirmation dialogs | Settings-owned destinations use the Settings override. Inline dialogs inherit their caller unless their source file is an explicit exception. |
-| Defense | `DefenseScreen`; Always-On, standalone-block setup, keyword blocker, VPN list, password protection, permissions, launcher setup, and How-to-Use destinations; daily-allowance, schedule, blocked-word, standalone-block, VPN-consent, and PIN dialogs | Defense-owned destinations use the Defense override. Shared destinations use the caller's scale. The existing launcher-setup exclusion remains explicit. |
+| Defense | `DefenseScreen`; Always-On, standalone-block setup, keyword blocker, VPN list, password protection, permissions, and launcher setup destinations; daily-allowance, schedule, blocked-word, standalone-block, VPN-consent, and PIN dialogs | Defense-owned destinations use the Defense override. Shared destinations use the caller's scale. How-to-Use also opens from the global SideMenu and follows its caller; direct/onboarding entry without a source tab uses General. The existing launcher-setup exclusion remains explicit. |
 | Enforcement overlay | `BlockOverlayActivity`, a plain Android Activity with programmatic `TextView`s | It cannot inherit a Compose local; use the direct preference-read path in §10. |
 
 **Current-source revalidation (2026-10-04):** The route and caller inventory was
@@ -275,36 +275,41 @@ Settings, and Defense origins use their respective source scale. The Settings
 guide also links to `Routes.PERMISSIONS` and Defense-owned secondary routes.
 
 `Routes.PERMISSIONS` is opened from Focus, Settings, and Defense, as well as from
-the Settings Guarded Adjustments guide. Its launcher-configuration action opens
+the Settings Guarded Adjustments guide. `Routes.HOW_TO_USE` is opened from
+Defense and from the global SideMenu available on every tab; it follows the
+opening tab except for direct/onboarding entry, which uses General. Its
+launcher-configuration action opens
 `Routes.HOME_LAUNCHER_SETUP`, so launcher setup is reachable from each of those
 origins, not only directly from Defense. `ActiveScreen` can also navigate onward
 to Focus, Defense, Always-On, Keyword Blocker, and the VPN list; `ALWAYS_ON`,
 `KEYWORD_BLOCKER`, and `VPN_BLOCK_LIST` are additionally linked from the Settings
 guide, while `ALWAYS_ON` is also opened by the Stats quick-block flow. Preserve
-the Home pin across Home-origin shared flows; shared `ACTIVE` and `PERMISSIONS`
-use their caller's scale; tab-owned routes use the owning tab's scale; direct
-external/deep-link entries without a source tab use General (except Home, which
-is always `1f`).
+the Home pin across Home-origin shared flows; shared `ACTIVE`, `PERMISSIONS`,
+and `HOW_TO_USE` use their caller's scale; tab-owned routes use the owning tab's
+scale; direct external/deep-link entries without a source tab use General
+(except Home, which is always `1f`).
 
 `AppPickerSheet` is invoked inline through `ui/home/AllowedAppsDialog.kt` (Home),
 `ui/launcher/AllowedAppsModal.kt` (Settings), and
 `ui/settings/DailyAllowanceModal.kt` (Defense); those sheets inherit their
 caller's composition. `QuickBlockSheet` is rendered after the NavHost in
-`FocusFlowNavGraph.kt`, is opened from Stats, and does not inherit a tab-local
-provider; it needs explicit Stats context or must remain an uncovered surface.
+`FocusFlowNavGraph.kt` and is opened from Stats. Batch 03 wraps this top-level
+sheet in an explicit Stats provider; its current raw `.sp` literals still do not
+respond until mechanical conversion is separately in scope.
 External/deep-link entry is resolved by `MainActivity.routeFromIntent()` and
 `Routes.fromPath()` without a source-tab marker. The five root destinations alone
 render `MainScaffold`; its tab labels are outside the inner screen content.
 
-**Important navigation gap:** A `CompositionLocalProvider` wrapped around one
-`composable()` body does not automatically scope a different NavHost destination.
-The original §6 root wrappers alone therefore do not make a per-tab override
-follow the user into secondary routes. Before marking this feature complete,
-carry the source-tab context to secondary destinations and apply the corresponding
-scale there. `ACTIVE` and `PERMISSIONS` are shared across tabs; they must use the
-caller context rather than a hard-coded tab. Inline dialogs and sheets use their
-caller's context. A direct/external entry with no source-tab context uses General;
-Home-origin content remains pinned to `1f`.
+**Source-tab context (Batch 03):** A `CompositionLocalProvider` wrapped around
+one `composable()` body does not automatically scope a different NavHost
+destination. Secondary route navigation now carries a validated root-tab
+argument; tab-owned routes use their owner, and shared `ACTIVE`, `PERMISSIONS`,
+and `HOW_TO_USE` routes use the caller. Direct/external entries without a
+source-tab argument use General. Inline dialogs and sheets inherit their caller's
+provider. The top-level Stats `QuickBlockSheet` and global `SideMenu`, both
+outside the active destination provider, receive explicit caller context. Home
+remains pinned to `1f` in its root content and caller-owned shared flows.
+`SideMenu` remains in the `ui/common/` mechanical-conversion exclusion.
 
 **Known uncovered surfaces must stay visible in the handoff:**
 

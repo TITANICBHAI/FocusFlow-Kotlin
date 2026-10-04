@@ -41,8 +41,8 @@ Add a batch here whenever a new workstream or agent job is planned.
 | 00 | Guarded Adjustments Settings guide | Not recorded in existing handoff | Implemented; verification blocked | — |
 | 01 | Text Size route/modal audit | Unassigned | In progress | — |
 | 02 | Text Size core settings, theme, UI, and block overlay (Prompt A) | Unassigned | Not started | 01 |
-| 03 | Text Size source-tab context for secondary routes and overlays (Prompt A) | Unassigned | Not started | 02 |
-| 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Unassigned | Not started | 02, 03 |
+| 03 | Text Size source-tab context for secondary routes and overlays (Prompt A) | Replit Agent | Implemented; verification blocked | 02 |
+| 04 | Scoped `.sp` to `.scaledSp` conversion (Prompt B) | Unassigned | Blocked | 02, 03 |
 | 05 | Text Size integration, verification, and final handoff | Unassigned | Not started | 02–04 |
 
 The current work folder contains the two workstreams listed above. Add later
@@ -105,7 +105,7 @@ project-wide list.
 
 **Agent:** Replit Agent
 **Last updated:** 2026-10-04
-**Status:** Implemented; Android verification blocked
+**Status:** Implemented; verification blocked
 **Prompt:** Prompt A in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md)  
 **Depends on:** Batch 01
 
@@ -137,42 +137,78 @@ project-wide list.
 
 ## Batch 03 — Text Size source-tab context for secondary routes and overlays
 
-**Agent:** Unassigned  
-**Last updated:** Not recorded  
-**Status:** Not started  
+**Agent:** Replit Agent
+**Last updated:** 2026-10-04
+**Status:** Implemented; verification blocked
 **Prompt:** Prompt A in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md), using the
 route/caller rules in [TEXT_SIZE_PLAN.md §12](TEXT_SIZE_PLAN.md#12-screen-route-and-modal-coverage-audit)  
 **Depends on:** Batch 02
 
-- [ ] Apply the owning tab's scale to tab-owned secondary destinations.
-  **Evidence required:** route-to-provider mapping verified against live
-  navigation code.
-- [ ] Make shared destinations use the tab that opened them; use General for a
+- [x] Apply the owning tab's scale to tab-owned secondary destinations.
+  **Evidence:** `RouteTextScaleContext.kt` maps Settings-, Stats-, and
+  Defense-owned routes; `FocusFlowNavGraph.kt` applies those scales at each
+  secondary destination. Direct entries without a source argument resolve to
+  General.
+- [x] Make shared destinations use the tab that opened them; use General for a
   direct entry with no source tab.
-  **Evidence required:** source references and checks for each shared route.
-- [ ] Preserve caller scale for inline dialogs/sheets, explicitly handling
+  **Evidence:** live callers in `FocusFlowNavGraph.kt` and `SideMenu.kt` pass
+  Home/Focus/Stats/Settings/Defense context to `ACTIVE`, `PERMISSIONS`, and
+  `HOW_TO_USE`. `RouteTextScaleContextTest.kt` covers each shared route for
+  every root tab and the no-source General fallback; `RoutesTest.kt` confirms
+  a deep-link query cannot supply the source-tab context.
+- [x] Preserve caller scale for inline dialogs/sheets, explicitly handling
   top-level overlays outside the caller composition.
-  **Evidence required:** source/call-site mapping and behavior checks.
-- [ ] Keep every Home-origin flow, including shared components, pinned to `1f`.
-  **Evidence required:** route/caller verification; no Home scale leakage.
+  **Evidence:** inline `AppPickerSheet` call sites in `ui/home/AllowedAppsDialog.kt`,
+  `ui/launcher/AllowedAppsModal.kt`, and `ui/settings/DailyAllowanceModal.kt`
+  remain under their caller provider. The global `SideMenu` and the Stats
+  `QuickBlockSheet` are explicitly wrapped outside the active NavHost content.
+- [x] Keep every Home-origin flow, including shared components, pinned to `1f`.
+  **Evidence:** the Home route remains explicitly provided `1f`; shared routes
+  retain Home as their source, and the Home picker inherits that provider.
+  `RouteTextScaleContextTest.kt` checks Home scale on each shared route.
+  `MainScaffold` remains outside the tab content providers.
+- [ ] Run the route/context unit tests and Android build.
+  **Blocked:** route behavior tests are added but unrun because `java`,
+  `JAVA_HOME`, Android SDK variables, and `local.properties` are absent. Source
+  checks (`git diff --check` and Kotlin LSP diagnostics) pass.
+
+**Implementation and verification:** Added a source-tab argument to secondary
+routes; owner routes replace the caller with their owner tab, while shared routes
+retain the caller. Settings-origin backup imports retain Settings context through
+the Activity Result callback; startup/direct pending imports use General. Updated
+`TEXT_SIZE_PLAN.md` §12 to classify global-drawer How-to-Use as shared and record
+the explicit top-level providers. `git diff --check` and Kotlin LSP diagnostics
+passed for changed Kotlin files. Route behavior tests were added but not run:
+this workspace has no `java`, `JAVA_HOME`, Android SDK variables, or
+`local.properties`. No Android build or workflow was started. Prompt B remains
+separate; Stats, `QuickBlockSheet`, `LauncherSetupScreen`, `ImportConfirmScreen`,
+and `ui/common/` retain their documented raw-`.sp` exclusions.
 
 ## Batch 04 — Scoped `.sp` to `.scaledSp` conversion
 
 **Agent:** Unassigned  
-**Last updated:** Not recorded  
-**Status:** Not started  
+**Last updated:** 2026-10-04
+**Status:** Blocked (conversion not started)
 **Prompt:** Prompt B in [TEXT_SIZE_PROMPTS.md](TEXT_SIZE_PROMPTS.md)  
 **Depends on:** Batch 02 and Batch 03
 
+**Dependency gate:** Prompt B forbids starting the conversion unless Batches 02
+and 03 are complete. Both currently remain **Implemented; verification blocked**;
+Android build/tests are unrun because Java and Android SDK setup are unavailable.
+No Prompt B source files were changed. Batch 04 remains unassigned and no
+conversion counts or exception inventory are claimed.
+
 - [ ] Convert only the exact Prompt B files and directories; do not expand scope.
-  **Evidence required:** changed-file list checked against the prompt's allowlist.
+  **Blocked:** prerequisite batches are not complete; no conversion started.
 - [ ] Record replacement counts by directory and individually named file.
-  **Evidence required:** counts in the handoff and this batch record.
+  **Pending:** no sites were converted, so occurrence/replacement counts have
+  not been audited.
 - [ ] Record every skipped non-composable `.sp` use or other exception; do not
   guess or silently leave unexplained gaps.
-  **Evidence required:** complete exception list and reason for each item.
-- [ ] Confirm excluded areas/files remain untouched.
-  **Evidence required:** diff/scope audit.
+  **Pending:** no exception scan was started because the dependency gate is open.
+- [x] Confirm excluded areas/files remain untouched.
+  **Evidence:** this Batch 04 gate check changed no UI source files. Existing
+  Batch 03 UI changes are separate; no conversion edits were made here.
 
 ## Batch 05 — Text Size integration, verification, and handoff
 
@@ -203,3 +239,5 @@ route/caller rules in [TEXT_SIZE_PLAN.md §12](TEXT_SIZE_PLAN.md#12-screen-route
 | 2026-10-04 | 00 | Not recorded in the existing handoff | Baseline imported from the [Protected Adjustments tracker](PROTECTED_ADJUSTMENTS_TRACKER.md); implementation and source-level checks are documented there. | Android compilation/unit tests need a configured JDK and Android SDK. |
 | 2026-10-04 | 01 | Replit Agent | Completed source revalidation; updated `TEXT_SIZE_PLAN.md` §12 to include Home → ACTIVE and current shared/deep-link/modal caller edges. | None. |
 | 2026-10-04 | 02 | Replit Agent | Implemented settings, persistence, theme scaling, root-tab providers, controls, and overlay scaling; added a persistence round-trip/reset instrumentation test. `git diff --check` and LSP diagnostics pass. | `bash ./gradlew :app:compileDebugKotlin :app:assembleDebugAndroidTest` stops before compilation: no `java` command / `JAVA_HOME`; Android tests remain unrun. |
+| 2026-10-04 | 03 | Replit Agent | Implemented route-owner/source-tab providers, shared-route caller propagation, explicit drawer/QuickBlock overlay context, and source-level behavior tests. `git diff --check` and LSP diagnostics pass. | Android unit tests/build not run: no `java`, `JAVA_HOME`, Android SDK variables, or `local.properties`. |
+| 2026-10-04 | 04 | Replit Agent (dependency check only) | Checked the Prompt B gate; did not claim the batch or edit conversion files. Batch 04 remains unassigned and blocked. | Batches 02 and 03 are still “Implemented; verification blocked”; Prompt B prohibits starting until both are complete. |

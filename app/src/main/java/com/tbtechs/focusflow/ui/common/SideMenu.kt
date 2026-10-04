@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.Routes
+import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 data class SideMenuItem(
@@ -80,7 +81,7 @@ fun SideMenu(
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             NavigationDrawerItem(
                 label = { Text("How to use") },
-                selected = currentRoute == Routes.HOW_TO_USE,
+                selected = RouteTextScaleContext.routeBase(currentRoute) == Routes.HOW_TO_USE,
                 onClick = {
                     onNavigate(Routes.HOW_TO_USE)
                     onClose()
