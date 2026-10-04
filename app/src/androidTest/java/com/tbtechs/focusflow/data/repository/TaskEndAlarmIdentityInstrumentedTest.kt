@@ -131,10 +131,15 @@ class TaskEndAlarmIdentityInstrumentedTest {
                 assertEquals(previousId, activity.intent.getStringExtra(TaskAlarmActivity.EXTRA_TASK_ID))
                 assertTrue(activity.window.decorView.containsText("Previous task"))
 
-                activity.onNewIntent(
-                    alarmActivityIntent(context, incomingId, "Incoming task"),
+                activity.startActivity(
+                    alarmActivityIntent(context, incomingId, "Incoming task").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    },
                 )
+            }
 
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity { activity ->
                 assertEquals(incomingId, activity.intent.getStringExtra(TaskAlarmActivity.EXTRA_TASK_ID))
                 assertEquals(
                     "Incoming task",

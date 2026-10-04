@@ -1,8 +1,6 @@
 package com.tbtechs.focusflow.ui.stats
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.tbtechs.focusflow.data.local.entity.FindingEntity

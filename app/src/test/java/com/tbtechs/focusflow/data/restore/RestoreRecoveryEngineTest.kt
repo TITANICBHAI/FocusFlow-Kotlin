@@ -354,21 +354,12 @@ class RestoreRecoveryEngineTest {
         }
     }
 
-    private class FakePendingStore : PendingImportStore {
-        var present = true
-        var failDeletes = 0
+    private class FakePendingStore(
+        var present: Boolean = true,
+        var events: MutableList<String>? = null,
+        var failDeletes: Int = 0,
+    ) : PendingImportStore {
         var deleteCalls = 0
-        var events: MutableList<String>? = null
-
-        constructor(
-            present: Boolean = true,
-            events: MutableList<String>? = null,
-            failDeletes: Int = 0,
-        ) : this() {
-            this.present = present
-            this.events = events
-            this.failDeletes = failDeletes
-        }
 
         override fun exists() = present
         override suspend fun read() = PendingImportRead.Missing
