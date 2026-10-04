@@ -76,7 +76,19 @@ settings and device-specific protection.
 
 **Requirements:** JDK 17 and Android SDK Platform 35 with Build Tools 35.0.0. Android Studio can install these through SDK Manager.
 
-From the repository root:
+### Build with automatic JDK setup
+
+On Linux, run this from the repository root:
+
+```bash
+bash scripts/build-apk-with-java.sh
+```
+
+The script uses an existing JDK 17 when available. Otherwise, it downloads and caches JDK 17 from Adoptium, sets `JAVA_HOME` for the build, and runs the checked-in Gradle wrapper. The wrapper downloads the Gradle version configured for this project automatically.
+
+The script does **not** install the Android SDK. SDK Platform 35 and Build Tools 35.0.0 must still be installed and discoverable through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or `local.properties`.
+
+### Build directly with Gradle
 
 ```bash
 ./gradlew :app:assembleDebug
