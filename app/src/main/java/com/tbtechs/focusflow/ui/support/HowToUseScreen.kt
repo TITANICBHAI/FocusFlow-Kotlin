@@ -100,7 +100,7 @@ private val GUIDE = listOf(
         listOf(
             GuideStep("Always-On and VPN lists", "You can add more apps to the Always-On list or VPN list while protection is running. Removing apps from either list is locked during an active Focus Mode or Standalone Block so the block cannot be weakened halfway through."),
             GuideStep("Keyword Blocker", "You can add keywords without a password. Removing keywords or clearing the list is protected, and an active standalone block can lock those removals completely."),
-            GuideStep("Group schedules", "You can add, edit, or remove apps and windows in a group schedule when it is not locked. Schedule management is more heavily protected: edits, removals, shortening a window, or deleting a schedule can require the Defense PIN, and active standalone protection can prevent destructive changes."),
+            GuideStep("Group schedules", "You can add a new group schedule without a PIN. When Defense PIN protection is enabled, editing a schedule, removing apps, disabling a window or its VPN protection, shortening its duration, or deleting it can require the Defense PIN. An active Standalone Block can also prevent deleting a schedule."),
             GuideStep("Why FocusFlow locks changes", "A protection tool is only useful if it cannot be quietly weakened after it starts. FocusFlow allows safer additions, but guards removals, shorter windows, disabled toggles, and other changes that reduce protection."),
         ),
     ),
@@ -110,9 +110,9 @@ private val GUIDE = listOf(
         Color(0xFF2E1065),
         Color(0xFFC084FC),
         listOf(
-            GuideStep("Focus Session PIN", "The Focus Session PIN guards ending an active Focus Mode session. It is the lock used when you try to stop focus early, so starting a session can mean committing to its full duration."),
+            GuideStep("Focus Session PIN", "When configured, the Focus Session PIN is required to stop an active Focus Mode session early or turn off the full-duration rule. Without a PIN, stopping still requires the normal confirmation."),
             GuideStep("Defense PIN", "The Defense PIN guards actions that weaken protection: disabling protected Defense toggles, removing apps from Always-On or VPN lists, removing keywords, and changing protected settings."),
-            GuideStep("Group schedules are guarded more heavily", "Adding, editing, shortening, or deleting a group schedule can require the Defense PIN. This prevents a recurring block from being quietly reduced or removed."),
+            GuideStep("Group schedules are guarded more heavily", "You can add a new schedule without a PIN. When Defense PIN protection is enabled, editing, removing apps, disabling protection, shortening, or deleting a schedule can require the Defense PIN. An active Standalone Block can prevent deleting it."),
             GuideStep("Adding is intentionally easier in three lists", "Adding apps to Always-On, adding apps to the VPN list, and adding keywords do not normally require a PIN. The protection is focused on preventing removal or weakening, not on stopping you from adding another safeguard."),
             GuideStep("Set both passwords before a serious block", "Open Defense → PIN Protection to configure the Focus Session PIN and Defense PIN. Keep them somewhere safe; forgetting them can leave a protection active until its normal expiry or until the correct recovery path is used."),
         ),

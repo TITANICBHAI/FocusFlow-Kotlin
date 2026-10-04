@@ -14,14 +14,15 @@ from their current owner flows. This is an informational/navigation guide, not a
 second implementation of the underlying controls. Existing owning screens and
 their PIN/active-state checks remain authoritative.
 
-## Current-source baseline
+## Audit baseline (before implementation)
 
-The live app has a Settings tab (`Routes.SETTINGS`) and a How-to-Use screen
-(`Routes.HOW_TO_USE`), but no Settings destination that collects guarded
-adjustments. `SettingsScreen` currently contains independent sections and local
-dialogs. The navigation graph has separate destinations for Focus, Defense,
-permissions, Always-On, keyword blocking, VPN lists, schedules, password
-protection, and related flows.
+At audit start, the live app had a Settings tab (`Routes.SETTINGS`) and a
+How-to-Use screen (`Routes.HOW_TO_USE`), but no Settings destination that
+collected guarded adjustments. `SettingsScreen` contained independent sections
+and local dialogs. The navigation graph already had separate destinations for
+Focus, Defense, permissions, Always-On, keyword blocking, VPN lists, schedules,
+password protection, and related flows. The implementation below adds the
+Settings-only guide route.
 
 `HowToUseScreen.kt` already describes these broad guard categories:
 
@@ -63,27 +64,25 @@ The implementing agent must re-trace the behavior before finalizing the list.
 
 ## Guarded popup and lock-state inventory
 
-Use the live code to enumerate every user-visible PIN prompt, active-block
-dialog/banner, and other locked state that protects an adjustment. The rows
-below are confirmed search leads, not a finished inventory; verify each action
-and search for additional guard branches before implementation.
+Source audit completed against the live Kotlin UI on 2026-10-04. The inventory
+below records the verified guard families and owner screens; individual
+conditions are detailed in the tracker. Onboarding PIN setup, ordinary
+confirmations, and locks that only prevent adding an unsafe system app are not
+guarded adjustments.
 
 | Area | Existing popup/lock surface and source to inspect | Expected explanation |
 |---|---|---|
-| Focus session and duration | Focus PIN dialogs in `ui/focus/FocusScreen.kt`, `ui/active/ActiveScreen.kt`, and task-duration protection in `ui/defense/DefenseScreen.kt` | Exact Focus PIN triggers for ending an active session early or changing the full-duration rule. |
-| Defense controls | Defense PIN `PinPrompt` and blocked-state notices in `ui/defense/DefenseScreen.kt` | Which individual changes are blocked during Focus/Standalone Block and which ask for the Defense or Focus PIN. Do not generalize one toggle's rule to all toggles. |
-| Always-On and VPN app lists | PIN dialogs and active-block removal locks in `ui/alwayson/AlwaysOnScreen.kt` and `ui/launcher/VpnBlockListScreen.kt` | Exact removal restrictions; explain that additions may remain allowed and distinguish a confirmation dialog from the PIN gate. |
-| Keyword list | PIN/locked states in `ui/keyword/KeywordBlockerScreen.kt` and `ui/defense/BlockedWordsModal.kt` | Removal and clear-list rules versus adding a keyword. |
-| Group schedules | Schedule PIN and active-block dialogs in `ui/defense/DefenseScreen.kt` and `ui/defense/GreyoutScheduleModal.kt` | When opening, editing, removing apps, shortening, deleting, disabling, or disabling VPN asks for a PIN or is blocked. |
-| Daily allowances | PIN dialog and active-block lock states in `ui/settings/DailyAllowanceModal.kt` | Existing allowances cannot be removed while the relevant block is active; verify when a PIN is required and what additions/changes remain available. |
-| Standalone block | PIN prompt and locked-state UI in `ui/defense/StandaloneBlockModal.kt` and `StandaloneBlockSetupScreen.kt`; related stop/clear prompts in `ui/active/ActiveScreen.kt` | Verify exactly which changes require the Focus PIN while active, which are merely locked, and which safe extensions/additions are allowed. |
-| Other guarded settings and data flows | Search UI guard hooks, including `SettingsScreen.kt`, `OverlayAppearanceModal.kt`, `PasswordProtectionScreen.kt`, `PermissionsScreen.kt`, `LauncherSetupScreen.kt`, and `backup/ImportConfirmScreen.kt` | Decide from each live guard whether it changes or weakens protection and belongs in this guide; do not omit a real protected adjustment or include unrelated data/deletion confirmations. |
+| Focus session and task changes | PIN gates in `ui/focus/FocusScreen.kt`, `ui/active/ActiveScreen.kt`, `ui/home/HomeScreen.kt`, `ui/settings/SettingsScreen.kt`, and `ui/defense/DefenseScreen.kt` | Covers early stop, full-duration Focus, task deletion, and clearing all tasks while a PIN-protected Focus session is active. |
+| Defense controls | Individual PIN prompts and active-block notices in `ui/defense/DefenseScreen.kt` | Covers the specific guarded disable actions; enabling these protections is allowed without a PIN. Other Defense settings do not inherit this rule automatically. |
+| Always-On, VPN, and keywords | `ui/alwayson/AlwaysOnScreen.kt`, `ui/launcher/VpnBlockListScreen.kt`, `ui/keyword/KeywordBlockerScreen.kt`, and `ui/defense/BlockedWordsModal.kt` | Covers removals/clear actions, Defense PIN conditions, active-block locks, and unguarded additions. |
+| Group schedules and daily allowances | `ui/defense/GreyoutScheduleModal.kt`, its `ui/defense/DefenseScreen.kt` owner callbacks, and `ui/settings/DailyAllowanceModal.kt` | New schedules and allowance additions are not PIN-gated; weakening edits/removals are guarded. During a block, existing allowance values are read-only and original entries cannot be removed. |
+| Standalone block | `ui/defense/StandaloneBlockModal.kt`, `StandaloneBlockSetupScreen.kt`, and stop/clear actions in `ui/active/ActiveScreen.kt` | Covers locked existing app/expiry values, safe additions/extensions, save/clear Focus PIN prompts, saved-list Defense PIN, and stopping the active block. |
+| Access and PIN administration | `ui/permissions/PermissionsScreen.kt`, `ui/launcher/LauncherSetupScreen.kt`, and `ui/profile/PasswordProtectionScreen.kt` | Permission settings are disabled during Focus or Standalone Block; launcher settings are disabled during Standalone Block; replacing/removing a PIN verifies the current PIN. |
+| Backup restore | `ui/backup/ImportConfirmScreen.kt` and `ui/backup/BackupCoordinator.kt` | Defense PIN is checked only when the selected restore would weaken the protected configuration, including removing protection entries or disabling Focus Mirror. |
 
 The page covers guard-related popups and locked states, not every ordinary
 confirmation, date/time picker, permission explanation, or unrelated popup in
-the app. The table is an investigation checklist, not a claim that every listed
-action uses the same guard. Record the verified rule per action and reconcile
-any mismatch with How-to-Use before writing the final copy.
+the app. Each answer states its own condition; PIN types are not interchangeable.
 
 ## Navigation and screen boundaries
 
@@ -122,16 +121,16 @@ any mismatch with How-to-Use before writing the final copy.
 
 ## Done when
 
-- [ ] Settings has one clearly named action that opens the new full-screen page.
-- [ ] Back navigation returns to Settings without losing the existing stack.
-- [ ] Every live PIN- or active-block-guarded adjustment and related user-visible
+- [x] Settings has one clearly named action that opens the new full-screen page.
+- [x] Back navigation returns to Settings without losing the existing stack.
+- [x] Every live PIN- or active-block-guarded adjustment and related user-visible
   popup/locked state is represented once, with its exact condition and owner
   screen; ordinary unrelated confirmation dialogs are excluded.
-- [ ] Safe additions and unguarded changes are not falsely described as locked.
-- [ ] Every destination link lands on the existing owner flow; no parallel
+- [x] Safe additions and unguarded changes are not falsely described as locked.
+- [x] Every destination link lands on the existing owner flow; no parallel
   controls or security bypasses were added.
-- [ ] How-to-Use content and the new page agree with current source behavior.
-- [ ] Add route/UI behavior tests or focused source-level checks, then run
+- [x] How-to-Use content and the new page agree with current source behavior.
+- [x] Add route/UI behavior tests or focused source-level checks, then run
   available project checks. Record unavailable Android tooling separately.
 
 ## Related work

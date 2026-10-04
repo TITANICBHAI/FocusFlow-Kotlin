@@ -79,6 +79,7 @@ import com.tbtechs.focusflow.ui.permissions.PermissionsScreen
 import com.tbtechs.focusflow.ui.profile.PasswordProtectionScreen
 import com.tbtechs.focusflow.ui.profile.UserProfileScreen
 import com.tbtechs.focusflow.ui.settings.SettingsScreen
+import com.tbtechs.focusflow.ui.settings.ProtectedAdjustmentsScreen
 import com.tbtechs.focusflow.ui.stats.ReportScreen
 import com.tbtechs.focusflow.ui.stats.ReportsScreen
 import com.tbtechs.focusflow.ui.stats.StatsScreen
@@ -234,6 +235,7 @@ fun FocusFlowNavGraph(
                             focusSessionViewModel = focusSessionViewModel,
                             appBootViewModel = appBootViewModel,
                             onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
+                            onOpenGuardedAdjustments = { navigate(Routes.GUARDED_ADJUSTMENTS) },
                             onExportBackup = backupCoordinator?.let { onExportBackup },
                             onImportBackup = backupCoordinator?.let { onImportBackup },
                             onOpenProfile = { navigate(Routes.USER_PROFILE) },
@@ -245,6 +247,14 @@ fun FocusFlowNavGraph(
                             },
                         )
                     }
+                }
+            }
+            composable(Routes.GUARDED_ADJUSTMENTS) {
+                ScreenBoundary(Routes.GUARDED_ADJUSTMENTS) {
+                    ProtectedAdjustmentsScreen(
+                        onBack = ::back,
+                        onOpenRoute = ::navigate,
+                    )
                 }
             }
             composable(Routes.DEFENSE) {

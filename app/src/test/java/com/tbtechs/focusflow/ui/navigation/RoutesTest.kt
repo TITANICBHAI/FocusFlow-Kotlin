@@ -11,7 +11,9 @@ class RoutesTest {
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("import-confirm"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("onboarding"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("active"))
+        assertEquals(Routes.NOT_FOUND, Routes.fromPath("guarded_adjustments"))
         assertFalse(Routes.IMPORT_CONFIRM in Routes.externalLinkableRoutes)
+        assertFalse(Routes.GUARDED_ADJUSTMENTS in Routes.externalLinkableRoutes)
     }
 
     @Test

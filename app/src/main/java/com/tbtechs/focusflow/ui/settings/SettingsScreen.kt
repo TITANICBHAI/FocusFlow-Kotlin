@@ -103,6 +103,7 @@ fun SettingsScreen(
     focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
     appBootViewModel: AppBootViewModel = viewModel(factory = AppBootViewModel.Factory),
     onOpenActiveBlocks: () -> Unit = {},
+    onOpenGuardedAdjustments: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
     onExportBackup: (() -> Unit)? = null,
@@ -399,7 +400,20 @@ fun SettingsScreen(
                 }
             }
 
-            // 6. BLOCK OVERLAY
+            // 6. PROTECTION
+            item {
+                SettingsSectionHeader("PROTECTION")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.Shield,
+                        title = "Guarded Adjustments",
+                        description = "Understand PIN prompts and changes locked during a block",
+                        onClick = onOpenGuardedAdjustments,
+                    )
+                }
+            }
+
+            // 7. BLOCK OVERLAY
             item {
                 SettingsSectionHeader("BLOCK OVERLAY")
                 SettingsCard {
@@ -412,7 +426,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 7. POMODORO MODE
+            // 8. POMODORO MODE
             item {
                 SettingsSectionHeader("POMODORO MODE")
                 SettingsCard {
@@ -451,7 +465,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 8. BACKUP & DATA
+            // 9. BACKUP & DATA
             item {
                 SettingsSectionHeader("BACKUP & DATA")
                 SettingsCard {
@@ -480,7 +494,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 9. PERMISSIONS
+            // 10. PERMISSIONS
             item {
                 SettingsSectionHeader("PERMISSIONS")
                 SettingsCard {
@@ -493,7 +507,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 10. DIAGNOSTICS
+            // 11. DIAGNOSTICS
             item {
                 SettingsSectionHeader("DIAGNOSTICS")
                 SettingsCard {
@@ -512,7 +526,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 11. DATA
+            // 12. DATA
             item {
                 SettingsSectionHeader("DATA")
                 SettingsCard {
@@ -526,7 +540,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 12. ABOUT
+            // 13. ABOUT
             item {
                 SettingsSectionHeader("ABOUT")
                 SettingsCard {
