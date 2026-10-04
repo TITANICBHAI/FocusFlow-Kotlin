@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
@@ -816,7 +816,7 @@ fun MainScaffold(
         Triple(Routes.FOCUS, "Focus", Icons.Outlined.Timer),
         Triple(Routes.HOME, "Schedule", Icons.Outlined.CalendarMonth),
         Triple(Routes.DEFENSE, "Defense", Icons.Outlined.Shield),
-        Triple(Routes.STATS, "Stats", Icons.Outlined.Analytics),
+        Triple(Routes.STATS, "Stats", Icons.Outlined.BarChart),
         Triple(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
     )
     Scaffold(

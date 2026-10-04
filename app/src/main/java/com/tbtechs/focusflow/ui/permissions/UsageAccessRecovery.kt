@@ -41,6 +41,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private enum class UsageAccessStep { FIND_FOCUSFLOW, ENABLE_ACCESS, ALTERNATE_ROUTE }
+
 @Composable
 fun UsageAccessRecovery(usageAccessAttempted: Boolean) {
     val context = LocalContext.current
@@ -50,6 +52,9 @@ fun UsageAccessRecovery(usageAccessAttempted: Boolean) {
     var returnedWithoutPermission by remember { mutableStateOf(false) }
     var completed by remember { mutableStateOf(false) }
     var dismissed by remember { mutableStateOf(false) }
+    var step by remember(usageAccessAttempted) {
+        mutableStateOf(UsageAccessStep.FIND_FOCUSFLOW)
+    }
     val currentDismissed by rememberUpdatedState(dismissed)
 
     DisposableEffect(owner, usageAccessAttempted) {
@@ -80,6 +85,10 @@ fun UsageAccessRecovery(usageAccessAttempted: Boolean) {
         returnedWithoutPermission = false
     }
 
+    fun openSettings() {
+        scope.launch { UsageStatsRepository(context).openUsageAccessSettings() }
+    }
+
     Dialog(
         onDismissRequest = ::dismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -102,7 +111,7 @@ fun UsageAccessRecovery(usageAccessAttempted: Boolean) {
                         modifier = Modifier.size(22.dp),
                     )
                     Text(
-                        "Usage Access help",
+                        "Usage Access setup",
                         modifier = Modifier.padding(start = 8.dp),
                         color = RefText,
                         fontSize = 18.scaledSp,
@@ -123,18 +132,53 @@ fun UsageAccessRecovery(usageAccessAttempted: Boolean) {
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    "Usage Access is still off. In Android settings, find FocusFlow and enable “Permit usage access,” then return here.",
+                    "Step ${step.ordinal + 1} of 3",
+                    color = RefText,
+                    fontSize = 12.scaledSp,
+                )
+                Text(
+                    when (step) {
+                        UsageAccessStep.FIND_FOCUSFLOW ->
+                            "In the Usage Access app list, find and select FocusFlow."
+                        UsageAccessStep.ENABLE_ACCESS ->
+                            "Turn on “Permit usage access” for FocusFlow. The setting may use slightly different wording on your phone."
+                        UsageAccessStep.ALTERNATE_ROUTE ->
+                            "If you cannot find the setting, open Settings → Apps → Special app access → Usage access, select FocusFlow, and allow access."
+                    },
                     color = RefSecondary,
                     fontSize = 13.scaledSp,
                     lineHeight = 18.scaledSp,
                 )
+                if (returnedWithoutPermission) {
+                    Text(
+                        "Usage Access is still off. Come back here after enabling it; FocusFlow checks again automatically.",
+                        color = RefSecondary,
+                        fontSize = 12.scaledSp,
+                        lineHeight = 17.scaledSp,
+                    )
+                }
                 FocusFlowPrimaryButton(
                     text = "Open Usage Access Settings",
                     icon = Icons.Outlined.OpenInNew,
-                    onClick = {
-                        scope.launch { UsageStatsRepository(context).openUsageAccessSettings() }
-                    },
+                    onClick = ::openSettings,
                 )
+                when (step) {
+                    UsageAccessStep.FIND_FOCUSFLOW ->
+                        FocusFlowSecondaryButton(
+                            text = "Next: enable access",
+                            onClick = { step = UsageAccessStep.ENABLE_ACCESS },
+                        )
+                    UsageAccessStep.ENABLE_ACCESS ->
+                        FocusFlowSecondaryButton(
+                            text = "Try another settings path",
+                            onClick = { step = UsageAccessStep.ALTERNATE_ROUTE },
+                        )
+                    UsageAccessStep.ALTERNATE_ROUTE ->
+                        FocusFlowSecondaryButton(
+                            text = "Back to the steps",
+                            onClick = { step = UsageAccessStep.FIND_FOCUSFLOW },
+                        )
+                }
                 FocusFlowSecondaryButton(text = "Not now", onClick = ::dismiss)
             }
         }

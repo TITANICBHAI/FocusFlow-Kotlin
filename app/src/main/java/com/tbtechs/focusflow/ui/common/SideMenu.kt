@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
@@ -44,7 +44,7 @@ fun SideMenu(
     val items = listOf(
         SideMenuItem(Routes.HOME, "Home", Icons.Outlined.Home),
         SideMenuItem(Routes.FOCUS, "Focus", Icons.Outlined.CalendarMonth),
-        SideMenuItem(Routes.STATS, "Stats", Icons.Outlined.Analytics),
+        SideMenuItem(Routes.STATS, "Stats", Icons.Outlined.BarChart),
         SideMenuItem(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
         SideMenuItem(Routes.DEFENSE, "Defense", Icons.Outlined.Shield),
     )

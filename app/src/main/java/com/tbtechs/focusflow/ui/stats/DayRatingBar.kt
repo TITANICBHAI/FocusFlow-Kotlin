@@ -97,6 +97,7 @@ fun DayRatingBar(
     var noteText by remember(selectedDate) { mutableStateOf(currentRating?.note.orEmpty()) }
     var editorDirty by remember(selectedDate) { mutableStateOf(false) }
     var isSaving by remember(selectedDate) { mutableStateOf(false) }
+    var isEditing by remember(selectedDate) { mutableStateOf(currentRating == null) }
     var saveFailed by remember(selectedDate) { mutableStateOf(false) }
     var saveMessage by remember(selectedDate) {
         mutableStateOf(if (currentRating != null) "Saved on this device" else "")
@@ -118,6 +119,7 @@ fun DayRatingBar(
 
     fun markDirty() {
         editorDirty = true
+        isEditing = true
         saveFailed = false
         saveMessage = ""
     }
@@ -145,6 +147,7 @@ fun DayRatingBar(
             isSaving = false
             if (saved) {
                 editorDirty = false
+                isEditing = false
                 saveFailed = false
                 saveMessage = "Saved on this device"
             } else {
@@ -157,6 +160,7 @@ fun DayRatingBar(
     LaunchedEffect(currentRating, selectedDate) {
         if (editorDirty) return@LaunchedEffect
         tappedRating = currentRating?.rating
+        isEditing = currentRating == null
         contextTag = currentRating?.contextTag
         noteText = currentRating?.note.orEmpty()
         wordTags.clear()
@@ -232,166 +236,192 @@ fun DayRatingBar(
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .focusRequester(focusRequester)
-                    .focusable(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                (1..10).forEach { number ->
-                    val selected = tappedRating == number
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(if (selected) BrandPrimary else DarkSurfaceVariant)
-                            .clickable {
-                                markDirty()
-                                tappedRating = number
-                            }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                    ) {
-                        Text(
-                            "$number",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (selected) Color.White else DarkTextSecondary,
-                        )
+            if (!isEditing && currentRating != null) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        saveMessage.ifBlank { "Saved on this device" },
+                        fontSize = 12.sp,
+                        color = DarkTextSecondary,
+                    )
+                    TextButton(onClick = { isEditing = true }) {
+                        Text("Edit rating")
                     }
                 }
-            }
-
-            AnimatedVisibility(
-                visible = tappedRating != null,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                Column {
-                    Spacer(Modifier.height(10.dp))
-                    Text("Any context? (optional)", fontSize = 12.sp, color = DarkTextSecondary)
-                    Spacer(Modifier.height(4.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(
-                            "Rest day" to "rest_day",
-                            "Sick" to "sick",
-                            "Travel" to "travel",
-                            "Holiday" to "holiday",
-                            "Off schedule" to "off_schedule",
-                        ).forEach { (label, tag) ->
-                            val selected = contextTag == tag
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(if (selected) BrandPrimary else DarkSurfaceVariant)
-                                    .clickable {
-                                        markDirty()
-                                        contextTag = if (selected) null else tag
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                            ) {
-                                Text(
-                                    label,
-                                    fontSize = 12.sp,
-                                    color = if (selected) Color.White else DarkTextSecondary,
-                                )
-                            }
+            } else {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .focusRequester(focusRequester)
+                        .focusable(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    (1..10).forEach { number ->
+                        val selected = tappedRating == number
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(if (selected) BrandPrimary else DarkSurfaceVariant)
+                                .clickable {
+                                    markDirty()
+                                    tappedRating = number
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                "$number",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (selected) Color.White else DarkTextSecondary,
+                            )
                         }
                     }
+                }
 
-                    if (suggestedChips.isNotEmpty()) {
-                        Spacer(Modifier.height(6.dp))
+                AnimatedVisibility(
+                    visible = tappedRating != null,
+                    enter = expandVertically(),
+                    exit = shrinkVertically(),
+                ) {
+                    Column {
+                        Spacer(Modifier.height(10.dp))
+                        Text("Any context? (optional)", fontSize = 12.sp, color = DarkTextSecondary)
+                        Spacer(Modifier.height(4.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            suggestedChips.forEach { chip ->
-                                val selected = when (chip.type) {
-                                    ChipType.WORD -> chip.label in wordTags
-                                    ChipType.APP -> chip.packageName in appTags
-                                }
+                            listOf(
+                                "Rest day" to "rest_day",
+                                "Sick" to "sick",
+                                "Travel" to "travel",
+                                "Holiday" to "holiday",
+                                "Off schedule" to "off_schedule",
+                            ).forEach { (label, tag) ->
+                                val selected = contextTag == tag
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
                                         .background(if (selected) BrandPrimary else DarkSurfaceVariant)
-                                        .border(
-                                            1.dp,
-                                            if (selected) BrandPrimary else DarkBorder,
-                                            RoundedCornerShape(20.dp),
-                                        )
                                         .clickable {
                                             markDirty()
-                                            when (chip.type) {
-                                                ChipType.WORD -> if (selected) {
-                                                    wordTags.remove(chip.label)
-                                                } else {
-                                                    wordTags.add(chip.label)
-                                                }
-                                                ChipType.APP -> chip.packageName?.let { packageName ->
-                                                    if (selected) appTags.remove(packageName)
-                                                    else appTags.add(packageName)
-                                                }
-                                            }
+                                            contextTag = if (selected) null else tag
                                         }
                                         .padding(horizontal = 10.dp, vertical = 5.dp),
                                 ) {
                                     Text(
-                                        chip.label,
+                                        label,
                                         fontSize = 12.sp,
                                         color = if (selected) Color.White else DarkTextSecondary,
                                     )
                                 }
                             }
                         }
-                    }
 
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = noteText,
-                        onValueChange = {
-                            if (it.length <= 200) {
-                                markDirty()
-                                noteText = it
+                        if (suggestedChips.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                suggestedChips.forEach { chip ->
+                                    val selected = when (chip.type) {
+                                        ChipType.WORD -> chip.label in wordTags
+                                        ChipType.APP -> chip.packageName in appTags
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(if (selected) BrandPrimary else DarkSurfaceVariant)
+                                            .border(
+                                                1.dp,
+                                                if (selected) BrandPrimary else DarkBorder,
+                                                RoundedCornerShape(20.dp),
+                                            )
+                                            .clickable {
+                                                markDirty()
+                                                when (chip.type) {
+                                                    ChipType.WORD -> if (selected) {
+                                                        wordTags.remove(chip.label)
+                                                    } else {
+                                                        wordTags.add(chip.label)
+                                                    }
+                                                    ChipType.APP -> chip.packageName?.let { packageName ->
+                                                        if (selected) appTags.remove(packageName)
+                                                        else appTags.add(packageName)
+                                                    }
+                                                }
+                                            }
+                                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                                    ) {
+                                        Text(
+                                            chip.label,
+                                            fontSize = 12.sp,
+                                            color = if (selected) Color.White else DarkTextSecondary,
+                                        )
+                                    }
+                                }
                             }
-                        },
-                        placeholder = {
-                            Text(
-                                "Anything else? (optional)",
-                                fontSize = 13.sp,
-                                color = DarkTextSecondary,
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = BrandPrimary,
-                            unfocusedBorderColor = DarkBorder,
-                        ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = { focusManager.clearFocus() },
-                        ),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = ::save,
-                        enabled = editorDirty && !isSaving,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            when {
-                                isSaving -> "Saving…"
-                                !editorDirty -> "Saved"
-                                else -> "Save rating"
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = noteText,
+                            onValueChange = {
+                                if (it.length <= 200) {
+                                    markDirty()
+                                    noteText = it
+                                }
                             },
+                            placeholder = {
+                                Text(
+                                    "Anything else? (optional)",
+                                    fontSize = 13.sp,
+                                    color = DarkTextSecondary,
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = BrandPrimary,
+                                unfocusedBorderColor = DarkBorder,
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = { focusManager.clearFocus() },
+                            ),
                         )
-                    }
-                    if (saveMessage.isNotBlank()) {
-                        Text(
-                            saveMessage,
-                            fontSize = 12.sp,
-                            color = if (saveFailed) MaterialTheme.colorScheme.error
-                            else DarkTextSecondary,
-                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = ::save,
+                            enabled = editorDirty && !isSaving,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                when {
+                                    isSaving -> "Saving…"
+                                    !editorDirty -> "Saved"
+                                    else -> "Save rating"
+                                },
+                            )
+                        }
+                        if (currentRating != null && !editorDirty && !isSaving) {
+                            TextButton(
+                                onClick = { isEditing = false },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Done")
+                            }
+                        }
+                        if (saveMessage.isNotBlank()) {
+                            Text(
+                                saveMessage,
+                                fontSize = 12.sp,
+                                color = if (saveFailed) MaterialTheme.colorScheme.error
+                                else DarkTextSecondary,
+                            )
+                        }
                     }
                 }
             }

@@ -94,6 +94,9 @@ internal fun TextSizeSection(
             screens = listOf(
                 TextSizeTarget(Routes.FOCUS, "Focus", "Active session", Routes.ACTIVE, "The active-session screen opened from Focus."),
                 TextSizeTarget(Routes.FOCUS, "Focus", "Permissions", Routes.PERMISSIONS, "The permissions screen opened from Focus."),
+                TextSizeTarget(Routes.FOCUS, "Focus", "Standalone block", RouteTextScaleContext.FOCUS_STANDALONE_SETUP_SCREEN, "App selection and timing for setting up a standalone block."),
+                TextSizeTarget(Routes.FOCUS, "Focus", "Active standalone block", RouteTextScaleContext.FOCUS_STANDALONE_PANEL_SCREEN, "The active block countdown, app list, and quick time controls."),
+                TextSizeTarget(Routes.FOCUS, "Focus", "Focus extension", RouteTextScaleContext.FOCUS_EXTENSION_SCREEN, "The time-extension choices for a scheduled focus session."),
             ),
         ) { value ->
             onUpdate(settings.copy(focusTextScale = value))

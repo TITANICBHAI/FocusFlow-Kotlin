@@ -127,6 +127,36 @@ class RouteTextScaleContextTest {
     }
 
     @Test
+    fun focusSubscreenOverridesAreIndependentAndFallBackToFocusScale() {
+        val standaloneKey = RouteTextScaleContext.screenScaleKey(
+            Routes.FOCUS,
+            RouteTextScaleContext.FOCUS_STANDALONE_SETUP_SCREEN,
+        )
+        val configured = settings.copy(screenTextScales = mapOf(standaloneKey to 0.9f))
+
+        assertEquals(
+            0.9f,
+            RouteTextScaleContext.screenScaleFor(
+                Routes.FOCUS,
+                RouteTextScaleContext.FOCUS_STANDALONE_SETUP_SCREEN,
+                configured,
+                inheritedScale = 1.2f,
+            ),
+            0f,
+        )
+        assertEquals(
+            1.2f,
+            RouteTextScaleContext.screenScaleFor(
+                Routes.FOCUS,
+                RouteTextScaleContext.FOCUS_STANDALONE_PANEL_SCREEN,
+                configured,
+                inheritedScale = 1.2f,
+            ),
+            0f,
+        )
+    }
+
+    @Test
     fun navigationCarriesSharedSourceAndSwitchesToOwnedTabForOwnedDestinations() {
         val activeCallers = listOf(
             Routes.HOME,

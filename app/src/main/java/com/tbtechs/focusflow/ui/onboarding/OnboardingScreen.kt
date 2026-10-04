@@ -167,10 +167,8 @@ fun OnboardingScreen(
 
     val core = onboardingPermissions.filterNot { it.optional }
     val optional = onboardingPermissions.filter { it.optional }
-    val requiredReady = core.filter {
-        it.id == PermissionId.ACCESSIBILITY || it.id == PermissionId.USAGE || it.id == PermissionId.NOTIFICATIONS
-    }.count { statuses[it.id] == PermissionStatus.GRANTED }
-    val requiredTotal = 3
+    val requiredReady = core.count { statuses[it.id] == PermissionStatus.GRANTED }
+    val requiredTotal = core.size
     val optionalReady = optional.count { statuses[it.id] == PermissionStatus.GRANTED }
 
     Scaffold(

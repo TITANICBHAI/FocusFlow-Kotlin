@@ -57,6 +57,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -88,6 +89,8 @@ import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.defense.BlockPresetUi
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockModal
+import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
+import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -97,6 +100,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
+import com.tbtechs.focusflow.ui.theme.LocalFocusFlowTextScale
 import com.tbtechs.focusflow.ui.theme.WarningBorder
 import com.tbtechs.focusflow.ui.theme.WarningIcon
 import com.tbtechs.focusflow.ui.theme.WarningSurface
@@ -141,9 +145,6 @@ fun FocusScreen(
     var accessibilityGranted by remember { mutableStateOf<Boolean?>(null) }
     var usageGranted by remember { mutableStateOf<Boolean?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
-    var showDefenseHint by remember(settings.focusDefenseHintDismissed) {
-        mutableStateOf(!settings.focusDefenseHintDismissed)
-    }
     var showStandaloneEditor by remember { mutableStateOf(false) }
     var showExtend by remember { mutableStateOf(false) }
     var showStopConfirmation by remember { mutableStateOf(false) }
@@ -325,53 +326,6 @@ fun FocusScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // Defense hint notification
-            if (showDefenseHint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dimensions.screenPadding, vertical = 6.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BrandPrimary.copy(alpha = 0.12f))
-                        .border(1.dp, BrandPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.Security,
-                            contentDescription = null,
-                            tint = BrandPrimary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "Always-On Blocking and related protection tools have moved to the Defense tab.",
-                            modifier = Modifier.weight(1f),
-                            fontSize = 13.scaledSp,
-                            color = DarkTextPrimary,
-                            lineHeight = 18.scaledSp,
-                        )
-                        IconButton(
-                            onClick = {
-                                showDefenseHint = false
-                                settingsViewModel.updateSettings(settings.copy(focusDefenseHintDismissed = true))
-                            },
-                            modifier = Modifier.size(28.dp),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Dismiss Defense hint",
-                                tint = DarkTextMuted,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
-                }
-            }
-
             // Permission Warning Banner
             if (accessibilityGranted == false && !isFocusing) {
                 Box(
@@ -419,14 +373,19 @@ fun FocusScreen(
             }
 
             when {
-                task == null && standaloneActive -> StandaloneBlockPanel(
+                task == null && standaloneActive -> FocusSubscreenTextScale(
                     settings = settings,
-                    now = now,
-                    presets = settings.launcherPresets,
-                    onAddTime = ::addStandaloneTime,
-                    onQuickPreset = ::startQuickPreset,
-                    onEdit = { showStandaloneEditor = true },
-                )
+                    screenId = RouteTextScaleContext.FOCUS_STANDALONE_PANEL_SCREEN,
+                ) {
+                    StandaloneBlockPanel(
+                        settings = settings,
+                        now = now,
+                        presets = settings.launcherPresets,
+                        onAddTime = ::addStandaloneTime,
+                        onQuickPreset = ::startQuickPreset,
+                        onEdit = { showStandaloneEditor = true },
+                    )
+                }
 
                 task == null && isFocusing -> OrphanedFocusPanel(onStop = ::requestStop)
 
@@ -483,38 +442,48 @@ fun FocusScreen(
     }
 
     if (showStandaloneEditor) {
-        StandaloneBlockModal(
-            visible = true,
-            blockedPackages = settings.standaloneBlockPackages,
-            blockUntilMs = settings.standaloneBlockUntilMs,
-            locked = standaloneActive,
-            dailyAllowanceEntries = settings.dailyAllowanceEntries(),
-            presets = settings.launcherPresets.map { BlockPresetUi(it.id, it.name, it.packages) },
-            onSave = { packages, untilMs, allowances, _, rawPin ->
-                saveStandalone(packages, untilMs, allowances, rawPin)
-            },
-            onSavePreset = ::saveBlockPreset,
-            onDeletePreset = ::deleteBlockPreset,
-            onClose = { showStandaloneEditor = false },
-            hintDismissed = settings.standaloneBlockHintDismissed,
-            onDismissHint = {
-                settingsViewModel.updateSettings(settings.copy(standaloneBlockHintDismissed = true))
-            },
-            verifyPin = settingsViewModel::verifyFocusPin,
-            sessionPinSet = settingsViewModel.isFocusPinSet(),
-            hashPin = pinManager::hash,
-        )
+        FocusSubscreenTextScale(
+            settings = settings,
+            screenId = RouteTextScaleContext.FOCUS_STANDALONE_SETUP_SCREEN,
+        ) {
+            StandaloneBlockModal(
+                visible = true,
+                blockedPackages = settings.standaloneBlockPackages,
+                blockUntilMs = settings.standaloneBlockUntilMs,
+                locked = standaloneActive,
+                dailyAllowanceEntries = settings.dailyAllowanceEntries(),
+                presets = settings.launcherPresets.map { BlockPresetUi(it.id, it.name, it.packages) },
+                onSave = { packages, untilMs, allowances, _, rawPin ->
+                    saveStandalone(packages, untilMs, allowances, rawPin)
+                },
+                onSavePreset = ::saveBlockPreset,
+                onDeletePreset = ::deleteBlockPreset,
+                onClose = { showStandaloneEditor = false },
+                hintDismissed = settings.standaloneBlockHintDismissed,
+                onDismissHint = {
+                    settingsViewModel.updateSettings(settings.copy(standaloneBlockHintDismissed = true))
+                },
+                verifyPin = settingsViewModel::verifyFocusPin,
+                sessionPinSet = settingsViewModel.isFocusPinSet(),
+                hashPin = pinManager::hash,
+            )
+        }
     }
 
     if (showExtend && task != null) {
-        ExtendModal(
-            taskName = task.title,
-            onDismiss = { showExtend = false },
-            onExtend = { minutes ->
-                taskViewModel.extendTaskTime(task.id, minutes)
-                showExtend = false
-            },
-        )
+        FocusSubscreenTextScale(
+            settings = settings,
+            screenId = RouteTextScaleContext.FOCUS_EXTENSION_SCREEN,
+        ) {
+            ExtendModal(
+                taskName = task.title,
+                onDismiss = { showExtend = false },
+                onExtend = { minutes ->
+                    taskViewModel.extendTaskTime(task.id, minutes)
+                    showExtend = false
+                },
+            )
+        }
     }
 
     if (showPermissionDialog) {
@@ -1385,6 +1354,23 @@ private fun FocusPanelSwitcher(activePanel: FocusPanel, onSwitch: (FocusPanel) -
             ),
         ) { Text("Block Active", fontWeight = FontWeight.SemiBold) }
     }
+}
+
+@Composable
+private fun FocusSubscreenTextScale(
+    settings: AppSettings,
+    screenId: String,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalFocusFlowTextScale provides RouteTextScaleContext.screenScaleFor(
+            tabRoute = Routes.FOCUS,
+            screenId = screenId,
+            settings = settings,
+            inheritedScale = LocalFocusFlowTextScale.current,
+        ),
+        content = content,
+    )
 }
 
 /**
