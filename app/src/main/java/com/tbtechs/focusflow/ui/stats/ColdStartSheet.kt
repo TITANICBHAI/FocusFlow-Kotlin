@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -35,6 +36,7 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 
 private val COLD_START_QUESTIONS = listOf(
     Triple(
@@ -58,37 +60,64 @@ private val MORNING_OPTIONS = listOf("Almost always", "Sometimes", "Rarely", "No
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ColdStartSheet(onComplete: (List<BehaviouralHypothesisEntity>) -> Unit) {
+fun ColdStartSheet(
+    onComplete: suspend (List<BehaviouralHypothesisEntity>) -> Boolean,
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var step by remember { mutableIntStateOf(0) }
     var answer by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitError by remember { mutableStateOf(false) }
     val answers = remember { mutableListOf<BehaviouralHypothesisEntity>() }
 
-    fun advance(answerValue: String = answer) {
+    fun recordAnswer(answerValue: String) {
+        val questionId = COLD_START_QUESTIONS[step].first
         val trimmed = answerValue.trim()
+        val existing = answers.firstOrNull { it.questionId == questionId }
+        answers.removeAll { it.questionId == questionId }
         if (trimmed.isNotBlank()) {
             answers += BehaviouralHypothesisEntity(
-                id = UUID.randomUUID().toString(),
-                questionId = COLD_START_QUESTIONS[step].first,
+                id = existing?.id ?: UUID.randomUUID().toString(),
+                questionId = questionId,
                 answerText = trimmed,
                 answerPackage = null,
-                createdAt = Instant.now().toString(),
+                createdAt = existing?.createdAt ?: Instant.now().toString(),
             )
         }
+    }
+
+    fun submit(includeCurrentAnswer: Boolean = true, currentAnswer: String = answer) {
+        if (isSubmitting) return
+        if (includeCurrentAnswer) recordAnswer(currentAnswer)
+        isSubmitting = true
+        submitError = false
+        scope.launch {
+            val saved = try {
+                onComplete(answers.toList())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
+            isSubmitting = false
+            submitError = !saved
+            if (!saved) sheetState.show()
+        }
+    }
+
+    fun advance(answerValue: String = answer) {
+        recordAnswer(answerValue)
         answer = ""
         if (step < COLD_START_QUESTIONS.lastIndex) {
             step++
         } else {
-            scope.launch {
-                sheetState.hide()
-                onComplete(answers.toList())
-            }
+            submit(includeCurrentAnswer = false)
         }
     }
 
     ModalBottomSheet(
-        onDismissRequest = { onComplete(answers.toList()) },
+        onDismissRequest = { submit(includeCurrentAnswer = false) },
         sheetState = sheetState,
         containerColor = DarkBackground,
     ) {
@@ -114,7 +143,8 @@ fun ColdStartSheet(onComplete: (List<BehaviouralHypothesisEntity>) -> Unit) {
             if (step == 2) {
                 MORNING_OPTIONS.forEach { option ->
                     TextButton(
-                        onClick = { advance(option) },
+                        onClick = { answer = option },
+                        enabled = !isSubmitting,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
@@ -137,6 +167,7 @@ fun ColdStartSheet(onComplete: (List<BehaviouralHypothesisEntity>) -> Unit) {
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSubmitting,
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = BrandPrimary,
@@ -147,16 +178,45 @@ fun ColdStartSheet(onComplete: (List<BehaviouralHypothesisEntity>) -> Unit) {
 
             Spacer(Modifier.height(20.dp))
             Row {
-                TextButton(onClick = { advance("") }) {
-                    Text("Skip", color = DarkTextSecondary)
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = { advance() }) {
+                TextButton(
+                    onClick = {
+                        if (step < COLD_START_QUESTIONS.lastIndex) {
+                            advance("")
+                        } else {
+                            submit(currentAnswer = "")
+                        }
+                    },
+                    enabled = !isSubmitting,
+                ) {
                     Text(
-                        if (step < COLD_START_QUESTIONS.lastIndex) "Next" else "Done",
-                        color = BrandPrimary,
+                        if (step < COLD_START_QUESTIONS.lastIndex) "Skip" else "Submit without answer",
+                        color = DarkTextSecondary,
                     )
                 }
+                Spacer(Modifier.weight(1f))
+                if (step < COLD_START_QUESTIONS.lastIndex) {
+                    TextButton(
+                        onClick = { advance() },
+                        enabled = !isSubmitting,
+                    ) {
+                        Text("Next", color = BrandPrimary)
+                    }
+                } else {
+                    Button(
+                        onClick = { submit() },
+                        enabled = !isSubmitting,
+                    ) {
+                        Text(if (isSubmitting) "Submitting…" else "Submit answers")
+                    }
+                }
+            }
+            if (submitError) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Could not save your answers. Please try again.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                )
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -395,6 +396,29 @@ fun DayRatingBar(
                 }
             }
         }
+    }
+
+    pendingDate?.let { targetDate ->
+        AlertDialog(
+            onDismissRequest = { pendingDate = null },
+            title = { Text("Discard unsaved rating?") },
+            text = { Text("Your rating, context, tags, and note have not been saved.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDate = null
+                        onSelectDate(targetDate)
+                    },
+                ) {
+                    Text("Discard & change date")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDate = null }) {
+                    Text("Keep editing")
+                }
+            },
+        )
     }
 }
 

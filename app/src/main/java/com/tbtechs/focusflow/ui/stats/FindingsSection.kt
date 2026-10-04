@@ -5,11 +5,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,6 +29,8 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 fun FindingsSection(
@@ -30,7 +41,7 @@ fun FindingsSection(
     onMarkSeen: (String) -> Unit,
     onIntentional: (String, String) -> Unit,
     onAware: (String, String) -> Unit,
-    onAnswerQuestion: (id: String, response: String) -> Unit,
+    onAnswerQuestion: suspend (id: String, response: String) -> Boolean,
 ) {
     Text(
         "FINDINGS",
@@ -61,9 +72,7 @@ fun FindingsSection(
     pendingQuestion?.let { question ->
         ClarifyingQuestionCard(
             question = question,
-            onYes = { onAnswerQuestion(question.id, "yes_intentional") },
-            onNotReally = { onAnswerQuestion(question.id, "not_really") },
-            onSkip = { onAnswerQuestion(question.id, "skipped") },
+            onAnswer = onAnswerQuestion,
         )
         Spacer(Modifier.height(4.dp))
     }
@@ -118,10 +127,13 @@ private fun BaselineRow(label: String, current: Int, target: Int) {
 @Composable
 private fun ClarifyingQuestionCard(
     question: ClarifyingQuestionEntity,
-    onYes: () -> Unit,
-    onNotReally: () -> Unit,
-    onSkip: () -> Unit,
+    onAnswer: suspend (id: String, response: String) -> Boolean,
 ) {
+    val scope = rememberCoroutineScope()
+    var selectedResponse by remember(question.id) { mutableStateOf<String?>(null) }
+    var isSubmitting by remember(question.id) { mutableStateOf(false) }
+    var submitError by remember(question.id) { mutableStateOf(false) }
+
     StatsCard {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -137,12 +149,53 @@ private fun ClarifyingQuestionCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onYes) { Text("Yes, I chose to", fontSize = 12.sp) }
-                TextButton(onClick = onNotReally) { Text("Not really", fontSize = 12.sp) }
-                TextButton(onClick = onSkip) {
-                    Text("Skip", fontSize = 12.sp, color = DarkTextSecondary)
+            listOf(
+                "yes_intentional" to "Yes, I chose to",
+                "not_really" to "Not really",
+                "skipped" to "Skip this question",
+            ).forEach { (value, label) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = selectedResponse == value,
+                        onClick = { selectedResponse = value },
+                        enabled = !isSubmitting,
+                    )
+                    Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
+            }
+            Spacer(Modifier.height(6.dp))
+            Button(
+                onClick = {
+                    val response = selectedResponse ?: return@Button
+                    scope.launch {
+                        isSubmitting = true
+                        submitError = false
+                        val saved = try {
+                            onAnswer(question.id, response)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            false
+                        }
+                        isSubmitting = false
+                        submitError = !saved
+                    }
+                },
+                enabled = selectedResponse != null && !isSubmitting,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (isSubmitting) "Submitting…" else "Submit response")
+            }
+            if (submitError) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Could not save your response. Please try again.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }
