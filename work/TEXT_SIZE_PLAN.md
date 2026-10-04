@@ -144,6 +144,11 @@ composable(Routes.HOME) {
 }
 ```
 
+These providers cover the tab roots only. A subsequent NavHost destination is
+not a child of the provider that was active on the previous route. Carry and
+apply the appropriate source-tab context to secondary routes and top-level
+overlays as specified in §12 before calling the per-tab behavior complete.
+
 ## 7. New Settings UI — `ui/settings/TextSizeSettings.kt` (new file)
 
 New file, matching the precedent set by `DarkModeToggle.kt` (one file per nontrivial control). Contents:
@@ -168,10 +173,10 @@ item {
 
 ## 8. Mechanical rollout — corrected, file-precise scope
 
-Re-traced every route in `FocusFlowNavGraph.kt` and every call site of every file in and around the four tab directories. Two things came out of that, and both matter for getting the rollout right:
+Re-traced the routes in `FocusFlowNavGraph.kt` and call sites around the four tab directories. Two things came out of that, and both matter for getting the rollout right:
 
-1. **A file's directory doesn't always match who renders it.** Kotlin doesn't care where a file sits. Confirmed by call-site: `ui/settings/DailyAllowanceModal.kt` (31 raw-`.sp` sites) is only ever opened from Defense; `ui/launcher/AllowedAppsModal.kt` (0) only from Settings. Several secondary screens live in their own directories, each reached from exactly one tab: `ui/alwayson/` (29), `ui/keyword/` (19), `ui/profile/PasswordProtectionScreen.kt` (10), `ui/support/HowToUseScreen.kt` (9), `ui/launcher/VpnBlockListScreen.kt` (14) — all Defense-only; `ui/profile/UserProfileScreen.kt` (28), `ui/legal/` (18), `ui/support/ChangelogScreen.kt` (9) — all Settings-only.
-2. **Some components are genuinely called from more than one tab.** `Routes.ACTIVE` (`ui/active/`, 23) is opened from Focus, Settings, *and* Defense; `Routes.PERMISSIONS` (`ui/permissions/`, 48) from Focus and Defense; `ui/launcher/AppPickerSheet.kt` (22) is called inline from a Settings path, a Defense path, and a Home path. None of these get a dedicated per-tab wrap — §6 is unchanged, it only ever wraps the four tab roots — so they simply inherit whatever `CompositionLocalProvider` is active at their actual call site: `Routes.ACTIVE`/`Routes.PERMISSIONS` are their own unwrapped nav destinations, so that resolves to **General**; `AppPickerSheet.kt` resolves per caller (Settings' scale via `AllowedAppsModal`, Defense's via `DailyAllowanceModal`, `1f` via Home's `AllowedAppsDialog`) automatically. No extra code beyond §6 — just include them in the conversion pass so they track General instead of staying frozen at 100%.
+1. **A file's directory doesn't always match who renders it.** Kotlin doesn't care where a file sits. Confirmed by call-site: `ui/settings/DailyAllowanceModal.kt` (31 raw-`.sp` sites) is only ever opened from Defense; `ui/launcher/AllowedAppsModal.kt` (0) only from Settings. Several secondary screens live in their own directories, each reached from exactly one tab: `ui/alwayson/` (29), `ui/keyword/` (19), `ui/profile/PasswordProtectionScreen.kt` (10), `ui/support/HowToUseScreen.kt` (9), `ui/launcher/VpnBlockListScreen.kt` (14) — all Defense-only; `ui/profile/UserProfileScreen.kt` (28), `ui/legal/` (18), `ui/support/ChangelogScreen.kt` (9) — all Settings-only. These independent NavHost destinations need the owning tab's scale context carried to them; directory placement does not provide that context.
+2. **Some components are genuinely reached from more than one tab.** `Routes.ACTIVE` (`ui/active/`, 23) is opened from Focus, Stats, Settings, and Defense; `Routes.PERMISSIONS` (`ui/permissions/`, 48) is opened from Focus, Settings, and Defense. `ui/launcher/AppPickerSheet.kt` (22) is called inline from Settings, Defense, and Home. The shared NavHost destinations must follow their caller; inline sheets inherit their current composition context. Use the route/caller rules in §12 rather than assigning every shared surface General by default.
 
 **Corrected scope, by tab** (architecture in §1–7 is unaffected — only this list changes):
 
@@ -180,7 +185,7 @@ Re-traced every route in `FocusFlowNavGraph.kt` and every call site of every fil
 | Focus | `ui/focus/` (63) | none found | **63** |
 | Settings | `ui/settings/` (68, minus `DailyAllowanceModal.kt`'s 31 → 37) | `UserProfileScreen.kt` 28, `ui/legal/` 18, `ChangelogScreen.kt` 9, `AllowedAppsModal.kt` 0 | **92** |
 | Defense | `ui/defense/` (168) | `DailyAllowanceModal.kt` 31, `ui/alwayson/` 29, `ui/keyword/` 19, `PasswordProtectionScreen.kt` 10, `HowToUseScreen.kt` 9, `VpnBlockListScreen.kt` 14 | **280** |
-| Shared — convert, no dedicated wrap, rides General | — | `ui/active/` 23, `ui/permissions/` 48, `AppPickerSheet.kt` 22 | **93** |
+| Shared — convert; apply caller context per §12 | — | `ui/active/` 23, `ui/permissions/` 48, `AppPickerSheet.kt` 22 | **93** |
 
 Revised total for this pass (Focus + Settings + Defense + shared; Stats and Home untouched): **528**, replacing the original ~706 (770 minus Stats' 84) estimate for these three tabs.
 
@@ -243,3 +248,59 @@ Reads as two different-shaped jobs:
 - **§8 (the 528-site mechanical rollout across the file list in the table above)**: squarely Gemini's lane — high-volume, verbatim, no cross-file reasoning required.
 
 This is a recommendation based on the stated role split, not a hard requirement — route however fits current pipeline availability.
+
+## 12. Screen, route, and modal coverage audit
+
+The current source was re-traced in `ui/navigation/Routes.kt`,
+`ui/navigation/FocusFlowNavGraph.kt`, `ui/settings/SettingsScreen.kt`, and
+`ui/support/HowToUseScreen.kt`. This section records user-visible surfaces that
+the original root-tab wiring and file list do not fully describe.
+
+| Entry point | Current screens / overlays to account for | Text-size rule |
+|---|---|---|
+| Home/Schedule | `HomeScreen`; task detail/edit/quick-add and allowed-app dialogs; `AppPickerSheet` when opened from Home | Pin the entire Home-origin flow to `1f`, including shared sheets. |
+| Focus | `FocusScreen`; its extension, session-debrief, standalone-block, and PIN dialogs; `Routes.ACTIVE`; `Routes.PERMISSIONS` | Focus-owned content uses the Focus override. Shared destinations use the caller's scale. |
+| Stats | `StatsScreen`; `Routes.REPORTS` / `Routes.REPORT`; the top-level `QuickBlockSheet`; shared `Routes.ACTIVE` | Stats-specific `.sp` coverage is not in Prompt B. Keep this a visible v1 limitation; do not claim the Stats override works for raw literals or the quick-block sheet. |
+| Settings | `SettingsScreen`; profile, permissions, changelog, privacy/terms, and backup/import destinations; overlay-appearance, allowed-apps, report-issue, PIN, import-choice, and destructive-confirmation dialogs | Settings-owned destinations use the Settings override. Inline dialogs inherit their caller unless their source file is an explicit exception. |
+| Defense | `DefenseScreen`; Always-On, standalone-block setup, keyword blocker, VPN list, password protection, permissions, launcher setup, and How-to-Use destinations; daily-allowance, schedule, blocked-word, standalone-block, VPN-consent, and PIN dialogs | Defense-owned destinations use the Defense override. Shared destinations use the caller's scale. The existing launcher-setup exclusion remains explicit. |
+| Enforcement overlay | `BlockOverlayActivity`, a plain Android Activity with programmatic `TextView`s | It cannot inherit a Compose local; use the direct preference-read path in §10. |
+
+**Important navigation gap:** A `CompositionLocalProvider` wrapped around one
+`composable()` body does not automatically scope a different NavHost destination.
+The original §6 root wrappers alone therefore do not make a per-tab override
+follow the user into secondary routes. Before marking this feature complete,
+carry the source-tab context to secondary destinations and apply the corresponding
+scale there. `ACTIVE` and `PERMISSIONS` are shared across tabs; they must use the
+caller context rather than a hard-coded tab. Inline dialogs and sheets use their
+caller's context. A direct/external entry with no source-tab context uses General;
+Home-origin content remains pinned to `1f`.
+
+**Known uncovered surfaces must stay visible in the handoff:**
+
+- `ui/stats/` is outside Prompt B, and its `.sp` literals therefore do not receive
+  per-tab scaling. The Stats slider is not full coverage in v1.
+- `ui/common/` dialogs/components, `ui/launcher/QuickBlockSheet.kt`,
+  `ui/launcher/LauncherSetupScreen.kt`, `ui/backup/ImportConfirmScreen.kt`, and
+  other individually excluded files are not converted by Prompt B. Confirm their
+  actual scale behavior and list them as exceptions; do not imply every modal or
+  secondary screen is covered.
+- `ui/home/` remains unconverted and pinned to `1f`, including all Home-origin
+  editors and the shared `AppPickerSheet`.
+- A shared screen or modal must not be silently assigned General merely because
+  its file is outside a tab directory. Verify its route/callers and use the
+  caller-scale rule above where it is in scope.
+
+## 13. Separate Settings destination: Guarded Adjustments
+
+The user also requested a dedicated Settings entry that opens a screen for
+reviewing protected adjustments, with per-adjustment explanations consistent
+with the existing How-to-Use guidance. This is a separate feature from text-size
+scaling: text-size controls are not PIN-protected and must not be moved into or
+described as guarded.
+
+Track this companion feature in
+[`PROTECTED_ADJUSTMENTS_PLAN.md`](PROTECTED_ADJUSTMENTS_PLAN.md),
+[`PROTECTED_ADJUSTMENTS_TRACKER.md`](PROTECTED_ADJUSTMENTS_TRACKER.md), and
+[`AGENT_PRE_PROTECTED_ADJUSTMENTS.md`](AGENT_PRE_PROTECTED_ADJUSTMENTS.md).
+The text-size implementation must not add or weaken any security guards as part
+of its work.

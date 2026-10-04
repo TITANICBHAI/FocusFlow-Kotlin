@@ -19,7 +19,7 @@ doesn't match what's actually in those files (a line has moved, a name is
 different), follow the real file and flag the mismatch in your summary at the
 end — don't silently guess.
 
-Make these six changes:
+Make these nine changes:
 
 1. data/model/AppSettings.kt — add:
    val generalTextScale: Float = 1f,
@@ -89,7 +89,25 @@ Make these six changes:
    — a hard pin to 100%, regardless of generalTextScale. This tab must be
    completely unaffected by this feature.
 
-7. New file ui/settings/TextSizeSettings.kt:
+   The root providers above are not sufficient by themselves: every route in
+   the outer NavHost is a separate destination, so a provider inside FOCUS (for
+   example) does not automatically remain active when navigation opens
+   ALWAYS_ON, PERMISSIONS, or another detail destination. Implement explicit
+   source-tab scale context for secondary destinations before calling Prompt A
+   complete:
+   - A destination owned by one tab uses that tab's override.
+   - A destination shared by multiple tabs (notably ACTIVE and PERMISSIONS)
+     follows the tab that opened it.
+   - A direct/deep-link entry without a source tab uses General.
+   - Every Home-origin flow remains pinned to 1f, including shared sheets.
+   - Inline dialogs/sheets inherit their current caller context; top-level
+     overlays need an explicit context if they are outside that composition.
+   Use the live route and caller inventory in §12 of TEXT_SIZE_PLAN.md. Do not
+   infer scope from a Kotlin file's directory alone. Keep the exclusions there
+   visible in the handoff; in particular, do not claim Stats or shared
+   ui/common modal coverage when those files were not converted.
+
+8. New file ui/settings/TextSizeSettings.kt:
    - SettingsSliderRow(title: String, description: String?, valuePercent: Int,
      onValueChange: (Int) -> Unit, onValueChangeFinished: () -> Unit): title
      and description laid out like SettingsToggleRow's Column (fontSize=15.sp
@@ -113,7 +131,7 @@ Make these six changes:
          SettingsCard { TextSizeSection(settings = settings, onUpdate = settingsViewModel::updateSettings) }
      }
 
-8. enforcement/BlockOverlayActivity.kt (this one is NOT Compose — plain
+9. enforcement/BlockOverlayActivity.kt (this one is NOT Compose — plain
    Activity, builds TextViews programmatically, so it needs its own small fix
    rather than the CompositionLocal machinery above):
    - Add a class-level property: private var textScale: Float = 1f
@@ -138,7 +156,7 @@ Make these six changes:
 
 Do not touch any of the individual .sp sizing calls inside any screen file
 (ui/focus, ui/stats, ui/settings, ui/defense, or any of the secondary screens
-those tabs open) beyond exactly the eight numbered changes above — that's a
+those tabs open) beyond the core-wiring changes above — that's a
 528-site rollout across a separately-specified file list and is a SEPARATE,
 separately-executed job (Prompt B below). Don't convert any of them yourself.
 
@@ -160,7 +178,6 @@ SCOPE — convert every file below. Nothing else, not even other files that
 happen to sit in the same directory as one of these.
 
   ui/focus/                              (all files)
-  ui/stats/                              (all files)
   ui/settings/                           (all files)
   ui/defense/                            (all files)
   ui/active/                             (all files)
@@ -225,7 +242,7 @@ Do not change anything else in these files: no reformatting, no reordering,
 no touching .dp values, no renaming.
 
 When done, report: total files changed, total replacements made per directory
-(ui/focus, ui/stats, ui/settings, ui/defense, ui/active, ui/permissions,
+(ui/focus, ui/settings, ui/defense, ui/active, ui/permissions,
 ui/alwayson, ui/keyword, ui/legal) and per individually-named file
 (UserProfileScreen.kt, PasswordProtectionScreen.kt, ChangelogScreen.kt,
 HowToUseScreen.kt, VpnBlockListScreen.kt, AppPickerSheet.kt,
