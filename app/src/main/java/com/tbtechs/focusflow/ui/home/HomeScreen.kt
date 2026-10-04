@@ -47,7 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.tbtechs.focusflow.ui.theme.scaledSp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.AppBootViewModel
@@ -144,7 +144,7 @@ fun HomeScreen(
                         ) {
                             Text(
                                 text = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d")),
-                                fontSize = 22.scaledSp,
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = RefText,
                                 modifier = Modifier.weight(1f),
@@ -164,7 +164,7 @@ fun HomeScreen(
                                 val skipped = todayTasks.count { it.status == "skipped" }
                                 "$completed/${todayTasks.size} tasks done · $skipped skipped"
                             },
-                            fontSize = 13.scaledSp,
+                            fontSize = 13.sp,
                             color = RefSecondary,
                         )
                     }
@@ -315,7 +315,7 @@ private fun LoadingSchedule() = Column(
 ) {
     CircularProgressIndicator(color = BrandPrimary)
     Spacer(Modifier.height(16.dp))
-    Text("Loading your schedule…", fontSize = 16.scaledSp, color = DarkTextSecondary)
+    Text("Loading your schedule…", fontSize = 16.sp, color = DarkTextSecondary)
 }
 
 @Composable
@@ -336,14 +336,14 @@ private fun DatabaseUnavailable(onRetry: () -> Unit) = Column(
     Spacer(Modifier.height(12.dp))
     Text(
         "Your schedule is unavailable",
-        fontSize = 20.scaledSp,
+        fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         color = DarkTextPrimary,
     )
     Spacer(Modifier.height(6.dp))
     Text(
         "Your tasks are safe. FocusFlow could not open its local database.",
-        fontSize = 14.scaledSp,
+        fontSize = 14.sp,
         color = DarkTextSecondary,
     )
     Spacer(Modifier.height(16.dp))
@@ -379,14 +379,14 @@ private fun EmptySchedule(
         Spacer(Modifier.height(8.dp))
         Text(
             "No tasks scheduled for today",
-            fontSize = 18.scaledSp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
             color = RefSecondary,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             "Tap + to add your first task",
-            fontSize = 13.scaledSp,
+            fontSize = 13.sp,
             color = RefMuted,
         )
     }

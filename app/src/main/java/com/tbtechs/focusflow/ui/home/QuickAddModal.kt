@@ -62,7 +62,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.tbtechs.focusflow.ui.theme.scaledSp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -214,7 +214,7 @@ fun QuickAddModal(
                     "New Task",
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    fontSize = 20.scaledSp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = RefText,
                 )
@@ -227,7 +227,7 @@ fun QuickAddModal(
                         vertical = 8.dp,
                     ),
                 ) {
-                    Text("Save", fontSize = 14.scaledSp, fontWeight = FontWeight.Bold)
+                    Text("Save", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -270,7 +270,7 @@ fun QuickAddModal(
                             Text(
                                 if (parsedDate == LocalDate.now()) "Today"
                                 else parsedDate.format(DateTimeFormatter.ofPattern("MMM d")),
-                                 fontSize = 15.scaledSp,
+                                 fontSize = 15.sp,
                                 color = RefText,
                             )
                         }
@@ -292,7 +292,7 @@ fun QuickAddModal(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 parsedTime.format(DateTimeFormatter.ofPattern("h:mm a")),
-                                 fontSize = 15.scaledSp,
+                                 fontSize = 15.sp,
                                 color = RefText,
                             )
                         }
@@ -353,7 +353,7 @@ fun QuickAddModal(
                             text = opt.replaceFirstChar(Char::titlecase),
                             selected = isSelected,
                             modifier = Modifier.weight(1f),
-                            fontSize = 12.scaledSp,
+                            fontSize = 12.sp,
                             horizontalPadding = 4.dp,
                             selectedColor = if (opt == "medium") RefBlue else BrandPrimary,
                             onClick = { priority = opt },
@@ -419,10 +419,10 @@ fun QuickAddModal(
                             Icon(Icons.Outlined.Shield, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Allowed Apps", fontSize = 14.scaledSp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
-                                Text(allowedAppsLabel, fontSize = 12.scaledSp, color = DarkTextSecondary)
+                                Text("Allowed Apps", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkTextPrimary)
+                                Text(allowedAppsLabel, fontSize = 12.sp, color = DarkTextSecondary)
                             }
-                            Text("Edit", fontSize = 13.scaledSp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                            Text("Edit", fontSize = 13.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -432,7 +432,7 @@ fun QuickAddModal(
                 Text(
                     "Enter a title and a valid date, time, and duration.",
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.scaledSp,
+                    fontSize = 13.sp,
                 )
             }
 

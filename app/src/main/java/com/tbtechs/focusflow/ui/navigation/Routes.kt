@@ -11,8 +11,7 @@ object Routes {
     const val FOCUS = "focus"
     const val STATS = "stats"
     const val SETTINGS = "settings"
-    const val TEXT_SIZE_SETTINGS = "text_size_settings"
-    const val SETTINGS_GUIDE = "settings_guide"
+    const val GUARDED_ADJUSTMENTS = "guarded_adjustments"
     const val DEFENSE = "defense"
     const val ACTIVE = "active"
     const val ALWAYS_ON = "always_on"
@@ -41,8 +40,7 @@ object Routes {
         FOCUS,
         STATS,
         SETTINGS,
-        TEXT_SIZE_SETTINGS,
-        SETTINGS_GUIDE,
+        GUARDED_ADJUSTMENTS,
         DEFENSE,
         ACTIVE,
         ALWAYS_ON,

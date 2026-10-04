@@ -45,7 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.tbtechs.focusflow.ui.theme.scaledSp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
@@ -100,23 +100,23 @@ internal fun ActiveTaskBanner(
                 ) {
                     Text(
                         if (isRunning) "NOW" else "TIME'S UP",
-                        fontSize = 10.scaledSp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = badgeColor,
-                        letterSpacing = 0.8.scaledSp,
+                        letterSpacing = 0.8.sp,
                     )
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     task.title,
-                    fontSize = 15.scaledSp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                         color = if (isRunning) Color.White else DarkTextPrimary,
                 )
                 Text(
                     if (isRunning) "Until ${task.endTime.asLocalTime()}"
                     else "Ended ${task.endTime.asLocalTime()} · pick one",
-                    fontSize = 12.scaledSp,
+                    fontSize = 12.sp,
                     color = if (isRunning) Color.White.copy(alpha = 0.82f) else DarkTextSecondary,
                 )
             }
@@ -222,14 +222,14 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Alarm, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Extend ${task.title}", fontWeight = FontWeight.Bold, fontSize = 17.scaledSp)
+                Text("Extend ${task.title}", fontWeight = FontWeight.Bold, fontSize = 17.sp)
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     "Select or enter extra minutes for this task.",
-                    fontSize = 13.scaledSp,
+                    fontSize = 13.sp,
                     color = DarkTextSecondary,
                 )
                 Row(
@@ -249,7 +249,7 @@ internal fun ExtendTaskDialog(task: Task, onDismiss: () -> Unit, onExtend: (Int)
                         ) {
                             Text(
                                 "+${opt}m",
-                                fontSize = 13.scaledSp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (minutes == opt.toString()) BrandPrimary else DarkTextPrimary,
                             )

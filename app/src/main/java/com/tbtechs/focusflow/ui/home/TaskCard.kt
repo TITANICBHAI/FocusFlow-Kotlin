@@ -37,7 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tbtechs.focusflow.ui.theme.scaledSp
+import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkCard
@@ -109,7 +109,7 @@ fun TaskCard(
                 ) {
                     Text(
                         text = task.title,
-                        fontSize = 15.scaledSp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (closed) DarkTextMuted else DarkTextPrimary,
                         maxLines = 1,
@@ -132,7 +132,7 @@ fun TaskCard(
                         ) {
                             Text(
                                 text = if (task.status == "skipped") "Skipped" else "Completed",
-                                fontSize = 11.scaledSp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (task.status == "skipped") DarkTextSecondary else Color(0xFF34D399),
                             )
@@ -147,7 +147,7 @@ fun TaskCard(
                     ) {
                         Text(
                             text = task.priority.replaceFirstChar(Char::titlecase),
-                            fontSize = 11.scaledSp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = priorityColor(task.priority),
                         )
@@ -156,14 +156,14 @@ fun TaskCard(
 
                 Text(
                     text = "${task.startTime.asLocalTime()} – ${task.endTime.asLocalTime()} · ${task.durationMinutes.asDurationLabel()}",
-                    fontSize = 13.scaledSp,
+                    fontSize = 13.sp,
                     color = DarkTextSecondary,
                 )
 
                 if (!closed) {
                     Text(
                         text = if (isActive) task.timeRemainingLabel(nowMs) else task.timeUntilStartLabel(nowMs),
-                        fontSize = 11.scaledSp,
+                        fontSize = 11.sp,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                         color = DarkTextSecondary,
                     )

@@ -23,7 +23,7 @@ chat; do not make code or documentation changes.
 3. `work/PROJECT_WORK_TRACKER.md` — read the Guarded Adjustments batch status,
    assigned agent, unchecked items, and blockers; do not edit it.
 4. `app/src/main/java/com/tbtechs/focusflow/ui/settings/SettingsScreen.kt`
-5. `app/src/main/java/com/tbtechs/focusflow/ui/support/SettingsGuideScreen.kt`
+5. `app/src/main/java/com/tbtechs/focusflow/ui/settings/ProtectedAdjustmentsScreen.kt`
 6. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/Routes.kt`
 7. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/FocusFlowNavGraph.kt`
 8. The guard-owner source files listed in the tracker’s source-audit record.

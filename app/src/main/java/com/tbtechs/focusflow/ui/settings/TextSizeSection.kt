@@ -48,25 +48,12 @@ internal fun TextSizeSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         SettingsSliderRow(
             title = "General",
-            description = "Default for tabs without a custom size.",
+            description = "Default for Focus, Stats, Settings, and Defense. Home stays at 100%.",
             valuePercent = generalPercent,
             onValueChange = { percent ->
                 onUpdate(settings.copy(generalTextScale = percentToScale(percent)))
             },
             onValueChangeFinished = {},
-        )
-        HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-        SettingsSliderRow(
-            title = "Schedule",
-            description = if (settings.homeTextScale == null) "Matches General" else "Custom size",
-            valuePercent = settings.homeTextScale?.let(::scaleToPercent) ?: generalPercent,
-            onValueChange = { percent ->
-                onUpdate(settings.copy(homeTextScale = percentToScale(percent)))
-            },
-            onValueChangeFinished = {},
-            onReset = if (settings.homeTextScale == null) null else {
-                { onUpdate(settings.copy(homeTextScale = null)) }
-            },
         )
         HorizontalDivider(color = DarkBorder, thickness = 1.dp)
         SettingsSliderRow(

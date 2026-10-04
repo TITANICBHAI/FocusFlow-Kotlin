@@ -18,8 +18,7 @@ internal object RouteTextScaleContext {
     )
 
     private val ownerTabByRoute = mapOf(
-        Routes.TEXT_SIZE_SETTINGS to Routes.SETTINGS,
-        Routes.SETTINGS_GUIDE to Routes.SETTINGS,
+        Routes.GUARDED_ADJUSTMENTS to Routes.SETTINGS,
         Routes.USER_PROFILE to Routes.SETTINGS,
         Routes.CHANGELOG to Routes.SETTINGS,
         Routes.PRIVACY_POLICY to Routes.SETTINGS,
@@ -87,7 +86,7 @@ internal object RouteTextScaleContext {
         val source = rootTabRoute(sourceTab)
 
         return when (base) {
-            Routes.HOME -> settings.homeTextScale ?: settings.generalTextScale
+            Routes.HOME -> 1f
             Routes.FOCUS -> settings.focusTextScale ?: settings.generalTextScale
             Routes.STATS -> settings.statsTextScale ?: settings.generalTextScale
             Routes.SETTINGS -> settings.settingsTextScale ?: settings.generalTextScale
@@ -118,7 +117,7 @@ internal object RouteTextScaleContext {
 
     private fun scaleForTab(tabRoute: String, settings: AppSettings): Float =
         when (tabRoute) {
-            Routes.HOME -> settings.homeTextScale ?: settings.generalTextScale
+            Routes.HOME -> 1f
             Routes.FOCUS -> settings.focusTextScale ?: settings.generalTextScale
             Routes.STATS -> settings.statsTextScale ?: settings.generalTextScale
             Routes.SETTINGS -> settings.settingsTextScale ?: settings.generalTextScale

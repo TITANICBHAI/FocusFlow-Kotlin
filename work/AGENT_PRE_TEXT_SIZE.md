@@ -8,9 +8,8 @@ Implement the FocusFlow text-size feature described in:
 - `work/TEXT_SIZE_PROMPTS.md` — executable prompts for the two implementation jobs
 - `work/PROJECT_WORK_TRACKER.md` — batch owner, checkboxes, evidence, and blockers
 
-The feature is one General percentage scale plus nullable per-tab overrides for
-Schedule/Home, Focus, Stats, Settings, and Defense. Batch 07 supersedes the
-original Home/Schedule exclusion.
+The feature is one General percentage scale plus optional overrides for Focus,
+Stats, Settings, and Defense. Home/Schedule is intentionally excluded.
 
 ## Required reading before editing
 
@@ -46,8 +45,7 @@ milestone and handoff.
 
 ## Non-negotiable constraints
 
-- Schedule/Home uses its override or General. Keep the bottom navigation outside
-  the active tab's scale provider.
+- Home/Schedule must remain at exactly `1f`, unaffected by General or tab scales.
 - Do not wrap `MainScaffold`; only wrap the tab content inside it.
 - A null per-tab override means inherit General. A non-null override replaces
   General; do not multiply the two values.
@@ -55,9 +53,9 @@ milestone and handoff.
   unchanged.
 - Do not add bespoke ViewModel or Repository setters if the existing settings
   catch-all still persists the new fields.
-- Prompt B's exact scope remains a historical record of the original rollout.
-  Schedule/Home text was added separately in Batch 07; leave the remaining
-  `ui/common`, onboarding, launcher, and support exclusions alone.
+- Do not convert files outside Prompt B's exact scope. In particular, leave
+  `ui/home`, `ui/common`, `ui/onboarding`, and the explicitly excluded launcher
+  and support files alone.
 - Do not blindly convert `.sp` values outside `@Composable` scope; list them as
   exceptions if they cannot use the composable extension safely.
 - Stats gets General scaling through root typography, but a Stats-specific
@@ -74,8 +72,7 @@ After editing:
 1. Search the diff for accidental changes outside scope.
 2. Confirm persistence round-trips General and nullable per-tab values,
    including resetting an override to null.
-3. Confirm Schedule follows General or its override, and the bottom navigation
-   is not wrapped.
+3. Confirm Home is pinned to `1f` and the bottom navigation is not wrapped.
 4. Check all `.scaledSp` imports and composable-scope constraints.
 5. Run the available Android build/check commands and report environment
    limitations separately from source failures.

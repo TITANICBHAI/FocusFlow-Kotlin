@@ -20,12 +20,12 @@ The two uploaded references were filed under their stable names with the numeric
 
 | Work item | Source | Status | Notes |
 |---|---|---|---|
-| Core settings, persistence, theme, tab wiring, settings controls, and block overlay | Prompt A in `TEXT_SIZE_PROMPTS.md` | Implemented; Android verification blocked | Text-size sliders now live on `TextSizeSettingsScreen`, opened from Appearance; preference fields, persistence, ranges, and reset behavior are unchanged. The SharedPreferences round-trip/reset instrumentation test was added but cannot run without Java/Android SDK setup. |
+| Core settings, persistence, theme, tab wiring, settings controls, and block overlay | Prompt A in `TEXT_SIZE_PROMPTS.md` | Implemented; Android verification blocked | Batch 02 source changes are in place; a SharedPreferences round-trip/reset instrumentation test was added. Gradle cannot start because no Java executable or `JAVA_HOME` is configured. |
 | Scoped `.sp` to `.scaledSp` rollout | Prompt B in `TEXT_SIZE_PROMPTS.md` | Implemented; Android verification blocked | 547 eligible literals converted in 32 Prompt B files. User directed source-only work to proceed while Batches 02 and 03 Android verification remains blocked; this does not claim those checks passed. |
-| Route-origin scale context for secondary screens and shared dialogs/sheets | §12 in `TEXT_SIZE_PLAN.md`; Prompt A | Implemented; Android verification blocked | Batch 03 maps tab-owned destinations to their owning tab, shared `ACTIVE`, `PERMISSIONS`, and onboarding `HOW_TO_USE` to the opening tab, and direct entries to General. `TEXT_SIZE_SETTINGS` and `SETTINGS_GUIDE` are Settings-owned. Inline surfaces inherit; global SideMenu and Stats QuickBlockSheet receive explicit context. |
+| Route-origin scale context for secondary screens and shared dialogs/sheets | §12 in `TEXT_SIZE_PLAN.md`; Prompt A | Implemented; Android verification blocked | Batch 03 maps tab-owned destinations to their owning tab, shared `ACTIVE`, `PERMISSIONS`, and `HOW_TO_USE` to the opening tab, and direct entries to General. Inline surfaces inherit; global SideMenu and Stats QuickBlockSheet receive explicit context. |
 | Integration, verification, and final handoff | Batch 05 in `PROJECT_WORK_TRACKER.md` | Implemented; Android verification blocked | Static source and scope checks pass; persistence/route tests and Android build could not run because Java and Android SDK tooling are absent. See the Batch 05 record below. |
-| Screen/modal coverage audit and explicit v1 exceptions | §12 in `TEXT_SIZE_PLAN.md`; Prompt B | Source audit complete; implementation pending | Batch 01 source audit is documented in §12, including Home → ACTIVE, the separate Settings guide and Text Size routes, inline sheets, and the Stats top-level overlay. Stats, shared components, and named exclusions remain out of the mechanical conversion scope. |
-| Settings help guide containing onboarding and guarded-adjustment content | Companion plan and tracker linked above | Implemented; Android verification blocked | The separate Settings guide combines the existing onboarding guide content with the guarded Q&As. Onboarding remains unchanged; the old guarded-only Settings section and route are removed. |
+| Screen/modal coverage audit and explicit v1 exceptions | §12 in `TEXT_SIZE_PLAN.md`; Prompt B | Source audit complete; implementation pending | Batch 01 source audit is complete and documented in §12, including Home → ACTIVE, Guarded Adjustments routes, inline sheets, and the Stats top-level overlay. Stats, shared components, and named exclusions remain out of the mechanical conversion scope. |
+| Settings → Guarded Adjustments screen | Companion plan and tracker linked above | Verified | Separate full-screen, sectioned Q&A guide explains existing guarded popups/locked states and links to owner flows; it is not a popup or a duplicate control surface. Android build/test remain unavailable; see the companion tracker. |
 
 ## Completion checks
 
@@ -33,7 +33,7 @@ The two uploaded references were filed under their stable names with the numeric
 - [x] Complete Prompt B only in its listed files and report replacements and skipped exceptions. 547 conversions, zero skipped exception sites; Android compilation remains unverified, and Batches 02 and 03 remain “Implemented; verification blocked.”
 - [x] Verify the route/provider mapping across §12, including shared destinations, caller-owned sheets, and Home-origin UI. `RouteTextScaleContextTest` covers caller mapping; Android execution remains blocked.
 - [x] Confirm Stats override limitations and all other documented scope boundaries. The current exact scan finds 82 Stats, 41 shared-common, 65 Home, 23 onboarding, and other out-of-scope raw targets; Stats/shared typography is not fully covered by per-tab overrides.
-- [x] Keep the onboarding guide separate, and keep Text Size controls separate from guarded-adjustment content. The Settings guide is a new file/screen; its route and the Text Size screen both use Settings scale context.
+- [ ] Keep the Guarded Adjustments screen tracked and verified separately; text-size settings are not protected adjustments.
 - [x] Run the available source checks and record Android build limits. Batch 05 source assertions and `git diff --check` passed; `bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:connectedDebugAndroidTest` exits before Gradle starts because Java is unavailable.
 
 ## Batch 02 implementation and verification record — 2026-10-04
@@ -51,22 +51,17 @@ The two uploaded references were filed under their stable names with the numeric
   inspection.
 - `git diff --check` and LSP diagnostics for all changed Kotlin sources passed.
 - Batch 03 route-origin wiring was completed separately; Prompt B’s `.sp` conversion remains not started.
-- **Settings navigation update (2026-10-04):** the Appearance entry now opens
-  `TextSizeSettingsScreen`; sliders are no longer inline in `SettingsScreen`.
-  Settings' About section opens the new `SettingsGuideScreen`. Stored values,
-  ranges, and reset behavior are unchanged.
 
 ## Batch 03 implementation and verification record — 2026-10-04
 
 - Added validated `sourceTab` navigation arguments for secondary destinations.
   Tab-owned Settings, Stats, and Defense routes receive their owner scale when
   entered internally; direct entries without a source use General. Shared
-  `ACTIVE`, `PERMISSIONS`, and onboarding `HOW_TO_USE` keep the opening tab's
-  context. `TEXT_SIZE_SETTINGS` and `SETTINGS_GUIDE` use Settings as owner.
+  `ACTIVE`, `PERMISSIONS`, and `HOW_TO_USE` keep the opening tab's context.
 - Verified the route ownership map against `FocusFlowNavGraph.kt` callers:
   `ACTIVE` opens from all five root tabs; `PERMISSIONS` opens from Focus,
-  Settings, Defense, and the Settings guide; `HOW_TO_USE` opens from Defense and
-  the global SideMenu. Root-tab calls and `SideMenu` route calls use
+  Settings, Defense, and the Guarded Adjustments guide; `HOW_TO_USE` opens from
+  Defense and the global SideMenu. Root-tab calls and `SideMenu` route calls use
   the navigation helper; deep links and startup imports remain source-free.
 - The Settings scale is retained when an import is initiated from Settings or
   the Settings-owned profile; a startup-pending import with no caller uses
