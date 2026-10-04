@@ -2,14 +2,17 @@
 
 ## Goal
 
-Add a dedicated screen reachable from Settings where users can review the
-adjustments and actions that FocusFlow protects. Explain each guard in the same
-practical style as **How to Use FocusFlow**, including what is protected, when a
-PIN or active-block lock applies, and where the user can manage the setting.
+Add a dedicated screen opened from a row in Settings where users can review the
+adjustments and actions that FocusFlow protects. Use grouped sections with
+expandable, question-style entries, following the interaction pattern of
+**How to Use FocusFlow**. Explain what is protected, when a PIN or active-block
+lock applies, and where the user can manage the setting.
 
-This is an informational/navigation hub, not a second implementation of the
-underlying controls. Existing owning screens and their PIN/active-state checks
-remain authoritative.
+This is its own full-screen destination, not a popup. It explains the existing
+guard-related popups, dialogs, and locked states; those prompts still appear only
+from their current owner flows. This is an informational/navigation guide, not a
+second implementation of the underlying controls. Existing owning screens and
+their PIN/active-state checks remain authoritative.
 
 ## Current-source baseline
 
@@ -37,44 +40,56 @@ The implementing agent must re-trace the behavior before finalizing the list.
 
 ## Required user flow
 
-1. Add a clearly labeled Settings action row: **Guarded Adjustments**, with a
+1. Add one clearly labeled Settings action row: **Guarded Adjustments**, with a
    concise description that says it explains protected changes and their rules.
 2. Tapping the row opens a new full-screen destination, not a modal.
 3. The new page has a back action that returns to Settings.
-4. Group the entries by guard type or owning area. Each entry states:
+4. Present the content as grouped sections with expandable question-and-answer
+   entries, following the existing How to Use section/card pattern. Use a
+   question as each entry heading and a concise, practical answer beneath it.
+   The page itself must not open a PIN dialog or act as another popup.
+5. Group entries by guard type or owning area. Each answer states:
    - The adjustment/action that is protected.
    - The exact condition that triggers the Defense PIN, Focus PIN, or active
      block lock.
    - Any relevant safe-addition exception.
    - The existing screen or flow where the adjustment is managed, with a direct
      in-app navigation action when that destination can be reached safely.
-5. Include a short note that the password protects changes that weaken a block;
+6. Include a short note that the password protects changes that weaken a block;
    do not imply that every Settings value requires a PIN.
-6. Keep the copy aligned with How to Use. Update its guide content or add a
-   cross-link when source verification finds a missing or stale explanation.
+7. Keep the explanations aligned with How to Use. Correct stale or inaccurate
+   guide text when the live source proves a mismatch. How to Use is the design
+   and copy reference, not an additional entry point to this screen.
 
-## Guard inventory to verify before implementation
+## Guarded popup and lock-state inventory
 
-Use the live code to enumerate the complete set. At minimum, inspect:
+Use the live code to enumerate every user-visible PIN prompt, active-block
+dialog/banner, and other locked state that protects an adjustment. The rows
+below are confirmed search leads, not a finished inventory; verify each action
+and search for additional guard branches before implementation.
 
-| Area | Existing source entry points to inspect | Expected explanation |
+| Area | Existing popup/lock surface and source to inspect | Expected explanation |
 |---|---|---|
-| Focus session and duration | `ui/focus/FocusScreen.kt`, `ui/defense/DefenseScreen.kt` | Focus PIN conditions for ending early and for allowing a task to end Focus early. |
-| Defense controls | `ui/defense/DefenseScreen.kt` | Which toggles are blocked during an active Focus/Standalone block and which disabling actions request the Defense PIN. Do not generalize one toggle's rule to all toggles. |
-| Always-On and VPN app lists | `ui/alwayson/AlwaysOnScreen.kt`, `ui/launcher/VpnBlockListScreen.kt` | Exact removal/edit restrictions; additions that remain permitted. |
-| Keyword list | `ui/keyword/KeywordBlockerScreen.kt`, `ui/defense/BlockedWordsModal.kt` | Removal/clear rules versus adding a keyword. |
-| Group schedules | `ui/defense/DefenseScreen.kt`, `ui/defense/GreyoutScheduleModal.kt` | When opening, editing, shortening, deleting, or disabling a schedule asks for a PIN or is blocked. |
-| Daily allowance and standalone block | `ui/settings/DailyAllowanceModal.kt`, `ui/defense/StandaloneBlockModal.kt`, `ui/defense/StandaloneBlockSetupScreen.kt` | Exact active-block and PIN rules; do not conflate creation/setup with weakening an active block. |
-| Other protected flows | Search current `ui/` code for PIN verification and active-block checks, then inspect every hit | Add any genuinely guarded adjustment omitted from the list above; exclude unrelated destructive/data prompts unless the source ties them to the protection policy. |
+| Focus session and duration | Focus PIN dialogs in `ui/focus/FocusScreen.kt`, `ui/active/ActiveScreen.kt`, and task-duration protection in `ui/defense/DefenseScreen.kt` | Exact Focus PIN triggers for ending an active session early or changing the full-duration rule. |
+| Defense controls | Defense PIN `PinPrompt` and blocked-state notices in `ui/defense/DefenseScreen.kt` | Which individual changes are blocked during Focus/Standalone Block and which ask for the Defense or Focus PIN. Do not generalize one toggle's rule to all toggles. |
+| Always-On and VPN app lists | PIN dialogs and active-block removal locks in `ui/alwayson/AlwaysOnScreen.kt` and `ui/launcher/VpnBlockListScreen.kt` | Exact removal restrictions; explain that additions may remain allowed and distinguish a confirmation dialog from the PIN gate. |
+| Keyword list | PIN/locked states in `ui/keyword/KeywordBlockerScreen.kt` and `ui/defense/BlockedWordsModal.kt` | Removal and clear-list rules versus adding a keyword. |
+| Group schedules | Schedule PIN and active-block dialogs in `ui/defense/DefenseScreen.kt` and `ui/defense/GreyoutScheduleModal.kt` | When opening, editing, removing apps, shortening, deleting, disabling, or disabling VPN asks for a PIN or is blocked. |
+| Daily allowances | PIN dialog and active-block lock states in `ui/settings/DailyAllowanceModal.kt` | Existing allowances cannot be removed while the relevant block is active; verify when a PIN is required and what additions/changes remain available. |
+| Standalone block | PIN prompt and locked-state UI in `ui/defense/StandaloneBlockModal.kt` and `StandaloneBlockSetupScreen.kt`; related stop/clear prompts in `ui/active/ActiveScreen.kt` | Verify exactly which changes require the Focus PIN while active, which are merely locked, and which safe extensions/additions are allowed. |
+| Other guarded settings and data flows | Search UI guard hooks, including `SettingsScreen.kt`, `OverlayAppearanceModal.kt`, `PasswordProtectionScreen.kt`, `PermissionsScreen.kt`, `LauncherSetupScreen.kt`, and `backup/ImportConfirmScreen.kt` | Decide from each live guard whether it changes or weakens protection and belongs in this guide; do not omit a real protected adjustment or include unrelated data/deletion confirmations. |
 
-The table is an investigation checklist, not a claim that every listed action
-uses the same guard. The implementation must record the verified rule per
-action and resolve any mismatch between the live source and How-to-Use copy.
+The page covers guard-related popups and locked states, not every ordinary
+confirmation, date/time picker, permission explanation, or unrelated popup in
+the app. The table is an investigation checklist, not a claim that every listed
+action uses the same guard. Record the verified rule per action and reconcile
+any mismatch with How-to-Use before writing the final copy.
 
 ## Navigation and screen boundaries
 
 - Add one internal route constant in `ui/navigation/Routes.kt` and one
-  `composable` destination in `ui/navigation/FocusFlowNavGraph.kt`.
+  `composable` destination in `ui/navigation/FocusFlowNavGraph.kt`; the Settings
+  row is the planned entry point.
 - Keep the new route out of `Routes.externalLinkableRoutes` unless a later
   product decision explicitly requires external deep links.
 - Pass a Settings-scale context if text scaling has already been implemented;
@@ -99,7 +114,9 @@ action and resolve any mismatch between the live source and How-to-Use copy.
 - `app/src/main/java/com/tbtechs/focusflow/ui/navigation/Routes.kt` and
   `FocusFlowNavGraph.kt` — internal route and back/navigation wiring.
 - `app/src/main/java/com/tbtechs/focusflow/ui/support/HowToUseScreen.kt` —
-  synchronize verified guide copy or add a discovery link if needed.
+  compare its existing sections and guard explanations with the verified rules;
+  update inaccurate copy if needed. Do not add a link from How to Use as another
+  entry point unless the product decision changes.
 - Guard-owner screens named in the inventory — inspect first; edit only if
   needed to expose a safe destination or correct a guide/source mismatch.
 
@@ -107,8 +124,9 @@ action and resolve any mismatch between the live source and How-to-Use copy.
 
 - [ ] Settings has one clearly named action that opens the new full-screen page.
 - [ ] Back navigation returns to Settings without losing the existing stack.
-- [ ] Every live PIN- or active-block-guarded adjustment is represented once,
-  with its exact condition and owner screen.
+- [ ] Every live PIN- or active-block-guarded adjustment and related user-visible
+  popup/locked state is represented once, with its exact condition and owner
+  screen; ordinary unrelated confirmation dialogs are excluded.
 - [ ] Safe additions and unguarded changes are not falsely described as locked.
 - [ ] Every destination link lands on the existing owner flow; no parallel
   controls or security bypasses were added.

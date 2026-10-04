@@ -3,10 +3,12 @@
 ## Mission
 
 Implement the Settings → **Guarded Adjustments** screen described in
-`work/PROTECTED_ADJUSTMENTS_PLAN.md`. This is a full-screen informational and
-navigation hub for existing PIN- and active-block-protected changes. It must
-preserve the current guard owners and must not create a parallel way to mutate
-protected state.
+`work/PROTECTED_ADJUSTMENTS_PLAN.md`. A Settings row opens its own full-screen
+guide, organized into sections with expandable, question-and-answer entries in
+the style of How to Use FocusFlow. The existing guard-related popups and locked
+states are the subjects the page explains; the new page itself is not a popup
+and must not display or recreate PIN prompts. Preserve current guard owners and
+do not create a parallel way to mutate protected state.
 
 Work directly in this session. Do not spawn or delegate to subagents.
 
@@ -25,11 +27,13 @@ Read these documents in full first:
 8. `app/src/main/java/com/tbtechs/focusflow/ui/navigation/FocusFlowNavGraph.kt`
 
 Then inspect the current guard implementation, not just its documentation.
-At minimum trace Focus session/duration actions, Defense toggles, Always-On and
-VPN app removal, keyword changes, group schedules, daily allowances, and
-standalone blocking. Use the plan's source inventory as a starting point; search
-for additional PIN checks and active-block restrictions before declaring the
-inventory complete. Verify paths and behavior against the current checkout.
+At minimum trace every user-visible PIN dialog, active-block warning/lock, and
+guarded setting for Focus session/duration actions, Defense toggles, Always-On
+and VPN app removal, keyword changes, group schedules, daily allowances,
+standalone blocking, and the additional Settings/permission/backup candidates
+listed in the plan. Use its inventory as a starting point; search for more PIN
+checks and active-block restrictions before declaring coverage complete. Verify
+paths and behavior against the current checkout.
 
 ## Before implementation
 
@@ -42,9 +46,12 @@ inventory complete. Verify paths and behavior against the current checkout.
    the verified behavior.
 3. Keep the destination internal. Do not add it to external/deep-link
    allowlists unless the plan is explicitly revised.
-4. Build the page as a read-only guide/index with links to existing owner flows.
-   Let those flows retain all existing PIN prompts and active-state checks.
-5. Do not move font-size controls into this screen. Text size is not a protected
+4. Build a read-only, sectioned Q&A guide following the existing How to Use
+   interaction pattern. The Settings row is the entry point; do not add a How to
+   Use link unless the product decision is revised.
+5. Link to existing owner flows where practical. Let those flows retain their
+   existing PIN prompts and active-state checks; do not recreate popup behavior.
+6. Do not move font-size controls into this screen. Text size is not a protected
    adjustment.
 
 ## Non-negotiable constraints
@@ -53,6 +60,8 @@ inventory complete. Verify paths and behavior against the current checkout.
 - Do not add persistent settings state or a second set of controls.
 - Explain the exact conditions per action; do not claim all Defense settings
   require a PIN.
+- Cover guard-related popups and lock states, not every ordinary confirmation
+  dialog in the application.
 - Preserve actions that intentionally remain available, such as safe additions
   described by the verified source.
 - Keep shared routes and in-screen modal entry paths valid; link to an owning

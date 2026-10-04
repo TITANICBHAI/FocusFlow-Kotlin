@@ -19,7 +19,7 @@ The two uploaded references were filed under their stable names with the numeric
 | Scoped `.sp` to `.scaledSp` rollout | Prompt B in `TEXT_SIZE_PROMPTS.md` | Not started | Depends on the `scaledSp` extension from Prompt A. |
 | Route-origin scale context for secondary screens and shared dialogs/sheets | §12 in `TEXT_SIZE_PLAN.md`; Prompt A | Not started | Root-tab providers do not scope separate NavHost destinations. Carry caller context; shared routes follow their caller and Home stays at `1f`. |
 | Screen/modal coverage audit and explicit v1 exceptions | §12 in `TEXT_SIZE_PLAN.md`; Prompt B | In progress | Root and secondary route inventory is documented. Complete the source-level modal/caller audit before claiming full coverage; Stats, shared components, and named exclusions remain out of the mechanical conversion scope. |
-| Settings → Guarded Adjustments screen | Companion plan and tracker linked above | Not started | Separate deliverable. The new page explains existing guards and links to their current owner flows; it does not add duplicate controls or security bypasses. |
+| Settings → Guarded Adjustments screen | Companion plan and tracker linked above | Not started | Separate full-screen, sectioned Q&A guide modeled on How to Use; it explains existing guarded popups/locked states and links to owner flows, but is not itself a popup or a duplicate control surface. |
 
 ## Completion checks
 
