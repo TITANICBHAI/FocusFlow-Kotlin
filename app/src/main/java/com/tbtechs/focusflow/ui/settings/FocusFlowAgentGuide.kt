@@ -3,7 +3,7 @@ package com.tbtechs.focusflow.ui.settings
 internal const val FOCUSFLOW_FILE_FORMAT_URL =
     "https://focusflowapp.pages.dev/focusflow-file-format/"
 
-internal const val FOCUSFLOW_TASK_BACKUP_PROMPT = """
+internal val FOCUSFLOW_TASK_BACKUP_PROMPT = """
 # FocusFlow task-backup assistant
 
 You are helping someone use FocusFlow, a native Android focus and
