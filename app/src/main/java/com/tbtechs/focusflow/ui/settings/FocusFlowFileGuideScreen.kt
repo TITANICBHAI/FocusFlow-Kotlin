@@ -108,28 +108,28 @@ internal fun FocusFlowFileGuideScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 Text(
-                    "Coding-agent prompt",
+                    "AI schedule generator",
                     color = DarkTextPrimary,
                     fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Copies a self-contained project prompt with the core .focusflow " +
-                        "format rules. No separate guide file is required.",
+                    "Copy the prompt, then describe your routine. It tells an AI how to " +
+                        "create a valid .focusflow backup and ask about missing schedule details.",
                     color = DarkTextSecondary,
                     fontSize = 13.scaledSp,
                     lineHeight = 19.scaledSp,
                 )
                 Button(
                     onClick = {
-                        clipboard.setText(AnnotatedString(FOCUSFLOW_CODING_AGENT_PROMPT))
+                        clipboard.setText(AnnotatedString(FOCUSFLOW_SCHEDULE_GENERATOR_PROMPT))
                         copied = true
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 ) {
                     Text(
-                        if (copied) "Prompt copied" else "Copy coding-agent prompt",
+                        if (copied) "Prompt copied" else "Copy AI schedule prompt",
                         color = Color.White,
                         fontSize = 14.scaledSp,
                         fontWeight = FontWeight.SemiBold,

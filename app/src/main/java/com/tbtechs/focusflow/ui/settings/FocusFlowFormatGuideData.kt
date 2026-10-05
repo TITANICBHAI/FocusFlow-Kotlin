@@ -52,10 +52,9 @@ internal const val FOCUSFLOW_EXTERNAL_IMPORT_NOTE =
     "Opening a .focusflow file from Files or another app follows the same flow: " +
         "validate, review, confirm, then restore."
 
-internal const val FOCUSFLOW_FULL_CONTRACT_NOTE =
-    "For a parser, generator, migration, or restore change, read " +
-        "fixes/FOCUSFLOW_IMPLEMENTATION_PLAN_FINAL_v14.md. It is the full contract; " +
-        "this page is the human-readable overview."
+internal const val FOCUSFLOW_GENERATION_NOTE =
+    "Copy the AI schedule prompt above and describe your routine, dates, time zone, and constraints. " +
+        "The prompt includes the fields needed to create an importable .focusflow backup."
 
 internal val FOCUSFLOW_FILE_FACTS = listOf(
     FocusFlowGuideItem("Extension", ".focusflow"),

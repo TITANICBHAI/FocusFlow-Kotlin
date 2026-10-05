@@ -110,8 +110,9 @@ internal fun FocusFlowFormatGuideBody() {
 
         GuideArticleSection("5. Portable settings") {
             Text(
-                "The settings object contains portable fields. These examples show the main groups; " +
-                    "the full contract lists every accepted field.",
+                "The settings object can hold portable preferences, app lists, presets, and " +
+                    "schedules. FocusFlow applies only supported fields; omitted fields leave " +
+                    "this device's existing values unchanged.",
                 color = DarkTextSecondary,
                 fontSize = 14.scaledSp,
                 lineHeight = 21.scaledSp,
@@ -139,13 +140,11 @@ internal fun FocusFlowFormatGuideBody() {
             GuideCodeBlock(FOCUSFLOW_VALID_BACKUP_EXAMPLE)
         }
 
-        GuideArticleSection("9. When you need the full technical reference") {
-            GuideCallout("Use the v14 contract", FOCUSFLOW_FULL_CONTRACT_NOTE, highlighted = true)
-            GuideCodeBlock(
-                ".focusflow = portable persistent data + tasks and reminders\n\n" +
-                    "NOT = active session dump\n" +
-                    "NOT = live device enforcement state\n" +
-                    "NOT = raw AlarmManager state",
+        GuideArticleSection("9. Generate a backup from your routine") {
+            GuideCallout(
+                "Use the AI schedule prompt",
+                FOCUSFLOW_GENERATION_NOTE,
+                highlighted = true,
             )
         }
     }
