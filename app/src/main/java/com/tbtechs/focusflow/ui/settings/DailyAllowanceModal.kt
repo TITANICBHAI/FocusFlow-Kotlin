@@ -64,14 +64,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.tbtechs.focusflow.data.model.BLOCK_ALL_SENTINEL
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.repository.AllowanceUsage
 import com.tbtechs.focusflow.data.repository.InstalledAppInfo
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.ui.launcher.AppIcon
-import com.tbtechs.focusflow.ui.launcher.AppPickerSheet
 import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
 import com.tbtechs.focusflow.ui.home.FocusFlowModalField
@@ -135,7 +133,6 @@ fun DailyAllowanceModal(
     var search by remember { mutableStateOf("") }
     var packageDraft by remember { mutableStateOf("") }
     var manualPackageDialogVisible by remember { mutableStateOf(false) }
-    var pickerVisible by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<AllowanceMessage?>(null) }
     var pendingRemoval by remember { mutableStateOf<PendingAllowanceRemoval?>(null) }
     var pin by remember { mutableStateOf("") }
@@ -380,10 +377,6 @@ fun DailyAllowanceModal(
                             if (search.isNotBlank()) {
                                 IconButton(onClick = { search = "" }) {
                                     Icon(Icons.Outlined.Clear, contentDescription = "Clear", tint = DarkTextSecondary, modifier = Modifier.size(18.dp))
-                                }
-                            } else {
-                                IconButton(onClick = { pickerVisible = true }) {
-                                 Icon(Icons.Outlined.Add, contentDescription = "Choose apps", tint = BrandPrimary, modifier = Modifier.size(18.dp))
                                 }
                             }
                         },
@@ -740,29 +733,6 @@ fun DailyAllowanceModal(
             }
     }
 
-    if (pickerVisible) {
-        val repository = remember { InstalledAppsRepository(context) }
-        AppPickerSheet(
-            visible = true,
-            title = "Choose allowance apps",
-            initialSelected = drafts.map { it.packageName },
-            noneWhenEmpty = true,
-            presets = emptyList(),
-            installedAppsRepository = repository,
-            onSave = { selected ->
-                val selectedPackages = selected
-                    .filter { it.isNotBlank() && it != BLOCK_ALL_SENTINEL }
-                    .toSet()
-                drafts = drafts + selectedPackages
-                    .filterNot { packageName -> drafts.any { it.packageName == packageName } }
-                    .map { packageName -> DailyAllowanceDraft(packageName = packageName) }
-                pickerVisible = false
-            },
-            onSavePreset = {},
-            onDeletePreset = {},
-            onClose = { pickerVisible = false },
-        )
-    }
 }
 
 @Composable
