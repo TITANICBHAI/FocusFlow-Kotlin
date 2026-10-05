@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.ui.common
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -15,7 +14,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +21,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
@@ -48,16 +45,12 @@ fun SideMenu(
             Icon(Icons.Outlined.Home, contentDescription = null)
         },
         SideMenuItem(Routes.FOCUS, "Focus") { selected ->
-            if (selected) {
-                Box(
-                    modifier = Modifier.size(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    FocusFlowTimerIcon(modifier = Modifier.size(21.dp))
-                }
-            } else {
-                Icon(Icons.Outlined.Timer, contentDescription = null)
-            }
+            FocusFlowTimerIcon(
+                modifier = Modifier.size(24.dp),
+                selected = selected,
+                opticalScale = 0.86f,
+                transparentHand = true,
+            )
         },
         SideMenuItem(Routes.STATS, "Stats") { _ ->
             Icon(Icons.Outlined.BarChart, contentDescription = null)

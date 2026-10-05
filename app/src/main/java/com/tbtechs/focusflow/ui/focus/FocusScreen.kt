@@ -711,7 +711,11 @@ private fun ReadyToFocusPanel(
                     .border(1.dp, BrandPrimary.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                FocusFlowTimerIcon(modifier = Modifier.size(28.dp))
+                FocusFlowTimerIcon(
+                    modifier = Modifier.size(28.dp),
+                    selected = true,
+                    transparentHand = false,
+                )
             }
             Spacer(Modifier.height(12.dp))
             Text(

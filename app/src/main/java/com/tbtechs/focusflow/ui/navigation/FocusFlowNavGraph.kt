@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -929,23 +928,14 @@ private fun MainNavigationTabIcon(
 ) {
     val tint = if (selected) BrandPrimary else RefMuted
     when (icon) {
-        MainTabIcon.FOCUS_TIMER -> if (selected) {
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .semantics { contentDescription = label },
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                FocusFlowTimerIcon(modifier = Modifier.size(19.dp))
-            }
-        } else {
-            Icon(
-                imageVector = Icons.Outlined.Timer,
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        MainTabIcon.FOCUS_TIMER -> FocusFlowTimerIcon(
+            modifier = Modifier
+                .size(22.dp)
+                .semantics { contentDescription = label },
+            selected = selected,
+            opticalScale = 0.86f,
+            transparentHand = true,
+        )
         MainTabIcon.DEFENSE -> Icon(
             imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
             contentDescription = label,
