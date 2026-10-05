@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -934,13 +935,19 @@ private fun MainNavigationTabIcon(
                 .semantics { contentDescription = label },
             selected = selected,
             opticalScale = 0.86f,
-            transparentHand = true,
+            inactiveTint = RefMuted,
         )
         MainTabIcon.DEFENSE -> Icon(
             imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
             contentDescription = label,
             tint = tint,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier
+                .size(22.dp)
+                .graphicsLayer {
+                    val opticalScale = if (selected) 1.18f else 1f
+                    scaleX = opticalScale
+                    scaleY = opticalScale
+                },
         )
         MainTabIcon.SCHEDULE -> Icon(
             imageVector = Icons.Outlined.CalendarMonth,

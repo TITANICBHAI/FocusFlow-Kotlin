@@ -714,7 +714,6 @@ private fun ReadyToFocusPanel(
                 FocusFlowTimerIcon(
                     modifier = Modifier.size(28.dp),
                     selected = true,
-                    transparentHand = false,
                 )
             }
             Spacer(Modifier.height(12.dp))

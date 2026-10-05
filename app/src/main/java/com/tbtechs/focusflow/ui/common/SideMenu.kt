@@ -49,7 +49,6 @@ fun SideMenu(
                 modifier = Modifier.size(24.dp),
                 selected = selected,
                 opticalScale = 0.86f,
-                transparentHand = true,
             )
         },
         SideMenuItem(Routes.STATS, "Stats") { _ ->

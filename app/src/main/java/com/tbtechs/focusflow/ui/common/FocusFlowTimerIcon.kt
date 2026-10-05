@@ -5,10 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
@@ -27,18 +25,14 @@ internal fun FocusFlowTimerIcon(
     modifier: Modifier = Modifier,
     selected: Boolean,
     opticalScale: Float = 1f,
-    transparentHand: Boolean = false,
+    inactiveTint: Color? = null,
 ) {
-    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
+    val inactiveColor = inactiveTint
+        ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
     Canvas(
         modifier = modifier.graphicsLayer {
             scaleX = opticalScale
             scaleY = opticalScale
-            compositingStrategy = if (selected && transparentHand) {
-                CompositingStrategy.Offscreen
-            } else {
-                CompositingStrategy.Auto
-            }
         },
     ) {
         val scaleX = size.width / 91f
@@ -602,15 +596,7 @@ internal fun FocusFlowTimerIcon(
 
         if (selected) {
             drawPath(path = outer, brush = gradient)
-            if (transparentHand) {
-                drawPath(
-                    path = inner,
-                    color = Color.Transparent,
-                    blendMode = BlendMode.Clear,
-                )
-            } else {
-                drawPath(path = inner, brush = gradient)
-            }
+            drawPath(path = inner, brush = gradient)
         } else {
             val outline = Stroke(
                 width = 6f * minOf(scaleX, scaleY),
