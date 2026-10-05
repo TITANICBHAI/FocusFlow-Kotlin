@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -27,6 +28,7 @@ internal fun FocusFlowTimerIcon(
     opticalScale: Float = 1f,
     inactiveTint: Color? = null,
     selectedColor: Color? = null,
+    cutoutHandWhenSelected: Boolean = false,
 ) {
     val inactiveColor = inactiveTint
         ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
@@ -596,7 +598,14 @@ internal fun FocusFlowTimerIcon(
         inner.transform(transform)
 
         if (selected) {
-            if (selectedColor == null) {
+            if (cutoutHandWhenSelected) {
+                val filledDial = Path.combine(PathOperation.Difference, outer, inner)
+                if (selectedColor == null) {
+                    drawPath(path = filledDial, brush = gradient)
+                } else {
+                    drawPath(path = filledDial, color = selectedColor)
+                }
+            } else if (selectedColor == null) {
                 drawPath(path = outer, brush = gradient)
                 drawPath(path = inner, brush = gradient)
             } else {

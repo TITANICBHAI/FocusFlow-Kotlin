@@ -937,6 +937,7 @@ private fun MainNavigationTabIcon(
             opticalScale = 0.86f,
             inactiveTint = RefMuted,
             selectedColor = BrandPrimary,
+            cutoutHandWhenSelected = true,
         )
         MainTabIcon.DEFENSE -> Icon(
             imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
@@ -945,7 +946,7 @@ private fun MainNavigationTabIcon(
             modifier = Modifier
                 .size(22.dp)
                 .graphicsLayer {
-                    val opticalScale = if (selected) 1.18f else 1f
+                    val opticalScale = if (selected) 1.45f else 1f
                     scaleX = opticalScale
                     scaleY = opticalScale
                 },
