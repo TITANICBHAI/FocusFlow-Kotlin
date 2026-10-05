@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
 import com.tbtechs.focusflow.ui.navigation.Routes
@@ -63,13 +62,8 @@ fun SideMenu(
         },
         SideMenuItem(Routes.DEFENSE, "Defense") { selected ->
             Icon(
-                imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
+                imageVector = if (selected) DefenseIcons.ActiveFilled else DefenseIcons.Outline,
                 contentDescription = null,
-                modifier = Modifier.graphicsLayer {
-                    val opticalScale = if (selected) 1.33f else 1f
-                    scaleX = opticalScale
-                    scaleY = opticalScale
-                },
             )
         },
     )

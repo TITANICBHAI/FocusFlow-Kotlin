@@ -940,16 +940,10 @@ private fun MainNavigationTabIcon(
             cutoutHandWhenSelected = true,
         )
         MainTabIcon.DEFENSE -> Icon(
-            imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
+            imageVector = if (selected) DefenseIcons.ActiveFilled else DefenseIcons.Outline,
             contentDescription = label,
             tint = tint,
-            modifier = Modifier
-                .size(22.dp)
-                .graphicsLayer {
-                    val opticalScale = if (selected) 1.45f else 1f
-                    scaleX = opticalScale
-                    scaleY = opticalScale
-                },
+            modifier = Modifier.size(22.dp),
         )
         MainTabIcon.SCHEDULE -> Icon(
             imageVector = Icons.Outlined.CalendarMonth,
