@@ -4,16 +4,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -23,8 +22,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.tbtechs.focusflow.ui.navigation.DefenseIcons
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
@@ -32,7 +31,7 @@ import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 data class SideMenuItem(
     val route: String,
     val label: String,
-    val icon: ImageVector,
+    val icon: @Composable (selected: Boolean) -> Unit,
 )
 
 @Composable
@@ -42,11 +41,18 @@ fun SideMenu(
     onClose: () -> Unit,
 ) {
     val items = listOf(
-        SideMenuItem(Routes.HOME, "Home", Icons.Outlined.Home),
-        SideMenuItem(Routes.FOCUS, "Focus", Icons.Outlined.CalendarMonth),
-        SideMenuItem(Routes.STATS, "Stats", Icons.Outlined.BarChart),
-        SideMenuItem(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
-        SideMenuItem(Routes.DEFENSE, "Defense", Icons.Outlined.Shield),
+        SideMenuItem(Routes.HOME, "Home") { Icon(Icons.Outlined.Home, contentDescription = null) },
+        SideMenuItem(Routes.FOCUS, "Focus") {
+            FocusFlowTimerIcon(Modifier.size(22.dp))
+        },
+        SideMenuItem(Routes.STATS, "Stats") { Icon(Icons.Outlined.BarChart, contentDescription = null) },
+        SideMenuItem(Routes.SETTINGS, "Settings") { Icon(Icons.Outlined.Settings, contentDescription = null) },
+        SideMenuItem(Routes.DEFENSE, "Defense") { selected ->
+            Icon(
+                imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
+                contentDescription = null,
+            )
+        },
     )
     val dimensions = LocalFocusFlowDimensions.current
     ModalDrawerSheet(
@@ -67,14 +73,15 @@ fun SideMenu(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
             )
             items.forEach { item ->
+                val selected = currentRoute == item.route
                 NavigationDrawerItem(
                     label = { Text(item.label) },
-                    selected = currentRoute == item.route,
+                    selected = selected,
                     onClick = {
                         onNavigate(item.route)
                         onClose()
                     },
-                    icon = { Icon(item.icon, contentDescription = null) },
+                    icon = { item.icon(selected) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
             }
