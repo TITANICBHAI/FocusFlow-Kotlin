@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Not started — implementation has not been authorized or begun
+**Overall status:** Batch 0 complete — implementation has not begun
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -25,21 +25,70 @@
 
 ## Batch 0 — read-only baseline verification
 
-**Status:** Not started
+**Status:** Complete
 **Gate:** Finish and report this batch before any implementation.
 
-- [ ] Confirm current writers, readers, and call sites for every VPN preference listed in plan §1.
-- [ ] Re-verify the T1–T11 evidence against the current source; record any mismatches or findings already fixed.
-- [ ] Locate existing tests and identify the narrowest test seams for each approved task.
-- [ ] Check JDK 17, `JAVA_HOME`, Android SDK variables, `local.properties`, and available device/emulator tooling.
-- [ ] Review the relevant `SettingsRepository`, `VpnRepository`, coordinator, service, screen, schedule, backup, and permission code before proposing implementation.
-- [ ] Record the baseline findings and any owner decisions needed before coding.
+- [x] Confirm current writers, readers, and call sites for every VPN preference listed in plan §1.
+- [x] Re-verify the T1–T11 evidence against the current source; record any mismatches or findings already fixed.
+- [x] Locate existing tests and identify the narrowest test seams for each approved task.
+- [x] Check JDK 17, `JAVA_HOME`, Android SDK variables, `local.properties`, and available device/emulator tooling.
+- [x] Review the relevant `SettingsRepository`, `VpnRepository`, coordinator, service, screen, schedule, backup, and permission code before proposing implementation.
+- [x] Record the baseline findings and any owner decisions needed before coding.
 
 ### Batch 0 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Complete; read-only baseline verification. No application code changed. | `SettingsRepository.kt`, `VpnRepository.kt`, `VpnPolicyCoordinator.kt`, `NetworkBlockerVpnService.kt`, `VpnWatchdogReceiver.kt`, `BootReceiver.kt`, `ForegroundTaskService.kt`, `AppBlockerAccessibilityService.kt`, Defense/Always-On/VPN-list/permission-banner/schedule/import screens, settings models, backup adapter/coordinator/policy, existing related tests, Gradle config, `app/PERSISTENCE_CONTRACT.md`; this tracker updated | `rg` over `app/src` for every §1 preference and T1–T11 symbols/call sites; inspected affected code ranges and tests; counted 24 JVM test files and 4 instrumented test files; checked `java`, direct JDK 17 path/version, `JAVA_HOME`, Android SDK variables/paths, root and app `local.properties`, `adb`, emulator and SDK tools. No build/test/device command run. | Findings recorded below. Source evidence mostly matches the static plan; qualifications and documentation/owner gates are recorded below. Direct environment has JDK 17.0.15 in the Nix store but not on `PATH`/`JAVA_HOME`, and no Android SDK or device tools. |
+
+**Preference writers, readers, and call-site baseline (plan §1):**
+
+| Preference | Current writers / readers / call-site findings |
+|---|---|
+| `net_block_enabled`, `net_block_vpn` | Written by `SettingsRepository.setNetworkBlockEnabled` and `VpnRepository.setNetworkBlockSettings`; read by the coordinator, VPN service, watchdog/boot and health paths. Defense changes the setting through `SettingsViewModel`. |
+| `net_block_explicit_packages` | Written by `VpnRepository.setNetworkBlockSettings`; `VpnRepository.startNetworkBlock` also seeds it if absent. The unused `SettingsRepository.setVpnSelectedPackages` writes both this key and `vpn_selected_packages`. Read by coordinator and repository, both with a fallback to `net_block_packages`. |
+| `net_block_packages` | Written by `VpnPolicyCoordinator.requestSyncInternal` and by `NetworkBlockerVpnService` after tunnel establishment. Still read as a fallback by the coordinator and `VpnRepository.getNetworkBlockSettings`; the unused JSON settings getter also reads it. Thus it is currently both derived output and an input. |
+| `always_on_vpn_packages` | Read/written by `SettingsRepository` and mapped by `TsSettingsAdapter` for backup import/export. Native VPN enforcement does not read it. The VPN list screens write the explicit key instead; the `AppSettings` setter path has no current screen caller that selects this list. |
+| `net_block_focus_mirror` | Written by `SettingsRepository.setDefensePreferences` and portable restore; read by settings state and `VpnPolicyCoordinator`, which derives focus targets while focus is active. |
+| `net_block_standalone_vpn_packages` | Read by coordinator and `VpnRepository`. `VpnRepository.setNetworkBlockSettings` can write it, and the unused `SettingsRepository.publishStandaloneSnapshot` writes it. The active standalone save path, `publishStandaloneAndAllowanceSnapshot`, does not persist a VPN package list. |
+| `net_block_schedule_vpn_pkgs` | Read as a static target list by coordinator policy and persistence logic. `SettingsRepository.publishScheduleVpnSnapshot` is its only writer and has no external caller. Current schedule persistence instead stores schedule/window JSON. |
+| `net_block_self_heal` | Written by `VpnRepository.setVpnSelfHealEnabled`, called by Always-On and VPN-list saves. Read by VPN service, watchdog, boot, foreground/accessibility health paths. |
+| `vpn_self_heal_enabled` | Read/written by `SettingsRepository` for the Defense UI and excluded from backup application by `BackupSettingsPolicy`; no native enforcement reader was found. It is separate from `net_block_self_heal`. |
+| `vpn_selected_packages` | Written only by the unused `SettingsRepository.setVpnSelectedPackages`; no reader or call site found. |
+| `net_block_global` | Written through `VpnRepository.setNetworkBlockSettings`; read by repository, coordinator, VPN service, watchdog and accessibility enforcement. No active UI control for it was found. |
+| `net_block_wifi`, `net_block_mobile`, `net_block_restore` | Written/read by `VpnRepository` settings/start/stop paths. No active UI controls were found. Wi-Fi defaults to `true`, mobile data to `false`, restore to `true`. |
+| `vpn_failed_packages` | Written by the coordinator with invalid/uninstalled targets and by service `writeStatus` with service registration failures (default `[]` on other status writes); exposed as one `NetworkBlockStatus.failedPackages` list. |
+
+**T1–T11 source verification:**
+
+- **T1 — confirmed structurally, not runtime-reproduced.** Both coordinator source-selection sites and `VpnRepository.getNetworkBlockSettings` fall back from explicit selections to `net_block_packages`; `startNetworkBlock` seeds the explicit key if absent. No coordinator/migration/repro test exists. The focus-mirror stale-snapshot failure follows from these paths, but its required failing test has not yet been added or run.
+- **T2 — confirmed.** `SettingsRepository` reads/writes `vpn_self_heal_enabled`; enforcement reads `net_block_self_heal`. Both list screens call `setVpnSelfHealEnabled(hasPackages)`, so an empty list can write `false`. No migration or focused toggle/watchdog test exists.
+- **T3 — confirmed with a grep qualification.** The repository still uses request code `2001` and `startActivityForResult`; callers are Defense, Greyout schedule, Always-On, VPN list, and permission-lost banner. The first two update enabled state immediately after launching consent; list/Always-On ask the user to save again, and the banner waits a fixed delay before checking. `ImportConfirmScreen` has no consent-result path. A repository-wide `startActivityForResult` grep will not become empty: `UsageStatsRepository` independently uses request code `1001` for admin permission, so the final check must be VPN-scoped.
+- **T4 — current mismatch confirmed; owner/spec gates remain.** `readAppSettings`, export, and legacy migration use `always_on_vpn_packages`, while enforcement uses the explicit key; `BackupCoordinator.requiresDefensePin` compares the explicit list. Import has no VPN-consent activation flow or protection-category summary; its current success dialog reports task counts and warnings. Q3’s import-consent decision is recorded in the tracker, but Q4 remains pending. The format guide references `fixes/FOCUSFLOW_IMPLEMENTATION_PLAN_FINAL_v14.md`, which is absent from the accessible tree; `app/PERSISTENCE_CONTRACT.md` covers preference ownership but not the v14 backup wire contract. Do not infer undocumented backup behavior.
+- **T5 — confirmed.** Both current standalone modal save callbacks discard the VPN selection; `StandaloneBlockAndAllowanceConfig` and the active save path omit it. The three named expiry-clearing paths in accessibility, foreground fallback and boot do not issue a sync at the clear itself. No boundary scheduler or standalone-VPN tests exist.
+- **T6 — confirmed.** Schedule flags are stored in recurring/window JSON, but the coordinator reads the unwritten static key instead of evaluating active windows. `ScheduleDraft` does not preserve/set `vpnPackages`; schedule setters do not request VPN sync. The schedule toggle’s protection callback sets both Defense master switches. Window matching is private in `AppBlockerAccessibilityService`; no schedule VPN enforcement or boundary tests exist.
+- **T7 — confirmed.** `MainActivity` supplies only explicit plus standalone packages; the banner returns early for an empty list and restarts via `startNetworkBlock`, which can seed the explicit list. Global, schedule and focus-mirror-only sources are not represented in its inputs.
+- **T8-a — confirmed.** `VpnBlockListScreen` saves `enabled`/`vpn` from whether its explicit list is non-empty and calls self-heal with the same value. `AlwaysOnScreen` also sets the switches from explicit-or-standalone package presence and updates `AppSettings.networkBlockEnabled`; an empty explicit list can therefore turn the master off when no standalone VPN packages remain.
+- **T8 — evidence confirmed; Q2 pending.** `startNetworkBlock` can disconnect Wi-Fi (default enabled); Android Q+ restore does not re-enable it. Mobile-data control uses reflection. The repository `stopNetworkBlock` has no call site; `ForegroundTaskService.stopNetworkBlock` is a separate private helper. No Wi-Fi/mobile UI controls were found.
+- **T9 — confirmed.** The coordinator stores invalid targets in `vpn_failed_packages`; every service `writeStatus` overwrites the same key, normally with `[]`. Status exposes no separate invalid-target field.
+- **T10 — call-site checks confirm candidates, subject to later dependent work.** No external call sites were found for `setVpnSelectedPackages`, `publishScheduleVpnSnapshot`, the `publishStandaloneSnapshot` overloads, `getNetworkBlockSettingsJson`, `getNetworkBlockStatusJson`, `isNetworkBlockActive`, or the public `VpnRepository.isAnotherVpnActive` wrapper. The private repository helper and `NetworkBlockerVpnService.isAnotherVpnActive` remain used. `startNetworkBlock` still has a banner caller. Service/coordinator headers contain stale descriptions. Do not remove anything before dependent work and a fresh zero-call-site search.
+- **T11 — confirmed.** `SettingsRepository.setNetworkBlockEnabled` writes both master booleans without checking for an active block. The Defense UI gates the toggle and `VpnRepository.setNetworkBlockSettings` separately guards active-session disables; repository-level parity is absent.
+
+**Tests and narrow seams:**
+
+- Current inventory: 24 JVM test files and 4 instrumented test files. There are no VPN-coordinator, VPN consent, standalone VPN, or schedule-window tests.
+- Existing nearby coverage: `TsSettingsAdapterTest`, `ImportProtectionPolicyTest`, `BackupSettingsPolicyTest`, `RestoreCoordinatorTest`, `RestoreGateTest`, and `EnforcementHealthTest`. Backup normalization/export and import PIN policy already have pure JVM seams; extend the adapter/policy tests for T4 mapping and protection rules.
+- T1/T2/T7/T9/T11 need focused pure policy/state helpers or Android-backed tests; the coordinator and repositories currently depend directly on Android context/preferences/services. The configured local JVM dependencies include JUnit and coroutine-test, but not Robolectric or Mockito.
+- T3 needs a result-aware consent state seam (and UI/instrumented coverage for cancellation). T4 consent and summary behavior belongs at the import flow and needs UI/instrumented coverage in addition to pure adapter tests.
+- T5 boundary-time computation and T6 schedule matching are the narrowest pure test seams. T6’s existing schedule matching is private and tied to the accessibility service; extract fixed-calendar math before testing window edges. T8-a can be covered by a pure switch-state rule or Compose UI test. T10 is verified with scoped call-site greps.
+
+**Environment and owner gates:**
+
+- `java`/`javac` are absent from `PATH`, and `JAVA_HOME` is unset. A JDK 17.0.15 executable exists directly in the Nix store but is not configured for the shell.
+- `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset; root and `app/local.properties` are absent; checked common SDK directories are missing. `adb`, `emulator`, `sdkmanager`, and `avdmanager` are unavailable. No device/emulator check is possible in the current direct environment.
+- No build or test was run in this read-only batch. Android verification is blocked in the current shell by the missing SDK; use the project bootstrap-backed unit-test route when an implementation batch is authorized, and record its actual result.
+- **Q1 pending** — schedule VPN target scope/window behavior. **Q2 pending** — Wi-Fi/mobile side effects. **Q4 pending** — single source of truth for the explicit VPN list. **Q3 decided (2026-10-05)** — consent-gated import activation and one informational category summary. The agent pre-prompt still says Q1–Q4 are pending; that conflicts with the plan/tracker’s dated Q3 decision. Follow the newer explicit decision in the tracker.
+- Next implementation gate remains T1, only after the owner authorizes implementation; add and run its failing repro test first. All T4, T5/T6, and T8 dependencies remain stopped at their recorded decision gates.
 
 ## Batch 1 — P0 T1: explicit VPN targets and derived snapshots
 
