@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
     private var resumeNonce by mutableStateOf(0)
     private var externalBackupUri by mutableStateOf<Uri?>(null)
     private var externalBackupRequestId by mutableStateOf(0)
+    private var externalFileUriNoticeId by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +98,9 @@ class MainActivity : ComponentActivity() {
         externalBackupUri = externalBackupUriFromIntent(intent)
         if (externalBackupUri != null) {
             externalBackupRequestId += 1
+            requestedRoute = Routes.HOME
+        } else if (isUnsupportedFileUriIntent(intent)) {
+            externalFileUriNoticeId += 1
             requestedRoute = Routes.HOME
         } else {
             requestedRoute = routeFromIntent(intent)
@@ -113,6 +117,7 @@ class MainActivity : ComponentActivity() {
                 vpnRepository = vpnRepository,
                 externalBackupUri = externalBackupUri,
                 externalBackupRequestId = externalBackupRequestId,
+                externalFileUriNoticeId = externalFileUriNoticeId,
                 onExternalBackupConsumed = ::consumeExternalBackupIntent,
             )
         }
@@ -126,6 +131,9 @@ class MainActivity : ComponentActivity() {
         if (openedBackupUri != null) {
             externalBackupUri = openedBackupUri
             externalBackupRequestId += 1
+        } else if (isUnsupportedFileUriIntent(intent)) {
+            externalFileUriNoticeId += 1
+            requestedRoute = Routes.HOME
         } else {
             requestedRoute = routeFromIntent(intent)
         }
@@ -147,6 +155,12 @@ class MainActivity : ComponentActivity() {
             ?.takeIf { it.action == Intent.ACTION_VIEW }
             ?.data
             ?.takeIf { it.scheme == "content" }
+
+    private fun isUnsupportedFileUriIntent(intent: Intent?): Boolean =
+        intent
+            ?.takeIf { it.action == Intent.ACTION_VIEW }
+            ?.data
+            ?.scheme == "file"
 
     override fun onStart() {
         super.onStart()
@@ -184,6 +198,7 @@ private fun FocusFlowRoot(
     vpnRepository: VpnRepository,
     externalBackupUri: Uri?,
     externalBackupRequestId: Int,
+    externalFileUriNoticeId: Int,
     onExternalBackupConsumed: (Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -382,6 +397,21 @@ private fun FocusFlowRoot(
         }
         handledExternalBackupRequestId = externalBackupRequestId
         stageImportFromUri(source, externalBackupRequestId)
+    }
+
+    var handledExternalFileUriNoticeId by remember { mutableStateOf(0) }
+    LaunchedEffect(externalFileUriNoticeId) {
+        if (
+            externalFileUriNoticeId <= 0 ||
+            externalFileUriNoticeId == handledExternalFileUriNoticeId
+        ) {
+            return@LaunchedEffect
+        }
+        handledExternalFileUriNoticeId = externalFileUriNoticeId
+        showInAppNotice(
+            "Unsupported file location. Use Import in Settings.",
+            InAppNoticeTone.WARNING,
+        )
     }
 
     var diagnosticsVisible by remember { mutableStateOf(false) }
