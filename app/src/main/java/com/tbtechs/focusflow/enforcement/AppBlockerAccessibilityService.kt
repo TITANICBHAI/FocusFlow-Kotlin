@@ -997,8 +997,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         var saActive = prefs.getBoolean(PREF_SA_ACTIVE, false)
         if (saActive) {
             val untilMs = prefs.getLong(PREF_SA_UNTIL, 0L)
-            if (untilMs > 0L && now > untilMs) {
+            if (untilMs > 0L && now >= untilMs) {
                 prefs.edit().putBoolean(PREF_SA_ACTIVE, false).apply()
+                VpnPolicyCoordinator.requestSync(this)
                 saActive = false
             }
         }
@@ -4743,10 +4744,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         if (json == "[]" || json.isEmpty()) return false
         return try {
             val arr = org.json.JSONArray(json)
-            val cal = java.util.Calendar.getInstance()
-            val currentDay     = cal.get(java.util.Calendar.DAY_OF_WEEK)
-            val currentMinutes = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 +
-                                 cal.get(java.util.Calendar.MINUTE)
+            val now = System.currentTimeMillis()
             for (i in 0 until arr.length()) {
                 val entry = arr.optJSONObject(i) ?: continue
                 // Support multi-app windows (pkgs array) and legacy single-pkg string
@@ -4758,27 +4756,16 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 }
                 if (!matchesPkg) continue
                 val days = entry.optJSONArray("days") ?: continue
-                val startMins = entry.optInt("startHour") * 60 + entry.optInt("startMin")
-                val endMins   = entry.optInt("endHour")   * 60 + entry.optInt("endMin")
-                val overnight = startMins > endMins
-                val afterMidnight = overnight && currentMinutes < endMins
-                val dayForWindow = if (afterMidnight) {
-                    if (currentDay == java.util.Calendar.SUNDAY) {
-                        java.util.Calendar.SATURDAY
-                    } else {
-                        currentDay - 1
-                    }
-                } else {
-                    currentDay
-                }
-                val dayMatch = (0 until days.length()).any { days.optInt(it) == dayForWindow }
-                if (!dayMatch) continue
-                val inWindow = if (startMins <= endMins) {
-                    currentMinutes in startMins until endMins   // normal: 09:00–18:00
-                } else {
-                    currentMinutes >= startMins || currentMinutes < endMins  // overnight
-                }
-                if (inWindow) return true
+                if (
+                    GreyoutWindowMath.isActive(
+                        daysOfWeek = (0 until days.length()).map(days::optInt),
+                        startMinuteOfDay =
+                            entry.optInt("startHour") * 60 + entry.optInt("startMin"),
+                        endMinuteOfDay =
+                            entry.optInt("endHour") * 60 + entry.optInt("endMin"),
+                        atMs = now,
+                    )
+                ) return true
             }
             false
         } catch (_: Exception) { false }

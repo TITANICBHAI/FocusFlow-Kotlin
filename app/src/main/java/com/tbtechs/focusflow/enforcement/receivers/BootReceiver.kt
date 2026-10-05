@@ -4,6 +4,8 @@ import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
+import com.tbtechs.focusflow.enforcement.VpnPolicyBoundaryScheduler
+import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -94,7 +96,9 @@ class BootReceiver : BroadcastReceiver() {
         // standalone block (until=0) across reboot.
         if (standaloneActive && standaloneUntilMs > 0L && standaloneUntilMs <= now) {
             prefs.edit().putBoolean("standalone_block_active", false).apply()
+            VpnPolicyCoordinator.requestSync(context)
         }
+        VpnPolicyBoundaryScheduler.scheduleNextBoundary(context)
 
         // Receiver-delivered recovery must not wait for the watchdog interval.
         // BOOT_COMPLETED may arrive before file-based-encryption data is

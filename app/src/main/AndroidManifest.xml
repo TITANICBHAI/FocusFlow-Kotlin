@@ -167,6 +167,16 @@
             android:name=".enforcement.receivers.VpnWatchdogReceiver"
             android:exported="false" />
         <receiver
+            android:name=".enforcement.receivers.VpnPolicyBoundaryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.tbtechs.focusflow.action.VPN_POLICY_BOUNDARY" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name=".enforcement.receivers.TemptationReportReceiver"
             android:exported="false" />
 

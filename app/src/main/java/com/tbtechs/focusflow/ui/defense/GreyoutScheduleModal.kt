@@ -545,6 +545,7 @@ private data class ScheduleDraft(
         daysOfWeek = days.sorted(),
         enabled = enabled,
         vpnEnabled = vpnEnabled,
+        vpnPackages = if (vpnEnabled) packages else emptyList(),
     )
 
     fun durationMinutes(): Int {

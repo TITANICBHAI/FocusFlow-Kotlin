@@ -869,8 +869,9 @@ class ForegroundTaskService : Service() {
             val saActive = blockPrefs.getBoolean("standalone_block_active", false).let { on ->
                 if (on) {
                     val untilMs = blockPrefs.getLong("standalone_block_until_ms", 0L)
-                    if (untilMs > 0L && now > untilMs) {
+                    if (untilMs > 0L && now >= untilMs) {
                         blockPrefs.edit().putBoolean("standalone_block_active", false).apply()
+                        VpnPolicyCoordinator.requestSync(this@ForegroundTaskService)
                         false
                     } else on
                 } else false

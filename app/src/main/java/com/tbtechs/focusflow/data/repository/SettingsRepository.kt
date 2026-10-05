@@ -645,12 +645,19 @@ class SettingsRepository(
                 "A session PIN is set — supply the correct PIN hash to end the standalone block early",
             )
         }
-        prefs.edit()
+        val existingStandaloneUntilMs = prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L)
+        val keepCurrentVpnPackages = active &&
+            prefs.getBoolean(KEY_STANDALONE_ACTIVE, false) &&
+            (existingStandaloneUntilMs <= 0L ||
+                existingStandaloneUntilMs > System.currentTimeMillis())
+        val editor = prefs.edit()
             .putBoolean(KEY_STANDALONE_ACTIVE, active)
             .putString(KEY_STANDALONE_PACKAGES, packages.toJsonArrayString())
             .putLong(KEY_STANDALONE_UNTIL_MS, untilMs)
-            .putString(KEY_STANDALONE_VPN_PACKAGES, "[]")
-            .apply()
+        if (!keepCurrentVpnPackages) {
+            editor.putString(KEY_STANDALONE_VPN_PACKAGES, "[]")
+        }
+        editor.apply()
         requestVpnSync()
         pushWidgetUpdate()
         }

@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 4 implementation and unit verification complete for sequencing; 137 tests pass. Batch 5 T5/T6 is authorized and in progress; Q1 remains decided and Q2 remains pending. No Batch 6+ work is authorized.
+**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, the 143-test unit suite, and the debug APK build are complete; real-device alarm/tunnel verification is blocked because no Android device or emulator is available. Q1 is decided; Q2 remains pending. No Batch 6+ work is authorized.
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -179,21 +179,25 @@
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 
-**Status:** In progress; Batch 5 T5/T6 is authorized in the current request. Batch 4 is complete for sequencing; no Batch 6+ work is authorized.
+**Status:** Blocked on manual Android verification; implementation, unit tests, and APK build are complete. No Batch 6+ work is authorized.
 **Gate:** Batch 4 complete. Q1 is decided. T5/T6 share the boundary scheduler and must be coordinated.
 
 - [x] Re-verify standalone-block VPN selection, persistence, expiry clearing, and all relevant callers.
 - [x] Record the owner's Q1 decision on which schedule apps are VPN-blocked and when.
-- [ ] Add/run fixed-time tests for schedule windows, overnight windows, and week boundaries.
-- [ ] Implement shared boundary start/stop scheduling and verify it is re-armed on the required lifecycle events.
-- [ ] Add/run standalone expiry and schedule boundary tests, including the no-user-action stop case.
-- [ ] Record results and unavailable device checks.
+- [x] Add fixed-time tests for schedule windows, overnight windows, week boundaries, and standalone expiry; six focused tests pass.
+- [x] Run the new tests during final verification; all 143 JVM unit tests pass with no failures, errors, or skips.
+- [x] Implement shared boundary start/stop scheduling and verify source wiring for boot, clock/timezone, exact-alarm permission, and scheduled-boundary events.
+- [ ] Verify Android alarm delivery triggers standalone expiry and schedule start/stop without user action; no device or emulator is available.
+- [x] Record results and unavailable device checks.
 
 ### Batch 5 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
 | 2026-10-05 | Read-only re-verification complete; implementation and tests remain blocked by the Batch 4/Q4 gate. | `StandaloneBlockModal.kt`, `FocusScreen.kt`, `StandaloneBlockSetupScreen.kt`, `QuickBlockSheet.kt`, `ActiveScreen.kt`, `AppSettings.kt`, `SettingsViewModel.kt`, `SettingsRepository.kt`, `VpnPolicyCoordinator.kt`, `AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `BootReceiver.kt`, `TaskAlarmReconcileWorker.kt`, this tracker | Searched all standalone/schedule writers and callers, expiry-state mutations, boundary alarm symbols, and related test sources; inspected the state transitions and persisted schedule keys. No tests run. | The standalone modal emits its VPN selection, but both UI callers discard it; `StandaloneBlockAndAllowanceConfig` and its main repository writer have no VPN list field. A separate `publishStandaloneSnapshot` can persist one but has no callers; Quick Block and Active Screen use the basic setter. Expiry is cleared in the accessibility service, fallback service, and boot receiver, without a shared VPN boundary scheduler; the exact-alarm reconciliation receiver only handles task alarms. Schedules persist `vpnEnabled`/`vpnPackages`, but the VPN coordinator reads the flat `net_block_schedule_vpn_pkgs` snapshot; its writer is uncalled, schedule writes do not request VPN sync, and there is no pure fixed-time window helper or schedule boundary test coverage. Q1 is decided: all apps in each VPN-enabled schedule's package list are VPN-blocked only during that schedule's active window. Batch 4 remains blocked on Q4. No implementation or tests were started, and no device checks were attempted. |
+| 2026-10-05 | Current-source re-audit; Batch 5 implementation underway after Batch 4 and Q1 gates were resolved. | `StandaloneBlockModal.kt`, `FocusScreen.kt`, `StandaloneBlockSetupScreen.kt`, `QuickBlockSheet.kt`, `ActiveScreen.kt`, `AppSettings.kt`, `SettingsViewModel.kt`, `SettingsRepository.kt`, `VpnPolicyCoordinator.kt`, `VpnPolicyBoundaryPolicy.kt`, `VpnPolicyBoundaryScheduler.kt`, `VpnPolicyBoundaryReceiver.kt`, `AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `BootReceiver.kt`, `AndroidManifest.xml`, this tracker | `rg` searches across `app/src/main` and test sources; inspected the matching repository, policy, alarm, receiver, manifest, and caller code. Checked `java`, `JAVA_HOME`, Android SDK variables, and `local.properties`; no test/build command run. | The current modal/config flow already carries VPN package selections through Focus and standalone setup, and the atomic standalone writer persists them before `requestVpnSync`. However, the plain standalone setter always clears that list, including while an active block is extended. Expiry is cleared in accessibility, foreground fallback, and boot paths; accessibility and fallback use `now > until` rather than the policy's `now < until` boundary, and none requests sync at the clear. Partial shared schedule math/policy/alarm classes exist, but `VpnPolicyBoundaryCoordinator` is referenced by the receiver and has no implementation; the receiver is not registered in the manifest; boot does not re-arm the policy alarm; the coordinator still consumes `net_block_schedule_vpn_pkgs` instead of active schedule windows and does not schedule the next boundary. Accessibility still uses its inline window matcher. Schedule repository setters already call `requestVpnSync`, so no extra setter change is currently indicated. Q1 remains: every app in a VPN-enabled schedule is blocked only while that schedule window is active. Test execution remains deferred until final verification. Current shell has no Java/JDK on PATH, no `JAVA_HOME`, no Android SDK variables, and no `local.properties`; device/emulator availability has not yet been rechecked. |
+
+| 2026-10-05 | Batch 5 implementation, source checks, JVM tests, and APK build complete; final Android behavior check blocked. | `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/tbtechs/focusflow/data/repository/SettingsRepository.kt`, `app/src/main/java/com/tbtechs/focusflow/enforcement/AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `VpnPolicyBoundaryScheduler.kt`, `VpnPolicyCoordinator.kt`, `receivers/BootReceiver.kt`, `receivers/VpnPolicyBoundaryReceiver.kt`, `ui/SettingsViewModel.kt`, `ui/defense/GreyoutScheduleModal.kt`, `app/src/test/java/com/tbtechs/focusflow/enforcement/VpnPolicyBoundaryPolicyTest.kt`, this tracker | `bash scripts/test-unit.sh` (143 tests pass; six boundary tests); `bash scripts/build-apk-with-java.sh` (debug APK built); `git diff --check`; new-test whitespace check; manifest XML parse; scoped `rg` checks for obsolete schedule-snapshot references and boundary wiring; `adb devices -l`. | The first test run found a missing receiver import; after fixing it, the full unit suite passed with 0 failures, errors, or skips. The debug APK build also passed. Tests cover active schedule target selection, weekday/overnight/week-wrap boundaries, and standalone expiry policy. Source checks confirm the receiver is registered and syncs the coordinator for boundary/clock/permission events, boot re-arms the alarm, and policy/alarm calculations use one time snapshot. `adb devices -l` listed no devices and no emulator binary is installed, so Android alarm delivery and actual VPN start/stop at boundaries remain unverified. A Python module added to `.replit` by a one-off check was restored; no `.replit` change remains. |
 
 ## Batch 6 — P1 T7: permission-lost recovery banner
 
@@ -252,18 +256,18 @@ Record each decision, date, and evidence before dependent work. Pending question
 - [ ] T4-consent-cancelled: Android cancellation leaves the list stored but inactive and does not newly enable either switch; policy branch is unit-tested, device flow unavailable.
 - [ ] T4-vpn-permission-pregranted: verify on-device that existing permission skips the system prompt and activates the imported list and both switches.
 - [ ] T4-summary: verify on-device that the import summary shows collapsible cards and truthful status; classification policy is unit-tested.
-- [ ] T5: standalone VPN targets stop at expiry without user interaction.
-- [ ] T6: schedule VPN targets apply only inside approved windows, including overnight and week-wrap cases.
+- [ ] T5: Android alarm delivery stops standalone VPN targets at expiry without user interaction; expiry policy is unit-tested, but device delivery is unverified.
+- [ ] T6: Android schedule transitions apply targets only inside approved windows, including overnight and week-wrap cases; policy behavior is unit-tested, but device delivery is unverified.
 - [ ] T7: permission-lost recovery appears for approved effective VPN sources.
 - [x] T8-a: empty-list master-switch policy is unit-tested and used by both VPN list save screens; device interaction remains unavailable.
 
 ## Final verification
 
-- [x] Build and run unit tests for the completed scope; full suite passed with 137 tests, 0 skipped/failures/errors.
-- [x] Run applicable verification greps from plan §6; legacy key is limited to migration constants, and no VPN request-code flow remains.
+- [x] Build and run unit tests for the completed scope; full suite passed with 143 tests, 0 skipped/failures/errors.
+- [x] Run applicable verification greps from plan §6; obsolete schedule snapshot/class references are absent, and boundary receiver/scheduler wiring is present.
 - [ ] Complete feasible manual device checks from plan §6; blocked because no Android device/emulator is available.
-- [x] Review the final diff for data loss, unauthorized scope, and changes outside the plan; `.replit` bootstrap side effect was restored.
-- [x] Confirm completed-batch evidence and keep unresolved device checks blocked, Q2 pending, and Batch 5+ not started.
+- [x] Review the final diff for data loss, unauthorized scope, and changes outside the plan; the unrelated `.replit` Python-module side effect was restored.
+- [x] Confirm Batch 5 evidence, keep device checks blocked and Q2 pending, and do not start Batch 6+.
 - [x] Record final handoff summary with scope, test results, blockers, and the authorized stopping point.
 
 ## Final work log

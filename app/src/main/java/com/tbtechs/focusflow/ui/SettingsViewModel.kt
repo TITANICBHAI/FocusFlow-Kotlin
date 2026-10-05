@@ -366,6 +366,11 @@ class SettingsViewModel(
     fun setStandaloneBlock(config: StandaloneBlockConfig) {
         viewModelScope.launch {
             restoreGate.write("SettingsViewModel.setStandaloneBlock") {
+            val existing = _settings.value
+            val keepCurrentVpnPackages = config.active &&
+                existing.standaloneBlockActive &&
+                (existing.standaloneBlockUntilMs <= 0L ||
+                    existing.standaloneBlockUntilMs > System.currentTimeMillis())
             settingsRepository.setStandaloneBlock(
                 active   = config.active,
                 packages = config.packages,
@@ -376,7 +381,11 @@ class SettingsViewModel(
                 it.copy(
                     standaloneBlockActive   = config.active,
                     standaloneBlockPackages = config.packages,
-                    standaloneBlockVpnPackages = emptyList(),
+                    standaloneBlockVpnPackages = if (keepCurrentVpnPackages) {
+                        existing.standaloneBlockVpnPackages
+                    } else {
+                        emptyList()
+                    },
                     standaloneBlockUntilMs  = config.untilMs,
                 )
             }
@@ -391,6 +400,10 @@ class SettingsViewModel(
     fun setQuickBlockTemporary(config: QuickBlockConfig) {
         viewModelScope.launch {
             restoreGate.write("SettingsViewModel.setQuickBlockTemporary") {
+            val existing = _settings.value
+            val existingBlockIsActive = existing.standaloneBlockActive &&
+                (existing.standaloneBlockUntilMs <= 0L ||
+                    existing.standaloneBlockUntilMs > System.currentTimeMillis())
             val untilMs = System.currentTimeMillis() + config.durationMs.coerceAtLeast(0L)
             settingsRepository.setStandaloneBlock(
                 active = true,
@@ -401,6 +414,11 @@ class SettingsViewModel(
                 it.copy(
                     standaloneBlockActive = true,
                     standaloneBlockPackages = config.packages,
+                    standaloneBlockVpnPackages = if (existingBlockIsActive) {
+                        existing.standaloneBlockVpnPackages
+                    } else {
+                        emptyList()
+                    },
                     standaloneBlockUntilMs = untilMs,
                 )
             }

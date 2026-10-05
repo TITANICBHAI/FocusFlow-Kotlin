@@ -21,8 +21,8 @@ import java.util.concurrent.Executors
  *
  * The coordinator deliberately keeps foreground Accessibility policy separate
  * from network policy. Its current sources are explicit VPN selections,
- * active standalone VPN packages, and opt-in focus mirroring. Recurring
- * schedules and allowance mirroring remain separate product slices.
+ * active standalone VPN packages, opt-in focus mirroring, and schedule packages
+ * whose configured local-time windows are currently active.
  *
  * The desired policy is persisted before an asynchronous service command is
  * dispatched. Recovery paths can therefore recalculate from durable sources
@@ -73,6 +73,7 @@ object VpnPolicyCoordinator {
         val targets: List<String>,
         val explicit: List<String>,
         val standalone: List<String>,
+        val schedule: List<String>,
         val focus: List<String>,
         val invalid: List<String>,
     )
@@ -100,10 +101,7 @@ object VpnPolicyCoordinator {
                 prefs.getString(PREF_STANDALONE_VPN_PKGS, "[]") ?: "[]",
             ).isNotEmpty()
         ) return true
-        if (parsePackageJson(
-                prefs.getString("net_block_schedule_vpn_pkgs", "[]") ?: "[]",
-            ).isNotEmpty()
-        ) return true
+        if (VpnPolicyBoundaryScheduler.currentScheduleTargets(prefs).isNotEmpty()) return true
 
         return ExplicitVpnPolicy.hasPersistentExplicitTargets(explicitCandidates(prefs))
     }
@@ -162,11 +160,12 @@ object VpnPolicyCoordinator {
             return
         }
         refreshLauncherPackageCacheIfStale(context.applicationContext)
-        synchronized(syncLock) {
+        val policyTimeMs = synchronized(syncLock) {
+            val nowMs = System.currentTimeMillis()
             val enabled = prefs.getBoolean("net_block_enabled", false)
             val vpnEnabled = prefs.getBoolean("net_block_vpn", true)
             val global = prefs.getBoolean("net_block_global", false)
-            val policy = effectivePolicy(context, prefs)
+            val policy = effectivePolicy(context, prefs, nowMs)
             val packagesJson = JSONArray(policy.targets).toString()
 
             val persisted = persistDesiredPolicy(
@@ -220,7 +219,15 @@ object VpnPolicyCoordinator {
                     scheduleDispatch(context.applicationContext)
                 }
             }
+            nowMs
         }
+        // Use the policy snapshot's clock value. If a boundary passes while
+        // synchronization is running, its alarm is then set in the past and
+        // fires immediately instead of skipping that transition until tomorrow.
+        VpnPolicyBoundaryScheduler.scheduleNextBoundary(
+            context.applicationContext,
+            policyTimeMs,
+        )
     }
 
     private fun deferSyncUntilExplicitMigration(context: Context, forceRecovery: Boolean) {
@@ -346,18 +353,20 @@ object VpnPolicyCoordinator {
         }
     }
 
-    private fun effectivePolicy(context: Context, prefs: SharedPreferences): EffectivePolicy {
+    private fun effectivePolicy(
+        context: Context,
+        prefs: SharedPreferences,
+        nowMs: Long = System.currentTimeMillis(),
+    ): EffectivePolicy {
         val explicitCandidates = explicitCandidates(prefs)
-        val standaloneCandidates = if (isStandaloneBlockActive(prefs)) {
+        val standaloneCandidates = if (isStandaloneBlockActive(prefs, nowMs)) {
             parsePackageJson(
                 prefs.getString(PREF_STANDALONE_VPN_PKGS, "[]") ?: "[]",
             )
         } else {
             emptyList()
         }
-        val scheduleCandidates = parsePackageJson(
-            prefs.getString("net_block_schedule_vpn_pkgs", "[]") ?: "[]",
-        )
+        val scheduleCandidates = VpnPolicyBoundaryScheduler.currentScheduleTargets(prefs, nowMs)
 
         val focusTargets = if (
             prefs.getBoolean(PREF_FOCUS_MIRROR, false) &&
@@ -390,6 +399,7 @@ object VpnPolicyCoordinator {
             targets = sourcePackages.filterNot { it in invalid },
             explicit = explicitCandidates.distinct().sorted(),
             standalone = standaloneCandidates.distinct().sorted(),
+            schedule = scheduleCandidates.distinct().sorted(),
             focus = focusTargets.distinct().sorted(),
             invalid = invalid,
         )
@@ -493,12 +503,7 @@ object VpnPolicyCoordinator {
 
         addReasons(policy.explicit, "explicit_vpn")
         addReasons(policy.standalone, "standalone_vpn")
-        addReasons(
-            parsePackageJson(
-                prefs.getString("net_block_schedule_vpn_pkgs", "[]") ?: "[]",
-            ),
-            "schedule_vpn",
-        )
+        addReasons(policy.schedule, "schedule_vpn")
         addReasons(policy.focus, "focus_blocked")
         addReasons(policy.invalid, "invalid_package")
 
@@ -571,10 +576,13 @@ object VpnPolicyCoordinator {
         packageName.equals(ownPackageName, ignoreCase = true) ||
             ALWAYS_EXCLUDED.any { packageName.equals(it, ignoreCase = true) }
 
-    private fun isStandaloneBlockActive(prefs: SharedPreferences): Boolean {
+    private fun isStandaloneBlockActive(
+        prefs: SharedPreferences,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Boolean {
         if (!prefs.getBoolean("standalone_block_active", false)) return false
         val untilMs = prefs.getLong("standalone_block_until_ms", 0L)
-        return untilMs <= 0L || untilMs > System.currentTimeMillis()
+        return untilMs <= 0L || untilMs > nowMs
     }
 
     private fun isFocusBlockActive(prefs: SharedPreferences): Boolean {
