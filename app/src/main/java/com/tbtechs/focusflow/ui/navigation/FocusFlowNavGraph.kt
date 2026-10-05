@@ -290,7 +290,6 @@ fun FocusFlowNavGraph(
                                 onImportBackup = backupCoordinator?.let { onImportBackup },
                                 onOpenProfile = { navigate(Routes.USER_PROFILE) },
                                 onOpenPermissions = { navigate(Routes.PERMISSIONS) },
-                                onOpenStats = { navigate(Routes.STATS) },
                                 onOpenChangelog = { navigate(Routes.CHANGELOG) },
                                 onOpenFocusFlowFileGuide = { navigate(Routes.FOCUSFLOW_FILE_GUIDE) },
                                 onOpenPrivacyTerms = {

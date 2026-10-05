@@ -17,9 +17,13 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,12 +31,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.model.AppSettings
+import com.tbtechs.focusflow.ui.navigation.DefenseIcons
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
@@ -49,6 +55,7 @@ private const val TEXT_SCALE_SLIDER_STEPS = MAX_TEXT_SCALE_PERCENT - MIN_TEXT_SC
 private data class TabTextScale(
     val title: String,
     val route: String,
+    val icon: ImageVector,
     val scale: Float?,
     val screens: List<TextSizeTarget>,
     val update: (Float?) -> Unit,
@@ -76,20 +83,9 @@ internal fun TextSizeSection(
     var expandedTab by remember { mutableStateOf<String?>(null) }
     val tabScales = listOf(
         TabTextScale(
-            title = "Schedule",
-            route = Routes.HOME,
-            scale = settings.homeTextScale,
-            screens = listOf(
-                TextSizeTarget(Routes.HOME, "Schedule", "Quick Add task", RouteTextScaleContext.HOME_QUICK_ADD_SCREEN, "The quick-add task form."),
-                TextSizeTarget(Routes.HOME, "Schedule", "Task details", RouteTextScaleContext.HOME_TASK_DETAILS_SCREEN, "The task details sheet."),
-                TextSizeTarget(Routes.HOME, "Schedule", "Edit task", RouteTextScaleContext.HOME_EDIT_TASK_SCREEN, "The task editing form."),
-            ),
-        ) { value ->
-            onUpdate(settings.copy(homeTextScale = value))
-        },
-        TabTextScale(
             title = "Focus",
             route = Routes.FOCUS,
+            icon = Icons.Outlined.Timer,
             scale = settings.focusTextScale,
             screens = listOf(
                 TextSizeTarget(Routes.FOCUS, "Focus", "Active session", Routes.ACTIVE, "The active-session screen opened from Focus."),
@@ -102,36 +98,22 @@ internal fun TextSizeSection(
             onUpdate(settings.copy(focusTextScale = value))
         },
         TabTextScale(
-            title = "Stats",
-            route = Routes.STATS,
-            scale = settings.statsTextScale,
+            title = "Schedule",
+            route = Routes.HOME,
+            icon = Icons.Outlined.CalendarMonth,
+            scale = settings.homeTextScale,
             screens = listOf(
-                TextSizeTarget(Routes.STATS, "Stats", "Reports", Routes.REPORTS, "The reports list opened from Stats."),
-                TextSizeTarget(Routes.STATS, "Stats", "Report details", Routes.REPORT, "A report opened from Stats."),
+                TextSizeTarget(Routes.HOME, "Schedule", "Quick Add task", RouteTextScaleContext.HOME_QUICK_ADD_SCREEN, "The quick-add task form."),
+                TextSizeTarget(Routes.HOME, "Schedule", "Task details", RouteTextScaleContext.HOME_TASK_DETAILS_SCREEN, "The task details sheet."),
+                TextSizeTarget(Routes.HOME, "Schedule", "Edit task", RouteTextScaleContext.HOME_EDIT_TASK_SCREEN, "The task editing form."),
             ),
         ) { value ->
-            onUpdate(settings.copy(statsTextScale = value))
-        },
-        TabTextScale(
-            title = "Settings",
-            route = Routes.SETTINGS,
-            scale = settings.settingsTextScale,
-            screens = listOf(
-                TextSizeTarget(Routes.SETTINGS, "Settings", "How to Use", Routes.SETTINGS_HOW_TO_USE, "The Settings guide."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "FocusFlow File Guide", Routes.FOCUSFLOW_FILE_GUIDE, "The copy-ready project guide opened from Settings."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "Profile", Routes.USER_PROFILE, "Your profile screen."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "Changelog", Routes.CHANGELOG, "The app changelog."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "Privacy Policy", Routes.PRIVACY_POLICY, "The privacy policy screen."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "Terms of Service", Routes.TERMS_OF_SERVICE, "The terms screen."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "Import confirmation", Routes.IMPORT_CONFIRM, "The settings import confirmation screen."),
-                TextSizeTarget(Routes.SETTINGS, "Settings", "Permissions", Routes.PERMISSIONS, "The permissions screen opened from Settings."),
-            ),
-        ) { value ->
-            onUpdate(settings.copy(settingsTextScale = value))
+            onUpdate(settings.copy(homeTextScale = value))
         },
         TabTextScale(
             title = "Defense",
             route = Routes.DEFENSE,
+            icon = DefenseIcons.Filled,
             scale = settings.defenseTextScale,
             screens = listOf(
                 TextSizeTarget(Routes.DEFENSE, "Defense", "Always-On", Routes.ALWAYS_ON, "Always-On app controls."),
@@ -145,6 +127,36 @@ internal fun TextSizeSection(
             ),
         ) { value ->
             onUpdate(settings.copy(defenseTextScale = value))
+        },
+        TabTextScale(
+            title = "Stats",
+            route = Routes.STATS,
+            icon = Icons.Outlined.BarChart,
+            scale = settings.statsTextScale,
+            screens = listOf(
+                TextSizeTarget(Routes.STATS, "Stats", "Reports", Routes.REPORTS, "The reports list opened from Stats."),
+                TextSizeTarget(Routes.STATS, "Stats", "Report details", Routes.REPORT, "A report opened from Stats."),
+            ),
+        ) { value ->
+            onUpdate(settings.copy(statsTextScale = value))
+        },
+        TabTextScale(
+            title = "Settings",
+            route = Routes.SETTINGS,
+            icon = Icons.Outlined.Settings,
+            scale = settings.settingsTextScale,
+            screens = listOf(
+                TextSizeTarget(Routes.SETTINGS, "Settings", "How to Use", Routes.SETTINGS_HOW_TO_USE, "The Settings guide."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "FocusFlow File Guide", Routes.FOCUSFLOW_FILE_GUIDE, "The copy-ready project guide opened from Settings."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "Profile", Routes.USER_PROFILE, "Your profile screen."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "Changelog", Routes.CHANGELOG, "The app changelog."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "Privacy Policy", Routes.PRIVACY_POLICY, "The privacy policy screen."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "Terms of Service", Routes.TERMS_OF_SERVICE, "The terms screen."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "Import confirmation", Routes.IMPORT_CONFIRM, "The settings import confirmation screen."),
+                TextSizeTarget(Routes.SETTINGS, "Settings", "Permissions", Routes.PERMISSIONS, "The permissions screen opened from Settings."),
+            ),
+        ) { value ->
+            onUpdate(settings.copy(settingsTextScale = value))
         },
     )
 
@@ -200,6 +212,13 @@ internal fun TextSizeSection(
                         .padding(horizontal = 12.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = null,
+                        tint = DarkTextSecondary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = tab.title,

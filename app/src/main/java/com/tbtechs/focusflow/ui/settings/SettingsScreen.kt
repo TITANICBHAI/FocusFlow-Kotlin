@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudDownload
@@ -114,7 +113,6 @@ fun SettingsScreen(
     onExportBackup: (() -> Unit)? = null,
     onImportBackup: ((replaceTasks: Boolean) -> Unit)? = null,
     onReportIssue: (() -> Unit)? = null,
-    onOpenStats: () -> Unit = {},
     onOpenChangelog: () -> Unit = {},
     onOpenFocusFlowFileGuide: () -> Unit = {},
     onOpenPrivacyTerms: () -> Unit = {},
@@ -544,13 +542,6 @@ fun SettingsScreen(
             item {
                 SettingsSectionHeader("ABOUT")
                 SettingsCard {
-                    SettingsActionRow(
-                        icon = Icons.Outlined.BarChart,
-                        title = "Stats",
-                        description = "Yesterday's digest, focus time, completed tasks, blocked apps, streak",
-                        onClick = onOpenStats,
-                    )
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsActionRow(
                         icon = Icons.Outlined.Help,
                         title = "How to Use",

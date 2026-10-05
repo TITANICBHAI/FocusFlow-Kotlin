@@ -7,6 +7,17 @@ The text-size feature uses a General scale and nullable per-tab replacement
 scales for Schedule, Focus, Stats, Settings, and Defense. A null override
 inherits General; a non-null override replaces it rather than stacking with it.
 
+Show tab groups in bottom-navigation order: Focus, Schedule, Defense, Stats, and
+Settings, using each tab's matching navigation icon. Keep Stats in Text Size,
+but do not list it in Settings > About.
+
+**Why:** The user requested that Text Size mirror the navigation order and icons
+and that Stats be removed from the About section.
+
+**How to apply:** Keep the tab order and icon mapping aligned with the main
+bottom navigation; removing the About shortcut must not remove Stats itself or
+its text-size controls.
+
 **Why:** The user superseded the earlier Home/Schedule 100% pin and asked for
 Schedule to receive the same independent override as the other tabs.
 
