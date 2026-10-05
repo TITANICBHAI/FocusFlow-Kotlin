@@ -2,8 +2,8 @@
 
 You are continuing work on the FocusFlow Android always-on status notification plan. This file supplies the working context and conduct rules. Before acting, read:
 
-1. `work/always-on-status-notification/ALWAYS_ON_STATUS_NOTIFICATION_IMPLEMENTATION_PLAN.md` — implementation scope, constraints, phases, decisions, and acceptance criteria.
-2. `work/always-on-status-notification/BATCH_TRACKER.md` — current progress, owner decisions, evidence, blockers, and the mandatory work log.
+1. `work/ALWAYS_ON_STATUS_NOTIFICATION_IMPLEMENTATION_PLAN.md` — implementation scope, constraints, phases, decisions, and acceptance criteria.
+2. `work/BATCH_TRACKER.md` — current progress, owner decisions, evidence, blockers, and the mandatory work log.
 3. `.agents/memory/MEMORY.md` and `.agents/memory/always-on-status-notification-workflow.md` — project memory entry for this work.
 4. `replit.md` and only the linked memory topics relevant to the phase you are doing. In particular, check the Android build-environment and GitHub push/build-polling notes before those activities.
 
