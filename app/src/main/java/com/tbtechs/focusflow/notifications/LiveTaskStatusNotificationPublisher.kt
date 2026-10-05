@@ -28,7 +28,6 @@ object LiveTaskStatusNotificationPublisher {
     private const val NOTIFICATION_TAG = "live-task-status"
     private const val NOTIFICATION_ID = 1003
     private const val PREF_FOCUS_ACTIVE = "focus_active"
-    private const val PREF_TASK_ID = "task_id"
     private const val REQUEST_OPEN = 3000
     private const val REQUEST_COMPLETE = 3001
     private const val REQUEST_EXTEND_15 = 3002
