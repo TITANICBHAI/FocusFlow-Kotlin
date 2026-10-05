@@ -45,6 +45,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.tbtechs.focusflow.data.repository.NetworkBlockStatus
 import com.tbtechs.focusflow.data.repository.VpnRepository
+import com.tbtechs.focusflow.data.repository.VpnPermissionRecoveryPolicy
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalCard
 import com.tbtechs.focusflow.ui.home.RefRed
@@ -52,6 +53,7 @@ import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.scaledSp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -61,54 +63,62 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun VpnPermissionLostBanner(
-    vpnBlockEnabled: Boolean,
-    vpnPackages: List<String>,
     vpnRepository: VpnRepository,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
+    var policyConfigured by remember { mutableStateOf(false) }
     var permissionLost by remember { mutableStateOf(false) }
     var regranting by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<NetworkBlockStatus?>(null) }
 
     suspend fun check() {
-        if (!vpnBlockEnabled || vpnPackages.isEmpty()) {
-            permissionLost = false
-            status = null
-            return
-        }
-
         try {
+            val settings = vpnRepository.getNetworkBlockSettings()
+            val effectiveTargets = vpnRepository.getEffectiveTargets()
+            val mirrorActive = vpnRepository.isFocusMirrorActive()
+            val hasConfiguredSource =
+                VpnPermissionRecoveryPolicy.hasConfiguredVpnSource(
+                    vpnBlockEnabled = settings.enabled && settings.vpn,
+                    global = settings.global,
+                    effectiveTargets = effectiveTargets,
+                    mirrorActive = mirrorActive,
+                )
+            policyConfigured = hasConfiguredSource
+            if (!hasConfiguredSource) {
+                permissionLost = false
+                status = null
+                return
+            }
+
             val granted = vpnRepository.isVpnPermissionGranted()
-            val nextStatus = vpnRepository.getNetworkBlockStatus()
-            status = nextStatus
-            val needsAttention = !granted || nextStatus.state in setOf(
-                NetworkBlockerVpnService.STATUS_PERMISSION_MISSING,
-                NetworkBlockerVpnService.STATUS_ANOTHER_VPN,
-                NetworkBlockerVpnService.STATUS_STARTUP_FAILED,
-                NetworkBlockerVpnService.STATUS_PACKAGE_FAILURE,
-            )
-            permissionLost = needsAttention
+            var nextStatus = vpnRepository.getNetworkBlockStatus()
 
             // Consent restoration and tunnel restoration are separate steps.
             if (granted &&
                 nextStatus.state == NetworkBlockerVpnService.STATUS_PERMISSION_MISSING
             ) {
-                runCatching {
-                    vpnRepository.startNetworkBlock(vpnPackages)
-                }
-                val afterStart = vpnRepository.getNetworkBlockStatus()
-                status = afterStart
-                permissionLost = afterStart.state in setOf(
+                vpnRepository.requestRecovery()
+                delay(500)
+                nextStatus = vpnRepository.getNetworkBlockStatus()
+            }
+            status = nextStatus
+            permissionLost = VpnPermissionRecoveryPolicy.shouldShowBanner(
+                vpnBlockEnabled = settings.enabled && settings.vpn,
+                global = settings.global,
+                effectiveTargets = effectiveTargets,
+                mirrorActive = mirrorActive,
+                permissionGranted = granted,
+                serviceNeedsAttention = nextStatus.state in setOf(
+                    NetworkBlockerVpnService.STATUS_PERMISSION_MISSING,
+                    NetworkBlockerVpnService.STATUS_ANOTHER_VPN,
                     NetworkBlockerVpnService.STATUS_STARTUP_FAILED,
                     NetworkBlockerVpnService.STATUS_PACKAGE_FAILURE,
-                    NetworkBlockerVpnService.STATUS_ANOTHER_VPN,
-                    NetworkBlockerVpnService.STATUS_PERMISSION_MISSING,
-                )
-            }
+                ),
+            )
         } catch (_: Exception) {
             status = null
-            permissionLost = true
+            permissionLost = policyConfigured
         }
     }
 
@@ -126,11 +136,11 @@ fun VpnPermissionLostBanner(
         }
     }
 
-    LaunchedEffect(vpnBlockEnabled, vpnPackages) {
+    LaunchedEffect(vpnRepository) {
         check()
     }
 
-    DisposableEffect(lifecycleOwner, vpnBlockEnabled, vpnPackages) {
+    DisposableEffect(lifecycleOwner, vpnRepository) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 scope.launch { check() }
@@ -147,7 +157,7 @@ fun VpnPermissionLostBanner(
         requestVpnConsent()
     }
 
-    if (!vpnBlockEnabled || vpnPackages.isEmpty()) return
+    if (!policyConfigured) return
 
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(

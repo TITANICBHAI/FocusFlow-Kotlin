@@ -180,6 +180,7 @@ fun ActiveScreen(
     val vpnRunning = vpnStatus?.running == true
     val vpnNeedsAttention = vpnStatus != null && (
         vpnStatus?.failedPackages?.isNotEmpty() == true ||
+            vpnStatus?.invalidPackages?.isNotEmpty() == true ||
             vpnStatus?.state in setOf(
                 "permission_missing",
                 "another_vpn_active",
@@ -463,6 +464,13 @@ fun ActiveScreen(
                     if (vpnStatus?.failedPackages?.isNotEmpty() == true) {
                         Text(
                             "${vpnStatus?.failedPackages?.size} apps could not be registered",
+                            color = Color(0xFFF87171),
+                            fontSize = 12.5.scaledSp,
+                        )
+                    }
+                    if (vpnStatus?.invalidPackages?.isNotEmpty() == true) {
+                        Text(
+                            "${vpnStatus?.invalidPackages?.size} selected VPN apps are not installed",
                             color = Color(0xFFF87171),
                             fontSize = 12.5.scaledSp,
                         )
@@ -998,8 +1006,20 @@ private fun com.tbtechs.focusflow.data.model.RecurringBlockSchedule.isActiveNow(
     }
 }
 
-private fun vpnStatusTitle(status: NetworkBlockStatus?, configured: Boolean): String =
-    when (status?.state) {
+private fun vpnStatusTitle(status: NetworkBlockStatus?, configured: Boolean): String {
+    if (
+        status != null &&
+        status.invalidPackages.isNotEmpty() &&
+        status.state !in setOf(
+            "permission_missing",
+            "another_vpn_active",
+            "package_registration_failed",
+            "startup_failed",
+        )
+    ) {
+        return "Some VPN targets are unavailable"
+    }
+    return when (status?.state) {
         "starting" -> "Starting"
         "running" -> if (status.running) "Running normally" else "Recovery pending"
         "permission_missing" -> "Permission required"
@@ -1010,6 +1030,7 @@ private fun vpnStatusTitle(status: NetworkBlockStatus?, configured: Boolean): St
         "stopped" -> if (configured) "Configured but stopped" else "No VPN apps configured"
         else -> if (configured) "VPN status unavailable" else "No VPN apps configured"
     }
+}
 
 private fun String.formatActiveTime(): String = runCatching {
     val instant = Instant.parse(this)

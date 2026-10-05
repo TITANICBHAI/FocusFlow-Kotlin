@@ -11,6 +11,8 @@ import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
 import com.tbtechs.focusflow.data.restore.RestoreGate
 import com.tbtechs.focusflow.enforcement.receivers.VpnWatchdogReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -34,6 +36,7 @@ data class NetworkBlockStatus(
     val desiredPolicy: String?,
     val policyGeneration: Long,
     val appliedPolicyGeneration: Long,
+    val invalidPackages: List<String> = emptyList(),
 )
 
 /**
@@ -100,6 +103,19 @@ class VpnRepository(
             standalonePackages = parsePackageList(rawStandalone),
             focusMirrorEnabled = prefs.getBoolean("net_block_focus_mirror", false),
         )
+    }
+
+    suspend fun getEffectiveTargets(): List<String> =
+        withContext(Dispatchers.IO) {
+            VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
+            VpnPolicyCoordinator.effectivePackages(context, prefs)
+        }
+
+    fun isFocusMirrorActive(): Boolean =
+        VpnPolicyCoordinator.isFocusMirrorActive(prefs)
+
+    fun requestRecovery() {
+        VpnPolicyCoordinator.requestRecoverySync(context)
     }
 
     /**
@@ -202,6 +218,7 @@ class VpnRepository(
             ?: NetworkBlockerVpnService.STATUS_STOPPED
         val error = prefs.getString("vpn_error", null)
         val failed = prefs.getString("vpn_failed_packages", "[]") ?: "[]"
+        val invalid = prefs.getString("net_block_invalid_packages", "[]") ?: "[]"
         val desiredPolicy = prefs.getString("net_block_desired_policy", null)
         val policyGeneration = prefs.getLong("net_block_policy_generation", 0L)
         val appliedPolicyGeneration = prefs.getLong("net_block_applied_generation", 0L)
@@ -214,6 +231,7 @@ class VpnRepository(
             desiredPolicy = desiredPolicy,
             policyGeneration = policyGeneration,
             appliedPolicyGeneration = appliedPolicyGeneration,
+            invalidPackages = parsePackageList(invalid),
         )
     }
 
@@ -227,6 +245,7 @@ class VpnRepository(
             put("running", status.running)
             put("error", status.error ?: JSONObject.NULL)
             put("failedPackages", JSONArray(status.failedPackages).toString())
+            put("invalidPackages", JSONArray(status.invalidPackages).toString())
             put("desiredPolicy", status.desiredPolicy ?: JSONObject.NULL)
             put("policyGeneration", status.policyGeneration)
             put("appliedPolicyGeneration", status.appliedPolicyGeneration)
@@ -364,22 +383,13 @@ class VpnRepository(
     }
 
     private fun isBlockingSessionActive(): Boolean {
-        val now = System.currentTimeMillis()
-        val focusActive = prefs.getBoolean("focus_active", false).let { active ->
-            if (!active) false
-            else {
-                val endMs = prefs.getLong("task_end_ms", 0L)
-                endMs <= 0L || now < endMs
-            }
-        }
-        val standaloneActive = prefs.getBoolean("standalone_block_active", false).let { active ->
-            if (!active) false
-            else {
-                val untilMs = prefs.getLong("standalone_block_until_ms", 0L)
-                untilMs <= 0L || now < untilMs
-            }
-        }
-        return focusActive || standaloneActive
+        return ActiveBlockGuardPolicy.isActive(
+            focusActive = prefs.getBoolean("focus_active", false),
+            focusEndMs = prefs.getLong("task_end_ms", 0L),
+            standaloneActive = prefs.getBoolean("standalone_block_active", false),
+            standaloneUntilMs = prefs.getLong("standalone_block_until_ms", 0L),
+            nowMs = System.currentTimeMillis(),
+        )
     }
 
     /**

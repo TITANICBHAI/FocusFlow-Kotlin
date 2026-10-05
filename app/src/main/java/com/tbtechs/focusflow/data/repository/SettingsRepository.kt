@@ -921,6 +921,11 @@ class SettingsRepository(
 
     suspend fun setNetworkBlockEnabled(enabled: Boolean) {
         restoreGate.write("SettingsRepository.setNetworkBlockEnabled") {
+        if (isBlockingSessionActive()) {
+            throw IllegalStateException(
+                "Network blocking cannot be changed while Focus or Standalone Block is active",
+            )
+        }
         prefs.edit()
             .putBoolean(KEY_NETWORK_BLOCK_ENABLED, enabled)
             .putBoolean(KEY_NETWORK_BLOCK_VPN, enabled)
@@ -928,6 +933,15 @@ class SettingsRepository(
         requestVpnSync()
         }
     }
+
+    private fun isBlockingSessionActive(): Boolean =
+        ActiveBlockGuardPolicy.isActive(
+            focusActive = prefs.getBoolean(KEY_FOCUS_ACTIVE, false),
+            focusEndMs = prefs.getLong(KEY_TASK_END_MS, 0L),
+            standaloneActive = prefs.getBoolean(KEY_STANDALONE_ACTIVE, false),
+            standaloneUntilMs = prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L),
+            nowMs = System.currentTimeMillis(),
+        )
 
     suspend fun setVpnSelectedPackages(packagesJson: String) {
         restoreGate.write("SettingsRepository.setVpnSelectedPackages") {

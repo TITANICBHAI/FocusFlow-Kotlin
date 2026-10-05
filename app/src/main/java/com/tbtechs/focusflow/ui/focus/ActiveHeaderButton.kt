@@ -81,6 +81,7 @@ fun evaluateActiveProtection(
 
     val vpnProblem = vpnStatus != null && (
         vpnStatus.failedPackages.isNotEmpty() ||
+            vpnStatus.invalidPackages.isNotEmpty() ||
             vpnStatus.state in setOf(
                 "permission_missing",
                 "another_vpn_active",

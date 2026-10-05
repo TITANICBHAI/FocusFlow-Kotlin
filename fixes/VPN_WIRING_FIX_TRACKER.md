@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, the 143-test unit suite, and the debug APK build are complete; real-device alarm/tunnel verification is blocked because no Android device or emulator is available. Q1 is decided; Q2 remains pending. No Batch 6+ work is authorized.
+**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, the 143-test unit suite, and the debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7 is owner-authorized; Q2 remains pending and gates T8. No Batch 8+ work is authorized.
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -179,7 +179,7 @@
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 
-**Status:** Blocked on manual Android verification; implementation, unit tests, and APK build are complete. No Batch 6+ work is authorized.
+**Status:** Implementation, unit tests, and APK build are complete; manual Android verification remains blocked. The owner has authorized proceeding to Batch 6.
 **Gate:** Batch 4 complete. Q1 is decided. T5/T6 share the boundary scheduler and must be coordinated.
 
 - [x] Re-verify standalone-block VPN selection, persistence, expiry clearing, and all relevant callers.
@@ -201,24 +201,25 @@
 
 ## Batch 6 — P1 T7: permission-lost recovery banner
 
-**Status:** Not started
-**Gate:** Batch 5 complete.
+**Status:** Code and automated tests complete; actual on-device permission-revocation behavior remains unverified.
+**Gate:** Batch 5 implementation, tests, and APK build are complete; its device-only check remains unavailable. The owner explicitly authorized proceeding with T7 while that check stays open.
 
-- [ ] Re-verify all effective VPN target sources and current permission-loss banner conditions.
-- [ ] Ensure the banner covers each approved VPN source and recovery uses the coordinator without changing the explicit list.
-- [ ] Add/run focused tests for focus-mirror-only configuration and revoked VPN permission.
-- [ ] Record results and any unavailable device verification.
+- [x] Re-verify all effective VPN target sources and current permission-loss banner conditions.
+- [x] Ensure the banner covers each approved VPN source and recovery uses the coordinator without changing the explicit list.
+- [x] Add/run focused tests for focus-mirror-only configuration and revoked VPN permission.
+- [x] Record results and any unavailable device verification.
 
 ### Batch 6 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | T7 source audit complete; banner/recovery changes and focused tests are in progress. | `MainActivity.kt`, `VpnPermissionLostBanner.kt`, `VpnRepository.kt`, `VpnPolicyCoordinator.kt`, `VpnPermissionRecoveryPolicy.kt`, focused policy tests, this tracker | Read plan T7 and current permission/banner/recovery flows; searched effective-target sources and existing tests. Test workflow has not yet run. | The banner previously gated on explicit plus standalone lists and retried with `startNetworkBlock`, which could seed the explicit list. The implementation now checks global, effective targets, and active focus-mirror policy; recovery calls only the coordinator. Focused tests cover mirror-only configuration with revoked permission and source gating. Batch 5 device verification remains open per owner direction. |
+| 2026-10-05 | T7 implementation and automated verification complete; actual UI check remains blocked by device availability. | `MainActivity.kt`, `VpnPermissionLostBanner.kt`, `VpnRepository.kt`, `VpnPolicyCoordinator.kt`, `VpnPermissionRecoveryPolicy.kt`, `VpnPermissionRecoveryPolicyTest.kt`, this tracker | `Run Android unit tests` workflow (`bash scripts/test-unit.sh`): 146 tests, 0 failures/errors/skips; `adb devices -l`: no devices; `git diff --check`; reviewed recovery and effective-source code. | Banner gating now includes enabled VPN plus global mode, effective targets (explicit, standalone, active schedule, and focus-mirror packages), or active focus mirror. Permission restoration routes through `VpnPolicyCoordinator.requestRecoverySync`; the recovery path does not write `net_block_explicit_packages`. Policy tests cover focus-mirror-only with revoked permission, no-source suppression, and global/effective sources. Actual Android permission-revocation/banner behavior remains unverified. The workflow's unrelated Python module change to `.replit` was restored. Q2 remains pending; Batch 7 was not started. |
 
 ## Batch 7 — P2 T8–T12: hardening and cleanup
 
-**Status:** Not started
-**Gate:** Batch 6 complete. Resolve Q2 before T8. T12 is optional and must not expand scope without a clear need.
+**Status:** In progress; owner-authorized on 2026-10-05. T8 is paused pending Q2.
+**Gate:** The owner authorized Batch 7 while Batch 6's device-only check remains open. Resolve Q2 before T8. T12 is optional and must not expand scope without a clear need.
 
 - [ ] Record the owner's Q2 decision on Wi-Fi/mobile-data side effects before changing T8 behavior.
 - [ ] Fix the `vpn_failed_packages` clobbering issue with a distinct, accurately exposed invalid-package state.
@@ -231,7 +232,7 @@
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Started independent T9/T11 work; T8 remains paused for Q2. | `VpnPolicyCoordinator.kt`, `NetworkBlockerVpnService.kt`, `VpnRepository.kt`, `SettingsRepository.kt`, `ActiveScreen.kt`, `ActiveHeaderButton.kt`, new active-block policy/tests, this tracker | Rechecked T8–T12 plan scope and current writers, readers, guards, and UI consumers; reviewed diff with `git diff --check`. No tests run; tests are deferred to Batch 7 final verification. | T9 separates coordinator-detected invalid packages into `net_block_invalid_packages` and exposes both lists; service registration failures remain in `vpn_failed_packages`. T11 now shares a pure expiry-aware Focus/Standalone active-block guard between repositories. Q2 is still pending, so T8 behavior has not been changed. |
 
 ## Owner decision record
 
@@ -258,16 +259,16 @@ Record each decision, date, and evidence before dependent work. Pending question
 - [ ] T4-summary: verify on-device that the import summary shows collapsible cards and truthful status; classification policy is unit-tested.
 - [ ] T5: Android alarm delivery stops standalone VPN targets at expiry without user interaction; expiry policy is unit-tested, but device delivery is unverified.
 - [ ] T6: Android schedule transitions apply targets only inside approved windows, including overnight and week-wrap cases; policy behavior is unit-tested, but device delivery is unverified.
-- [ ] T7: permission-lost recovery appears for approved effective VPN sources.
+- [ ] T7: policy coverage passes for approved effective VPN sources; actual Android permission-revocation/banner behavior remains unverified because no device/emulator is available.
 - [x] T8-a: empty-list master-switch policy is unit-tested and used by both VPN list save screens; device interaction remains unavailable.
 
 ## Final verification
 
-- [x] Build and run unit tests for the completed scope; full suite passed with 143 tests, 0 skipped/failures/errors.
+- [x] Build and run unit tests for the completed scope; Batch 5 passed 143 tests and Batch 6 passed 146 tests, with 0 skipped/failures/errors.
 - [x] Run applicable verification greps from plan §6; obsolete schedule snapshot/class references are absent, and boundary receiver/scheduler wiring is present.
 - [ ] Complete feasible manual device checks from plan §6; blocked because no Android device/emulator is available.
 - [x] Review the final diff for data loss, unauthorized scope, and changes outside the plan; the unrelated `.replit` Python-module side effect was restored.
-- [x] Confirm Batch 5 evidence, keep device checks blocked and Q2 pending, and do not start Batch 6+.
+- [x] Confirm Batch 5 evidence, keep device checks blocked and Q2 pending, and do not start Batch 7+ without authorization.
 - [x] Record final handoff summary with scope, test results, blockers, and the authorized stopping point.
 
 ## Final work log

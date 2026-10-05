@@ -35,7 +35,7 @@ object VpnPolicyCoordinator {
     private const val PREF_FOCUS_MIRROR = "net_block_focus_mirror"
     private const val PREF_DESIRED_POLICY = "net_block_desired_policy"
     private const val PREF_POLICY_GENERATION = "net_block_policy_generation"
-    private const val PREF_FAILED_PKGS = "vpn_failed_packages"
+    private const val PREF_INVALID_PKGS = "net_block_invalid_packages"
     private const val PREF_EXPLICIT_MIGRATED = "net_block_explicit_migrated"
     private const val POLICY_VERSION = 1
     private const val DISPATCH_DEBOUNCE_MS = 150L
@@ -105,6 +105,12 @@ object VpnPolicyCoordinator {
 
         return ExplicitVpnPolicy.hasPersistentExplicitTargets(explicitCandidates(prefs))
     }
+
+    fun isFocusMirrorActive(
+        prefs: SharedPreferences,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Boolean =
+        prefs.getBoolean(PREF_FOCUS_MIRROR, false) && isFocusBlockActive(prefs, nowMs)
 
     fun effectivePackages(context: Context, prefs: SharedPreferences): List<String> {
         return effectivePolicy(context, prefs).targets
@@ -181,7 +187,7 @@ object VpnPolicyCoordinator {
             // it as authoritative input.
             prefs.edit()
                 .putString("net_block_packages", packagesJson)
-                .putString(PREF_FAILED_PKGS, JSONArray(policy.invalid).toString())
+                .putString(PREF_INVALID_PKGS, JSONArray(policy.invalid).toString())
                 .putString(
                     "net_block_mode",
                     if (global) NetworkBlockerVpnService.MODE_GLOBAL
@@ -525,7 +531,7 @@ object VpnPolicyCoordinator {
                 else NetworkBlockerVpnService.MODE_PER_APP)
             put("targetPackages", JSONArray(policy.targets))
             put("explicitPackages", JSONArray(policy.explicit))
-            put("failedPackages", JSONArray(policy.invalid))
+            put("invalidPackages", JSONArray(policy.invalid))
             put("focusMirrorEnabled", prefs.getBoolean(PREF_FOCUS_MIRROR, false))
             put("reasons", reasons)
             put("updatedAt", System.currentTimeMillis())
@@ -585,10 +591,13 @@ object VpnPolicyCoordinator {
         return untilMs <= 0L || untilMs > nowMs
     }
 
-    private fun isFocusBlockActive(prefs: SharedPreferences): Boolean {
+    private fun isFocusBlockActive(
+        prefs: SharedPreferences,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Boolean {
         if (!prefs.getBoolean("focus_active", false)) return false
         val endMs = prefs.getLong("task_end_ms", 0L)
-        return endMs <= 0L || endMs > System.currentTimeMillis()
+        return endMs <= 0L || endMs > nowMs
     }
 
     private fun parsePackageJson(json: String): List<String> {

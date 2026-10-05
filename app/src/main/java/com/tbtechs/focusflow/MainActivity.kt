@@ -40,7 +40,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
 import com.tbtechs.focusflow.data.repository.AlarmCapabilitySnapshotRecord
-import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
@@ -68,7 +67,6 @@ import com.tbtechs.focusflow.ui.support.DiagnosticLogEntry
 import com.tbtechs.focusflow.ui.support.DiagnosticLogLevel
 import com.tbtechs.focusflow.ui.support.DiagnosticsModal
 import com.tbtechs.focusflow.ui.splash.FocusFlowSplashOverlay
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -320,7 +318,6 @@ private fun FocusFlowRoot(
             settingsViewModel.refreshFromStore()
         }
     }
-    var networkSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var diagnosticEvents by remember { mutableStateOf(startupDiagnosticEntries()) }
     var alarmCapabilitySnapshots by remember {
         mutableStateOf(AppModule.alarmRepository.capabilitySnapshots())
@@ -452,15 +449,6 @@ private fun FocusFlowRoot(
             NotificationActionReceiver.ACTION_COMPLETE -> taskViewModel.completeTask(taskId)
             NotificationActionReceiver.ACTION_EXTEND -> taskViewModel.extendTaskTime(taskId, minutes)
             NotificationActionReceiver.ACTION_SKIP -> taskViewModel.skipTask(taskId)
-        }
-    }
-
-    LaunchedEffect(vpnRepository) {
-        while (true) {
-            networkSettings = runCatching {
-                vpnRepository.getNetworkBlockSettings()
-            }.getOrNull()
-            delay(1_500)
         }
     }
 
@@ -621,13 +609,7 @@ private fun FocusFlowRoot(
                 )
             }
 
-            networkSettings?.let { policy ->
-                VpnPermissionLostBanner(
-                    vpnBlockEnabled = policy.enabled && policy.vpn,
-                    vpnPackages = (policy.packages + policy.standalonePackages).distinct(),
-                    vpnRepository = vpnRepository,
-                )
-            }
+            VpnPermissionLostBanner(vpnRepository)
 
             Box(
                 modifier = Modifier
