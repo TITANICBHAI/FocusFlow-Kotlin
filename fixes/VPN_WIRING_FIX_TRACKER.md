@@ -97,21 +97,24 @@
 ## Batch 4 — P1 T4 and T8-a: VPN list persistence and master-switch ownership
 
 **Status:** Not started
-**Gate:** Batch 3 complete. Resolve owner questions Q3 and Q4 before dependent behavior is implemented.
+**Gate:** Batch 3 complete. Q3 is decided; resolve Q4 before implementing the VPN-list persistence/migration.
 
 - [ ] Read the relevant backup contract and verify current import/export wiring.
-- [ ] Record the owner's Q3 decision about restoring a non-empty list while Network Blocking is off.
+- [x] Record the owner's Q3 decision about restoring a non-empty list while Network Blocking is off (see the owner decision record and dated work-log entry).
 - [ ] Record the owner's Q4 decision about the single source of truth for the VPN list.
 - [ ] Implement the approved VPN-list persistence and migration without overwriting or dropping user data.
+- [ ] During Import, request VPN consent for a non-empty restored list when Network Blocking is off; only after an actual grant, enable Network Blocking (VPN), VPN Self-Healing, and the matching persisted VPN settings.
+- [ ] If VPN consent is denied/canceled, continue the selected restore, preserve the list as dormant, and do not newly enable either switch.
+- [ ] Add one informational post-import summary with collapsible cards for supported imported VPN, Always-On, daily allowance, keyword, and Greyout/block schedule settings; show truthful active/inactive status without another confirmation prompt.
 - [ ] Ensure saving an empty list does not disable the master Network Blocking switch.
-- [ ] Add/run the export-import round-trip and empty-list tests.
+- [ ] Add/run export-import round-trip, empty-list, consent-grant/cancel, and summary coverage tests.
 - [ ] Record results and any unavailable checks.
 
 ### Batch 4 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Owner decision recorded; implementation not started. | `VPN_WIRING_FIX_PLAN.md`, this tracker, `VpnBlockListScreen`, `AlwaysOnScreen`, `VpnRepository`, `DefenseScreen` | Reviewed the user's answer and compared list-save/consent behavior with the current code. | Q3: request Android VPN consent during Import; on grant activate Network Blocking (VPN), VPN Self-Healing, and the imported list; on denial/cancel continue restore with the list dormant. Use one informational post-import summary with collapsible cards for imported protection categories. Read-only check found list-save/native and Defense UI self-heal state are not fully synchronized; T2/T8-a must verify and fix that. Q4 remains pending. |
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 
@@ -167,13 +170,13 @@
 
 ## Owner decision record
 
-All decisions are pending until explicitly supplied by the owner. Record the exact answer, date, and evidence before dependent work.
+Record each decision, date, and evidence before dependent work. Pending questions remain implementation gates.
 
 | Plan question | Decision needed | Status | Owner answer / date / evidence |
 |---|---|---|---|
 | Q1 | Schedule VPN scope and active-window behavior | Pending |  |
 | Q2 | Remove Wi-Fi/mobile-data behavior, or expose it with safe defaults and a working restore path | Pending |  |
-| Q3 | Behavior when import includes a VPN list but Network Blocking is off | Pending |  |
+| Q3 | Behavior when import includes a VPN list but Network Blocking is off | Decided (2026-10-05) | Request VPN consent during Import; on grant turn on Network Blocking and VPN Self-Healing and activate the imported list. On denial/cancel, continue restore with the list dormant. Use one informational expandable summary for imported protection categories; do not ask for another in-app confirmation. |
 | Q4 | Single source of truth for the explicit VPN list | Pending |  |
 
 ## Required test scenarios
@@ -184,6 +187,10 @@ All decisions are pending until explicitly supplied by the owner. Record the exa
 - [ ] T2: Defense self-heal on/off updates native state and watchdog/recovery scheduling.
 - [ ] T3: cancelling VPN consent leaves the setting unchanged.
 - [ ] T4: backup round-trip preserves the approved VPN list source of truth.
+- [ ] T4-consent-granted: restore with Network Blocking off; actual Android consent grant activates both switches and the list.
+- [ ] T4-consent-cancelled: cancellation leaves the list stored but inactive and does not newly enable either switch.
+- [ ] T4-vpn-permission-pregranted: existing VPN permission skips the system prompt but still activates the imported list and both switches.
+- [ ] T4-summary: one summary shows collapsible cards for imported supported categories and truthful status.
 - [ ] T5: standalone VPN targets stop at expiry without user interaction.
 - [ ] T6: schedule VPN targets apply only inside approved windows, including overnight and week-wrap cases.
 - [ ] T7: permission-lost recovery appears for approved effective VPN sources.

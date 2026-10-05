@@ -86,11 +86,11 @@ All keys live in SharedPreferences `focusday_prefs`.
 
 **Change**
 1. Add `fun consentIntentOrNull(): Intent? = VpnService.prepare(context)` to `VpnRepository`.
-2. Replace every `requestVpnPermission(...)` caller with `rememberLauncherForActivityResult(StartActivityForResult)` and apply the state change **only if `VpnService.prepare(context) == null` after the result**. Callers: `DefenseScreen` (~L604), `GreyoutScheduleModal` (~L988), `AlwaysOnScreen` (~L598), `VpnBlockListScreen` (~L559), `VpnPermissionLostBanner` (~L140). Read each caller and keep its other behaviour.
+2. Replace every `requestVpnPermission(...)` caller with `rememberLauncherForActivityResult(StartActivityForResult)` and apply the state change **only if `VpnService.prepare(context) == null` after the result**. Callers: `DefenseScreen` (~L604), `GreyoutScheduleModal` (~L988), `AlwaysOnScreen` (~L598), `VpnBlockListScreen` (~L559), `VpnPermissionLostBanner` (~L140). Add `ImportConfirmScreen` as a result-aware caller for T4; it must wait for the actual Android consent result before activating an imported VPN list. Read each caller and keep its other behaviour.
 3. In `GreyoutScheduleModal`, `onNetworkProtectionRequired()` must run only after consent is confirmed.
 4. Delete `requestVpnPermission` and the `2001` request code once no callers remain.
 
-**Done when:** cancelling the system dialog leaves the toggle off and `net_block_enabled` unchanged.
+**Done when:** cancelling the system dialog leaves the toggle off and `net_block_enabled` unchanged, and the restore flow can distinguish grant from cancellation.
 
 ---
 
@@ -108,9 +108,12 @@ All keys live in SharedPreferences `focusday_prefs`.
 3. `TsSettingsAdapter.normalizeForLegacyMigration` (~L262): change the target key for `ALWAYS_ON_VPN_PACKAGES` to `"net_block_explicit_packages"`. `syncFromStoreAfterRestore` already calls `VpnPolicyCoordinator.requestSync`.
 4. One-time migration: if legacy `always_on_vpn_packages` is non-empty, merge it into explicit (union, sorted), then leave the old key untouched.
 5. `BackupCoordinator.requiresDefensePin` can read `settingsViewModel.settings.value.alwaysOnVpnPackages` instead of calling `VpnRepository`.
-6. Leave `net_block_enabled` alone on import (`vpnBlockEnabled` is deliberately device-local). Surface a notice if an import brings a non-empty list while Network Blocking is off (see §7, Q3).
+6. If settings restore is selected and the backup contains a non-empty VPN list while Network Blocking is off, request Android VPN consent during the import flow. Skip the system dialog if permission is already granted. Use T3's result-aware consent flow; launching the dialog is not proof of permission.
+7. After permission is granted, activate the imported VPN list and the two Defense switches: **Network Blocking (VPN)** and **VPN Self-Healing**. Persist matching `NetworkBlockSettings.enabled` / `vpn` values and `AppSettings.networkBlockEnabled` / `vpnSelfHealEnabled`, then sync enforcement through `VpnPolicyCoordinator`. This is an explicit, consent-gated activation based on the user's import action; do not import those device-local switch values from the backup itself.
+8. If Android consent is denied or canceled, continue applying the selected backup data, keep the imported list stored but dormant, and do not turn on either switch. The import summary must report the VPN list as inactive.
+9. Show one informational post-import summary, not a second in-app confirmation. Give each supported category present in the import its own collapsible card: VPN list, Always-On, daily allowance, keywords, and Greyout/block schedules. Report the actual active or inactive status; do not claim a feature is active unless its settings were applied and required permission is available.
 
-**Done when:** export → import round-trip preserves the VPN list **and** the tunnel enforces it after restore.
+**Done when:** export → import round-trip preserves the VPN list; consent grant activates the list and both switches; consent cancellation preserves the list without activation; and the single expandable summary accurately reports all imported protection categories.
 
 ---
 
@@ -168,7 +171,7 @@ All keys live in SharedPreferences `focusday_prefs`.
 
 ### T8-a. List screens must not turn the master switch off
 
-**Evidence:** `AlwaysOnScreen.save` (~L246) and `VpnBlockListScreen.save` (~L188) write `enabled = hasPackages`, `vpn = hasPackages`, and `updateSettings(networkBlockEnabled = hasVpnPackages)`. Saving with an empty VPN list therefore turns off Network Blocking, which also silently disables focus-mirror, standalone and schedule VPN.
+**Evidence:** Both `AlwaysOnScreen.save` (~L246) and `VpnBlockListScreen.save` (~L188) set the native `NetworkBlockSettings.enabled` / `vpn` fields from whether VPN packages remain and call the native self-heal setter. `AlwaysOnScreen.save` also updates `AppSettings.networkBlockEnabled`; `VpnBlockListScreen.save` does not. The native self-heal setter writes `net_block_self_heal`, while the Defense switch reads `vpn_self_heal_enabled` (T2). Saving an empty list therefore disables native Network Blocking and can leave the Defense UI switches out of sync; verify these paths against the current code before implementation.
 
 **Change:** list screens only turn the master **on** (when the list is non-empty). They never write `false`; Defense owns disabling (PIN-gated).
 
@@ -210,6 +213,11 @@ Extract the pure part of `effectivePolicy` into `VpnPolicyCalculator.compute(sna
 | T6 | schedule Mon–Fri 09:00–18:00 VPN on; also overnight 22:00–06:00 | targets present only inside windows (use fixed `Calendar`); Sunday after-midnight case correct |
 | T7 | focus-mirror-only config + permission revoked | banner visible |
 | T8-a | save empty VPN list in either screen | master switch unchanged |
+| T4-consent-granted | Restore a non-empty VPN list while Network Blocking is off; grant Android VPN consent | Imported list is active; Network Blocking and VPN Self-Healing are on; `NetworkBlockSettings.enabled` / `vpn` agree; coordinator syncs; summary reports active |
+| T4-consent-cancelled | Same restore, but cancel or deny Android VPN consent | Selected backup data and VPN list remain imported; Network Blocking stays off; VPN Self-Healing is not newly enabled; summary reports the list as inactive |
+| T4-no-vpn-restore | Restore without a non-empty VPN list or with settings restore disabled | No VPN consent prompt; other selected restore behavior remains unchanged |
+| T4-vpn-permission-pregranted | Restore a non-empty VPN list with permission already granted and Network Blocking off | No system prompt; activate the list and both switches, then report active |
+| T4-summary | Restore supported Always-On, daily allowance, keyword, and Greyout/block schedule settings | One informational summary has collapsible cards only for imported categories and does not misstate activation |
 
 ---
 
@@ -229,15 +237,16 @@ Manual device checklist (needs a real device or emulator with another VPN app in
 2. Standalone block with a VPN app → app loses network; at expiry network returns with no interaction.
 3. Defense self-heal off → revoke VPN from system settings → it is **not** restarted; on → restarted within ~3 s.
 4. Focus with mirror on, end focus → tunnel stops (this is the T1 regression check).
-5. Restore a backup that has a VPN list → apps blocked after restore (if Network Blocking is on).
+5. Restore a backup with a VPN list while Network Blocking is off → Android consent is requested during Import; grant it and verify both switches turn on and the summary reports the list as active. Cancel consent in a second run and verify the list is retained but inactive.
+6. Restore Always-On, daily allowance, keyword, and Greyout/block schedule settings together → one post-import summary shows their collapsible cards and truthful status without asking for a second confirmation.
 
 ---
 
-## 7. Questions for the owner (the plan assumes the default; change before handing off if you disagree)
+## 7. Owner questions and recorded decisions
 
 - **Q1 — schedule VPN scope.** Default: all apps in the schedule are VPN-blocked while its window is active.
 - **Q2 — Wi-Fi/mobile knobs.** Default: delete them (T8). Alternative: expose with `wifi=false` default.
-- **Q3 — restore with Network Blocking off.** Default: keep the list stored but dormant and show a notice; do **not** auto-enable (that would trigger VPN consent flows).
+- **Q3 — RESOLVED (2026-10-05):** When a selected settings restore contains a non-empty VPN list and Network Blocking is off, request Android VPN consent during Import. If granted, enable Network Blocking (VPN) and VPN Self-Healing and activate the imported list. If denied or canceled, continue the selected restore but keep the list stored and inactive. Afterward, show one informational notice with collapsible cards for imported protection categories; it reports outcomes rather than asking for another confirmation. Android's required system-consent dialog remains.
 - **Q4 — single source of truth for the VPN list.** Default: `net_block_explicit_packages` (T4).
 
 ## 8. Suggested order and commit boundaries
