@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -62,7 +63,6 @@ import com.tbtechs.focusflow.ui.alwayson.AlwaysOnScreen
 import com.tbtechs.focusflow.ui.backup.BackupCoordinator
 import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
-import com.tbtechs.focusflow.ui.common.FocusFlowTimerIcon
 import com.tbtechs.focusflow.ui.common.SideMenu
 import com.tbtechs.focusflow.ui.defense.DefenseScreen
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockSetupScreen
@@ -927,9 +927,15 @@ private fun MainNavigationTabIcon(
 ) {
     val tint = if (selected) BrandPrimary else RefMuted
     when (icon) {
-        MainTabIcon.FOCUS_TIMER -> FocusFlowTimerIcon(Modifier.size(22.dp))
+        MainTabIcon.FOCUS_TIMER -> Icon(
+            imageVector = Icons.Outlined.Timer,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
+        // Keep the filled shield silhouette stable; the check remains a negative-space cutout.
         MainTabIcon.DEFENSE -> Icon(
-            imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
+            imageVector = DefenseIcons.Filled,
             contentDescription = label,
             tint = tint,
             modifier = Modifier.size(22.dp),

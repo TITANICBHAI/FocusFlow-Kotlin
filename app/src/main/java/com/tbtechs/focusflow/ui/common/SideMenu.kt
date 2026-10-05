@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -14,6 +13,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +31,7 @@ import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 data class SideMenuItem(
     val route: String,
     val label: String,
-    val icon: @Composable (selected: Boolean) -> Unit,
+    val icon: @Composable () -> Unit,
 )
 
 @Composable
@@ -42,14 +42,12 @@ fun SideMenu(
 ) {
     val items = listOf(
         SideMenuItem(Routes.HOME, "Home") { Icon(Icons.Outlined.Home, contentDescription = null) },
-        SideMenuItem(Routes.FOCUS, "Focus") {
-            FocusFlowTimerIcon(Modifier.size(22.dp))
-        },
+        SideMenuItem(Routes.FOCUS, "Focus") { Icon(Icons.Outlined.Timer, contentDescription = null) },
         SideMenuItem(Routes.STATS, "Stats") { Icon(Icons.Outlined.BarChart, contentDescription = null) },
         SideMenuItem(Routes.SETTINGS, "Settings") { Icon(Icons.Outlined.Settings, contentDescription = null) },
-        SideMenuItem(Routes.DEFENSE, "Defense") { selected ->
+        SideMenuItem(Routes.DEFENSE, "Defense") {
             Icon(
-                imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
+                imageVector = DefenseIcons.Filled,
                 contentDescription = null,
             )
         },
@@ -81,7 +79,7 @@ fun SideMenu(
                         onNavigate(item.route)
                         onClose()
                     },
-                    icon = { item.icon(selected) },
+                    icon = { item.icon() },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
             }
