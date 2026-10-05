@@ -87,6 +87,7 @@ import com.tbtechs.focusflow.domain.FocusPinManager
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
+import com.tbtechs.focusflow.ui.common.FocusFlowTimerIcon
 import com.tbtechs.focusflow.ui.defense.BlockPresetUi
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockModal
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
@@ -709,12 +710,7 @@ private fun ReadyToFocusPanel(
                     .border(1.dp, BrandPrimary.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    Icons.Outlined.Timer,
-                    contentDescription = null,
-                    tint = BrandPrimary,
-                    modifier = Modifier.size(28.dp),
-                )
+                FocusFlowTimerIcon(modifier = Modifier.size(28.dp))
             }
             Spacer(Modifier.height(12.dp))
             Text(

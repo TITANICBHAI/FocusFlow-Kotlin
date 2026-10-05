@@ -20,8 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -64,6 +62,7 @@ import com.tbtechs.focusflow.ui.alwayson.AlwaysOnScreen
 import com.tbtechs.focusflow.ui.backup.BackupCoordinator
 import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
+import com.tbtechs.focusflow.ui.common.FocusFlowTimerIcon
 import com.tbtechs.focusflow.ui.common.SideMenu
 import com.tbtechs.focusflow.ui.defense.DefenseScreen
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockSetupScreen
@@ -830,11 +829,11 @@ fun MainScaffold(
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val tabs = listOf(
-        Triple(Routes.FOCUS, "Focus", Icons.Outlined.Timer),
-        Triple(Routes.HOME, "Schedule", Icons.Outlined.CalendarMonth),
-        Triple(Routes.DEFENSE, "Defense", Icons.Outlined.Shield),
-        Triple(Routes.STATS, "Stats", Icons.Outlined.BarChart),
-        Triple(Routes.SETTINGS, "Settings", Icons.Outlined.Settings),
+        MainTab(Routes.FOCUS, "Focus", MainTabIcon.FOCUS_TIMER),
+        MainTab(Routes.HOME, "Schedule", MainTabIcon.SCHEDULE),
+        MainTab(Routes.DEFENSE, "Defense", MainTabIcon.DEFENSE),
+        MainTab(Routes.STATS, "Stats", MainTabIcon.STATS),
+        MainTab(Routes.SETTINGS, "Settings", MainTabIcon.SETTINGS),
     )
     Scaffold(
         containerColor = com.tbtechs.focusflow.ui.theme.DarkBackground,
@@ -849,7 +848,9 @@ fun MainScaffold(
                     .padding(top = 8.dp, bottom = 8.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
             ) {
-                tabs.forEach { (route, label, icon) ->
+                tabs.forEach { tab ->
+                    val route = tab.route
+                    val label = tab.label
                     val isSelected = currentRoute == route
                     Column(
                         modifier = Modifier
@@ -858,11 +859,10 @@ fun MainScaffold(
                             .padding(vertical = 2.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = label,
-                            tint = if (isSelected) BrandPrimary else RefMuted,
-                            modifier = Modifier.size(22.dp),
+                        MainNavigationTabIcon(
+                            icon = tab.icon,
+                            label = label,
+                            selected = isSelected,
                         )
                         Spacer(Modifier.size(2.dp))
                         Text(
@@ -887,12 +887,12 @@ fun MainScaffold(
                         change.consume()
                     },
                     onDragEnd = {
-                        val index = tabs.indexOfFirst { it.first == currentRoute }
+                        val index = tabs.indexOfFirst { it.route == currentRoute }
                         when {
                             index >= 0 && dragDistance <= -60f && index < tabs.lastIndex ->
-                                onNavigate(tabs[index + 1].first)
+                                onNavigate(tabs[index + 1].route)
                             index > 0 && dragDistance >= 60f ->
-                                onNavigate(tabs[index - 1].first)
+                                onNavigate(tabs[index - 1].route)
                         }
                         dragDistance = 0f
                     },
@@ -902,6 +902,56 @@ fun MainScaffold(
         Box(modifier = swipeModifier) {
             content()
         }
+    }
+}
+
+private enum class MainTabIcon {
+    FOCUS_TIMER,
+    SCHEDULE,
+    DEFENSE,
+    STATS,
+    SETTINGS,
+}
+
+private data class MainTab(
+    val route: String,
+    val label: String,
+    val icon: MainTabIcon,
+)
+
+@Composable
+private fun MainNavigationTabIcon(
+    icon: MainTabIcon,
+    label: String,
+    selected: Boolean,
+) {
+    val tint = if (selected) BrandPrimary else RefMuted
+    when (icon) {
+        MainTabIcon.FOCUS_TIMER -> FocusFlowTimerIcon(Modifier.size(22.dp))
+        MainTabIcon.DEFENSE -> Icon(
+            imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
+        MainTabIcon.SCHEDULE -> Icon(
+            imageVector = Icons.Outlined.CalendarMonth,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
+        MainTabIcon.STATS -> Icon(
+            imageVector = Icons.Outlined.BarChart,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
+        MainTabIcon.SETTINGS -> Icon(
+            imageVector = Icons.Outlined.Settings,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
