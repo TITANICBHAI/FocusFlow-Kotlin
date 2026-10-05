@@ -24,9 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
+import com.tbtechs.focusflow.ui.navigation.FocusTabIcons
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
-import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 data class SideMenuItem(
@@ -46,12 +46,9 @@ fun SideMenu(
             Icon(Icons.Outlined.Home, contentDescription = null)
         },
         SideMenuItem(Routes.FOCUS, "Focus") { selected ->
-            FocusFlowTimerIcon(
-                modifier = Modifier.size(24.dp),
-                selected = selected,
-                opticalScale = 0.86f,
-                selectedColor = BrandPrimary,
-                cutoutHandWhenSelected = true,
+            Icon(
+                imageVector = if (selected) FocusTabIcons.Active else FocusTabIcons.Inactive,
+                contentDescription = null,
             )
         },
         SideMenuItem(Routes.STATS, "Stats") { _ ->
