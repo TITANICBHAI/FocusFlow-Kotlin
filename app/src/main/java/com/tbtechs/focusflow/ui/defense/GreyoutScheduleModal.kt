@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.ui.defense
 
 import android.content.Context
+import android.net.VpnService
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -77,6 +78,7 @@ import com.tbtechs.focusflow.ui.common.resolve
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
+import com.tbtechs.focusflow.ui.alwayson.VpnConsentPolicy
 import com.tbtechs.focusflow.ui.alwayson.rememberVpnConsentRequester
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -896,7 +898,13 @@ private fun ScheduleEditor(
                                 }
                             } else {
                                 scope.launch {
-                                    if (vpnRepository != null && !vpnRepository.isVpnPermissionGranted()) {
+                                    val permissionGranted = VpnConsentPolicy.permissionGranted(
+                                        repositoryPermission = vpnRepository?.isVpnPermissionGranted(),
+                                        platformPermissionCheck = {
+                                            VpnService.prepare(context) == null
+                                        },
+                                    )
+                                    if (!permissionGranted) {
                                         vpnConsentVisible = true
                                     } else {
                                         current = current.copy(vpnEnabled = true)

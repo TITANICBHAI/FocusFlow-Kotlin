@@ -50,6 +50,14 @@ internal enum class VpnConsentOutcome(val isGranted: Boolean) {
 }
 
 internal object VpnConsentPolicy {
+    fun permissionGranted(
+        repositoryPermission: Boolean?,
+        platformPermissionCheck: () -> Boolean,
+    ): Boolean {
+        if (repositoryPermission != null) return repositoryPermission
+        return runCatching { platformPermissionCheck() }.getOrDefault(false)
+    }
+
     fun afterResult(permissionGranted: Boolean): VpnConsentOutcome =
         if (permissionGranted) VpnConsentOutcome.GRANTED else VpnConsentOutcome.NOT_GRANTED
 }
@@ -69,9 +77,9 @@ internal fun rememberVpnConsentRequester(
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) {
-        val permissionGranted = runCatching {
+        val permissionGranted = VpnConsentPolicy.permissionGranted(repositoryPermission = null) {
             VpnService.prepare(context) == null
-        }.getOrDefault(false)
+        }
         currentOnConsentResult(VpnConsentPolicy.afterResult(permissionGranted))
     }
 
@@ -86,9 +94,9 @@ internal fun rememberVpnConsentRequester(
                 currentOnConsentResult(VpnConsentOutcome.NOT_GRANTED)
             }
             consentIntent == null -> {
-                val permissionGranted = runCatching {
+                val permissionGranted = VpnConsentPolicy.permissionGranted(repositoryPermission = null) {
                     VpnService.prepare(context) == null
-                }.getOrDefault(false)
+                }
                 currentOnConsentResult(VpnConsentPolicy.afterResult(permissionGranted))
             }
             else -> {

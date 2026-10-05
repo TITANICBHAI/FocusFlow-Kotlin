@@ -92,15 +92,15 @@
 
 ## Batch 1 — P0 T1: explicit VPN targets and derived snapshots
 
-**Status:** Complete for sequencing; final verification deferred
+**Status:** Complete for sequencing; Batch 1 unit tests passed, device checks remain for final verification
 **Gate:** Batch 0 complete; T1 reproduced with a failing assertion before behavior changes.
 
 - [x] Add and run the T1-repro test before changing implementation.
-- [ ] Add and run T1-migrate and T1-migrate-2 tests against the completed implementation.
+- [x] Add and run T1-migrate and T1-migrate-2 tests against the completed implementation.
 - [x] Make `net_block_explicit_packages` the only explicit-list input and implement the one-time, idempotent migration without losing user data.
 - [x] Remove any seeding of explicit packages from derived effective targets.
 - [x] Preserve `net_block_packages` as diagnostic output only.
-- [ ] Run the relevant tests and record verification evidence.
+- [x] Run the relevant tests and record verification evidence.
 
 ### Batch 1 work log
 
@@ -109,10 +109,11 @@
 | 2026-10-05 | In progress; added and ran the T1 regression before changing behavior. | `ExplicitVpnPolicy.kt`, `ExplicitVpnPolicyTest.kt`, current VPN coordinator/repository sources | Configured `Run Android unit tests` workflow (`bash scripts/test-unit.sh`); then `bash scripts/test-unit.sh --tests 'com.tbtechs.focusflow.enforcement.ExplicitVpnPolicyTest.migratesLegacySnapshotWhenExplicitKeyIsMissingAndGenerationIsZero' --tests 'com.tbtechs.focusflow.enforcement.ExplicitVpnPolicyTest.migratesToEmptyWhenExplicitKeyIsMissingAndGenerationIsPositive' --tests 'com.tbtechs.focusflow.enforcement.ExplicitVpnPolicyTest.migrationPreservesAnExistingExplicitList'` | Baseline full run compiled successfully and executed 113 tests; the new focus-mirror regression failed at its assertion as intended (1 failure, no compile/environment failure). The three helper-only migration/preservation checks passed before implementation; rerun the final test forms at final verification. |
 | 2026-10-05 | Implemented the Batch 1 changes; post-implementation tests deferred at the owner's request. | `VpnPolicyCoordinator.kt`, `VpnRepository.kt`, `SettingsRepository.kt`, `ExplicitVpnPolicy.kt`, `ExplicitVpnPolicyTest.kt` | `git diff --check` and final Batch 1 diff review; source audit of snapshot and explicit-list reads/writes; confirmed the old seeding block is absent. | Diff/whitespace review passed. `net_block_packages` remains written by the coordinator and service and is read only as the generation-0 one-time migration source; the explicit-list fallback and start-path seeding are removed. Leave the final implementation test run pending until final verification, as requested. The earlier red regression and pre-implementation migration checks are documented above; no test has been run against the completed implementation. |
 | 2026-10-05 | Owner marked Batch 1 complete for sequencing and authorized Batch 2; final tests remain deferred. | This tracker | Owner instruction in the Batch 2 request | Batch 2 may proceed without intermediate test execution; run the accumulated tests only at the designated final verification. |
+| 2026-10-05 | Ran the completed Batch 1 policy tests in the requested full unit-test workflow. | `ExplicitVpnPolicyTest.kt`, this tracker | `Run Android unit tests` workflow (`bash scripts/test-unit.sh`); full unit suite: 127 passed, 0 failures/errors/skips. | The T1 regression, generation-zero migration, positive-generation migration, and existing-explicit-list precedence all pass against the completed implementation. Device checks remain unavailable. |
 
 ## Batch 2 — P0 T2: Defense self-healing toggle
 
-**Status:** In progress; implementation added, final verification deferred
+**Status:** Complete for sequencing; implementation added and policy tests passed, device checks remain for final verification
 **Gate:** Batch 1 complete.
 
 - [x] Verify the current Defense toggle and all self-heal preference call sites.
@@ -120,7 +121,7 @@
 - [x] Ensure the Defense toggle owns disabling; list screens may enable self-healing when needed but must not turn it off.
 - [x] Preserve the backup import protection rule for this setting.
 - [x] Add focused tests for migration, off/on transition effects, list-save behavior, and backup import protection.
-- [ ] Run the focused tests at final verification; execution is deferred per owner instruction.
+- [x] Run the focused tests in the requested full unit-test workflow; record verification below.
 - [x] Record results and checks that were not performed.
 
 ### Batch 2 work log
@@ -128,30 +129,32 @@
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
 | 2026-10-05 | Implementation and diff review complete; focused test execution deferred. | `SettingsRepository.kt`, `VpnRepository.kt`, `VpnSelfHealPolicy.kt`, `VpnBlockListScreen.kt`, `AlwaysOnScreen.kt`, `BackupSettingsPolicyTest.kt`, `VpnSelfHealPolicyTest.kt`, this tracker | Verified Defense and all native self-heal call sites; `rg` confirms the legacy snake-case key remains only in the migration policy; `git diff --check`; reviewed Batch 2 diff. No build or tests run. | Defense now reads/writes `net_block_self_heal`; when the setting changes, off cancels the watchdog and on requests recovery sync. Legacy value is copied only when the native key is absent, using a committed write under `restoreGate.write(...)`; existing native values win. Both list screens enable self-healing only when VPN packages are present, never disable it. `vpnSelfHealEnabled` remains excluded from backup import and has explicit policy coverage. Focused test source was added but not executed per owner instruction. No emulator/device checks were performed; Batch 0 recorded that `adb` and emulator tooling are unavailable in the direct environment. |
+| 2026-10-05 | Ran the completed Batch 2 policy and backup-protection tests in the requested full unit-test workflow. | `VpnSelfHealPolicyTest.kt`, `BackupSettingsPolicyTest.kt`, this tracker | `Run Android unit tests` workflow (`bash scripts/test-unit.sh`); full unit suite: 127 passed, 0 failures/errors/skips. | All 5 self-heal policy tests and both backup import protection tests pass. Device checks remain unavailable. |
 
 ## Batch 3 — P0 T3: VPN consent result handling
 
-**Status:** Not started
+**Status:** Blocked: existing consent callers and tests pass; ImportConfirmScreen still needs its result-aware restore path, gated by Q4.
 **Gate:** Batch 2 complete.
 
-- [ ] Re-verify every consent request caller named in plan §2, T3.
-- [ ] Apply enabled-state changes only after system VPN consent is confirmed.
-- [ ] Preserve each caller's existing behavior; run the cancellation test and related tests.
-- [ ] Remove the legacy request-code flow only after all callers are migrated.
-- [ ] Record results and any unavailable device verification.
+- [x] Re-verify the five existing VPN consent callers named in plan §2, T3; record the ImportConfirmScreen addition as gated below.
+- [x] Apply enabled-state changes only after system VPN consent is confirmed in the existing flows, including when the optional repository is absent.
+- [x] Preserve the existing behavior of those flows; run the consent-cancellation and grant policy tests.
+- [x] Remove the legacy VPN request-code flow after the existing callers were migrated.
+- [x] Record results and unavailable device verification.
 
 ### Batch 3 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Existing T3 consent flows verified and fail-open optional-repository paths fixed; Batch 3 remains blocked on the planned ImportConfirmScreen result-aware restore integration. | Changed: `DefenseScreen.kt`, `GreyoutScheduleModal.kt`. Reviewed: `VpnConsentModal.kt`, `VpnRepository.kt`, `AlwaysOnScreen.kt`, `VpnBlockListScreen.kt`, `VpnPermissionLostBanner.kt`, `ImportConfirmScreen.kt`, `VpnConsentPolicyTest.kt`, this tracker. | `rg` audit of consent helper and legacy APIs; `git diff --check`; `bash scripts/test-unit.sh --tests 'com.tbtechs.focusflow.ui.alwayson.VpnConsentPolicyTest'` — passed (2 tests; app and test sources compiled); `adb devices -l` — no devices; emulator binary unavailable. | Defense and Greyout now fail closed when their optional `VpnRepository` is absent: they check `VpnService.prepare` and only enable after confirmed permission. The shared result-aware helper is used by the five existing callers (Defense, Greyout, Always-On, VPN list, permission-lost banner); it checks actual permission after the Android activity result. Cancellation and grant policy tests passed. No VPN `requestVpnPermission` or request code `2001` references remain; the only remaining `startActivityForResult` is unrelated Usage Stats request `1001`. `ImportConfirmScreen` still has no VPN consent-result path. The plan places that in T3 for T4, but safe activation depends on the unresolved Q4 VPN-list source-of-truth decision; do not activate or migrate the imported list before Q4 is recorded. Device consent checks remain unavailable because no device or emulator is present. |
+| 2026-10-05 | Added the missing test coverage for the optional-repository permission fallback and explicit-list precedence; ran all Batch 1–3 tests through the configured workflow. | `VpnConsentModal.kt`, `GreyoutScheduleModal.kt`, `VpnConsentPolicyTest.kt`, `ExplicitVpnPolicyTest.kt`, this tracker | `Run Android unit tests` workflow (`bash scripts/test-unit.sh`); full unit suite: 27 suites, 127 tests, 0 skipped, 0 failures/errors; `git diff --check`. | T3 now tests repository result precedence, missing-repository fallback, fallback failure denial, cancellation, and grant. T1 now asserts that an existing explicit list wins over a derived snapshot. Batch 2 migration/toggle/list-save and backup-protection tests also pass. The ImportConfirmScreen path remains gated by Q4; no device/emulator consent check was possible. |
 
 ## Batch 4 — P1 T4 and T8-a: VPN list persistence and master-switch ownership
 
-**Status:** Not started
+**Status:** Blocked: Batch 3/Q4 gate; read-only import/export audit complete
 **Gate:** Batch 3 complete. Q3 is decided; resolve Q4 before implementing the VPN-list persistence/migration.
 
-- [ ] Read the relevant backup contract and verify current import/export wiring.
+- [ ] Read the referenced v14 backup contract (not present in the workspace); [x] verify current import/export wiring against the available adapter and persistence contract.
 - [x] Record the owner's Q3 decision about restoring a non-empty list while Network Blocking is off (see the owner decision record and dated work-log entry).
 - [ ] Record the owner's Q4 decision about the single source of truth for the VPN list.
 - [ ] Implement the approved VPN-list persistence and migration without overwriting or dropping user data.
@@ -167,6 +170,7 @@
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
 | 2026-10-05 | Owner decision recorded; implementation not started. | `VPN_WIRING_FIX_PLAN.md`, this tracker, `VpnBlockListScreen`, `AlwaysOnScreen`, `VpnRepository`, `DefenseScreen` | Reviewed the user's answer and compared list-save/consent behavior with the current code. | Q3: request Android VPN consent during Import; on grant activate Network Blocking (VPN), VPN Self-Healing, and the imported list; on denial/cancel continue restore with the list dormant. Use one informational post-import summary with collapsible cards for imported protection categories. Read-only check found list-save/native and Defense UI self-heal state are not fully synchronized; T2/T8-a must verify and fix that. Q4 remains pending. |
+| 2026-10-05 | Completed the read-only Batch 4 import/export audit; implementation remains blocked on Q4 and the absent v14 backup contract. | `app/PERSISTENCE_CONTRACT.md`, `TsSettingsAdapter.kt`, `SettingsRepository.kt`, `VpnRepository.kt`, `BackupCoordinator.kt`, `ImportConfirmScreen.kt`, `AlwaysOnScreen.kt`, `VpnBlockListScreen.kt`, this tracker | Searched for the referenced v14 contract; read the available persistence contract and adapter/coordinator/import/list-save paths. No feature code changed. | The available persistence contract documents preference ownership, not the v14 wire-format contract; the referenced v14 file is absent. Current list screens persist `net_block_explicit_packages`, while V1 backup import/export maps `alwaysOnVpnPackages` to/from `always_on_vpn_packages`; no bridge currently makes those values round-trip into native enforcement. Import applies portable settings and reconciles VPN policy but has no consent-result activation or category summary. Both list-save paths can write `enabled=false` and `vpn=false` when their VPN list is empty; Always-On also updates the UI master switch, while the VPN list screen does not. Q3 remains recorded in the owner decision table and dated log; Q4 is pending. |
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 

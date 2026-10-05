@@ -93,6 +93,7 @@ class ExplicitVpnPolicyTest {
 
     @Test
     fun migrationPreservesAnExistingExplicitList() {
+        val explicitPackages = listOf("com.example.explicit")
         val migration = ExplicitVpnPolicy.migrationPlan(
             alreadyMigrated = false,
             explicitKeyExists = true,
@@ -102,5 +103,15 @@ class ExplicitVpnPolicyTest {
 
         assertEquals(null, migration?.explicitPackagesToWrite)
         assertTrue(migration?.markMigrated == true)
+        assertEquals(
+            explicitPackages,
+            ExplicitVpnPolicy.selectExplicitCandidates(
+                explicitKeyExists = true,
+                explicitPackages = explicitPackages,
+                migrationComplete = false,
+                derivedSnapshot = listOf("com.example.derived"),
+                policyGeneration = 0L,
+            ),
+        )
     }
 }

@@ -445,11 +445,7 @@ fun DefenseScreen(
                             if (!enabled && blockActive) {
                                 notice = "Network Blocking (VPN) can't be turned off while a block is running."
                             } else if (enabled) {
-                                if (vpnRepository == null) {
-                                    update(settings.copy(networkBlockEnabled = true))
-                                } else {
-                                    vpnConsentVisible = true
-                                }
+                                vpnConsentVisible = true
                             } else if (settings.pinProtectionEnabled) {
                                 pinPrompt = PinAction(
                                     "Disable Network Blocking",
