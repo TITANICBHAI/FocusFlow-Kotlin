@@ -936,6 +936,7 @@ private fun MainNavigationTabIcon(
             selected = selected,
             opticalScale = 0.86f,
             inactiveTint = RefMuted,
+            selectedColor = BrandPrimary,
         )
         MainTabIcon.DEFENSE -> Icon(
             imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
+import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 data class SideMenuItem(
@@ -49,6 +50,7 @@ fun SideMenu(
                 modifier = Modifier.size(24.dp),
                 selected = selected,
                 opticalScale = 0.86f,
+                selectedColor = BrandPrimary,
             )
         },
         SideMenuItem(Routes.STATS, "Stats") { _ ->

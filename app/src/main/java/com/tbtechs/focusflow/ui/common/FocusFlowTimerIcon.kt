@@ -26,6 +26,7 @@ internal fun FocusFlowTimerIcon(
     selected: Boolean,
     opticalScale: Float = 1f,
     inactiveTint: Color? = null,
+    selectedColor: Color? = null,
 ) {
     val inactiveColor = inactiveTint
         ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
@@ -595,8 +596,13 @@ internal fun FocusFlowTimerIcon(
         inner.transform(transform)
 
         if (selected) {
-            drawPath(path = outer, brush = gradient)
-            drawPath(path = inner, brush = gradient)
+            if (selectedColor == null) {
+                drawPath(path = outer, brush = gradient)
+                drawPath(path = inner, brush = gradient)
+            } else {
+                drawPath(path = outer, color = selectedColor)
+                drawPath(path = inner, color = selectedColor)
+            }
         } else {
             val outline = Stroke(
                 width = 6f * minOf(scaleX, scaleY),
@@ -604,7 +610,6 @@ internal fun FocusFlowTimerIcon(
                 join = StrokeJoin.Round,
             )
             drawPath(path = outer, color = inactiveColor, style = outline)
-            drawPath(path = inner, color = inactiveColor, style = outline)
         }
     }
 }

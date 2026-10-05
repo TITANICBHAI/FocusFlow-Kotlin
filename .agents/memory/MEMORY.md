@@ -14,4 +14,4 @@
 - [Compose scope audits](kotlin-compose-scope-audits.md) — stop expression-bodied local functions at their expression end when checking `@Composable` call scope.
 - [Settings help and text-size destinations](settings-guides.md) — keep sliders on a separate Settings screen and integrate guarded-change help into the expanded How to Use guide.
 - [GitHub push and build polling](github-push-build-polling.md) — only push or monitor GitHub Actions when the user explicitly asks.
-- [Navigation icon states](navigation-icon-states.md) — use the same compact custom Focus icon in outline/filled states; retain Defense outline/filled shield states.
+- [Navigation icon states](navigation-icon-states.md) — Focus uses one inactive rim and BrandPrimary when selected; retain Defense outline/filled shield states.
