@@ -151,12 +151,12 @@
 
 ## Batch 4 — P1 T4 and T8-a: VPN list persistence and master-switch ownership
 
-**Status:** Blocked: Batch 3/Q4 gate; read-only import/export audit complete
-**Gate:** Batch 3 complete. Q3 is decided; resolve Q4 before implementing the VPN-list persistence/migration.
+**Status:** Blocked: referenced v14 backup contract missing; Q3/Q4 decisions recorded
+**Gate:** Batch 3 complete and the referenced v14 backup contract available; Q3 and Q4 are decided.
 
 - [ ] Read the referenced v14 backup contract (not present in the workspace); [x] verify current import/export wiring against the available adapter and persistence contract.
 - [x] Record the owner's Q3 decision about restoring a non-empty list while Network Blocking is off (see the owner decision record and dated work-log entry).
-- [ ] Record the owner's Q4 decision about the single source of truth for the VPN list.
+- [x] Record the owner's Q4 decision about the single source of truth for the VPN list.
 - [ ] Implement the approved VPN-list persistence and migration without overwriting or dropping user data.
 - [ ] During Import, request VPN consent for a non-empty restored list when Network Blocking is off; only after an actual grant, enable Network Blocking (VPN), VPN Self-Healing, and the matching persisted VPN settings.
 - [ ] If VPN consent is denied/canceled, continue the selected restore, preserve the list as dormant, and do not newly enable either switch.
@@ -171,11 +171,12 @@
 |---|---|---|---|---|
 | 2026-10-05 | Owner decision recorded; implementation not started. | `VPN_WIRING_FIX_PLAN.md`, this tracker, `VpnBlockListScreen`, `AlwaysOnScreen`, `VpnRepository`, `DefenseScreen` | Reviewed the user's answer and compared list-save/consent behavior with the current code. | Q3: request Android VPN consent during Import; on grant activate Network Blocking (VPN), VPN Self-Healing, and the imported list; on denial/cancel continue restore with the list dormant. Use one informational post-import summary with collapsible cards for imported protection categories. Read-only check found list-save/native and Defense UI self-heal state are not fully synchronized; T2/T8-a must verify and fix that. Q4 remains pending. |
 | 2026-10-05 | Completed the read-only Batch 4 import/export audit; implementation remains blocked on Q4 and the absent v14 backup contract. | `app/PERSISTENCE_CONTRACT.md`, `TsSettingsAdapter.kt`, `SettingsRepository.kt`, `VpnRepository.kt`, `BackupCoordinator.kt`, `ImportConfirmScreen.kt`, `AlwaysOnScreen.kt`, `VpnBlockListScreen.kt`, this tracker | Searched for the referenced v14 contract; read the available persistence contract and adapter/coordinator/import/list-save paths. No feature code changed. | The available persistence contract documents preference ownership, not the v14 wire-format contract; the referenced v14 file is absent. Current list screens persist `net_block_explicit_packages`, while V1 backup import/export maps `alwaysOnVpnPackages` to/from `always_on_vpn_packages`; no bridge currently makes those values round-trip into native enforcement. Import applies portable settings and reconciles VPN policy but has no consent-result activation or category summary. Both list-save paths can write `enabled=false` and `vpn=false` when their VPN list is empty; Always-On also updates the UI master switch, while the VPN list screen does not. Q3 remains recorded in the owner decision table and dated log; Q4 is pending. |
+| 2026-10-05 | Recorded the owner's Q4 source-of-truth decision; implementation remains blocked by the Batch 3 gate and absent v14 backup contract. | This tracker, `VPN_WIRING_FIX_PLAN.md` | Recorded the user's explicit Q4 choice. No code changed and no tests run. | Q4: `net_block_explicit_packages` is the canonical internal VPN-list source. Preserve the existing `alwaysOnVpnPackages` backup field through explicit adapter mapping; migration must not silently drop or overwrite values. |
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 
-**Status:** Blocked: Batch 4 is incomplete/Q4 is pending; Q1 decided (2026-10-05); read-only audit complete
-**Gate:** Batch 4 complete. Resolve Q1 before implementing schedule VPN scope. T5/T6 share the boundary scheduler and must be coordinated.
+**Status:** Blocked: Batch 4 is incomplete and the v14 backup contract is missing; Q1/Q4 decided (2026-10-05); read-only audit complete
+**Gate:** Batch 4 complete. Q1 is decided. T5/T6 share the boundary scheduler and must be coordinated.
 
 - [x] Re-verify standalone-block VPN selection, persistence, expiry clearing, and all relevant callers.
 - [x] Record the owner's Q1 decision on which schedule apps are VPN-blocked and when.
@@ -233,7 +234,7 @@ Record each decision, date, and evidence before dependent work. Pending question
 | Q1 | Schedule VPN scope and active-window behavior | Decided (2026-10-05) | All apps in a VPN-enabled schedule's package list are VPN-blocked only while its configured window is active; selected the plan default in response to the owner question. |
 | Q2 | Remove Wi-Fi/mobile-data behavior, or expose it with safe defaults and a working restore path | Pending |  |
 | Q3 | Behavior when import includes a VPN list but Network Blocking is off | Decided (2026-10-05) | Request VPN consent during Import; on grant turn on Network Blocking and VPN Self-Healing and activate the imported list. On denial/cancel, continue restore with the list dormant. Use one informational expandable summary for imported protection categories; do not ask for another in-app confirmation. |
-| Q4 | Single source of truth for the explicit VPN list | Pending |  |
+| Q4 | Single source of truth for the explicit VPN list | Decided (2026-10-05) | `net_block_explicit_packages` is the canonical internal VPN-list source; preserve the existing `alwaysOnVpnPackages` backup field through explicit mapping. |
 
 ## Required test scenarios
 
