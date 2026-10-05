@@ -53,8 +53,8 @@ internal const val FOCUSFLOW_EXTERNAL_IMPORT_NOTE =
         "validate, review, confirm, then restore."
 
 internal const val FOCUSFLOW_GENERATION_NOTE =
-    "Copy the AI schedule prompt above and describe your routine, dates, time zone, and constraints. " +
-        "The prompt includes the fields needed to create an importable .focusflow backup."
+    "Copy the AI task-backup prompt above and describe the tasks, dates, time zone, and constraints. " +
+        "It creates a task-only .focusflow file without changing FocusFlow's other features or global settings."
 
 internal val FOCUSFLOW_FILE_FACTS = listOf(
     FocusFlowGuideItem("Extension", ".focusflow"),

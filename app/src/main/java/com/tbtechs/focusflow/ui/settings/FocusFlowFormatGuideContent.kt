@@ -140,9 +140,9 @@ internal fun FocusFlowFormatGuideBody() {
             GuideCodeBlock(FOCUSFLOW_VALID_BACKUP_EXAMPLE)
         }
 
-        GuideArticleSection("9. Generate a backup from your routine") {
+        GuideArticleSection("9. Create a task backup from your plan") {
             GuideCallout(
-                "Use the AI schedule prompt",
+                "Use the AI task-backup prompt",
                 FOCUSFLOW_GENERATION_NOTE,
                 highlighted = true,
             )

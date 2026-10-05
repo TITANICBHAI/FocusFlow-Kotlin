@@ -9,7 +9,7 @@
 - [Text size settings](text-size-settings.md) — Home stays at 100%; per-tab overrides replace General and the rollout is strictly scoped.
 - [Stats fix plan](stats-fix-plan.md) — use calendar-time evidence, state-agnostic pacing, and persisted hourly data for Stats correctness.
 - [Rolling Stats dates](rolling-stats-dates.md) — rolling week charts must use ISO calendar-date series, not weekday-only aggregates.
-- [Backup contract authority](backup-contract-authority.md) — v14 is the only product spec; don't invent behavior absent from its documented TypeScript facts.
+- [Backup contract authority](backup-contract-authority.md) — verify backup behavior against v14/current code; describe FocusFlow broadly while keeping task-backup scope narrow.
 - [Replit config side effects](replit-config-side-effects.md) — invoking an unconfigured runtime can add a module to `.replit`; use the validated replacement flow to restore config.
 - [Compose scope audits](kotlin-compose-scope-audits.md) — stop expression-bodied local functions at their expression end when checking `@Composable` call scope.
 - [Settings help and text-size destinations](settings-guides.md) — keep sliders on a separate Settings screen and integrate guarded-change help into the expanded How to Use guide.

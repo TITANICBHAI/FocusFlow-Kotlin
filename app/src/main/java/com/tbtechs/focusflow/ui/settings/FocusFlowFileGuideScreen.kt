@@ -108,28 +108,29 @@ internal fun FocusFlowFileGuideScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 Text(
-                    "AI schedule generator",
+                    "AI task-backup prompt",
                     color = DarkTextPrimary,
                     fontSize = 15.scaledSp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Copy the prompt, then describe your routine. It tells an AI how to " +
-                        "create a valid .focusflow backup and ask about missing schedule details.",
+                    "FocusFlow includes focus sessions, app/network blocking, allowances, " +
+                        "and usage insights as well as tasks. This prompt creates a task-only " +
+                        ".focusflow backup and leaves app-wide settings alone.",
                     color = DarkTextSecondary,
                     fontSize = 13.scaledSp,
                     lineHeight = 19.scaledSp,
                 )
                 Button(
                     onClick = {
-                        clipboard.setText(AnnotatedString(FOCUSFLOW_SCHEDULE_GENERATOR_PROMPT))
+                        clipboard.setText(AnnotatedString(FOCUSFLOW_TASK_BACKUP_PROMPT))
                         copied = true
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 ) {
                     Text(
-                        if (copied) "Prompt copied" else "Copy AI schedule prompt",
+                        if (copied) "Prompt copied" else "Copy task-backup prompt",
                         color = Color.White,
                         fontSize = 14.scaledSp,
                         fontWeight = FontWeight.SemiBold,

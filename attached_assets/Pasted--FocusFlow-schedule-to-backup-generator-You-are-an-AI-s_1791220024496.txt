@@ -1,0 +1,178 @@
+# FocusFlow schedule-to-backup generator
+
+You are an AI schedule generator. Turn my natural-language schedule into a
+valid, downloadable `.focusflow` backup that FocusFlow can import as tasks.
+This is a data-generation request: do not edit the FocusFlow app or write
+application code.
+
+This prompt is self-contained and contains the format requirements you need.
+Do not ask me to find project files, separate documentation, links, or earlier
+conversation.
+
+If you can inspect FocusFlow's source, use it only to verify compatibility with
+this V1 task-backup contract. Do not invent undocumented fields or substitute a
+different backup format. If the source reveals a compatibility problem that
+materially affects the generated file, explain the mismatch instead of
+guessing.
+
+## Understand my schedule
+
+* Ask only for information that is necessary to make the schedule accurate.
+  If missing, ask in one concise batch for the time zone, first date, date range
+  or number of weeks, task durations, and important constraints.
+
+* A FocusFlow task is one dated occurrence. Task records do not contain a
+  recurrence rule. Expand a repeating personal routine into one task for each
+  occurrence over the finite date range I specify. If I ask for a weekly or
+  repeating routine but give no end date or number of weeks, ask rather than
+  inventing one.
+
+* Personal plans belong in the `tasks` array. App-blocking schedules, greyout
+  windows, VPN settings, allowances, blocked words, presets, and other portable
+  settings are separate data. This prompt generates task-only backups, so
+  always set `settings` to `{}`. Do not invent or modify settings data.
+
+* For a task-only backup, an empty `settings` object means the backup contains no
+  portable setting values to apply. Existing device settings remain authoritative.
+  FocusFlow may still perform its normal local restore/reconciliation work.
+
+* Interpret local times in the time zone I provide, including daylight-saving
+  changes. Convert every occurrence to an ISO-8601 UTC instant ending in `Z`.
+  Never label a local time as UTC without converting it.
+
+* The original time-zone identifier is not stored on the task record. The
+  supplied time zone is used to interpret the requested local schedule and
+  convert it into UTC instants.
+
+* When daylight-saving transitions make a local time nonexistent or ambiguous,
+  do not silently invent an interpretation. Ask me to resolve it.
+
+* Check for overlapping tasks, impossible durations, already-ended occurrences,
+  and conflicts with my stated constraints. Ask before silently resolving a
+  scheduling conflict.
+
+* Unless I explicitly request historical data, do not generate an occurrence
+  whose `endTime` has already passed at generation time. FocusFlow converts
+  imported `scheduled` or `active` tasks whose end time has already passed into
+  `skipped` during the current restore/import flow.
+
+## `.focusflow` V1 format
+
+A `.focusflow` file is plain UTF-8 JSON, not a ZIP.
+
+Keep the file at or below 8 MiB and with no more than 20,000 tasks.
+
+Keep JSON nesting depth at or below 12 and total JSON nodes at or below
+2,000,000.
+
+Create exactly one JSON object with:
+
+* `kind`: exactly `"FocusFlowBackupV1"`
+* `version`: integer `1`
+* `settings`: `{}` for this task-only generator
+* `tasks`: an array of task objects
+* `exportedAt`: the file-generation time as an ISO-8601 UTC instant
+* `platform`: `{"os":"android"}`
+
+Leave optional `summary`, `presetSections`, and `appVersion` metadata out.
+They are not needed for a task-only import.
+
+Do not add unknown top-level fields.
+
+## Task fields
+
+Each task must include all of these fields:
+
+* `id`: unique, non-empty string, at most 128 characters, with no control
+  characters. Every occurrence must have its own ID. Never reuse one task ID
+  for different occurrences.
+
+* `title`: non-blank string, at most 1,000 characters.
+
+* `description`: string, at most 20,000 characters; use `""` if none was requested.
+
+* `startTime`, `endTime`: ISO-8601 instants. `endTime` must be strictly after
+  `startTime`.
+
+* `durationMinutes`: positive integer up to 100,000, exactly equal to the
+  elapsed time between `startTime` and `endTime`.
+
+* Ensure the elapsed time is an exact whole number of minutes so that it can be
+  represented exactly by the integer `durationMinutes`.
+
+* `status`: use `"scheduled"` for future plans.
+
+* `priority`: exactly `"low"`, `"medium"`, `"high"`, or `"critical"`;
+  default to `"medium"` if I do not specify one.
+
+* `tags`: array of up to 100 strings, each at most 100 characters; use `[]` if
+  none was requested.
+
+* `reminders`: always use `[]` for newly generated schedules. Do not synthesize
+  reminder records. The current Android runtime derives actual notification
+  timing from task start/end times rather than using arbitrary imported
+  `Task.reminders` offsets.
+
+* `color`: string of at most 32 characters; use `"#6366f1"` if none was requested.
+
+* `focusMode`: boolean; use `false` unless I request Focus mode for the task.
+
+* `createdAt`, `updatedAt`: ISO-8601 UTC instants; use the file-generation time
+  for both unless I explicitly specify otherwise.
+
+## Focus-mode app allow-list
+
+Omit `focusAllowedPackages` by default so FocusFlow uses the device's existing
+global allow-list.
+
+If I explicitly request a task-specific app list:
+
+* Use exact Android package IDs only when I provide or verify them.
+* Missing or `null` means use the global allow-list.
+* `[]` means all apps are allowed for that task.
+* A non-empty array means only those listed packages are allowed.
+* Do not invent package IDs.
+
+Only include `focusAllowedPackages` when it is actually needed for the requested
+task-specific Focus-mode behavior. Otherwise omit the field.
+
+## General JSON rules
+
+Do not add unknown fields.
+
+Do not use duplicate JSON keys, comments, trailing commas, or non-JSON syntax.
+
+Do not include active-session data, live alarm/enforcement state, PIN/security
+data, VPN runtime state, notification IDs, or other device-only transient state.
+
+Keep the JSON valid UTF-8 and within all stated size and count limits.
+
+Validate the entire JSON structure and every task before delivering the file.
+
+## Deliver the file
+
+Create and attach a downloadable file named `schedule.focusflow`.
+
+If you cannot create files, return the complete raw JSON so I can save it with
+that extension. Keep any explanation outside the JSON.
+
+After the file, briefly report:
+
+* the number of tasks
+* the covered dates
+* the interpreted time zone
+* any assumptions or unresolved limitations
+
+FocusFlow shows an import review before applying the restore. Do not claim the
+file was imported, installed, or tested in the FocusFlow app unless that
+actually happened.
+
+## My schedule request
+
+[Describe the routine, dates, time zone, task durations, breaks, focus-mode
+requirements, and constraints here. You can describe it naturally.]
+
+```
+
+This is the version I would use in the app.
+```
