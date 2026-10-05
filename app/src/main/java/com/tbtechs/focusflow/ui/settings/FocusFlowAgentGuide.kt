@@ -6,29 +6,53 @@ internal const val FOCUSFLOW_FILE_FORMAT_URL =
 internal val FOCUSFLOW_CODING_AGENT_PROMPT = """
 # FocusFlow coding-agent instructions
 
-You are an AI coding agent working in the existing FocusFlow Android repository.
-FocusFlow is a native Android focus and digital-wellbeing app written in Kotlin
-with Jetpack Compose. Its application ID is `com.tbtechs.focusflow`.
+You are an AI coding agent working in the existing FocusFlow Android
+repository. FocusFlow is a native Android focus and digital-wellbeing app
+written in Kotlin with Jetpack Compose. Its application ID is
+`com.tbtechs.focusflow`.
 
-## Read the relevant references first
+This prompt is self-contained: do not require the user or another agent to find
+a separate Markdown file, website, or prior conversation for the project or
+`.focusflow` format context. The format notes below are the practical reference
+for this request. For existing implementation details, inspect the current
+Kotlin source and tests. If a required behavior is not specified here or by the
+current implementation, explain what is unknown instead of guessing.
 
-- Read `README.md` and `replit.md` for the project overview and workspace rules.
-- The human-readable `.focusflow` file guide is
-  $FOCUSFLOW_FILE_FORMAT_URL. Use the website's Docs option for other product
-  documentation.
-- For backup, import, restore, or alarm work, read
-  `fixes/AGENT_PRE_READ_PROMPT.md`, `fixes/IMPLEMENTATION_TRACKER.md`, and
-  `fixes/FOCUSFLOW_IMPLEMENTATION_PLAN_FINAL_v14.md`. The v14 plan is the
-  authority for that contract. Do not invent undocumented backup behavior.
-- For backup investigations, check `docs/focus-bugs.md` and
-  `docs/focus-bugs-tracker.md`, but verify each report against current code and
-  tests before treating it as open.
-- For Stats and behavioral-intelligence work, read
-  `docs/behavioral-intelligence-agent-prompt.md`,
-  `docs/behavioral-intelligence-implementation-tracker.md`, and the relevant
-  phase brief from `docs/IMPL_1A.md` through `docs/IMPL_5.md`.
-- For the offline backup editor/checker, see the backup section in `README.md`
-  and `docs/focusflow-backup-builder.html`.
+## Standalone `.focusflow` file reference
+
+- A `.focusflow` backup is a plain UTF-8 JSON document, not a ZIP archive.
+- The top-level JSON object must contain `kind: "FocusFlowBackupV1"`,
+  `settings` (an object), and `tasks` (an array). Newly generated files should
+  include `version: 1`; the current importer also accepts a missing version.
+- A task is an object with a unique, non-empty `id`, a non-blank `title`,
+  ISO-8601 `startTime` and `endTime` instants with explicit offsets, integer
+  `durationMinutes`, a supported `status` (`scheduled`, `active`, `completed`,
+  `skipped`, or `overdue`), and a supported `priority` (`low`, `medium`, `high`,
+  or `critical`). `endTime` must not be earlier than `startTime`.
+- Common task fields are `description`, `tags`, `reminders`, `color`,
+  `focusMode`, `focusAllowedPackages`, `createdAt`, and `updatedAt`. Reminders
+  are objects attached to a task, not bare integer offsets. Canonical generated
+  timestamps use UTC `Z`. Missing `description` imports as empty text; missing
+  `color` defaults to `#6366f1`; missing `focusMode` defaults to `false`.
+- For `focusAllowedPackages`, missing or null means use the global allow-list;
+  an explicit empty array means all apps are allowed for that task; a non-empty
+  array names the task-specific Android package IDs.
+- Portable settings can include focus preferences, app package lists, blocked
+  words, greyout windows, recurring block schedules, daily allowances, presets,
+  launcher preferences, profile data, and protection preferences. Use exact
+  setting names found in the current Kotlin implementation. Omitted settings
+  remain local; a backup must not restore active sessions, live enforcement,
+  PIN/device security state, or raw alarm registrations.
+- `greyoutSchedule` and `recurringBlockSchedules` are separate data. Summary
+  counts are informational and recalculated from the payload. `presetSections`
+  is descriptive inventory, not a command to activate behavior. A backup cannot
+  override FocusFlow's protected-app list.
+- Import validates and presents a review before applying changes. Merge keeps
+  existing tasks, adds new IDs, treats identical same-ID tasks as duplicates,
+  and reports different same-ID content as a conflict rather than overwriting.
+  Replace applies to task rows only; it does not replace all app data, and task
+  replacement is refused during an active Focus session. Portable settings use
+  their own field-specific rules.
 
 ## Project map
 

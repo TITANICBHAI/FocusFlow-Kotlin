@@ -114,8 +114,8 @@ internal fun FocusFlowFileGuideScreen(onBack: () -> Unit) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Copies separate project instructions for an AI coding agent. " +
-                        "It does not copy or replace the file-format guide below.",
+                    "Copies a self-contained project prompt with the core .focusflow " +
+                        "format rules. No separate guide file is required.",
                     color = DarkTextSecondary,
                     fontSize = 13.scaledSp,
                     lineHeight = 19.scaledSp,

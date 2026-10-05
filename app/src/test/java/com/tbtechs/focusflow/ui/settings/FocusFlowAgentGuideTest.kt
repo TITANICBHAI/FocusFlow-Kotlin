@@ -6,10 +6,17 @@ import org.junit.Test
 
 class FocusFlowAgentGuideTest {
     @Test
-    fun copiedPromptIncludesTheFormatPageAndLocalDocumentationDirections() {
-        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains(FOCUSFLOW_FILE_FORMAT_URL))
-        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("Docs option"))
-        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("docs/"))
+    fun copiedPromptIsSelfContainedAndIncludesTheFormatEssentials() {
+        assertFalse(FOCUSFLOW_CODING_AGENT_PROMPT.contains(".md"))
+        assertFalse(FOCUSFLOW_CODING_AGENT_PROMPT.contains("docs/"))
+        assertFalse(FOCUSFLOW_CODING_AGENT_PROMPT.contains("https://"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("self-contained"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("FocusFlowBackupV1"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("settings"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("tasks"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("focusAllowedPackages"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("Merge"))
+        assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("Replace"))
         assertTrue(FOCUSFLOW_CODING_AGENT_PROMPT.contains("[Add the specific change"))
     }
 

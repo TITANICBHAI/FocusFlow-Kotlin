@@ -1,0 +1,34 @@
+// 1) Add this import with your other UI imports:
+import com.tbtechs.focusflow.ui.navigation.DefenseIcons
+
+// 2) In MainScaffold(), replace the Defense tab entry:
+// OLD:
+Triple(Routes.DEFENSE, "Defense", Icons.Outlined.Shield),
+
+// NEW:
+Triple(Routes.DEFENSE, "Defense", DefenseIcons.Outline),
+
+// 3) In the Icon(...) inside tabs.forEach, replace:
+// OLD:
+Icon(
+    imageVector = icon,
+    contentDescription = label,
+    tint = if (isSelected) BrandPrimary else RefMuted,
+    modifier = Modifier.size(22.dp),
+)
+
+// NEW:
+Icon(
+    imageVector = if (route == Routes.DEFENSE && isSelected) {
+        DefenseIcons.Filled
+    } else {
+        icon
+    },
+    contentDescription = label,
+    tint = if (isSelected) BrandPrimary else RefMuted,
+    modifier = Modifier.size(22.dp),
+)
+
+// This preserves the other four tabs unchanged while making Defense use:
+// inactive = shield-checkmark-outline
+// active   = shield-checkmark (filled shield + transparent/knockout check)
