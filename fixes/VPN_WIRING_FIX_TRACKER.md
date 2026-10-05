@@ -273,10 +273,10 @@ Record each decision, date, and evidence before dependent work. Pending question
 
 ## Final verification
 
-- [x] Build and run unit tests for the completed scope; Batch 5 passed 143 tests and Batch 6 passed 146 tests, with 0 skipped/failures/errors.
-- [x] Run applicable verification greps from plan §6; obsolete schedule snapshot/class references are absent, and boundary receiver/scheduler wiring is present.
-- [ ] Complete feasible manual device checks from plan §6; blocked because no Android device/emulator is available.
-- [x] Review the final diff for data loss, unauthorized scope, and changes outside the plan; the unrelated `.replit` Python-module side effect was restored.
+- [x] Build and run unit tests for the completed scope; Batch 5 passed 143, Batch 6 passed 146, and Batch 7 passed 152 full-suite tests plus 47 focused VPN tests, all with 0 failures/errors/skips. The debug APK built successfully.
+- [x] Run applicable verification greps from plan §6; obsolete schedule snapshot/class references are absent, boundary receiver/scheduler wiring is present, and T10 candidates were checked against live call sites.
+- [ ] Complete feasible manual device checks from plan §6; `adb devices -l` showed no connected device and no emulator binary is available.
+- [x] Review the final diff for data loss, unauthorized scope, and changes outside the plan; `git diff --check` passed and `.replit` is unchanged.
 - [x] Confirm Batch 5/6 device checks remain blocked, record Q2 as decided, complete the authorized Batch 7 scope, and do not start Batch 8+ without authorization.
 - [x] Record final handoff summary with scope, test results, blockers, and the authorized stopping point.
 
