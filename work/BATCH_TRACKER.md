@@ -2,7 +2,7 @@
 
 **Implementation plan:** [ALWAYS_ON_STATUS_NOTIFICATION_IMPLEMENTATION_PLAN.md](ALWAYS_ON_STATUS_NOTIFICATION_IMPLEMENTATION_PLAN.md)  
 **Agent instructions:** [AGENT_PRE_PROMPT.md](AGENT_PRE_PROMPT.md)  
-**Overall status:** In progress
+**Overall status:** Blocked — final Android build/device verification unavailable
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -110,7 +110,7 @@ Evidence: User's decision in chat; plan file intentionally unchanged.
 
 ## Batch 3 — Phase 3: enforcement health state
 
-**Status:** In progress; implementation present, verification deferred while Batch 4 proceeds
+**Status:** Blocked; implementation present, verification awaits Android build/device prerequisites
 
 **Gate:** Owner says it is good to have but unnecessary most of the time; keep it low priority and nonessential to the core work.
 
@@ -136,7 +136,7 @@ Priority: Useful but nonessential; do not make it a blocker for the core phases.
 
 ## Batch 4 — Phase 4: scheduled-task card
 
-**Status:** In progress; break guard implemented from source-level reproduction, device/API verification blocked
+**Status:** Blocked; break guard implemented from source-level reproduction, device/API verification unavailable
 **Gate:** Batch 2 implementation is complete but its build/device acceptance remains blocked. Phase 3 verification is explicitly deferred above. The user authorized proceeding with Batch 4. The Q3 decision is A; device/API reproduction is still required before this batch can be closed.
 
 - [ ] Reproduce or disprove the duplicate card on a device; record device/API level and runtime evidence. No `adb`, emulator, or Android SDK is available in this workspace.
@@ -183,25 +183,28 @@ Evidence: User's decision in chat; plan file already contains Phase 5 and remain
 
 ## Batch 6 — final verification and handoff
 
-**Status:** Not started  
+**Status:** Blocked
 **Gate:** Run after all approved implementation batches are complete.
 
-- [ ] Complete applicable device/API checks from plan section 12, recording unavailable devices/tests explicitly.
-- [ ] Complete the review gates in plan section 13.
-- [ ] Confirm parked work and out-of-scope behavior stayed untouched.
-- [ ] Confirm every completed batch has work-log evidence and every unresolved item is marked blocked or deferred.
-- [ ] Summarize completed batches, test/build results, known gaps, and decisions still needed.
+**Owner direction (2026-10-05):** Proceed with the final audit and record unavailable Android checks as blocked, not passed. Evidence: user's explicit approval in chat. This does not clear Batch 3/4 verification gaps or change Q4.
+
+- [ ] Complete applicable device/API checks from plan section 12, recording unavailable devices/tests explicitly. **Blocked:** no Java/JDK (`JAVA_HOME` unset and no `java` executable), Android SDK variables or `local.properties`, or `adb`/device. The JVM test command stopped before Gradle could start.
+- [ ] Complete the review gates in plan section 13. **Partially reviewed:** the accessible implementation diff does not touch the four large files or manifest; relevant status/health files and tests inspected are under 300 lines; the Phase 4 guard reads the existing `focus_break_until_ms` key. **Blocked:** tests/builds did not run, and the current `ForegroundTaskService.kt` is 1,649 lines versus the 1,593 lines recorded after Phase 2. The available Git history is shallow at `1261df1`, so the line-count difference cannot be attributed and the no-growth/per-phase-build gates are not fully verified.
+- [x] Confirm parked work and out-of-scope behavior stayed untouched. Evidence: reviewed the accessible implementation diff and prior phase logs; it contains no manifest, allowance-accounting, VPN, or parked Android 15 service-type changes.
+- [x] Confirm every completed batch has work-log evidence and every unresolved item is marked blocked or deferred. Evidence: Batch 0–4 have work-log entries; Batch 3/4 verification and final Android checks are marked blocked; Phase 5 remains deferred.
+- [x] Summarize completed batches, test/build results, known gaps, and decisions still needed. Summary recorded in the Batch 6 work log below.
 
 ### Batch 6 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
+| 2026-10-05 | Final source/scope audit performed; Batch 6 blocked on Android build/device verification | Reviewed the plan, tracker, pre-prompt, repository instructions, Android build-environment memory, and accessible source diff; changed this tracker only | `git diff --check 1261df1..bcbd957` passed; reviewed `git diff --name-status 1261df1..bcbd957`; `./gradlew :app:testDebugUnitTest` stopped before Gradle (`JAVA_HOME` unset/no `java`); `adb devices -l` reported command not found; Android SDK variables unset and `local.properties` absent | Plan section 12 device/API checks were not run; no JDK, Android SDK, or ADB/device is available. Mapper, health, route, and live-task policy tests exist but were not executed. The accessible implementation diff touches the live-task notification publisher and tests/tracker only; the publisher reads the already-used `focus_break_until_ms` key. Relevant status/health additions inspected are under 300 lines; no manifest, allowance, VPN, or parked Android 15 changes appear in the accessible implementation diff. `ForegroundTaskService.kt` is currently 1,649 lines, while the Phase 2 log records 1,593; the shallow history prevents attributing the difference, so the no-big-file-growth and per-phase-build gates remain unverified. Local `main` was one commit ahead of `origin/main`, with that extra commit containing the uploaded instruction file; no push was made in Batch 6. |
 |  |  |  |  |  |
 
 ## Deferred / blocked items
 
 | Item | Reason / required decision | Revisit condition | Status |
 |---|---|---|---|
-| Phase 3 health state | Implementation is present; verification explicitly deferred while Batch 4 proceeds | Revisit when JDK, Android SDK, and device verification are available | In progress |
-| Phase 4 duplicate-during-break check | Source path guarded; runtime reproduction and test remain blocked by absent Android tooling/device | Verify on an Android device/API before closing Batch 4 | In progress |
+| Phase 3 health state | Implementation is present; build/test/device verification has not run because JDK, Android SDK, and device are unavailable | Revisit when JDK, Android SDK, and device verification are available | Blocked |
+| Phase 4 duplicate-during-break check | Source path guarded; runtime reproduction and test remain blocked by absent Android tooling/device | Verify on an Android device/API before closing Batch 4 | Blocked |
 | Phase 5 allowance refactor | Owner deferred it until later | Owner reopens the work | Deferred |
