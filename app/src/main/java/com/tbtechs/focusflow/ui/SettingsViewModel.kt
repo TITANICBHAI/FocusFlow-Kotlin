@@ -376,6 +376,7 @@ class SettingsViewModel(
                 it.copy(
                     standaloneBlockActive   = config.active,
                     standaloneBlockPackages = config.packages,
+                    standaloneBlockVpnPackages = emptyList(),
                     standaloneBlockUntilMs  = config.untilMs,
                 )
             }
@@ -430,6 +431,7 @@ class SettingsViewModel(
             settingsRepository.publishStandaloneAndAllowanceSnapshot(
                 active = config.standaloneBlockActive,
                 packages = config.standaloneBlockPackages,
+                vpnPackages = config.standaloneBlockVpnPackages,
                 untilMs = config.standaloneBlockUntilMs,
                 allowanceEntries = config.allowanceEntries,
                 pinHash = config.pinHash,
@@ -438,6 +440,11 @@ class SettingsViewModel(
                 it.copy(
                     standaloneBlockActive = config.standaloneBlockActive,
                     standaloneBlockPackages = config.standaloneBlockPackages,
+                    standaloneBlockVpnPackages = if (config.standaloneBlockActive) {
+                        config.standaloneBlockVpnPackages
+                    } else {
+                        emptyList()
+                    },
                     standaloneBlockUntilMs = config.standaloneBlockUntilMs,
                     dailyAllowanceConfigJson = allowanceJson,
                 )

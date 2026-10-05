@@ -114,7 +114,6 @@ class SettingsRepository(
         private const val KEY_STANDALONE_UNTIL_MS = "standalone_block_until_ms"
         private const val KEY_STANDALONE_VPN_PACKAGES = "net_block_standalone_vpn_packages"
 
-        private const val KEY_SCHEDULE_VPN_PACKAGES = "net_block_schedule_vpn_pkgs"
         private const val KEY_NETWORK_BLOCK_ENABLED = "net_block_enabled"
         private const val KEY_NETWORK_BLOCK_VPN = "net_block_vpn"
         private const val KEY_VPN_SELECTED_PACKAGES = "vpn_selected_packages"
@@ -650,6 +649,7 @@ class SettingsRepository(
             .putBoolean(KEY_STANDALONE_ACTIVE, active)
             .putString(KEY_STANDALONE_PACKAGES, packages.toJsonArrayString())
             .putLong(KEY_STANDALONE_UNTIL_MS, untilMs)
+            .putString(KEY_STANDALONE_VPN_PACKAGES, "[]")
             .apply()
         requestVpnSync()
         pushWidgetUpdate()
@@ -762,7 +762,10 @@ class SettingsRepository(
                     put("daysOfWeek", JSONArray(schedule.daysOfWeek))
                     put("enabled", schedule.enabled)
                     put("vpnEnabled", schedule.vpnEnabled)
-                    put("vpnPackages", JSONArray(schedule.vpnPackages))
+                    put(
+                        "vpnPackages",
+                        JSONArray(if (schedule.vpnEnabled) schedule.packages else emptyList()),
+                    )
                 })
             }
         }.toString()
@@ -788,6 +791,7 @@ class SettingsRepository(
                 ),
             "recurring schedule",
         )
+        requestVpnSync()
         }
     }
 
@@ -816,16 +820,7 @@ class SettingsRepository(
                 .putString("greyout_schedule", JSONArray(combined).toString()),
             "user greyout windows",
         )
-        }
-    }
-
-    suspend fun publishScheduleVpnSnapshot(packagesJson: String) {
-        restoreGate.write("SettingsRepository.publishScheduleVpnSnapshot") {
-        commitEditor(
-            prefs.edit().putString(KEY_SCHEDULE_VPN_PACKAGES, packagesJson),
-            "schedule VPN snapshot",
-        )
-        VpnPolicyCoordinator.requestSync(appContext)
+        requestVpnSync()
         }
     }
 
@@ -957,6 +952,7 @@ class SettingsRepository(
     suspend fun publishStandaloneAndAllowanceSnapshot(
         active: Boolean,
         packages: List<String>,
+        vpnPackages: List<String>,
         untilMs: Long,
         allowanceEntries: List<DailyAllowanceEntry>,
         pinHash: String?,
@@ -986,11 +982,13 @@ class SettingsRepository(
             editor
                 .putBoolean(KEY_STANDALONE_ACTIVE, true)
                 .putString(KEY_STANDALONE_PACKAGES, packages.toJsonArrayString())
+                .putString(KEY_STANDALONE_VPN_PACKAGES, vpnPackages.toJsonArrayString())
                 .putLong(KEY_STANDALONE_UNTIL_MS, untilMs)
         } else {
             editor
                 .putBoolean(KEY_STANDALONE_ACTIVE, false)
                 .putString(KEY_STANDALONE_PACKAGES, "[]")
+                .putString(KEY_STANDALONE_VPN_PACKAGES, "[]")
                 .putLong(KEY_STANDALONE_UNTIL_MS, 0L)
         }
         editor.putString(KEY_DAILY_ALLOWANCE_CONFIG, allowanceJson)
@@ -1104,6 +1102,9 @@ class SettingsRepository(
             ),
             standaloneBlockActive = prefs.getBoolean(KEY_STANDALONE_ACTIVE, false),
             standaloneBlockPackages = parseStringArray(prefs.getString(KEY_STANDALONE_PACKAGES, "[]")),
+            standaloneBlockVpnPackages = parseStringArray(
+                stringPreference(KEY_STANDALONE_VPN_PACKAGES, "[]"),
+            ),
             standaloneBlockUntilMs = prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L),
             launcherTheme = prefs.getString(KEY_LAUNCHER_THEME, "glassy") ?: "glassy",
             launcherWallpaperUri = prefs.getString("launcher_wallpaper_uri", null),
@@ -1649,7 +1650,10 @@ class SettingsRepository(
                         put("scheduleId", schedule.id)
                         put("scheduleName", schedule.name)
                         put("vpnEnabled", schedule.vpnEnabled)
-                        put("vpnPackages", JSONArray(schedule.vpnPackages))
+                        put(
+                            "vpnPackages",
+                            JSONArray(if (schedule.vpnEnabled) schedule.packages else emptyList()),
+                        )
                     }
                 }
             }

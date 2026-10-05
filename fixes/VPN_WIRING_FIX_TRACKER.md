@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 4 implementation and unit verification complete for sequencing; 137 tests pass. Android consent/UI device checks remain unavailable. Batch 5 and later are not started; Q2 remains pending.
+**Overall status:** Batch 4 implementation and unit verification complete for sequencing; 137 tests pass. Batch 5 T5/T6 is authorized and in progress; Q1 remains decided and Q2 remains pending. No Batch 6+ work is authorized.
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -179,7 +179,7 @@
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 
-**Status:** Not started; outside the current authorized scope. Batch 4 implementation is complete for sequencing, but no Batch 5+ work is authorized in this request.
+**Status:** In progress; Batch 5 T5/T6 is authorized in the current request. Batch 4 is complete for sequencing; no Batch 6+ work is authorized.
 **Gate:** Batch 4 complete. Q1 is decided. T5/T6 share the boundary scheduler and must be coordinated.
 
 - [x] Re-verify standalone-block VPN selection, persistence, expiry clearing, and all relevant callers.

@@ -244,6 +244,7 @@ fun FocusScreen(
         packages: List<String>,
         untilMs: Long?,
         allowances: List<DailyAllowanceEntry>,
+        vpnPackages: List<String>,
         rawPin: String?,
     ) {
         val active = packages.isNotEmpty() && (untilMs ?: 0L) > now
@@ -254,6 +255,7 @@ fun FocusScreen(
                 standaloneBlockPackages = packages,
                 standaloneBlockUntilMs = if (active) untilMs ?: 0L else 0L,
                 allowanceEntries = allowances,
+                standaloneBlockVpnPackages = if (active) vpnPackages else emptyList(),
                 pinHash = pinHash,
             ),
         )
@@ -281,6 +283,7 @@ fun FocusScreen(
                 standaloneBlockPackages = settings.standaloneBlockPackages,
                 standaloneBlockUntilMs = until,
                 allowanceEntries = settings.dailyAllowanceEntries(),
+                standaloneBlockVpnPackages = settings.standaloneBlockVpnPackages,
             ),
         )
     }
@@ -299,6 +302,7 @@ fun FocusScreen(
                 standaloneBlockPackages = packages.distinct(),
                 standaloneBlockUntilMs = until,
                 allowanceEntries = settings.dailyAllowanceEntries(),
+                standaloneBlockVpnPackages = settings.standaloneBlockVpnPackages,
             ),
         )
     }
@@ -454,9 +458,10 @@ fun FocusScreen(
                 blockUntilMs = settings.standaloneBlockUntilMs,
                 locked = standaloneActive,
                 dailyAllowanceEntries = settings.dailyAllowanceEntries(),
+                vpnPackages = settings.standaloneBlockVpnPackages,
                 presets = settings.launcherPresets.map { BlockPresetUi(it.id, it.name, it.packages) },
-                onSave = { packages, untilMs, allowances, _, rawPin ->
-                    saveStandalone(packages, untilMs, allowances, rawPin)
+                onSave = { packages, untilMs, allowances, vpnPackages, rawPin ->
+                    saveStandalone(packages, untilMs, allowances, vpnPackages, rawPin)
                 },
                 onSavePreset = ::saveBlockPreset,
                 onDeletePreset = ::deleteBlockPreset,

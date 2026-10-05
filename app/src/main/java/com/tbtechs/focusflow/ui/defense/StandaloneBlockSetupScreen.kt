@@ -238,6 +238,7 @@ fun StandaloneBlockSetupScreen(
                                                         standaloneBlockPackages = settings.standaloneBlockPackages,
                                                         standaloneBlockUntilMs = settings.standaloneBlockUntilMs + (mins * 60_000L),
                                                         allowanceEntries = dailyAllowanceEntriesFromJson(settings.dailyAllowanceConfigJson),
+                                                        standaloneBlockVpnPackages = settings.standaloneBlockVpnPackages,
                                                         pinHash = null,
                                                     ),
                                                 )
@@ -300,14 +301,16 @@ fun StandaloneBlockSetupScreen(
         blockUntilMs = settings.standaloneBlockUntilMs,
         locked = active,
         dailyAllowanceEntries = dailyAllowanceEntriesFromJson(settings.dailyAllowanceConfigJson),
+        vpnPackages = settings.standaloneBlockVpnPackages,
         presets = settings.launcherPresets.map { BlockPresetUi(it.id, it.name, it.packages) },
-        onSave = { packages, untilMs, allowances, _, pin ->
+        onSave = { packages, untilMs, allowances, vpnPackages, pin ->
             settingsViewModel.setStandaloneBlockAndAllowance(
                 StandaloneBlockAndAllowanceConfig(
                     standaloneBlockActive = packages.isNotEmpty() && untilMs != null,
                     standaloneBlockPackages = packages,
                     standaloneBlockUntilMs = untilMs ?: 0L,
                     allowanceEntries = allowances,
+                    standaloneBlockVpnPackages = vpnPackages,
                     pinHash = pin,
                 ),
             )

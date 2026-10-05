@@ -34,6 +34,7 @@ data class AppSettings(
      */
     val standaloneBlockActive: Boolean = false,
     val standaloneBlockPackages: List<String> = emptyList(),
+    val standaloneBlockVpnPackages: List<String> = emptyList(),
     val standaloneBlockUntilMs: Long = 0L,
 
     // ── Launcher and app-picker preferences ───────────────────────────────────
@@ -230,5 +231,6 @@ data class StandaloneBlockAndAllowanceConfig(
     val standaloneBlockPackages: List<String>,
     val standaloneBlockUntilMs: Long,
     val allowanceEntries: List<DailyAllowanceEntry>,
+    val standaloneBlockVpnPackages: List<String> = emptyList(),
     val pinHash: String? = null,
 )
