@@ -3,6 +3,7 @@ package com.tbtechs.focusflow.data.backup
 import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.BlockPreset
 import com.tbtechs.focusflow.data.repository.BackupSettingsPolicy
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -82,12 +83,47 @@ class TsSettingsAdapterTest {
 
         assertEquals(JsonPrimitive(75), wire["defaultDuration"])
         assertEquals(JsonPrimitive(35), wire["pomodoroDuration"])
-        assertNotNull(wire["alwaysOnVpnPackages"])
+        assertEquals(
+            JsonArray(listOf(JsonPrimitive("com.example.vpn"))),
+            wire["alwaysOnVpnPackages"],
+        )
         assertNotNull(wire["blockPresets"])
         assertNotNull(wire["overlayQuotes"])
         assertNotNull(wire["launcherClockStyle"])
         assertFalse(wire.containsKey("defaultDurationMinutes"))
         assertFalse(wire.keys.any { it in BackupSettingsPolicy.neverApplyImportKeys })
+    }
+
+    @Test
+    fun explicitVpnListSurvivesPortableExportAndImportRoundTrip() {
+        val original = listOf("com.example.alpha", "com.example.beta")
+        val exported = TsSettingsAdapter.toWireSettings(
+            AppSettings(alwaysOnVpnPackages = original),
+        )
+        val normalized = TsSettingsAdapter.normalizeForImport(exported)
+        val imported = TsSettingsAdapter.applyToSettings(
+            AppSettings(),
+            normalized.settings,
+        )
+
+        assertEquals(original, imported.settings.alwaysOnVpnPackages)
+        assertTrue(normalized.warnings.isEmpty())
+    }
+
+    @Test
+    fun importingVpnListDoesNotImportDeviceLocalVpnSwitches() {
+        val normalized = TsSettingsAdapter.normalizeForImport(
+            jsonObject(
+                """{"alwaysOnVpnPackages":["com.example.vpn"],"vpnBlockEnabled":true,"vpnSelfHealEnabled":true}""",
+            ),
+        )
+        val mapped = TsSettingsAdapter.normalizeForLegacyMigration(normalized.settings)
+
+        assertTrue(normalized.settings.containsKey("alwaysOnVpnPackages"))
+        assertFalse(normalized.settings.containsKey("vpnBlockEnabled"))
+        assertFalse(normalized.settings.containsKey("vpnSelfHealEnabled"))
+        assertFalse(mapped.containsKey("net_block_enabled"))
+        assertFalse(mapped.containsKey("net_block_self_heal"))
     }
 
     @Test
@@ -123,7 +159,7 @@ class TsSettingsAdapterTest {
         )
         assertEquals(
             LegacyPreferenceValue.StringValue("""["com.example.vpn"]"""),
-            mapped["always_on_vpn_packages"],
+            mapped["net_block_explicit_packages"],
         )
         assertTrue(mapped.containsKey("block_presets"))
         assertTrue(mapped.containsKey("block_overlay_quotes"))

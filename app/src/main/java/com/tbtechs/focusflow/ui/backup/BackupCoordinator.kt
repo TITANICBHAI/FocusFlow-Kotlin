@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.ui.backup
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.tbtechs.focusflow.data.backup.BackupV1ParseResult
@@ -13,10 +14,12 @@ import com.tbtechs.focusflow.data.repository.BackupManager
 import com.tbtechs.focusflow.data.repository.BackupEnvelope
 import com.tbtechs.focusflow.data.repository.BackupParseResult
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
+import com.tbtechs.focusflow.data.repository.ImportedProtectionCategory
 import com.tbtechs.focusflow.data.repository.RestoreResult
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.data.repository.TaskRepository
+import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.data.restore.PendingBackupResult
 import com.tbtechs.focusflow.data.restore.RestoreAdmissionResult
@@ -100,6 +103,34 @@ class BackupCoordinator(
 
     suspend fun cancelPendingImport(): Result<Unit> = restoreCoordinator.cancelPending()
 
+    internal suspend fun vpnImportConsentDecision(
+        restoreSettings: Boolean,
+    ): VpnImportConsentDecision {
+        if (!restoreSettings) return VpnImportConsentDecision.NOT_REQUIRED
+        val loaded = restoreCoordinator.loadPending() as? PendingBackupResult.Ready
+            ?: return VpnImportConsentDecision.NOT_REQUIRED
+        val importedSettings = loaded.backup.toBackupEnvelope().settings
+        val importedPackageCount =
+            importedSettings.optJSONArray("alwaysOnVpnPackages")?.length() ?: 0
+        if (importedPackageCount == 0) return VpnImportConsentDecision.NOT_REQUIRED
+
+        val networkBlockEnabled = runCatching {
+            val local = vpnRepository.getNetworkBlockSettings()
+            local.enabled && local.vpn
+        }.getOrElse {
+            // Unknown local state must not trigger automatic activation.
+            true
+        }
+        return VpnImportPolicy.consentDecision(
+            restoreSettings = true,
+            importedVpnPackageCount = importedPackageCount,
+            networkBlockEnabled = networkBlockEnabled,
+            vpnPermissionGranted = vpnRepository.isVpnPermissionGranted(),
+        )
+    }
+
+    fun vpnConsentIntentOrNull(): Intent? = vpnRepository.consentIntentOrNull()
+
     suspend fun requiresDefensePin(restoreSettings: Boolean): Boolean {
         if (!restoreSettings) return false
         val parsed = inspectPending()
@@ -113,12 +144,20 @@ class BackupCoordinator(
         restoreSettings: Boolean = true,
         restoreTasks: Boolean = true,
         defensePin: String? = null,
+        activateImportedVpnAfterGrant: Boolean = false,
     ): RestoreResult {
         val loaded = restoreCoordinator.loadPending()
         if (loaded !is PendingBackupResult.Ready) {
             val message = (loaded as? PendingBackupResult.Error)?.message
                 ?: "The saved import is no longer available."
             return RestoreResult.Error(message)
+        }
+        runCatching {
+            settingsRepository.ensureLegacyAlwaysOnVpnPackagesMigrated()
+        }.getOrElse {
+            return RestoreResult.Error(
+                it.message ?: "Could not prepare the local VPN package list for import.",
+            )
         }
         val admission = restoreCoordinator.begin(
             mode = if (replaceTasks) RestoreMode.REPLACE else RestoreMode.MERGE,
@@ -148,21 +187,205 @@ class BackupCoordinator(
                 RestoreResult.Error(admission.message)
             is RestoreAdmissionResult.RecoveryBlocked ->
                 RestoreResult.Error(admission.message)
-            is RestoreAdmissionResult.Finished ->
+            is RestoreAdmissionResult.Finished -> {
+                val warnings = loaded.backup.record.warnings.toMutableList().apply {
+                    if (admission.counts.downgradedToSkipped > 0) {
+                        add("${admission.counts.downgradedToSkipped} past tasks were marked skipped.")
+                    }
+                }
+                if (restoreSettings) {
+                    if (activateImportedVpnAfterGrant) {
+                        runCatching {
+                            vpnRepository.activateImportedVpnBlock()
+                        }.onFailure {
+                            warnings.add(
+                                "The VPN list was imported but could not be activated: " +
+                                    (it.message ?: "VPN activation failed."),
+                            )
+                        }
+                    }
+                    runCatching {
+                        settingsViewModel.refreshSettingsFromStore()
+                    }.onFailure {
+                        warnings.add("Some restored settings may not appear until the app refreshes.")
+                    }
+                }
+                val protectionCategories = if (restoreSettings) {
+                    runCatching {
+                        buildImportedProtectionCategories(loaded.backup.toBackupEnvelope().settings)
+                    }.getOrElse {
+                        warnings.add("Protection status could not be checked after import.")
+                        emptyList()
+                    }
+                } else {
+                    emptyList()
+                }
                 RestoreResult.Success(
                     com.tbtechs.focusflow.data.repository.ImportSummary(
                         settings = restoreSettings,
                         tasksImported = admission.counts.tasksInserted,
                         tasksSkipped = admission.counts.invalidTasks +
                             admission.counts.identicalDuplicates,
-                        warnings = loaded.backup.record.warnings.toMutableList().apply {
-                            if (admission.counts.downgradedToSkipped > 0) {
-                                add("${admission.counts.downgradedToSkipped} past tasks were marked skipped.")
-                            }
-                        },
+                        warnings = warnings,
+                        protectionCategories = protectionCategories,
                     ),
                 )
+            }
         }
+    }
+
+    private suspend fun buildImportedProtectionCategories(
+        importedSettings: JSONObject,
+    ): List<ImportedProtectionCategory> {
+        val settings = settingsRepository.readAppSettings()
+        val network = runCatching {
+            vpnRepository.getNetworkBlockSettings()
+        }.getOrElse {
+            com.tbtechs.focusflow.data.repository.NetworkBlockSettings()
+        }
+        val permissions = UsageStatsRepository(appContext)
+        val accessibilityAvailable = runCatching {
+            permissions.hasAccessibilityPermission()
+        }.getOrDefault(false)
+        val usageAccessAvailable = runCatching {
+            permissions.hasPermission()
+        }.getOrDefault(false)
+        val vpnPermissionAvailable = vpnRepository.isVpnPermissionGranted()
+
+        fun arrayCount(key: String): Int? =
+            importedSettings.optJSONArray(key)?.length()
+
+        fun inactiveDetails(
+            count: Int,
+            featureEnabled: Boolean,
+            permissionAvailable: Boolean,
+            permissionName: String,
+        ): String = when {
+            count == 0 -> "No entries were imported."
+            !featureEnabled -> "$count entries were imported, but the feature is off on this device."
+            !permissionAvailable -> "$count entries were imported, but $permissionName is unavailable."
+            else -> "$count entries were imported; enforcement is inactive."
+        }
+
+        val facts = mutableListOf<ImportProtectionCategoryFact>()
+
+        arrayCount("alwaysOnVpnPackages")?.let { count ->
+            val enabled = network.enabled && network.vpn
+            facts += ImportProtectionCategoryFact(
+                id = "vpn",
+                title = "VPN list",
+                wasImported = true,
+                itemCount = count,
+                featureEnabled = enabled,
+                requiredPermissionAvailable = vpnPermissionAvailable,
+                activeDetails = "$count apps are protected by Network Blocking (VPN).",
+                inactiveDetails = inactiveDetails(
+                    count,
+                    enabled,
+                    vpnPermissionAvailable,
+                    "Android VPN permission",
+                ),
+            )
+        }
+
+        arrayCount("alwaysOnPackages")?.let { count ->
+            facts += ImportProtectionCategoryFact(
+                id = "always-on",
+                title = "Always-On",
+                wasImported = true,
+                itemCount = count,
+                featureEnabled = settings.alwaysBlockEnabled,
+                requiredPermissionAvailable = accessibilityAvailable,
+                activeDetails = "$count apps are protected by Always-On.",
+                inactiveDetails = inactiveDetails(
+                    count,
+                    settings.alwaysBlockEnabled,
+                    accessibilityAvailable,
+                    "the Accessibility service",
+                ),
+            )
+        }
+
+        arrayCount("dailyAllowanceEntries")?.let { count ->
+            val permissionsAvailable = accessibilityAvailable && usageAccessAvailable
+            facts += ImportProtectionCategoryFact(
+                id = "daily-allowance",
+                title = "Daily allowance",
+                wasImported = true,
+                itemCount = count,
+                featureEnabled = true,
+                requiredPermissionAvailable = permissionsAvailable,
+                activeDetails =
+                    "$count allowance rules are configured; Usage Access and Accessibility are available.",
+                inactiveDetails = when {
+                    count == 0 -> "No allowance rules were imported."
+                    !usageAccessAvailable ->
+                        "$count rules were imported, but Usage Access is unavailable."
+                    !accessibilityAvailable ->
+                        "$count rules were imported, but the Accessibility service is unavailable."
+                    else -> "$count rules were imported; enforcement is inactive."
+                },
+            )
+        }
+
+        arrayCount("blockedWords")?.let { count ->
+            facts += ImportProtectionCategoryFact(
+                id = "keywords",
+                title = "Keywords",
+                wasImported = true,
+                itemCount = count,
+                featureEnabled = true,
+                requiredPermissionAvailable = accessibilityAvailable,
+                activeDetails = "$count keywords are enforced by the Accessibility service.",
+                inactiveDetails = inactiveDetails(
+                    count,
+                    featureEnabled = true,
+                    permissionAvailable = accessibilityAvailable,
+                    permissionName = "the Accessibility service",
+                ),
+            )
+        }
+
+        if (importedSettings.has("recurringBlockSchedules") ||
+            importedSettings.has("greyoutSchedule")
+        ) {
+            val enabledScheduleCount = importedSettings.optJSONArray("recurringBlockSchedules")
+                ?.let { schedules ->
+                    (0 until schedules.length()).count { index ->
+                        val schedule = schedules.optJSONObject(index) ?: return@count false
+                        schedule.optBoolean("enabled", true) &&
+                            (schedule.optJSONArray("packages")?.length() ?: 0) > 0
+                    }
+                } ?: 0
+            val userWindowCount = importedSettings.optJSONArray("greyoutSchedule")
+                ?.let { windows ->
+                    (0 until windows.length()).count { index ->
+                        val window = windows.optJSONObject(index) ?: return@count false
+                        !window.has("scheduleId") &&
+                            (window.has("pkg") || (window.optJSONArray("packages")?.length() ?: 0) > 0)
+                    }
+                } ?: 0
+            val count = enabledScheduleCount + userWindowCount
+            facts += ImportProtectionCategoryFact(
+                id = "schedules",
+                title = "Greyout / block schedules",
+                wasImported = true,
+                itemCount = count,
+                featureEnabled = true,
+                requiredPermissionAvailable = accessibilityAvailable,
+                activeDetails =
+                    "$enabledScheduleCount enabled schedules and $userWindowCount block windows are configured. " +
+                        "They apply during their saved time windows.",
+                inactiveDetails = when {
+                    count == 0 -> "No enabled schedules or block windows were imported."
+                    !accessibilityAvailable ->
+                        "$count schedules/windows were imported, but the Accessibility service is unavailable."
+                    else -> "$count schedules/windows were imported; enforcement is inactive."
+                },
+            )
+        }
+
+        return ImportProtectionSummaryPolicy.build(facts)
     }
 
     private suspend fun requiresDefensePin(

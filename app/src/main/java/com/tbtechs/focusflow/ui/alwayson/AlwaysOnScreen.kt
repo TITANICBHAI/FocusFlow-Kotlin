@@ -63,6 +63,7 @@ import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.VpnRepository
+import com.tbtechs.focusflow.data.repository.VpnListSavePolicy
 import com.tbtechs.focusflow.data.repository.VpnSelfHealPolicy
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
@@ -236,6 +237,11 @@ fun AlwaysOnScreen(
                 val currentNetwork = networkSettings ?: NetworkBlockSettings()
                 val hasVpnPackages = vpnSelected.isNotEmpty() ||
                     currentNetwork.standalonePackages.isNotEmpty()
+                val masterSwitches = VpnListSavePolicy.masterSwitchesAfterSave(
+                    currentEnabled = currentNetwork.enabled,
+                    currentVpn = currentNetwork.vpn,
+                    hasPackages = hasVpnPackages,
+                )
 
                 if (vpnSelected.isNotEmpty() && !vpnRepository.isVpnPermissionGranted()) {
                     showConsent = true
@@ -244,8 +250,8 @@ fun AlwaysOnScreen(
 
                 vpnRepository.setNetworkBlockSettings(
                     currentNetwork.copy(
-                        enabled = hasVpnPackages,
-                        vpn = hasVpnPackages,
+                        enabled = masterSwitches.enabled,
+                        vpn = masterSwitches.vpn,
                         packages = vpnSelected.toList().sorted(),
                     ),
                     defensePinHash = defensePin?.let(::legacyPinHash),
@@ -262,7 +268,7 @@ fun AlwaysOnScreen(
                     settings.copy(
                         alwaysBlockEnabled = selected.isNotEmpty(),
                         alwaysBlockPackages = selected.toList().sorted(),
-                        networkBlockEnabled = hasVpnPackages,
+                        networkBlockEnabled = masterSwitches.enabled,
                     ),
                 )
                 onBack()

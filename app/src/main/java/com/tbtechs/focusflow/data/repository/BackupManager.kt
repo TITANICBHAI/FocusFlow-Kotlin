@@ -346,6 +346,14 @@ data class ImportSummary(
     var tasksImported: Int = 0,
     var tasksSkipped: Int = 0,
     val warnings: MutableList<String> = mutableListOf(),
+    val protectionCategories: List<ImportedProtectionCategory> = emptyList(),
+)
+
+data class ImportedProtectionCategory(
+    val id: String,
+    val title: String,
+    val active: Boolean,
+    val details: String,
 )
 
 sealed class RestoreResult {

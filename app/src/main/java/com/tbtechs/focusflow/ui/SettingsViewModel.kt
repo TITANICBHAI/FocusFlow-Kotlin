@@ -142,6 +142,12 @@ class SettingsViewModel(
         }
     }
 
+    suspend fun refreshSettingsFromStore() {
+        _settings.value = settingsRepository.readAppSettings().copy(
+            pinProtectionEnabled = pinManager.isPinSet(),
+        )
+    }
+
     // ─── PIN session state ────────────────────────────────────────────────────
 
     /**

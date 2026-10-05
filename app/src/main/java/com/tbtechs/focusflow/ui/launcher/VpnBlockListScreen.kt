@@ -56,6 +56,7 @@ import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.VpnRepository
+import com.tbtechs.focusflow.data.repository.VpnListSavePolicy
 import com.tbtechs.focusflow.data.repository.VpnSelfHealPolicy
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
@@ -186,10 +187,15 @@ fun VpnBlockListScreen(
                 }
                 val current = networkSettings ?: NetworkBlockSettings()
                 val hasPackages = selected.isNotEmpty()
+                val masterSwitches = VpnListSavePolicy.masterSwitchesAfterSave(
+                    currentEnabled = current.enabled,
+                    currentVpn = current.vpn,
+                    hasPackages = hasPackages,
+                )
                 vpnRepository.setNetworkBlockSettings(
                     current.copy(
-                        enabled = hasPackages,
-                        vpn = hasPackages,
+                        enabled = masterSwitches.enabled,
+                        vpn = masterSwitches.vpn,
                         packages = selected.toList().sorted(),
                     ),
                     defensePinHash = pin.takeIf {
@@ -199,6 +205,7 @@ fun VpnBlockListScreen(
                 if (VpnSelfHealPolicy.shouldEnableFromList(hasPackages)) {
                     vpnRepository.setVpnSelfHealEnabled(true)
                 }
+                settingsViewModel.refreshSettingsFromStore()
                 original = selected
                 pinDialog = false
                 pin = ""

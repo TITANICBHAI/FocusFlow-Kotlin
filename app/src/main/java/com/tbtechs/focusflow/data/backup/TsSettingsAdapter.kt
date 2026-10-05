@@ -259,7 +259,7 @@ object TsSettingsAdapter {
         integer(POMODORO_BREAK, "pomodoro_break_minutes")
         string(ALLOWED_IN_FOCUS, "allowed_focus_packages")
         string(ALWAYS_ON_PACKAGES, AppBlockerAccessibilityService.PREF_ALWAYS_BLOCK_PKGS)
-        string(ALWAYS_ON_VPN_PACKAGES, "always_on_vpn_packages")
+        string(ALWAYS_ON_VPN_PACKAGES, "net_block_explicit_packages")
         boolean(FOCUS_MIRROR_VPN_ENABLED, "net_block_focus_mirror")
         string(BLOCKED_WORDS, AppBlockerAccessibilityService.PREF_BLOCKED_WORDS)
         string(DAILY_ALLOWANCE_ENTRIES, "daily_allowance_config", ::toInternalAllowanceJson)

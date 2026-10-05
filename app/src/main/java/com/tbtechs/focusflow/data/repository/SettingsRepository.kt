@@ -119,13 +119,14 @@ class SettingsRepository(
         private const val KEY_NETWORK_BLOCK_VPN = "net_block_vpn"
         private const val KEY_VPN_SELECTED_PACKAGES = "vpn_selected_packages"
         private const val KEY_EXPLICIT_VPN_PACKAGES = "net_block_explicit_packages"
+        private const val KEY_LEGACY_VPN_PACKAGES = "always_on_vpn_packages"
+        private const val KEY_VPN_PACKAGES_MIGRATION_COMPLETE = "always_on_vpn_packages_migrated"
 
         private const val KEY_DAILY_ALLOWANCE_USED = "daily_allowance_used"
         private const val KEY_DAILY_ALLOWANCE_CONFIG = "daily_allowance_config"
         private const val KEY_RECURRING_BLOCK_SCHEDULES = "recurring_block_schedules"
         private const val KEY_USER_GREYOUT_WINDOWS = "user_greyout_windows"
         private const val KEY_BLOCK_PRESETS = "block_presets"
-        private const val KEY_ALWAYS_ON_VPN_PACKAGES = "always_on_vpn_packages"
         private const val KEY_OVERLAY_QUOTES = "block_overlay_quotes"
         private const val KEY_DARK_MODE_ENABLED = "dark_mode_enabled"
         private const val KEY_GENERAL_TEXT_SCALE = "general_text_scale"
@@ -840,10 +841,12 @@ class SettingsRepository(
     }
 
     suspend fun setAlwaysOnVpnPackages(packages: List<String>) {
+        ensureLegacyAlwaysOnVpnPackagesMigrated()
         restoreGate.write("SettingsRepository.setAlwaysOnVpnPackages") {
         prefs.edit()
-            .putString(KEY_ALWAYS_ON_VPN_PACKAGES, packages.toJsonArrayString())
+            .putString(KEY_EXPLICIT_VPN_PACKAGES, packages.toJsonArrayString())
             .apply()
+        requestVpnSync()
         }
     }
 
@@ -1085,6 +1088,7 @@ class SettingsRepository(
      */
     suspend fun readAppSettings(): AppSettings {
         ensureVpnSelfHealPreferenceMigrated()
+        ensureLegacyAlwaysOnVpnPackagesMigrated()
         val resultMap = mutableMapOf<String, String>()
         runCatching {
             val obj = JSONObject(prefs.getString(KEY_LAST_SESSION_RESULT_BY_TASK_ID, "{}") ?: "{}")
@@ -1126,7 +1130,7 @@ class SettingsRepository(
                 stringPreference(KEY_OVERLAY_QUOTES, "[]"),
             ),
             alwaysOnVpnPackages = parseStringArray(
-                stringPreference(KEY_ALWAYS_ON_VPN_PACKAGES, "[]"),
+                stringPreference(KEY_EXPLICIT_VPN_PACKAGES, "[]"),
             ),
             dailyAllowanceConfigJson = prefs.getString(KEY_DAILY_ALLOWANCE_CONFIG, null),
             recurringBlockSchedules = parseRecurringSchedules(
@@ -1482,6 +1486,57 @@ class SettingsRepository(
     }
 
     private fun List<String>.toJsonArrayString(): String = JSONArray(this).toString()
+
+    /**
+     * Moves the legacy backup-only VPN package list into the native explicit
+     * list once. The old preference is intentionally retained as a copy.
+     */
+    internal suspend fun ensureLegacyAlwaysOnVpnPackagesMigrated() {
+        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
+        restoreGate.write("SettingsRepository.migrateLegacyAlwaysOnVpnPackages") {
+            synchronized(VpnPackageListMigrationPolicy) {
+                if (prefs.getBoolean(KEY_VPN_PACKAGES_MIGRATION_COMPLETE, false)) {
+                    return@synchronized
+                }
+
+                val explicitPackages = parseVpnMigrationList(
+                    prefs.all[KEY_EXPLICIT_VPN_PACKAGES],
+                ) ?: return@synchronized
+                val legacyPackages = parseVpnMigrationList(
+                    prefs.all[KEY_LEGACY_VPN_PACKAGES],
+                ) ?: return@synchronized
+
+                val editor = prefs.edit()
+                    .putBoolean(KEY_VPN_PACKAGES_MIGRATION_COMPLETE, true)
+                if (legacyPackages.isNotEmpty()) {
+                    editor.putString(
+                        KEY_EXPLICIT_VPN_PACKAGES,
+                        VpnPackageListMigrationPolicy
+                            .mergeLegacyPackages(explicitPackages, legacyPackages)
+                            .toJsonArrayString(),
+                    )
+                }
+                check(editor.commit()) {
+                    "Could not migrate the legacy VPN package list"
+                }
+            }
+        }
+    }
+
+    private fun parseVpnMigrationList(value: Any?): List<String>? {
+        if (value == null) return emptyList()
+        val json = value as? String ?: return null
+        return runCatching {
+            val array = JSONArray(json)
+            buildList {
+                for (index in 0 until array.length()) {
+                    val packageName = array.get(index) as? String
+                        ?: throw IllegalArgumentException("VPN package list entry is not a string")
+                    if (packageName.isNotBlank()) add(packageName)
+                }
+            }
+        }.getOrNull()
+    }
 
     private fun parseStringArray(json: String?): List<String> =
         runCatching {

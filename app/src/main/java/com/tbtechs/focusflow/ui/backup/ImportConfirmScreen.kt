@@ -1,10 +1,15 @@
 package com.tbtechs.focusflow.ui.backup
 
+import android.net.VpnService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -40,6 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.repository.BackupEnvelope
@@ -68,7 +76,56 @@ fun ImportConfirmScreen(
     var showPinPrompt by remember(pendingGeneration) { mutableStateOf(false) }
     var defensePin by remember(pendingGeneration) { mutableStateOf("") }
     var pinError by remember(pendingGeneration) { mutableStateOf<String?>(null) }
+    var pendingConsentPin by remember(pendingGeneration) { mutableStateOf<String?>(null) }
+    var awaitingVpnConsent by remember(pendingGeneration) { mutableStateOf(false) }
+    var expandedProtectionCategories by remember(pendingGeneration, result) {
+        mutableStateOf(emptySet<String>())
+    }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    suspend fun performImport(pin: String?, activateImportedVpn: Boolean) {
+        val outcome = backupCoordinator.importPending(
+            replaceTasks = replaceTasks,
+            currentFocusActive = currentFocusActive,
+            restoreSettings = restoreSettings,
+            restoreTasks = restoreTasks,
+            defensePin = pin,
+            activateImportedVpnAfterGrant = activateImportedVpn,
+        )
+        busy = false
+        if (outcome is RestoreResult.Error && outcome.requiresPin) {
+            showPinPrompt = true
+            pinError = outcome.message
+        } else {
+            showPinPrompt = false
+            defensePin = ""
+            pinError = null
+            result = outcome
+        }
+    }
+
+    val vpnConsentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (awaitingVpnConsent) {
+            awaitingVpnConsent = false
+            val pin = pendingConsentPin
+            pendingConsentPin = null
+            val permissionGranted = runCatching {
+                VpnService.prepare(context) == null
+            }.getOrDefault(false)
+            scope.launch {
+                performImport(
+                    pin,
+                    VpnImportPolicy.shouldActivateAfterConsent(
+                        VpnImportConsentDecision.REQUEST_CONSENT,
+                        permissionGranted,
+                    ),
+                )
+            }
+        }
+    }
 
     LaunchedEffect(pendingGeneration) {
         parsed = backupCoordinator.inspectPending()
@@ -92,22 +149,39 @@ fun ImportConfirmScreen(
         busy = true
         result = null
         scope.launch {
-            val outcome = backupCoordinator.importPending(
-                replaceTasks = replaceTasks,
-                currentFocusActive = currentFocusActive,
-                restoreSettings = restoreSettings,
-                restoreTasks = restoreTasks,
-                defensePin = pin,
-            )
-            busy = false
-            if (outcome is RestoreResult.Error && outcome.requiresPin) {
-                showPinPrompt = true
-                pinError = outcome.message
-            } else {
-                showPinPrompt = false
-                defensePin = ""
-                pinError = null
-                result = outcome
+            val decision = runCatching {
+                backupCoordinator.vpnImportConsentDecision(restoreSettings)
+            }.getOrDefault(VpnImportConsentDecision.NOT_REQUIRED)
+            when (decision) {
+                VpnImportConsentDecision.NOT_REQUIRED -> performImport(pin, activateImportedVpn = false)
+                VpnImportConsentDecision.PERMISSION_ALREADY_GRANTED ->
+                    performImport(pin, activateImportedVpn = true)
+                VpnImportConsentDecision.REQUEST_CONSENT -> {
+                    pendingConsentPin = pin
+                    awaitingVpnConsent = true
+                    val intent = runCatching {
+                        backupCoordinator.vpnConsentIntentOrNull()
+                    }.getOrNull()
+                    if (intent == null) {
+                        awaitingVpnConsent = false
+                        pendingConsentPin = null
+                        val permissionGranted = runCatching {
+                            VpnService.prepare(context) == null
+                        }.getOrDefault(false)
+                        performImport(
+                            pin,
+                            VpnImportPolicy.shouldActivateAfterConsent(decision, permissionGranted),
+                        )
+                    } else {
+                        runCatching {
+                            vpnConsentLauncher.launch(intent)
+                        }.onFailure {
+                            awaitingVpnConsent = false
+                            pendingConsentPin = null
+                            scope.launch { performImport(pin, activateImportedVpn = false) }
+                        }
+                    }
+                }
             }
         }
     }
@@ -180,13 +254,88 @@ fun ImportConfirmScreen(
             icon = { Icon(Icons.Outlined.CloudDownload, contentDescription = null) },
             title = { Text("Backup imported") },
             text = {
-                Text(
-                    "${outcome.summary.tasksImported} task${if (outcome.summary.tasksImported == 1) "" else "s"} added. " +
-                        "${outcome.summary.tasksSkipped} skipped." +
-                        if (outcome.summary.warnings.isNotEmpty()) {
-                            "\n\nWarnings:\n${outcome.summary.warnings.joinToString("\n")}"
-                        } else "",
-                )
+                Column(
+                    Modifier.fillMaxWidth()
+                        .heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        "${outcome.summary.tasksImported} task${if (outcome.summary.tasksImported == 1) "" else "s"} added. " +
+                            "${outcome.summary.tasksSkipped} skipped.",
+                    )
+                    if (outcome.summary.warnings.isNotEmpty()) {
+                        Text(
+                            "Warnings:\n${outcome.summary.warnings.joinToString("\n")}",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    if (outcome.summary.protectionCategories.isNotEmpty()) {
+                        Text("Protection settings", style = MaterialTheme.typography.titleMedium)
+                        outcome.summary.protectionCategories.forEach { category ->
+                            val expanded = category.id in expandedProtectionCategories
+                            Card(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Info,
+                                            contentDescription = null,
+                                            tint = if (category.active) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.error
+                                            },
+                                        )
+                                        Column(
+                                            Modifier.weight(1f).padding(start = 10.dp),
+                                        ) {
+                                            Text(category.title, style = MaterialTheme.typography.titleSmall)
+                                            Text(
+                                                if (category.active) "Active" else "Inactive",
+                                                color = if (category.active) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.error
+                                                },
+                                                style = MaterialTheme.typography.labelMedium,
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                expandedProtectionCategories =
+                                                    if (expanded) {
+                                                        expandedProtectionCategories - category.id
+                                                    } else {
+                                                        expandedProtectionCategories + category.id
+                                                    }
+                                            },
+                                        ) {
+                                            Icon(
+                                                if (expanded) Icons.Outlined.ExpandLess
+                                                else Icons.Outlined.ExpandMore,
+                                                contentDescription = if (expanded) {
+                                                    "Collapse ${category.title}"
+                                                } else {
+                                                    "Expand ${category.title}"
+                                                },
+                                            )
+                                        }
+                                    }
+                                    if (expanded) {
+                                        Text(
+                                            category.details,
+                                            Modifier.padding(top = 8.dp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             },
             confirmButton = { Button(onClick = onImported) { Text("Done") } },
         )
