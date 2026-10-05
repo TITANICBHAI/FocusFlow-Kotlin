@@ -87,65 +87,57 @@ internal fun FocusFlowFileGuideScreen(onBack: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "A project overview and copy-ready instructions for a coding agent. " +
-                    "Copy this guide, then add the exact change you want.",
-                color = DarkTextSecondary,
-                fontSize = 14.scaledSp,
-                lineHeight = 21.scaledSp,
-            )
-
-            Button(
-                onClick = {
-                    clipboard.setText(AnnotatedString(FOCUSFLOW_AGENT_GUIDE))
-                    copied = true
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-            ) {
-                Text(
-                    if (copied) "Guide copied" else "Copy agent-ready guide",
-                    color = Color.White,
-                    fontSize = 14.scaledSp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+            FocusFlowFormatGuideHeader()
 
             Text(
-                "Website and Docs",
-                color = DarkTextPrimary,
-                fontSize = 16.scaledSp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                FOCUSFLOW_WEBSITE_URL,
+                "Open the full web guide: $FOCUSFLOW_FILE_FORMAT_URL",
                 modifier = Modifier.clickable {
-                    uriHandler.openUri(FOCUSFLOW_WEBSITE_URL)
+                    uriHandler.openUri(FOCUSFLOW_FILE_FORMAT_URL)
                 },
                 color = BrandPrimary,
-                fontSize = 14.scaledSp,
-            )
-            Text(
-                "The guide tells the agent to use the website’s Docs option and the relevant local files under docs/.",
-                color = DarkTextSecondary,
                 fontSize = 13.scaledSp,
-                lineHeight = 19.scaledSp,
             )
 
-            SelectionContainer {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkCard)
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
                 Text(
-                    text = FOCUSFLOW_AGENT_GUIDE,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(DarkCard)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
+                    "Coding-agent prompt",
+                    color = DarkTextPrimary,
+                    fontSize = 15.scaledSp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    "Copies separate project instructions for an AI coding agent. " +
+                        "It does not copy or replace the file-format guide below.",
                     color = DarkTextSecondary,
                     fontSize = 13.scaledSp,
                     lineHeight = 19.scaledSp,
                 )
+                Button(
+                    onClick = {
+                        clipboard.setText(AnnotatedString(FOCUSFLOW_CODING_AGENT_PROMPT))
+                        copied = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                ) {
+                    Text(
+                        if (copied) "Prompt copied" else "Copy coding-agent prompt",
+                        color = Color.White,
+                        fontSize = 14.scaledSp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
+
+            SelectionContainer { FocusFlowFormatGuideBody() }
         }
     }
 }
