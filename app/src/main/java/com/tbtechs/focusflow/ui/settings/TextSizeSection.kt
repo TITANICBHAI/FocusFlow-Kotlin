@@ -23,7 +23,6 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
+import com.tbtechs.focusflow.ui.navigation.FocusTabIcons
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
@@ -85,7 +85,7 @@ internal fun TextSizeSection(
         TabTextScale(
             title = "Focus",
             route = Routes.FOCUS,
-            icon = Icons.Outlined.Timer,
+            icon = FocusTabIcons.Active,
             scale = settings.focusTextScale,
             screens = listOf(
                 TextSizeTarget(Routes.FOCUS, "Focus", "Active session", Routes.ACTIVE, "The active-session screen opened from Focus."),
@@ -113,7 +113,7 @@ internal fun TextSizeSection(
         TabTextScale(
             title = "Defense",
             route = Routes.DEFENSE,
-            icon = DefenseIcons.Filled,
+            icon = DefenseIcons.ActiveFilled,
             scale = settings.defenseTextScale,
             screens = listOf(
                 TextSizeTarget(Routes.DEFENSE, "Defense", "Always-On", Routes.ALWAYS_ON, "Always-On app controls."),

@@ -75,6 +75,7 @@ import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
 import com.tbtechs.focusflow.ui.common.PinRotationModal
 import com.tbtechs.focusflow.ui.common.PinType
+import com.tbtechs.focusflow.ui.navigation.DefenseIcons
 import com.tbtechs.focusflow.ui.settings.DailyAllowanceModal
 import com.tbtechs.focusflow.ui.settings.dailyAllowanceEntriesFromJson
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
@@ -186,7 +187,7 @@ fun DefenseScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                Icons.Outlined.Shield,
+                                DefenseIcons.ActiveFilled,
                                 contentDescription = null,
                                 tint = BrandPrimary,
                                 modifier = Modifier.size(22.dp),
