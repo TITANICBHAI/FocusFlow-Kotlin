@@ -38,6 +38,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +65,7 @@ import com.tbtechs.focusflow.ui.alwayson.AlwaysOnScreen
 import com.tbtechs.focusflow.ui.backup.BackupCoordinator
 import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
+import com.tbtechs.focusflow.ui.common.FocusFlowTimerIcon
 import com.tbtechs.focusflow.ui.common.SideMenu
 import com.tbtechs.focusflow.ui.defense.DefenseScreen
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockSetupScreen
@@ -926,15 +929,25 @@ private fun MainNavigationTabIcon(
 ) {
     val tint = if (selected) BrandPrimary else RefMuted
     when (icon) {
-        MainTabIcon.FOCUS_TIMER -> Icon(
-            imageVector = Icons.Outlined.Timer,
-            contentDescription = label,
-            tint = tint,
-            modifier = Modifier.size(22.dp),
-        )
-        // Keep the filled shield silhouette stable; the check remains a negative-space cutout.
+        MainTabIcon.FOCUS_TIMER -> if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .semantics { contentDescription = label },
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                FocusFlowTimerIcon(modifier = Modifier.size(19.dp))
+            }
+        } else {
+            Icon(
+                imageVector = Icons.Outlined.Timer,
+                contentDescription = label,
+                tint = tint,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         MainTabIcon.DEFENSE -> Icon(
-            imageVector = DefenseIcons.Filled,
+            imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
             contentDescription = label,
             tint = tint,
             modifier = Modifier.size(22.dp),

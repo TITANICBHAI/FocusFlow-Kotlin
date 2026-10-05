@@ -70,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -1382,6 +1383,15 @@ private fun StandaloneBlockPanel(
     onEdit: () -> Unit,
 ) {
     val remaining = (settings.standaloneBlockUntilMs - now).coerceAtLeast(0L)
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val blockAccent = if (isLightTheme) Color(0xFFB91C1C) else Color(0xFFF87171)
+    val blockDetailAccent = if (isLightTheme) Color(0xFF7F1D1D) else Color(0xFFFDA4AF)
+    val timerCardSurface = if (isLightTheme) Color(0xFFFFF7F7) else DarkCard
+    val timerCardBorder = if (isLightTheme) {
+        Color(0xFFFCA5A5)
+    } else {
+        Color(0xFFEF4444).copy(alpha = 0.4f)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1401,7 +1411,7 @@ private fun StandaloneBlockPanel(
                 Icon(
                     Icons.Outlined.Block,
                     contentDescription = null,
-                    tint = Color(0xFFF87171),
+                    tint = blockAccent,
                     modifier = Modifier.size(30.dp),
                 )
             }
@@ -1427,8 +1437,8 @@ private fun StandaloneBlockPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
-                    .background(DarkCard)
-                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(18.dp))
+                    .background(timerCardSurface)
+                    .border(1.dp, timerCardBorder, RoundedCornerShape(18.dp))
                     .padding(22.dp),
             ) {
                 Column(
@@ -1440,14 +1450,14 @@ private fun StandaloneBlockPanel(
                         "BLOCK EXPIRES IN",
                         fontSize = 12.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF87171),
+                        color = blockAccent,
                         letterSpacing = 1.scaledSp,
                     )
                     Text(
                         text = remaining.focusDuration(),
                         fontSize = 48.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = blockAccent,
                         letterSpacing = (-1).scaledSp,
                     )
                     Row(
@@ -1457,13 +1467,13 @@ private fun StandaloneBlockPanel(
                         Icon(
                             Icons.Outlined.Lock,
                             contentDescription = null,
-                            tint = DarkTextMuted,
+                            tint = blockDetailAccent,
                             modifier = Modifier.size(14.dp),
                         )
                         Text(
                             "${settings.standaloneBlockPackages.size} app${if (settings.standaloneBlockPackages.size == 1) "" else "s"} blocked · cannot stop early",
                             fontSize = 12.scaledSp,
-                            color = DarkTextMuted,
+                            color = blockDetailAccent,
                         )
                     }
                 }

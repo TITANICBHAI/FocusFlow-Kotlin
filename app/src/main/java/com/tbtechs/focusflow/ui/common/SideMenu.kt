@@ -1,9 +1,11 @@
 package com.tbtechs.focusflow.ui.common
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +23,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
@@ -31,7 +34,7 @@ import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 data class SideMenuItem(
     val route: String,
     val label: String,
-    val icon: @Composable () -> Unit,
+    val icon: @Composable (selected: Boolean) -> Unit,
 )
 
 @Composable
@@ -41,13 +44,30 @@ fun SideMenu(
     onClose: () -> Unit,
 ) {
     val items = listOf(
-        SideMenuItem(Routes.HOME, "Home") { Icon(Icons.Outlined.Home, contentDescription = null) },
-        SideMenuItem(Routes.FOCUS, "Focus") { Icon(Icons.Outlined.Timer, contentDescription = null) },
-        SideMenuItem(Routes.STATS, "Stats") { Icon(Icons.Outlined.BarChart, contentDescription = null) },
-        SideMenuItem(Routes.SETTINGS, "Settings") { Icon(Icons.Outlined.Settings, contentDescription = null) },
-        SideMenuItem(Routes.DEFENSE, "Defense") {
+        SideMenuItem(Routes.HOME, "Home") { _ ->
+            Icon(Icons.Outlined.Home, contentDescription = null)
+        },
+        SideMenuItem(Routes.FOCUS, "Focus") { selected ->
+            if (selected) {
+                Box(
+                    modifier = Modifier.size(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    FocusFlowTimerIcon(modifier = Modifier.size(21.dp))
+                }
+            } else {
+                Icon(Icons.Outlined.Timer, contentDescription = null)
+            }
+        },
+        SideMenuItem(Routes.STATS, "Stats") { _ ->
+            Icon(Icons.Outlined.BarChart, contentDescription = null)
+        },
+        SideMenuItem(Routes.SETTINGS, "Settings") { _ ->
+            Icon(Icons.Outlined.Settings, contentDescription = null)
+        },
+        SideMenuItem(Routes.DEFENSE, "Defense") { selected ->
             Icon(
-                imageVector = DefenseIcons.Filled,
+                imageVector = if (selected) DefenseIcons.Filled else DefenseIcons.Outline,
                 contentDescription = null,
             )
         },
@@ -79,7 +99,7 @@ fun SideMenu(
                         onNavigate(item.route)
                         onClose()
                     },
-                    icon = { item.icon() },
+                    icon = { item.icon(selected) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
             }
