@@ -2,7 +2,7 @@
 
 **Implementation plan:** [ALWAYS_ON_STATUS_NOTIFICATION_IMPLEMENTATION_PLAN.md](ALWAYS_ON_STATUS_NOTIFICATION_IMPLEMENTATION_PLAN.md)  
 **Agent instructions:** [AGENT_PRE_PROMPT.md](AGENT_PRE_PROMPT.md)  
-**Overall status:** Not started  
+**Overall status:** In progress
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -21,39 +21,56 @@
 
 ## Batch 0 — Phase 0: read-only verification
 
-**Status:** Not started  
+**Status:** Complete
 **Gate:** Complete and report findings before coding.
 
-- [ ] Confirm whether `startIdleService()` has callers.
-- [ ] Confirm whether `ACTION_STOP` has senders.
-- [ ] Find every `notify` / `startForeground` site and record notification IDs.
-- [ ] Record `minSdk`, `targetSdk`, and `compileSdk` from the current Gradle files.
-- [ ] Compare `ForegroundTaskService.isAccessibilityServiceEnabled()` with `UsageStatsRepository.hasAccessibilityPermission()`.
-- [ ] List `PermissionDefinition` entries where `optional = false`.
-- [ ] Identify existing tests and the available test setup.
-- [ ] Record the repository/environment build prerequisites relevant to verification.
-- [ ] Write a concise findings report below; note any difference from the plan.
+- [x] Confirm whether `startIdleService()` has callers.
+- [x] Confirm whether `ACTION_STOP` has senders.
+- [x] Find every `notify` / `startForeground` site and record notification IDs.
+- [x] Record `minSdk`, `targetSdk`, and `compileSdk` from the current Gradle files.
+- [x] Compare `ForegroundTaskService.isAccessibilityServiceEnabled()` with `UsageStatsRepository.hasAccessibilityPermission()`.
+- [x] List `PermissionDefinition` entries where `optional = false`.
+- [x] Identify existing tests and the available test setup.
+- [x] Record the repository/environment build prerequisites relevant to verification.
+- [x] Write a concise findings report below; note any difference from the plan.
 
 ### Batch 0 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Complete; read-only Phase 0 audit | Inspected Android service, notification publishers, permission repository/definitions, Gradle config, tests, and environment; updated this tracker and the linked project memory/pre-prompt | `rg` for service actions, notification calls/IDs, SDK settings, permission checks; `find` for tests/build files; inspected relevant source ranges and Java/Android SDK environment | Findings below. No Kotlin/source changes and no build/test execution: Java/JDK 17 and Android SDK are unavailable in this workspace. |
 
-**Findings report:**  
-_Not yet recorded._
+**Findings report:**
+
+- **Service controls:** `ForegroundServiceController.startIdleService()` has no callers (only its declaration; the service contains a comment referring to it). `ForegroundTaskService.ACTION_STOP` has no sender in the app; its constant and handling branch exist. `NetworkBlockerVpnService.ACTION_STOP` is a separate action.
+- **Notification sites and IDs:**
+  - `1001` — `ForegroundTaskService`, channel `focusday_foreground`; idle, focus-task, and break notification states share the same ID.
+  - `1002` — `NetworkBlockerVpnService` foreground notification, channel `focusday_vpn`.
+  - `1003`, tag `live-task-status` — scheduled live-task card from `LiveTaskStatusNotificationPublisher`.
+  - `1003`, no tag — VPN recovery notification from `VpnRecoveryNotifier`, on its own channel. The numeric ID is shared, but the tagged live-task notification and untagged recovery notification are distinct entries.
+  - `9101`, task-specific tag — task-end alarm from `ForegroundTaskService`, using `TaskEndAlarmIdentity`.
+  - `9001` — block alert sites in `ForegroundTaskService` and `AppBlockerAccessibilityService`.
+  - `8800` — temptation / heads-up notification sites in `TemptationReportReceiver` and `AppBlockerAccessibilityService`.
+  - `8812` — day-rating reminder from `DayRatingReminderReceiver`.
+  - `1`, reminder-slot tag — reminder notifications from `ReminderNotificationPublisher`.
+- **SDK values:** `minSdk = 26`, `targetSdk = 35`, `compileSdk = 35` in `app/build.gradle.kts`.
+- **Accessibility checks:** They are not identical. The service synchronously searches the raw enabled-services setting for the app package substring. `UsageStatsRepository.hasAccessibilityPermission()` first checks `AccessibilityManager` for an enabled service from this package, then falls back to requiring both the package and `AppBlockerAccessibilityService` class name in the setting. The service check can therefore be broader in the fallback case.
+- **Required permissions (`optional = false`):** `ACCESSIBILITY`, `USAGE`, and `OVERLAY`.
+- **Tests/setup:** 21 local unit-test files and 4 instrumented-test files. Gradle config uses JUnit 4, coroutine test, Room testing, AndroidX JUnit/Espresso, and Compose UI test dependencies. Existing nearby tests include reminder-chain, task-end alarm contract, and task-end alarm identity tests.
+- **Build prerequisites:** The wrapper is present (Gradle 8.14.2), but `java` is unavailable, `JAVA_HOME`, `ANDROID_HOME`, and `ANDROID_SDK_ROOT` are unset, no Android SDK was found in the checked locations, and `local.properties` is absent. The app targets Java 17 and compile SDK 35. Gradle build/tests were not run because prerequisites are missing.
+- **Differences / follow-up:** The plan said the SDK values were unavailable in its source snapshot; they are now verified. More importantly, the plan says to perform the Android 15 service pass before raising `targetSdk` to 35, but the current target is already 35. This audit does not expand into that parked work; confirm its scope before implementation. The possible extra scheduled-task card during a break is consistent with the code path (`focus_active` becomes false during a break), but runtime reproduction remains unverified and belongs to Batch 4.
 
 ## Batch 1 — Phase 1: always-on lifecycle
 
 **Status:** Not started  
-**Gate:** Complete Batch 0 first. Resolve Decision Q1 before implementing the off switch.
+**Gate:** Complete Batch 0 first. Follow the owner's recorded Q1 decision; do not add idle/active detection or an in-app off switch in this iteration.
 
 - [ ] Add a side-effect-free ensure-running service action and command branch; do not route through `startIdleService()` / `ACTION_SET_IDLE`.
 - [ ] Add `ForegroundServiceController.ensureRunning()` with failure logging and no thrown exception.
 - [ ] Add consent- and onboarding-gated calls from `MainActivity.onStart` and the onboarding completion step.
 - [ ] Leave `BootReceiver` unchanged.
-- [ ] Record the owner's Q1 decision about switching the service off while enforcement is active.
-- [ ] Add the consent setting/off switch using the existing key and `ACTION_STOP`, with the approved PIN/consequence behavior.
+- [x] Record the owner's Q1 decision: keep the service running whenever existing background consent is granted, regardless of idle/active state; defer an idle-only opt-out and do not add that control now.
+- [ ] Implement the consented always-on lifecycle without adding idle/active-state checks or an in-app off switch.
 - [ ] Verify idle notification wording and count-up timer remain unchanged.
 - [ ] Verify all Phase 1 acceptance items from plan section 5, or clearly record device-only items that could not be run.
 - [ ] Verify no Phase 1 enforcement behavior changed and no prohibited keys, permissions, polling loops, or manifest changes were added.
@@ -62,8 +79,8 @@ _Not yet recorded._
 ### Decision record
 
 **Q1: May the background service be switched off while a focus session, standalone block, or always-on block is active?**  
-Owner decision: _Not yet provided_  
-Date / evidence: _Not recorded_
+Owner decision (2026-10-05): Keep the service always on once existing background consent is granted; do not check idle/active state or add an in-app off switch now. Revisit an idle-only opt-out in the future.
+Evidence: User's decision in chat; plan file intentionally unchanged.
 
 ### Batch 1 work log
 
@@ -93,9 +110,9 @@ Date / evidence: _Not recorded_
 ## Batch 3 — Phase 3: enforcement health state
 
 **Status:** Not started  
-**Gate:** Requires explicit owner approval; this phase is recommended, not already decided.
+**Gate:** Owner says it is good to have but unnecessary most of the time; keep it low priority and nonessential to the core work.
 
-- [ ] Record the owner's approval or deferral before implementation.
+- [x] Record the owner's Q2 response and priority before implementation.
 - [ ] If approved, derive required permissions from `PermissionDefinition.optional`; do not hard-code the list.
 - [ ] Add the health model/reader and "Needs attention — tap to fix" idle state using existing permission checks and deep-link routes.
 - [ ] Refresh only at the plan's stated existing lifecycle/check points; add no polling loop.
@@ -104,8 +121,8 @@ Date / evidence: _Not recorded_
 ### Decision record
 
 **Q2: Does the owner want the health state (Phase 3)?**  
-Owner decision: _Not yet provided_  
-Date / evidence: _Not recorded_
+Owner response (2026-10-05): “It is good to have but unnecessary most of times.”
+Priority: Useful but nonessential; do not make it a blocker for the core phases.
 
 ### Batch 3 work log
 
@@ -120,15 +137,15 @@ Date / evidence: _Not recorded_
 
 - [ ] Reproduce or disprove the duplicate card during a break; record device/API level and evidence.
 - [ ] If reproduced, fix the publisher's break-active check and verify the result.
-- [ ] Record the owner's choice: A — keep the publisher card separate; or B — route scheduled-task state through the service when consented, with publisher fallback otherwise.
+- [x] Record the owner's choice: A — keep the publisher card separate; or B — route scheduled-task state through the service when consented, with publisher fallback otherwise.
 - [ ] Implement only the selected option and verify its behavior.
 - [ ] Record build/test results and evidence.
 
 ### Decision record
 
 **Q3: Scheduled-task card — A (leave separate) or B (fold into the service card when consented)?**  
-Owner decision: _Not yet provided_  
-Date / evidence: _Not recorded_
+Owner decision (2026-10-05): A — leave the scheduled-task card separate.
+Evidence: User's decision in chat; scheduled-task notification remains a separate card.
 
 ### Batch 4 work log
 
@@ -141,7 +158,7 @@ Date / evidence: _Not recorded_
 **Status:** Not started  
 **Gate:** Separate effort; do not begin without explicit owner approval.
 
-- [ ] Record the owner's decision: now, later, or never.
+- [x] Record the owner's decision: now, later, or never.
 - [ ] If approved for now, add characterization tests for the existing handoff rules before extraction.
 - [ ] Preserve the current 15-second, 60-second, and 2-minute intervals and the live-session real-time behavior.
 - [ ] Extract only according to plan section 9; stop after the ledger if accessibility-service extraction is too risky.
@@ -151,8 +168,8 @@ Date / evidence: _Not recorded_
 ### Decision record
 
 **Q4: Allowance refactor — now, later, or never?**  
-Owner decision: _Not yet provided_  
-Date / evidence: _Not recorded_
+Owner decision (2026-10-05): Later; keep the allowance refactor in Phase 5 of the plan.
+Evidence: User's decision in chat; plan file already contains Phase 5 and remains unchanged.
 
 ### Batch 5 work log
 
@@ -181,6 +198,6 @@ Date / evidence: _Not recorded_
 
 | Item | Reason / required decision | Revisit condition | Status |
 |---|---|---|---|
-| Phase 3 health state | Requires owner approval | Owner chooses yes | Not started |
-| Phase 4 card consolidation | Requires reproduction and A/B owner choice | Owner chooses A or B after reproduction | Not started |
-| Phase 5 allowance refactor | Separate effort; requires owner approval | Owner chooses now | Not started |
+| Phase 3 health state | Useful but nonessential; low priority | Revisit after core phases | Not started |
+| Phase 4 duplicate-during-break check | Runtime reproduction still required; card remains separate by owner choice | Complete prerequisite phases and test on device | Not started |
+| Phase 5 allowance refactor | Owner deferred it until later | Owner reopens the work | Deferred |

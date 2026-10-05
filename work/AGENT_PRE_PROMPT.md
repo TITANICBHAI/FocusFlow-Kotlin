@@ -9,7 +9,7 @@ You are continuing work on the FocusFlow Android always-on status notification p
 
 ## How to conduct the work
 
-- Treat the implementation plan as the scope and behavior contract. Treat the tracker as the sole source of progress state. Do not infer approval from a recommendation.
+- Treat the implementation plan as the scope and behavior contract, subject to newer explicit owner decisions recorded in the tracker. Treat the tracker as the source of progress and recorded decision state. Do not infer approval from a recommendation.
 - Start with Batch 0. It is read-only and must be completed and reported before changing code. Its source observations came from an uploaded snapshot and must be rechecked against the current repository.
 - Work in the plan's phase order. Complete only the current batch and batches the user has authorized. Stop at unanswered owner-decision gates and record the blocker in the tracker.
 - Tick tracker items only when actually complete. As you work, record dates, files, commands/checks, results, concrete evidence, decisions, and blockers in the relevant batch log. Update the tracker before stopping or handing work off. Never claim a check ran if it did not.
