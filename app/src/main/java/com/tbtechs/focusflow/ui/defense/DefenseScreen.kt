@@ -1,10 +1,5 @@
 package com.tbtechs.focusflow.ui.defense
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,7 +45,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +73,9 @@ import com.tbtechs.focusflow.ui.navigation.DefenseIcons
 import com.tbtechs.focusflow.ui.settings.DailyAllowanceModal
 import com.tbtechs.focusflow.ui.settings.dailyAllowanceEntriesFromJson
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
+import com.tbtechs.focusflow.ui.common.InAppNotice
+import com.tbtechs.focusflow.ui.common.InAppNoticeStrip
+import com.tbtechs.focusflow.ui.common.InAppNoticeTone
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -88,7 +85,6 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 import com.tbtechs.focusflow.ui.theme.scaledSp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -120,23 +116,25 @@ fun DefenseScreen(
     var schedulesVisible by remember { mutableStateOf(false) }
     var nuclearVisible by remember { mutableStateOf(false) }
     var pinPrompt by remember { mutableStateOf<PinAction?>(null) }
-    var notice by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<InAppNotice?>(null) }
+    var noticeId by remember { mutableStateOf(0) }
     var vpnConsentVisible by remember { mutableStateOf(false) }
     var alwaysOnPinRotationVisible by remember { mutableStateOf(false) }
+
+    fun showNotice(message: String) {
+        noticeId += 1
+        notice = InAppNotice(
+            id = noticeId,
+            message = message,
+            tone = InAppNoticeTone.WARNING,
+        )
+    }
 
     val standaloneActive = settings.standaloneBlockActive &&
         settings.standaloneBlockPackages.isNotEmpty() &&
         settings.standaloneBlockUntilMs > System.currentTimeMillis()
     val blockActive = isFocusActive || standaloneActive
     val allowanceEntries = dailyAllowanceEntriesFromJson(settings.dailyAllowanceConfigJson)
-
-    // Auto-dismiss notice after 4.5 seconds
-    LaunchedEffect(notice) {
-        if (notice != null) {
-            delay(4500)
-            notice = null
-        }
-    }
 
     fun update(next: AppSettings) = settingsViewModel.updateSettings(next)
 
@@ -148,7 +146,7 @@ fun DefenseScreen(
         if (enabled) {
             change()
         } else if (blockActive) {
-            notice = "$label can't be turned off while a Focus session or Standalone block is running."
+            showNotice("$label can't be turned off while a Focus session or Standalone block is running.")
         } else if (settings.pinProtectionEnabled) {
             pinPrompt = PinAction(
                 "Disable $label",
@@ -443,7 +441,7 @@ fun DefenseScreen(
                         checked = settings.networkBlockEnabled,
                         onChange = { enabled ->
                             if (!enabled && blockActive) {
-                                notice = "Network Blocking (VPN) can't be turned off while a block is running."
+                                showNotice("Network Blocking (VPN) can't be turned off while a block is running.")
                             } else if (enabled) {
                                 vpnConsentVisible = true
                             } else if (settings.pinProtectionEnabled) {
@@ -465,7 +463,7 @@ fun DefenseScreen(
                         checked = settings.vpnSelfHealEnabled,
                         onChange = { enabled ->
                             if (enabled && !settings.networkBlockEnabled) {
-                                notice = "Enable Network Blocking (VPN) first."
+                                showNotice("Enable Network Blocking (VPN) first.")
                             } else {
                                 protectedToggle("VPN Self-Healing", enabled) {
                                     update(settings.copy(vpnSelfHealEnabled = enabled))
@@ -480,7 +478,7 @@ fun DefenseScreen(
                         checked = settings.focusMirrorVpnEnabled,
                         onChange = { enabled ->
                             if (enabled && !settings.networkBlockEnabled) {
-                                notice = "Enable Network Blocking (VPN) first."
+                                showNotice("Enable Network Blocking (VPN) first.")
                             } else {
                                 update(settings.copy(focusMirrorVpnEnabled = enabled))
                             }
@@ -496,7 +494,7 @@ fun DefenseScreen(
                         checked = settings.launcherLockDuringStandalone,
                         onChange = { enabled ->
                             if (!enabled && standaloneActive) {
-                                notice = "Home Launcher can't be turned off while a Standalone block is running."
+                                showNotice("Home Launcher can't be turned off while a Standalone block is running.")
                             } else {
                                 update(settings.copy(launcherLockDuringStandalone = enabled))
                             }
@@ -509,7 +507,7 @@ fun DefenseScreen(
                         checked = settings.launcherBlockUninstall,
                         onChange = { enabled ->
                             if (!enabled && blockActive) {
-                                notice = "Uninstall protection can't be turned off while a block is running."
+                                showNotice("Uninstall protection can't be turned off while a block is running.")
                             } else {
                                 update(settings.copy(launcherBlockUninstall = enabled))
                             }
@@ -537,41 +535,13 @@ fun DefenseScreen(
                 Spacer(modifier = Modifier.height(100.dp))
             }
 
-            // Floating Protection Notice Toast matching 3e.jpg & React app
-            AnimatedVisibility(
-                visible = notice != null,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            InAppNoticeStrip(
+                notice = notice,
+                onDismiss = { notice = null },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 24.dp, vertical = 24.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF0F172A))
-                        .border(1.dp, Color(0xFF334155), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Lock,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(
-                            text = notice.orEmpty(),
-                            fontSize = 13.scaledSp,
-                            color = Color.White,
-                            lineHeight = 18.scaledSp,
-                        )
-                    }
-                }
-            }
+            )
         }
     }
 
@@ -597,7 +567,7 @@ fun DefenseScreen(
                 update(settings.copy(networkBlockEnabled = true))
             }
         } else {
-            notice = "VPN permission was not granted. Network Blocking remains off."
+            showNotice("VPN permission was not granted. Network Blocking remains off.")
         }
     }
 

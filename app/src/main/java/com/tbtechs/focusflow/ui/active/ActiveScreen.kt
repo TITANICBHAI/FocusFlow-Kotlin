@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -93,6 +94,8 @@ import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.time.Instant
 import java.time.LocalDate
@@ -134,6 +137,7 @@ fun ActiveScreen(
     val installedAppsState = rememberInstalledApps(installedAppsRepository)
     var vpnSettings by remember { mutableStateOf<NetworkBlockSettings?>(null) }
     var vpnStatus by remember { mutableStateOf<NetworkBlockStatus?>(null) }
+    var initialVpnLoadComplete by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf("") }
     var stopFocusConfirmation by remember { mutableStateOf(false) }
     var clearStandaloneConfirmation by remember { mutableStateOf(false) }
@@ -142,12 +146,25 @@ fun ActiveScreen(
     var defensePin by remember { mutableStateOf("") }
     var focusPin by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(resolvedVpnRepo) {
         while (true) {
-            vpnSettings = runCatching { resolvedVpnRepo.getNetworkBlockSettings() }.getOrNull()
-            vpnStatus = runCatching { resolvedVpnRepo.getNetworkBlockStatus() }.getOrNull()
+            val loadedState = withContext(Dispatchers.IO) {
+                runCatching { resolvedVpnRepo.getNetworkBlockSettings() }.getOrNull() to
+                    runCatching { resolvedVpnRepo.getNetworkBlockStatus() }.getOrNull()
+            }
+            vpnSettings = loadedState.first
+            vpnStatus = loadedState.second
+            initialVpnLoadComplete = true
             delay(5_000)
         }
+    }
+
+    if (installedAppsState.loading || !initialVpnLoadComplete) {
+        ActiveLoadingScreen(
+            onBack = onBack,
+            loadedAppCount = installedAppsState.apps.size,
+        )
+        return
     }
 
     val focusTask = session?.taskId?.let { taskId ->
@@ -642,6 +659,49 @@ fun ActiveScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun ActiveLoadingScreen(
+    onBack: () -> Unit,
+    loadedAppCount: Int,
+) {
+    Scaffold(
+        containerColor = DarkBackground,
+        topBar = {
+            FocusFlowInternalHeader(
+                title = "Active",
+                subtitle = "Live status of your protections",
+                onBack = onBack,
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            CircularProgressIndicator(color = BrandPrimary)
+            Text(
+                text = "Loading active protections…",
+                modifier = Modifier.padding(top = 16.dp),
+                color = DarkTextPrimary,
+                fontSize = 16.scaledSp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (loadedAppCount > 0) {
+                Text(
+                    text = "Checking $loadedAppCount installed apps",
+                    modifier = Modifier.padding(top = 6.dp),
+                    color = DarkTextSecondary,
+                    fontSize = 13.scaledSp,
+                )
+            }
+        }
     }
 }
 

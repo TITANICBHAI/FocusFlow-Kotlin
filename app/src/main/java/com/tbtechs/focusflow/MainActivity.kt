@@ -59,6 +59,9 @@ import com.tbtechs.focusflow.ui.common.AchievementCelebrationModal
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import com.tbtechs.focusflow.ui.common.ErrorAlertBanner
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
+import com.tbtechs.focusflow.ui.common.InAppNotice
+import com.tbtechs.focusflow.ui.common.InAppNoticeStrip
+import com.tbtechs.focusflow.ui.common.InAppNoticeTone
 import com.tbtechs.focusflow.ui.navigation.FocusFlowNavGraph
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
@@ -68,6 +71,9 @@ import com.tbtechs.focusflow.ui.support.DiagnosticLogLevel
 import com.tbtechs.focusflow.ui.support.DiagnosticsModal
 import com.tbtechs.focusflow.ui.splash.FocusFlowSplashOverlay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Normal app activity host. LauncherActivity remains a separate CATEGORY_HOME
@@ -224,27 +230,81 @@ private fun FocusFlowRoot(
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var replaceTasksOnImport by remember { mutableStateOf(false) }
     var pendingImportGeneration by remember { mutableStateOf(0) }
+    var noticeId by remember { mutableStateOf(0) }
+    var inAppNotice by remember { mutableStateOf<InAppNotice?>(null) }
+
+    fun showInAppNotice(
+        message: String,
+        tone: InAppNoticeTone = InAppNoticeTone.INFO,
+        dismissAfterMillis: Long? = 4_500,
+    ) {
+        noticeId += 1
+        inAppNotice = InAppNotice(
+            id = noticeId,
+            message = message,
+            tone = tone,
+            dismissAfterMillis = dismissAfterMillis,
+        )
+    }
+
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
-        result.data?.data?.let { destination ->
+        val destination = result.data?.data
+        if (destination == null) {
+            showInAppNotice("Backup export cancelled.")
+        } else {
+            showInAppNotice(
+                message = "Saving backup…",
+                tone = InAppNoticeTone.LOADING,
+                dismissAfterMillis = null,
+            )
             scope.launch {
-                val outcome = backupCoordinator.export(settings, destination)
-                Toast.makeText(
-                    context,
-                    if (outcome.ok) "Backup exported." else "Backup export failed: ${outcome.error}",
-                    Toast.LENGTH_LONG,
-                ).show()
+                val outcome = try {
+                    withContext(Dispatchers.IO) {
+                        backupCoordinator.export(settings, destination)
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Exception) {
+                    null
+                }
+                if (outcome?.ok == true) {
+                    showInAppNotice("Backup exported successfully.", InAppNoticeTone.SUCCESS)
+                } else {
+                    showInAppNotice(
+                        outcome?.error?.let { "Backup export failed: $it" }
+                            ?: "Backup export failed. Please try again.",
+                        InAppNoticeTone.WARNING,
+                    )
+                }
             }
         }
     }
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
-        result.data?.data?.let { source ->
+        val source = result.data?.data
+        if (source == null) {
+            showInAppNotice("Backup import cancelled.")
+        } else {
+            showInAppNotice(
+                message = "Reading backup…",
+                tone = InAppNoticeTone.LOADING,
+                dismissAfterMillis = null,
+            )
             scope.launch {
-                val staged = backupCoordinator.stageImport(source)
+                val staged = try {
+                    withContext(Dispatchers.IO) {
+                        backupCoordinator.stageImport(source)
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Exception) {
+                    Result.failure(error)
+                }
                 if (staged.isSuccess) {
+                    inAppNotice = null
                     pendingImportGeneration += 1
                     val sourceTab = navController.currentBackStackEntry?.let { entry ->
                         RouteTextScaleContext.sourceTabForDestination(
@@ -263,11 +323,11 @@ private fun FocusFlowRoot(
                         launchSingleTop = true
                     }
                 } else {
-                    Toast.makeText(
-                        context,
-                        staged.exceptionOrNull()?.message ?: "The selected backup could not be saved.",
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    showInAppNotice(
+                        "Import failed: " +
+                            (staged.exceptionOrNull()?.message ?: "The selected backup could not be read."),
+                        InAppNoticeTone.WARNING,
+                    )
                 }
             }
         }
@@ -508,6 +568,10 @@ private fun FocusFlowRoot(
                     pendingImportGeneration = pendingImportGeneration,
                     initialReplaceTasks = replaceTasksOnImport,
                     onImportFinished = {
+                        showInAppNotice(
+                            "Backup imported successfully.",
+                            InAppNoticeTone.SUCCESS,
+                        )
                         settingsViewModel.refreshFromStore()
                         replaceTasksOnImport = false
                         navController.popBackStack()
@@ -619,6 +683,14 @@ private fun FocusFlowRoot(
             ) {
                 ErrorAlertBanner(onViewLogs = { diagnosticsVisible = true })
             }
+
+            InAppNoticeStrip(
+                notice = inAppNotice,
+                onDismiss = { inAppNotice = null },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 92.dp),
+            )
 
             AchievementCelebrationModal(
                 visible = newlyEarned != null && newlyEarned.id != dismissedAchievementId,
