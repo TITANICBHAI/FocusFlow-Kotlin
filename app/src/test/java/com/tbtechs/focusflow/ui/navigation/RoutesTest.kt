@@ -2,6 +2,7 @@ package com.tbtechs.focusflow.ui.navigation
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RoutesTest {
@@ -23,5 +24,11 @@ class RoutesTest {
         assertEquals(Routes.ALWAYS_ON, Routes.fromPath("always-on?package=com.example.app"))
         assertEquals(Routes.ALWAYS_ON, Routes.fromPath("always-on?sourceTab=stats"))
         assertEquals(Routes.FOCUS, Routes.fromPath("focus"))
+    }
+
+    @Test
+    fun permissionsDeepLinkResolvesToThePermissionsScreen() {
+        assertEquals(Routes.PERMISSIONS, Routes.fromPath("/permissions"))
+        assertTrue(Routes.PERMISSIONS in Routes.externalLinkableRoutes)
     }
 }

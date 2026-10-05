@@ -56,7 +56,7 @@
 - **SDK values:** `minSdk = 26`, `targetSdk = 35`, `compileSdk = 35` in `app/build.gradle.kts`.
 - **Accessibility checks:** They are not identical. The service synchronously searches the raw enabled-services setting for the app package substring. `UsageStatsRepository.hasAccessibilityPermission()` first checks `AccessibilityManager` for an enabled service from this package, then falls back to requiring both the package and `AppBlockerAccessibilityService` class name in the setting. The service check can therefore be broader in the fallback case.
 - **Required permissions (`optional = false`):** `ACCESSIBILITY`, `USAGE`, and `OVERLAY`.
-- **Tests/setup:** 21 local unit-test files and 4 instrumented-test files. Gradle config uses JUnit 4, coroutine test, Room testing, AndroidX JUnit/Espresso, and Compose UI test dependencies. Existing nearby tests include reminder-chain, task-end alarm contract, and task-end alarm identity tests.
+- **Tests/setup:** 23 local unit-test files and 4 instrumented-test files. Gradle config uses JUnit 4, coroutine test, Room testing, AndroidX JUnit/Espresso, and Compose UI test dependencies. Existing nearby tests include reminder-chain, task-end alarm contract, task-end alarm identity, and enforcement-health tests.
 - **Build prerequisites:** The wrapper is present (Gradle 8.14.2), but `java` is unavailable, `JAVA_HOME`, `ANDROID_HOME`, and `ANDROID_SDK_ROOT` are unset, no Android SDK was found in the checked locations, and `local.properties` is absent. The app targets Java 17 and compile SDK 35. Gradle build/tests were not run because prerequisites are missing.
 - **Differences / follow-up:** The plan said the SDK values were unavailable in its source snapshot; they are now verified. More importantly, the plan says to perform the Android 15 service pass before raising `targetSdk` to 35, but the current target is already 35. This audit does not expand into that parked work; confirm its scope before implementation. The possible extra scheduled-task card during a break is consistent with the code path (`focus_active` becomes false during a break), but runtime reproduction remains unverified and belongs to Batch 4.
 
@@ -110,14 +110,14 @@ Evidence: User's decision in chat; plan file intentionally unchanged.
 
 ## Batch 3 — Phase 3: enforcement health state
 
-**Status:** In progress; owner approved as useful but nonessential
+**Status:** In progress; implementation present, verification deferred while Batch 4 proceeds
 
 **Gate:** Owner says it is good to have but unnecessary most of the time; keep it low priority and nonessential to the core work.
 
 - [x] Record the owner's Q2 response and priority before implementation.
-- [ ] If approved, derive required permissions from `PermissionDefinition.optional`; do not hard-code the list.
-- [ ] Add the health model/reader and "Needs attention — tap to fix" idle state using existing permission checks and deep-link routes.
-- [ ] Refresh only at the plan's stated existing lifecycle/check points; add no polling loop.
+- [x] If approved, derive required permissions from `PermissionDefinition.optional`; do not hard-code the list.
+- [x] Add the health model/reader and "Needs attention — tap to fix" idle state using existing permission checks and deep-link routes.
+- [x] Refresh only at the plan's stated existing lifecycle/check points; add no polling loop.
 - [ ] Verify the state and refresh behavior, then record build/test results and evidence.
 
 ### Decision record
@@ -131,17 +131,19 @@ Priority: Useful but nonessential; do not make it a blocker for the core phases.
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
 | 2026-10-05 | Owner decision recorded; Batch 0 source audit complete | `PermissionSupport.kt`, `UsageStatsRepository.kt`, `LauncherController.kt`, `MainActivity.kt`, `Routes.kt`, `AndroidManifest.xml`, `ForegroundTaskService.kt`, `FocusFlowNavGraph.kt` | Rechecked permission definitions/checks, existing route path, lifecycle start, service startup, and fallback accessibility check | The three current non-optional permission definitions are Accessibility, Usage Access, and Overlay; their required set must continue to come from `permissionDefinitions.filterNot { it.optional }`. Existing direct checks are suspend functions; do not call UI-layer `checkPermission()`. `MainActivity.onStart()` already dispatches `ACTION_ENSURE_RUNNING`; service startup and its one-second fallback accessibility check provide the other planned refresh points. `Routes.fromPath(intent.data.path)` accepts the `permissions` path through the existing `focusflow` scheme. No implementation changes made before recording Q2. |
+| 2026-10-05 | Phase 3 implementation source-reviewed; one route regression test added; execution blocked | Existing `EnforcementHealth.kt`, `EnforcementHealthReader.kt`, `ForegroundTaskService.kt`, status-card model/mapper/renderer, `PermissionSupport.kt`, `UsageStatsRepository.kt`, `LauncherController.kt`, `MainActivity.kt`, `Routes.kt`; changed `RoutesTest.kt` | Rechecked Batch 0 facts with `rg`/`find`; `git diff --check` passed; attempted focused `:app:testDebugUnitTest` for health, status mapper, and route tests | Current source still has no `startIdleService()` caller or `ForegroundTaskService.ACTION_STOP` sender; notification IDs and SDK values match the report. Current tests are 23 JVM test files and 4 instrumented test files (the previous count of 21 JVM files was stale). Accessibility checks remain intentionally different: the service check matches the package substring, while `UsageStatsRepository` also checks the service class in its settings fallback. Phase 3 is already present: required IDs come from `permissionDefinitions.filterNot { it.optional }`; Accessibility, Usage Access, and Overlay use existing checks; idle attention state routes to `focusflow://app/permissions`; refresh occurs on service creation, `ACTION_ENSURE_RUNNING` (sent by `MainActivity.onStart()`), and a changed value from the existing fallback poller. No new polling loop or enforcement behavior change. The new route test checks that `/permissions` resolves and remains externally linkable. Gradle did not start: `JAVA_HOME is not set and no 'java' command could be found in your PATH`; Android SDK variables are also unset, so JVM tests/build and device verification remain unrun, not source failures. |
+| 2026-10-05 | Phase 3 verification explicitly deferred so the user-authorized Phase 4 work can proceed | No additional files | User requested Batch 4; reviewed existing Phase 3 status and recorded prerequisites | The health implementation and source review are complete, but unit-test/build and device verification remain blocked by missing Java/JDK, Android SDK, and a test device. Phase 3 remains nonessential per Q2; return to its unchecked verification item when prerequisites are available. |
 
 ## Batch 4 — Phase 4: scheduled-task card
 
-**Status:** Not started  
-**Gate:** Complete Batch 2 first. After Phase 3, record whether it was completed or explicitly deferred. Then reproduce the possible duplicate during a break and record the owner's A/B decision before changing card behavior.
+**Status:** In progress; break guard implemented from source-level reproduction, device/API verification blocked
+**Gate:** Batch 2 implementation is complete but its build/device acceptance remains blocked. Phase 3 verification is explicitly deferred above. The user authorized proceeding with Batch 4. The Q3 decision is A; device/API reproduction is still required before this batch can be closed.
 
-- [ ] Reproduce or disprove the duplicate card during a break; record device/API level and evidence.
+- [ ] Reproduce or disprove the duplicate card on a device; record device/API level and runtime evidence. No `adb`, emulator, or Android SDK is available in this workspace.
 - [ ] If reproduced, fix the publisher's break-active check and verify the result.
 - [x] Record the owner's choice: A — keep the publisher card separate; or B — route scheduled-task state through the service when consented, with publisher fallback otherwise.
 - [ ] Implement only the selected option and verify its behavior.
-- [ ] Record build/test results and evidence.
+- [x] Record build/test results and evidence, including environment blockers.
 
 ### Decision record
 
@@ -153,7 +155,7 @@ Evidence: User's decision in chat; scheduled-task notification remains a separat
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | In progress; source-level duplicate path confirmed and suppression guard plus unit test added; runtime reproduction/verification blocked | `LiveTaskStatusNotificationPublisher.kt`, `ForegroundTaskService.kt`, `ReminderReceiver.kt`, `AppModule.kt`; added `LiveTaskStatusPolicyTest.kt` | Inspected `enterBreak()` state writes, both publisher call paths, and shared prefs name; `git diff --check` passed; attempted `./gradlew :app:testDebugUnitTest --tests com.tbtechs.focusflow.notifications.LiveTaskStatusPolicyTest` (stopped before Gradle: `JAVA_HOME` unset/no `java`); `adb devices -l` (command not found); `ANDROID_HOME`/`ANDROID_SDK_ROOT` unset | Source-level reproduction path: `enterBreak()` writes `focus_active=false` and a future `focus_break_until_ms`; `ReminderReceiver` still calls `LiveTaskStatusNotificationPublisher.sync`; the publisher previously suppressed only on `focus_active`, allowing notification 1003 alongside the service's break card 1001. The publisher now suppresses while focus is active or the existing break deadline is future, and still allows Option A's separate scheduled-task card outside focus/break. Added pure policy tests for active focus, active break, and expired/absent break. Physical reproduction/disproof, API level, JVM execution, and device verification remain unavailable; do not mark runtime acceptance complete. |
 
 ## Batch 5 — Phase 5: allowance ownership refactor
 
@@ -200,6 +202,6 @@ Evidence: User's decision in chat; plan file already contains Phase 5 and remain
 
 | Item | Reason / required decision | Revisit condition | Status |
 |---|---|---|---|
-| Phase 3 health state | Useful but nonessential; low priority | Revisit after core phases | Not started |
-| Phase 4 duplicate-during-break check | Runtime reproduction still required; card remains separate by owner choice | Complete prerequisite phases and test on device | Not started |
+| Phase 3 health state | Implementation is present; verification explicitly deferred while Batch 4 proceeds | Revisit when JDK, Android SDK, and device verification are available | In progress |
+| Phase 4 duplicate-during-break check | Source path guarded; runtime reproduction and test remain blocked by absent Android tooling/device | Verify on an Android device/API before closing Batch 4 | In progress |
 | Phase 5 allowance refactor | Owner deferred it until later | Owner reopens the work | Deferred |

@@ -30,6 +30,7 @@ object LiveTaskStatusNotificationPublisher {
     private const val NOTIFICATION_TAG = "live-task-status"
     private const val NOTIFICATION_ID = 1003
     private const val PREF_FOCUS_ACTIVE = "focus_active"
+    private const val PREF_FOCUS_BREAK_UNTIL_MS = "focus_break_until_ms"
     private const val REQUEST_OPEN = 3000
     private val terminalStatuses = setOf("completed", "skipped", "overdue")
 
@@ -42,9 +43,16 @@ object LiveTaskStatusNotificationPublisher {
             Context.MODE_PRIVATE,
         )
 
-        // ForegroundTaskService already owns the task-status notification while
-        // focus enforcement is active. Avoid displaying a duplicate status card.
-        if (focusPrefs.getBoolean(PREF_FOCUS_ACTIVE, false)) {
+        // ForegroundTaskService owns the task-status notification during focus
+        // and its break. focus_active is false during a break, so check the
+        // persisted break deadline as well to avoid a duplicate live-task card.
+        if (
+            shouldSuppressLiveTaskStatus(
+                focusActive = focusPrefs.getBoolean(PREF_FOCUS_ACTIVE, false),
+                breakUntilMs = focusPrefs.getLong(PREF_FOCUS_BREAK_UNTIL_MS, 0L),
+                nowMs = nowMs,
+            )
+        ) {
             manager.cancel(NOTIFICATION_TAG, NOTIFICATION_ID)
             return
         }
@@ -152,3 +160,9 @@ object LiveTaskStatusNotificationPublisher {
         val endMs: Long,
     )
 }
+
+internal fun shouldSuppressLiveTaskStatus(
+    focusActive: Boolean,
+    breakUntilMs: Long,
+    nowMs: Long,
+): Boolean = focusActive || breakUntilMs > nowMs
