@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, the 143-test unit suite, and the debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7 is owner-authorized; Q2 is decided and T8 will retain current behavior without new opt-ins. No Batch 8+ work is authorized.
+**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, unit suite, and debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7's approved T9–T11 scope is complete; Q2 retains existing Wi-Fi/mobile behavior, and the optional T12 calculator was skipped. No Batch 8+ work is authorized.
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -218,21 +218,23 @@
 
 ## Batch 7 — P2 T8–T12: hardening and cleanup
 
-**Status:** In progress; owner-authorized on 2026-10-05. T8 is paused pending Q2.
-**Gate:** The owner authorized Batch 7 while Batch 6's device-only check remains open. Resolve Q2 before T8. T12 is optional and must not expand scope without a clear need.
+**Status:** Approved Batch 7 scope complete. T8 behavior is unchanged per the owner's Q2 decision; T12 was skipped.
+**Gate:** The owner authorized Batch 7 while Batch 6's device-only check remains open. Q2 is resolved: retain existing Wi-Fi/mobile behavior without new opt-in controls. The owner chose not to include optional T12.
 
 - [x] Record the owner's Q2 decision: retain current Wi-Fi/mobile-data behavior as-is, without adding opt-in controls; T8 behavior is unchanged.
-- [ ] Fix the `vpn_failed_packages` clobbering issue with a distinct, accurately exposed invalid-package state.
-- [ ] Remove dead code only after verifying zero call sites and completing dependent tasks.
-- [ ] Add the active-block guard to the Defense master toggle where approved by the plan.
-- [ ] Decide whether the optional pure policy calculator is needed; do not implement it by default.
-- [ ] Run relevant tests and record results.
+- [x] Fix `vpn_failed_packages` clobbering while preserving a distinct, accurately exposed invalid-package state.
+- [x] Verify dead-code candidates and dependent call sites; remove no code that still has callers.
+- [x] Confirm the active-block guard is applied to the Defense master toggle.
+- [x] Skip the optional pure policy calculator (T12), per the owner's choice.
+- [x] Run relevant tests/build and record results.
 
 ### Batch 7 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
 | 2026-10-05 | Started independent T9/T11 work; T8 remains paused for Q2. | `VpnPolicyCoordinator.kt`, `NetworkBlockerVpnService.kt`, `VpnRepository.kt`, `SettingsRepository.kt`, `ActiveScreen.kt`, `ActiveHeaderButton.kt`, new active-block policy/tests, this tracker | Rechecked T8–T12 plan scope and current writers, readers, guards, and UI consumers; reviewed diff with `git diff --check`. No tests run; tests are deferred to Batch 7 final verification. | T9 separates coordinator-detected invalid packages into `net_block_invalid_packages` and exposes both lists; service registration failures remain in `vpn_failed_packages`. T11 now shares a pure expiry-aware Focus/Standalone active-block guard between repositories. Q2 is still pending, so T8 behavior has not been changed. |
+| 2026-10-05 | Completed the authorized Batch 7 scope: T9 status persistence, T10 dead-code audit, and T11 guard verification. | Changed: `NetworkBlockerVpnService.kt`, new `VpnRegistrationFailurePolicy.kt` and `VpnRegistrationFailurePolicyTest.kt`; verified: `VpnPolicyCoordinator.kt`, `VpnRepository.kt`, `SettingsRepository.kt`, `ActiveBlockGuardPolicy.kt`/tests, `ActiveScreen.kt`, `ActiveHeaderButton.kt`; this tracker | First `bash scripts/test-unit.sh` attempt timed out during initial JDK/SDK provisioning after source compilation; retry passed the full suite: 152 tests, 0 failures/errors/skips. `bash scripts/build-apk-with-java.sh` — debug APK assembled successfully. `git diff --check`; scoped plan §6 and T10 candidate greps. | `writeStatus` now preserves prior service-registration failures when a status update does not report a new registration result; a new registration attempt and an intentional stop explicitly clear them. Coordinator-detected invalid/uninstalled targets stay in `net_block_invalid_packages`, and the existing status model/UI expose both lists separately. T10 candidates are already absent; current `isAnotherVpnActive` helpers have live callers and were retained; both service/coordinator headers accurately describe current behavior. T11's expiry-aware guard is already wired into `SettingsRepository.setNetworkBlockEnabled` and is covered by the passing policy tests. Q2 confirmed: retain existing Wi-Fi/mobile behavior, no opt-in controls. T12 skipped by owner choice. Earlier Batch 5/6 device-only checks remain unverified; no GitHub push or Actions polling. |
+| 2026-10-05 | Ran the requested focused verification for T1–T8-a. | Existing explicit VPN, self-heal, consent, backup/import, boundary, permission-recovery, and list-save tests; this tracker | `bash scripts/test-unit.sh` with 12 exact test-class filters; result XML confirmed all 12 expected classes ran: 47 tests, 0 failures/errors/skips. `adb devices -l` showed no attached device; emulator binary unavailable. | T1 policy/migration, T2 self-heal transition/effect policy, T3 consent-cancel policy, T4 backup/import/summary policy, T5/T6 boundary policy, T7 recovery policy, and T8-a list-save policy tests pass. T2 effect dispatch is source-verified, not Android-device exercised. System consent dialogs, post-import UI, real alarm delivery, and permission-revocation/banner interaction remain unverified on-device. |
 
 ## Owner decision record
 
@@ -244,23 +246,30 @@ Record each decision, date, and evidence before dependent work. Pending question
 | Q2 | Wi-Fi/mobile-data side effects | Decided (2026-10-05) | Keep existing behavior as-is; do not add opt-in controls. No T8 code changes. |
 | Q3 | Behavior when import includes a VPN list but Network Blocking is off | Decided (2026-10-05) | Request VPN consent during Import; on grant turn on Network Blocking and VPN Self-Healing and activate the imported list. On denial/cancel, continue restore with the list dormant. Use one informational expandable summary for imported protection categories; do not ask for another in-app confirmation. |
 | Q4 | Single source of truth for the explicit VPN list | Decided (2026-10-05) | `net_block_explicit_packages` is the canonical internal VPN-list source; preserve the existing `alwaysOnVpnPackages` backup field through explicit mapping. |
+| T12 | Optional pure policy calculator | Decided (2026-10-05) | Skip the optional refactor; no clear need was identified for this batch. |
 
 ## Required test scenarios
 
-- [ ] T1-repro: focus-mirror targets stop blocking after focus ends when there is no explicit VPN list.
-- [ ] T1-migrate: missing explicit key plus generation 0 migrates legacy snapshot once.
-- [ ] T1-migrate-2: missing explicit key plus positive generation does not treat derived targets as user picks.
-- [ ] T2: Defense self-heal on/off updates native state and watchdog/recovery scheduling.
-- [ ] T3: cancelling VPN consent leaves the setting unchanged.
+- [x] T1-repro: focus-mirror targets stop blocking after focus ends when there is no explicit VPN list (policy test passed).
+- [x] T1-migrate: missing explicit key plus generation 0 migrates legacy snapshot once (policy test passed).
+- [x] T1-migrate-2: missing explicit key plus positive generation does not treat derived targets as user picks (policy test passed).
+- [x] T2: self-heal toggle policy tests cover native-value decisions and watchdog-cancel/recovery-sync effects; repository dispatch was source-verified, not device-exercised.
+- [x] T3: consent-cancel policy test confirms protection is not enabled; actual Android system-dialog interaction remains unverified.
 - [x] T4: unit-tested backup round-trip preserves the approved VPN list source of truth.
-- [ ] T4-consent-granted: actual Android consent grant activates both switches and the imported list; policy branch is unit-tested, device flow unavailable.
-- [ ] T4-consent-cancelled: Android cancellation leaves the list stored but inactive and does not newly enable either switch; policy branch is unit-tested, device flow unavailable.
-- [ ] T4-vpn-permission-pregranted: verify on-device that existing permission skips the system prompt and activates the imported list and both switches.
-- [ ] T4-summary: verify on-device that the import summary shows collapsible cards and truthful status; classification policy is unit-tested.
-- [ ] T5: Android alarm delivery stops standalone VPN targets at expiry without user interaction; expiry policy is unit-tested, but device delivery is unverified.
-- [ ] T6: Android schedule transitions apply targets only inside approved windows, including overnight and week-wrap cases; policy behavior is unit-tested, but device delivery is unverified.
-- [ ] T7: policy coverage passes for approved effective VPN sources; actual Android permission-revocation/banner behavior remains unverified because no device/emulator is available.
+- [x] T4-consent-granted: import activation policy branch is unit-tested; actual Android consent and switch activation remain unverified on-device.
+- [x] T4-consent-cancelled: import policy keeps the list dormant and avoids enabling switches; actual Android cancellation remains unverified on-device.
+- [ ] T4-vpn-permission-pregranted: on-device check that existing permission skips the prompt and activates the imported list and both switches; policy branch is unit-tested.
+- [x] T4-summary policy: category/status classification is unit-tested.
+- [ ] T4-summary device: verify collapsible cards and truthful displayed status on Android.
+- [x] T5 policy: standalone expiry and next-boundary policy tests pass.
+- [ ] T5 device: verify Android alarm delivery stops targets at expiry without interaction.
+- [x] T6 policy: active-window, overnight, and week-wrap policy tests pass.
+- [ ] T6 device: verify Android schedule transitions apply only within approved windows.
+- [x] T7 policy: configured VPN-source recovery/banner eligibility tests pass.
+- [ ] T7 device: verify permission revocation and banner/recovery behavior on Android.
 - [x] T8-a: empty-list master-switch policy is unit-tested and used by both VPN list save screens; device interaction remains unavailable.
+- [x] T9: service-registration failures survive unrelated status updates and remain separate from invalid/uninstalled targets; focused policy tests pass.
+- [x] T11: the repository master-toggle setter uses the active/expiry guard; active, expired, and inactive states are covered by unit tests.
 
 ## Final verification
 
@@ -268,7 +277,7 @@ Record each decision, date, and evidence before dependent work. Pending question
 - [x] Run applicable verification greps from plan §6; obsolete schedule snapshot/class references are absent, and boundary receiver/scheduler wiring is present.
 - [ ] Complete feasible manual device checks from plan §6; blocked because no Android device/emulator is available.
 - [x] Review the final diff for data loss, unauthorized scope, and changes outside the plan; the unrelated `.replit` Python-module side effect was restored.
-- [x] Confirm Batch 5 evidence, keep device checks blocked and Q2 pending, and do not start Batch 7+ without authorization.
+- [x] Confirm Batch 5/6 device checks remain blocked, record Q2 as decided, complete the authorized Batch 7 scope, and do not start Batch 8+ without authorization.
 - [x] Record final handoff summary with scope, test results, blockers, and the authorized stopping point.
 
 ## Final work log
@@ -277,3 +286,4 @@ Record each decision, date, and evidence before dependent work. Pending question
 |---|---|---|---|---|
 | 2026-10-05 | Handoff documents prepared; no implementation started | `fixes/VPN_WIRING_FIX_PLAN.md`, `fixes/VPN_WIRING_FIX_TRACKER.md`, `fixes/VPN_WIRING_AGENT_PRE_PROMPT.md` | Read the full attached plan and the existing `work/BATCH_TRACKER.md` and `work/AGENT_PRE_PROMPT.md`; no code/build/test changes made | Plan moved under `fixes/`; implementation status remains Not started. Batch 0 and all owner decisions remain open. |
 | 2026-10-05 | Final handoff for the authorized Batch 3–4 scope. | VPN backup mapping/migration, consent-result import flow, list-save switches, protection summary, focused policy tests, and this tracker. | `bash scripts/test-unit.sh`: 137/137 passed; `git diff --check` passed; focused VPN-key and consent API greps passed. No GitHub push or Actions polling. | Batch 3–4 implementation is complete for sequencing. Android system consent, post-import screen interaction, and device behavior remain unverified because no device/emulator is available. Do not start Batch 5 or later or resolve Q2 without new authorization. The backup contract's v13 heading/intended-v14 discrepancy remains documented. |
+| 2026-10-05 | Handoff for the approved Batch 7 scope. | `NetworkBlockerVpnService.kt`, `VpnRegistrationFailurePolicy.kt`, `VpnRegistrationFailurePolicyTest.kt`, and this tracker; T10/T11 source verification | `bash scripts/test-unit.sh`: 152 passed, 0 failures/errors/skips; `bash scripts/build-apk-with-java.sh`: debug APK built; `git diff --check`; scoped VPN-key, consent API, status-separation, and dead-code greps. | T9–T11 complete; T8 unchanged per Q2; T12 skipped per owner choice. The first test attempt timed out during initial JDK/SDK provisioning; the cached-tool retry passed. Batch 5/6 device-only checks remain unverified. No Batch 8+ work authorized. No GitHub push or Actions polling. |

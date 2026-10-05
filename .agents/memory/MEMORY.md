@@ -17,3 +17,4 @@
 - [Navigation icon states](navigation-icon-states.md) — Focus nav has separate Ionicons timer vectors; Ready artwork stays on its shared component, and Defense uses its supplied active shield.
 - [Always-on notification workflow](always-on-status-notification-workflow.md) — read the scoped plan and agent prompt; record all progress and evidence in the batch tracker.
 - [VPN batch test deferral](vpn-batch-test-deferral.md) — defer all VPN batch test runs until final verification, even if an intermediate checklist says to run them; review each batch diff.
+- [Gradle test-filter verification](gradle-test-filter-verification.md) — confirm expected test classes appear in XML; a nonmatching `--tests` filter can still succeed.

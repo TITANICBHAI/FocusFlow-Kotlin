@@ -144,12 +144,20 @@ class NetworkBlockerVpnService : VpnService() {
     private fun writeStatus(
         state: String,
         error: String? = null,
-        failedPackages: List<String> = emptyList(),
+        failedPackages: List<String>? = null,
     ) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val currentFailures = parseJsonArray(
+            prefs.getString(PREF_FAILED_PKGS, "[]") ?: "[]",
+        )
+        val persistedFailures = VpnRegistrationFailurePolicy.nextPersistedFailures(
+            currentFailures = currentFailures,
+            reportedFailures = failedPackages,
+        )
+        prefs.edit()
             .putString(PREF_STATUS, state)
             .putString(PREF_ERROR, error)
-            .putString(PREF_FAILED_PKGS, JSONArray(failedPackages).toString())
+            .putString(PREF_FAILED_PKGS, JSONArray(persistedFailures).toString())
             .apply()
     }
 
@@ -357,7 +365,7 @@ class NetworkBlockerVpnService : VpnService() {
             stopVpn(updateStatus = false)
         }
 
-        writeStatus(STATUS_STARTING)
+        writeStatus(STATUS_STARTING, failedPackages = emptyList())
         try {
             // Close the race between the JS preflight and service startup.
             if (VpnService.prepare(this) != null) {
@@ -505,7 +513,7 @@ class NetworkBlockerVpnService : VpnService() {
         activeMode = null
         // Cancel the AlarmManager watchdog — session is intentionally ending
         VpnWatchdogReceiver.cancel(applicationContext)
-        if (updateStatus) writeStatus(STATUS_STOPPED)
+        if (updateStatus) writeStatus(STATUS_STOPPED, failedPackages = emptyList())
     }
 
     private fun isStalePolicyCommand(intent: Intent?): Boolean {
