@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.data.repository
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -65,6 +64,8 @@ class VpnRepository(
 
     // ─── VPN permission ───────────────────────────────────────────────────────
 
+    fun consentIntentOrNull(): Intent? = VpnService.prepare(context)
+
     /**
      * Returns true if the VPN permission has already been granted by the user.
      * VpnService.prepare() returns null when the permission is already held.
@@ -78,32 +79,14 @@ class VpnRepository(
         }
     }
 
-    /**
-     * Shows the system "FocusFlow wants to set up a VPN" consent dialog.
-     * Must be called from an Activity context or with an Activity reference.
-     * Returns true if the dialog intent was started, or true if already granted.
-     */
-    suspend fun requestVpnPermission(activity: Activity? = null): Boolean {
-        val targetActivity = activity ?: (context as? Activity)
-        val vpnIntent = VpnService.prepare(context) ?: return true // already granted
-
-        if (targetActivity != null && !targetActivity.isFinishing) {
-            targetActivity.startActivityForResult(vpnIntent, 2001)
-            return true
-        } else {
-            throw IllegalStateException("No foreground activity to show VPN consent dialog")
-        }
-    }
-
     // ─── Settings ─────────────────────────────────────────────────────────────
 
     /**
      * Returns all network-block settings as a structured data object.
      */
     suspend fun getNetworkBlockSettings(): NetworkBlockSettings {
-        val rawExplicit = prefs.getString("net_block_explicit_packages", null)
-            ?: prefs.getString("net_block_packages", "[]")
-            ?: "[]"
+        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
+        val rawExplicit = prefs.getString("net_block_explicit_packages", "[]") ?: "[]"
         val rawStandalone = prefs.getString("net_block_standalone_vpn_packages", "[]") ?: "[]"
 
         return NetworkBlockSettings(
@@ -123,6 +106,7 @@ class VpnRepository(
      * Returns all network-block settings as a JSON object string.
      */
     suspend fun getNetworkBlockSettingsJson(): String {
+        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
         val obj = JSONObject().apply {
             put("enabled",  prefs.getBoolean("net_block_enabled", false))
             put("vpn",      prefs.getBoolean("net_block_vpn",     true))
@@ -130,7 +114,7 @@ class VpnRepository(
             put("mobile",   prefs.getBoolean("net_block_mobile",  false))
             put("global",   prefs.getBoolean("net_block_global",  false))
             put("restore",  prefs.getBoolean("net_block_restore", true))
-            put("packages", prefs.getString("net_block_packages", "[]") ?: "[]")
+            put("packages", prefs.getString("net_block_explicit_packages", "[]") ?: "[]")
         }
         return obj.toString()
     }
@@ -141,6 +125,7 @@ class VpnRepository(
      */
     suspend fun setNetworkBlockSettings(settingsJson: String) {
         restoreGate.write("VpnRepository.setNetworkBlockSettings") {
+        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
         val obj = JSONObject(settingsJson)
         val currentEnabled = prefs.getBoolean("net_block_enabled", false)
         val currentVpn = prefs.getBoolean("net_block_vpn", true)
@@ -255,6 +240,7 @@ class VpnRepository(
      * Combines all enabled mechanisms: VPN tunnel + direct WiFi disable.
      */
     suspend fun startNetworkBlock(packagesJson: String): String {
+        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
         if (!prefs.getBoolean("net_block_enabled", false)) {
             return NetworkBlockerVpnService.STATUS_DISABLED
         }
@@ -265,9 +251,6 @@ class VpnRepository(
         val global    = prefs.getBoolean("net_block_global", false)
 
         if (useVpn) {
-            if (!prefs.contains("net_block_explicit_packages")) {
-                prefs.edit().putString("net_block_explicit_packages", packagesJson).apply()
-            }
             val effectivePackagesJson = if (global) packagesJson
                 else NetworkBlockerVpnService.effectivePackagesJson(context, prefs)
             if (!global && effectivePackagesJson == "[]") {
@@ -403,11 +386,21 @@ class VpnRepository(
      * Persists the "net_block_self_heal" flag and updates watchdogs.
      */
     suspend fun setVpnSelfHealEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean("net_block_self_heal", enabled).apply()
-        if (!enabled) {
-            VpnWatchdogReceiver.cancel(context)
-        } else {
-            VpnPolicyCoordinator.requestRecoverySync(context)
+        restoreGate.write("VpnRepository.setVpnSelfHealEnabled") {
+            synchronized(VpnSelfHealPolicy.preferenceLock) {
+                check(
+                    prefs.edit()
+                        .putBoolean(VpnSelfHealPolicy.NATIVE_PREFERENCE_KEY, enabled)
+                        .commit(),
+                ) {
+                    "Could not persist the VPN self-healing preference"
+                }
+            }
+            if (!enabled) {
+                VpnWatchdogReceiver.cancel(context)
+            } else {
+                VpnPolicyCoordinator.requestRecoverySync(context)
+            }
         }
     }
 

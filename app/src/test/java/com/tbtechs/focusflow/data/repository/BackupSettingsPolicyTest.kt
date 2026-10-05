@@ -21,4 +21,9 @@ class BackupSettingsPolicyTest {
         assertFalse(importable.any { it in BackupSettingsPolicy.neverApplyImportKeys })
         assertEquals(setOf("allowedInFocus"), importable)
     }
+
+    @Test
+    fun vpnSelfHealPreferenceRemainsProtectedFromImport() {
+        assertFalse(BackupSettingsPolicy.mayApplyImportKey("vpnSelfHealEnabled"))
+    }
 }

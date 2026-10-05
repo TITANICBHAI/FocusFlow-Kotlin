@@ -9,6 +9,7 @@ import android.util.Log
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
+import com.tbtechs.focusflow.enforcement.receivers.VpnWatchdogReceiver
 import com.tbtechs.focusflow.widget.FocusFlowWidget
 import com.tbtechs.focusflow.data.model.AllowedAppPreset
 import com.tbtechs.focusflow.data.model.AppSettings
@@ -169,7 +170,8 @@ class SettingsRepository(
             "launcher_lock_during_standalone"
         private const val KEY_LAUNCHER_BLOCK_UNINSTALL = "launcher_block_uninstall"
         private const val KEY_LAUNCHER_CLOCK_STYLE = "launcher_clock_style"
-        private const val KEY_VPN_SELF_HEAL_ENABLED = "vpn_self_heal_enabled"
+        private const val KEY_VPN_SELF_HEAL_ENABLED =
+            VpnSelfHealPolicy.NATIVE_PREFERENCE_KEY
         private const val KEY_FOCUS_MIRROR_VPN_ENABLED = "net_block_focus_mirror"
         private const val KEY_AVERSION_DIMMER_ENABLED = "aversion_dimmer_enabled"
         private const val KEY_AVERSION_VIBRATE_ENABLED = "aversion_vibrate_enabled"
@@ -924,6 +926,7 @@ class SettingsRepository(
 
     suspend fun setVpnSelectedPackages(packagesJson: String) {
         restoreGate.write("SettingsRepository.setVpnSelectedPackages") {
+        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
         prefs.edit()
             .putString(KEY_VPN_SELECTED_PACKAGES, packagesJson)
             .putString(KEY_EXPLICIT_VPN_PACKAGES, packagesJson)
@@ -1081,6 +1084,7 @@ class SettingsRepository(
      * enforcement preference namespace.
      */
     suspend fun readAppSettings(): AppSettings {
+        ensureVpnSelfHealPreferenceMigrated()
         val resultMap = mutableMapOf<String, String>()
         runCatching {
             val obj = JSONObject(prefs.getString(KEY_LAST_SESSION_RESULT_BY_TASK_ID, "{}") ?: "{}")
@@ -1327,10 +1331,16 @@ class SettingsRepository(
      * enforcement or by the focus/task schedulers.
      */
     suspend fun setDefensePreferences(settings: AppSettings) {
+        ensureVpnSelfHealPreferenceMigrated()
         restoreGate.write("SettingsRepository.setDefensePreferences") {
+        val previousSelfHealValue = prefs.getBoolean(KEY_VPN_SELF_HEAL_ENABLED, false)
+        val selfHealDecision = VpnSelfHealPolicy.toggleDecision(
+            currentValue = previousSelfHealValue,
+            requestedValue = settings.vpnSelfHealEnabled,
+        )
         val editor = prefs.edit()
             .putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, settings.launcherBlockUninstall)
-            .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, settings.vpnSelfHealEnabled)
+            .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, selfHealDecision.persistedValue)
             .putBoolean(KEY_FOCUS_MIRROR_VPN_ENABLED, settings.focusMirrorVpnEnabled)
             .putBoolean(KEY_AVERSION_DIMMER_ENABLED, settings.aversionDimmerEnabled)
             .putBoolean(KEY_AVERSION_VIBRATE_ENABLED, settings.aversionVibrateEnabled)
@@ -1342,7 +1352,37 @@ class SettingsRepository(
             .putBoolean(KEY_AUTO_RESCHEDULE_ENABLED, settings.autoRescheduleEnabled)
             .putBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, settings.autoCopyToAlwaysOn)
         commitEditor(editor, "defense preferences")
-        requestVpnSync()
+        when (selfHealDecision.effect) {
+            VpnSelfHealPolicy.ToggleEffect.CANCEL_WATCHDOG -> {
+                VpnWatchdogReceiver.cancel(appContext)
+                requestVpnSync()
+            }
+            VpnSelfHealPolicy.ToggleEffect.REQUEST_RECOVERY_SYNC ->
+                VpnPolicyCoordinator.requestRecoverySync(appContext)
+            VpnSelfHealPolicy.ToggleEffect.NONE -> requestVpnSync()
+        }
+        }
+    }
+
+    private suspend fun ensureVpnSelfHealPreferenceMigrated() {
+        withContext(Dispatchers.IO) {
+            restoreGate.write("SettingsRepository.migrateVpnSelfHealPreference") {
+                synchronized(VpnSelfHealPolicy.preferenceLock) {
+                    val migrationValue = VpnSelfHealPolicy.migrationValue(
+                        nativePreferenceExists = prefs.contains(KEY_VPN_SELF_HEAL_ENABLED),
+                        legacyPreferenceValue =
+                            prefs.all[VpnSelfHealPolicy.LEGACY_PREFERENCE_KEY] as? Boolean,
+                    ) ?: return@synchronized
+
+                    check(
+                        prefs.edit()
+                            .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, migrationValue)
+                            .commit(),
+                    ) {
+                        "Could not persist the one-time VPN self-healing preference migration"
+                    }
+                }
+            }
         }
     }
 

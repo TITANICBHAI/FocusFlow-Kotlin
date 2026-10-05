@@ -17,15 +17,16 @@ You are preparing to work on the FocusFlow Kotlin Android VPN wiring fixes. This
 ## Working rules
 
 - Treat the plan as the scope contract and the tracker as the authoritative progress/decision record. Follow newer explicit owner decisions recorded in the tracker.
+- The owner has directed that tests be added during batches but not executed until final verification, even if a later prompt or batch checklist asks to run them. Review the git diff after each batch; this instruction overrides the per-batch test-run rules below.
 - Follow the order in the plan and tracker: T1 → T2 → T3; T4 with T8-a; T5 and T6 together because they share boundary scheduling; then T7; then approved P2 work.
-- For P0 tasks, add and run the failing test first. If it passes on current code, stop that task and report that the audit finding does not reproduce.
+- For P0 tasks, add the failing test before changing behavior. Defer execution until final verification; if it passes then, stop that task and report that the audit finding does not reproduce.
 - Route VPN starts and stops through `VpnPolicyCoordinator.requestSync` or `requestRecoverySync`. Preserve its lock, generation counter, and debounce behavior.
 - Route preference writes through `restoreGate.write(...)`, following current repository patterns. Migrations must be one-time and idempotent; never delete user data without first preserving it.
 - Keep the explicit VPN list, derived coordinator snapshot, self-heal preference, and backup contract consistent with the approved plan and owner decisions.
 - Do not redesign UI or change navigation, icons, or copy except where the plan explicitly requires it. Do not touch the Launcher, Linux app, or backup file-format versions.
 - Do not start unrelated cleanup. In particular, remove dead code only after dependent work is complete and current searches confirm zero call sites. Treat T12 as optional.
 - Update the tracker as work proceeds: leave checks open until verified; record dates, files, commands, actual results, evidence, and blockers in the relevant batch log before stopping or handing work off.
-- After each approved batch, run the build, relevant unit tests, and applicable plan §6 greps. If a check cannot run, mark it blocked and state why; do not present an environment limitation as a source failure or as a passing check.
+- After each approved batch, review the git diff, run the build and applicable plan §6 greps, and leave unit-test execution for final verification. If a check cannot run, mark it blocked and state why; do not present an environment limitation as a source failure or as a passing check.
 - Check the current JDK 17 and Android SDK prerequisites before attempting Gradle. Consult `.agents/memory/android-build-environment.md`; recheck the environment because its state may change.
 - Do not push, start/poll GitHub Actions, or use the configured GitHub workflow unless the owner explicitly asks. A plan's phase or commit boundaries do not grant permission to push.
 

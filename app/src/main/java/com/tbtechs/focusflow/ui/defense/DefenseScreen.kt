@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.ui.defense
 
-import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -73,6 +72,7 @@ import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.domain.PinReuseTracker
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
+import com.tbtechs.focusflow.ui.alwayson.rememberVpnConsentRequester
 import com.tbtechs.focusflow.ui.common.PinRotationModal
 import com.tbtechs.focusflow.ui.common.PinType
 import com.tbtechs.focusflow.ui.navigation.DefenseIcons
@@ -595,19 +595,22 @@ fun DefenseScreen(
         )
     }
 
+    val requestVpnConsent = rememberVpnConsentRequester(vpnRepository) { outcome ->
+        if (outcome.isGranted) {
+            scope.launch {
+                update(settings.copy(networkBlockEnabled = true))
+            }
+        } else {
+            notice = "VPN permission was not granted. Network Blocking remains off."
+        }
+    }
+
     VpnConsentModal(
         visible = vpnConsentVisible,
         onCancel = { vpnConsentVisible = false },
         onConfirm = {
             vpnConsentVisible = false
-            scope.launch {
-                try {
-                    vpnRepository?.requestVpnPermission(context as? Activity)
-                    update(settings.copy(networkBlockEnabled = true))
-                } catch (exception: Exception) {
-                    notice = exception.message ?: "Could not open VPN consent."
-                }
-            }
+            requestVpnConsent()
         },
     )
 

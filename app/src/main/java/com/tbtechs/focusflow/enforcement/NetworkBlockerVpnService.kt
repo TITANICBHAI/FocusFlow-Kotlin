@@ -50,9 +50,8 @@ import org.json.JSONArray
  *     addDisallowedApplication() so calls still work.
  *
  * Activation flow:
- *   1. JS layer calls NetworkBlockModule.requestVpnPermission() — shows the
- *      one-time system "FocusFlow wants to set up a VPN" consent dialog.
- *   2. User grants permission once (persists indefinitely unless revoked).
+ *   1. A result-aware app UI launches the Android VPN consent dialog when needed.
+ *   2. The UI verifies the permission was granted before enabling VPN blocking.
  *   3. AppBlockerAccessibilityService calls startNetworkBlock(pkg) whenever a
  *      blocked app is detected.
  *   4. This service starts, establishes the VPN, and holds it.

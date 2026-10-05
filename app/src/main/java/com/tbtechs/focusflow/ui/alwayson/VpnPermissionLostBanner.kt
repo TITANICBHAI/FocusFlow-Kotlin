@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.ui.alwayson
 
-import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -38,7 +37,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,7 +52,6 @@ import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.scaledSp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -68,8 +65,6 @@ fun VpnPermissionLostBanner(
     vpnPackages: List<String>,
     vpnRepository: VpnRepository,
 ) {
-    val context = LocalContext.current
-    val activity = context as? Activity
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     var permissionLost by remember { mutableStateOf(false) }
@@ -117,6 +112,20 @@ fun VpnPermissionLostBanner(
         }
     }
 
+    val requestVpnConsent = rememberVpnConsentRequester(vpnRepository) { outcome ->
+        scope.launch {
+            try {
+                if (outcome.isGranted) {
+                    check()
+                } else {
+                    permissionLost = true
+                }
+            } finally {
+                regranting = false
+            }
+        }
+    }
+
     LaunchedEffect(vpnBlockEnabled, vpnPackages) {
         check()
     }
@@ -134,20 +143,8 @@ fun VpnPermissionLostBanner(
     }
 
     fun handleRegrant() {
-        scope.launch {
-            regranting = true
-            try {
-                vpnRepository.requestVpnPermission(activity)
-                // Allow the system consent Activity to finish before reading
-                // VpnService.prepare() and the native health snapshot again.
-                delay(800)
-                check()
-            } catch (_: Exception) {
-                permissionLost = true
-            } finally {
-                regranting = false
-            }
-        }
+        regranting = true
+        requestVpnConsent()
     }
 
     if (!vpnBlockEnabled || vpnPackages.isEmpty()) return

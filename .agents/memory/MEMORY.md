@@ -16,3 +16,4 @@
 - [GitHub push and build polling](github-push-build-polling.md) — only push or monitor GitHub Actions when the user explicitly asks.
 - [Navigation icon states](navigation-icon-states.md) — Focus nav has separate Ionicons timer vectors; Ready artwork stays on its shared component, and Defense uses its supplied active shield.
 - [Always-on notification workflow](always-on-status-notification-workflow.md) — read the scoped plan and agent prompt; record all progress and evidence in the batch tracker.
+- [VPN batch test deferral](vpn-batch-test-deferral.md) — defer all VPN batch test runs until final verification, even if an intermediate checklist says to run them; review each batch diff.

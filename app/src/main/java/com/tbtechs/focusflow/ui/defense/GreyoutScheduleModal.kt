@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.ui.defense
 
-import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -78,6 +77,7 @@ import com.tbtechs.focusflow.ui.common.resolve
 import com.tbtechs.focusflow.ui.launcher.AppIcon
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
+import com.tbtechs.focusflow.ui.alwayson.rememberVpnConsentRequester
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -574,7 +574,6 @@ private fun ScheduleEditor(
     var validationError by remember(draft) { mutableStateOf<String?>(null) }
     var vpnConsentVisible by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    val activity = context as? Activity
     LaunchedEffect(catalogState.apps, catalogState.loading, catalogState.error) {
         if (!catalogState.loading) {
             current = current.copy(
@@ -978,20 +977,21 @@ private fun ScheduleEditor(
     }
 }
 
+    val requestVpnConsent = rememberVpnConsentRequester(vpnRepository) { outcome ->
+        if (outcome.isGranted) {
+            current = current.copy(vpnEnabled = true)
+            onNetworkProtectionRequired()
+        } else {
+            validationError = "VPN permission was not granted. Network protection remains off."
+        }
+    }
+
     VpnConsentModal(
         visible = vpnConsentVisible,
         onCancel = { vpnConsentVisible = false },
         onConfirm = {
             vpnConsentVisible = false
-            scope.launch {
-                try {
-                    vpnRepository?.requestVpnPermission(activity)
-                    current = current.copy(vpnEnabled = true)
-                    onNetworkProtectionRequired()
-                } catch (exception: Exception) {
-                    validationError = exception.message ?: "Could not open VPN consent."
-                }
-            }
+            requestVpnConsent()
         },
     )
 

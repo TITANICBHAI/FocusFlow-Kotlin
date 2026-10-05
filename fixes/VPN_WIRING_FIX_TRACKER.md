@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 0 complete — implementation has not begun
+**Overall status:** Batch 2 implementation in progress; all test execution deferred until final verification by owner instruction
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -11,7 +11,7 @@
 2. Leave checklist items unchecked until completed. Every checked item needs evidence in its batch work log.
 3. Complete Batch 0 and report its read-only findings before changing code. The plan is a static audit of an uploaded source snapshot; verify its findings against the current repository.
 4. Search by symbol and behavior rather than relying on the plan's snapshot line numbers.
-5. Keep the plan's order and scope. Test P0 findings first; if a repro test passes on current code, stop that task and report the mismatch.
+5. Keep the plan's order and scope. Add P0 regression tests before changing behavior, but defer all test execution until final verification by owner instruction; if a repro test passes then, stop that task and report the mismatch.
 6. Stop at unanswered owner-decision gates. A plan recommendation or default is not approval. Record the owner's exact decision and date before dependent implementation.
 7. Record each batch's status, date, changed files, commands/checks, results, evidence, and blockers or decisions. Update the log before stopping or handing work off.
 8. Do not mark work complete when required checks are unavailable. Record what could not run and why.
@@ -61,7 +61,7 @@
 
 **T1–T11 source verification:**
 
-- **T1 — confirmed structurally, not runtime-reproduced.** Both coordinator source-selection sites and `VpnRepository.getNetworkBlockSettings` fall back from explicit selections to `net_block_packages`; `startNetworkBlock` seeds the explicit key if absent. No coordinator/migration/repro test exists. The focus-mirror stale-snapshot failure follows from these paths, but its required failing test has not yet been added or run.
+- **T1 — confirmed structurally during Batch 0; runtime repro recorded in Batch 1.** Both coordinator source-selection sites and `VpnRepository.getNetworkBlockSettings` fell back from explicit selections to `net_block_packages`; `startNetworkBlock` seeded the explicit key if absent. The focus-mirror stale-snapshot regression failed before the behavior changes; see the Batch 1 work log.
 - **T2 — confirmed.** `SettingsRepository` reads/writes `vpn_self_heal_enabled`; enforcement reads `net_block_self_heal`. Both list screens call `setVpnSelfHealEnabled(hasPackages)`, so an empty list can write `false`. No migration or focused toggle/watchdog test exists.
 - **T3 — confirmed with a grep qualification.** The repository still uses request code `2001` and `startActivityForResult`; callers are Defense, Greyout schedule, Always-On, VPN list, and permission-lost banner. The first two update enabled state immediately after launching consent; list/Always-On ask the user to save again, and the banner waits a fixed delay before checking. `ImportConfirmScreen` has no consent-result path. A repository-wide `startActivityForResult` grep will not become empty: `UsageStatsRepository` independently uses request code `1001` for admin permission, so the final check must be VPN-scoped.
 - **T4 — current mismatch confirmed; owner/spec gates remain.** `readAppSettings`, export, and legacy migration use `always_on_vpn_packages`, while enforcement uses the explicit key; `BackupCoordinator.requiresDefensePin` compares the explicit list. Import has no VPN-consent activation flow or protection-category summary; its current success dialog reports task counts and warnings. Q3’s import-consent decision is recorded in the tracker, but Q4 remains pending. The format guide references `fixes/FOCUSFLOW_IMPLEMENTATION_PLAN_FINAL_v14.md`, which is absent from the accessible tree; `app/PERSISTENCE_CONTRACT.md` covers preference ownership but not the v14 backup wire contract. Do not infer undocumented backup behavior.
@@ -88,43 +88,46 @@
 - `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset; root and `app/local.properties` are absent; checked common SDK directories are missing. `adb`, `emulator`, `sdkmanager`, and `avdmanager` are unavailable. No device/emulator check is possible in the current direct environment.
 - No build or test was run in this read-only batch. Android verification is blocked in the current shell by the missing SDK; use the project bootstrap-backed unit-test route when an implementation batch is authorized, and record its actual result.
 - **Q1 pending** — schedule VPN target scope/window behavior. **Q2 pending** — Wi-Fi/mobile side effects. **Q4 pending** — single source of truth for the explicit VPN list. **Q3 decided (2026-10-05)** — consent-gated import activation and one informational category summary. The agent pre-prompt still says Q1–Q4 are pending; that conflicts with the plan/tracker’s dated Q3 decision. Follow the newer explicit decision in the tracker.
-- Next implementation gate remains T1, only after the owner authorizes implementation; add and run its failing repro test first. All T4, T5/T6, and T8 dependencies remain stopped at their recorded decision gates.
+- At the Batch 0 handoff, T1 was the next implementation gate. The owner has marked Batch 1 complete for sequencing and authorized Batch 2; its final implementation tests remain deferred. Batch 2 is now in progress; no later batch has started.
 
 ## Batch 1 — P0 T1: explicit VPN targets and derived snapshots
 
-**Status:** Not started
-**Gate:** Batch 0 complete; confirm the T1 evidence and failing repro test first.
+**Status:** Complete for sequencing; final verification deferred
+**Gate:** Batch 0 complete; T1 reproduced with a failing assertion before behavior changes.
 
-- [ ] Add and run the T1-repro test before changing implementation.
-- [ ] Add and run T1-migrate and T1-migrate-2 tests.
-- [ ] Make `net_block_explicit_packages` the only explicit-list input and implement the one-time, idempotent migration without losing user data.
-- [ ] Remove any seeding of explicit packages from derived effective targets.
-- [ ] Preserve `net_block_packages` as diagnostic output only.
+- [x] Add and run the T1-repro test before changing implementation.
+- [ ] Add and run T1-migrate and T1-migrate-2 tests against the completed implementation.
+- [x] Make `net_block_explicit_packages` the only explicit-list input and implement the one-time, idempotent migration without losing user data.
+- [x] Remove any seeding of explicit packages from derived effective targets.
+- [x] Preserve `net_block_packages` as diagnostic output only.
 - [ ] Run the relevant tests and record verification evidence.
 
 ### Batch 1 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | In progress; added and ran the T1 regression before changing behavior. | `ExplicitVpnPolicy.kt`, `ExplicitVpnPolicyTest.kt`, current VPN coordinator/repository sources | Configured `Run Android unit tests` workflow (`bash scripts/test-unit.sh`); then `bash scripts/test-unit.sh --tests 'com.tbtechs.focusflow.enforcement.ExplicitVpnPolicyTest.migratesLegacySnapshotWhenExplicitKeyIsMissingAndGenerationIsZero' --tests 'com.tbtechs.focusflow.enforcement.ExplicitVpnPolicyTest.migratesToEmptyWhenExplicitKeyIsMissingAndGenerationIsPositive' --tests 'com.tbtechs.focusflow.enforcement.ExplicitVpnPolicyTest.migrationPreservesAnExistingExplicitList'` | Baseline full run compiled successfully and executed 113 tests; the new focus-mirror regression failed at its assertion as intended (1 failure, no compile/environment failure). The three helper-only migration/preservation checks passed before implementation; rerun the final test forms at final verification. |
+| 2026-10-05 | Implemented the Batch 1 changes; post-implementation tests deferred at the owner's request. | `VpnPolicyCoordinator.kt`, `VpnRepository.kt`, `SettingsRepository.kt`, `ExplicitVpnPolicy.kt`, `ExplicitVpnPolicyTest.kt` | `git diff --check` and final Batch 1 diff review; source audit of snapshot and explicit-list reads/writes; confirmed the old seeding block is absent. | Diff/whitespace review passed. `net_block_packages` remains written by the coordinator and service and is read only as the generation-0 one-time migration source; the explicit-list fallback and start-path seeding are removed. Leave the final implementation test run pending until final verification, as requested. The earlier red regression and pre-implementation migration checks are documented above; no test has been run against the completed implementation. |
+| 2026-10-05 | Owner marked Batch 1 complete for sequencing and authorized Batch 2; final tests remain deferred. | This tracker | Owner instruction in the Batch 2 request | Batch 2 may proceed without intermediate test execution; run the accumulated tests only at the designated final verification. |
 
 ## Batch 2 — P0 T2: Defense self-healing toggle
 
-**Status:** Not started
+**Status:** In progress; implementation added, final verification deferred
 **Gate:** Batch 1 complete.
 
-- [ ] Verify the current Defense toggle and all self-heal preference call sites.
-- [ ] Connect the Defense preference to the native self-heal key with a safe one-time migration.
-- [ ] Ensure the Defense toggle owns disabling; list screens may enable self-healing when needed but must not turn it off.
-- [ ] Preserve the backup import protection rule for this setting.
-- [ ] Add/run focused tests for off/on state, watchdog cancellation, and recovery scheduling.
-- [ ] Record results and any unavailable checks.
+- [x] Verify the current Defense toggle and all self-heal preference call sites.
+- [x] Connect the Defense preference to the native self-heal key with a safe one-time migration.
+- [x] Ensure the Defense toggle owns disabling; list screens may enable self-healing when needed but must not turn it off.
+- [x] Preserve the backup import protection rule for this setting.
+- [x] Add focused tests for migration, off/on transition effects, list-save behavior, and backup import protection.
+- [ ] Run the focused tests at final verification; execution is deferred per owner instruction.
+- [x] Record results and checks that were not performed.
 
 ### Batch 2 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Implementation and diff review complete; focused test execution deferred. | `SettingsRepository.kt`, `VpnRepository.kt`, `VpnSelfHealPolicy.kt`, `VpnBlockListScreen.kt`, `AlwaysOnScreen.kt`, `BackupSettingsPolicyTest.kt`, `VpnSelfHealPolicyTest.kt`, this tracker | Verified Defense and all native self-heal call sites; `rg` confirms the legacy snake-case key remains only in the migration policy; `git diff --check`; reviewed Batch 2 diff. No build or tests run. | Defense now reads/writes `net_block_self_heal`; when the setting changes, off cancels the watchdog and on requests recovery sync. Legacy value is copied only when the native key is absent, using a committed write under `restoreGate.write(...)`; existing native values win. Both list screens enable self-healing only when VPN packages are present, never disable it. `vpnSelfHealEnabled` remains excluded from backup import and has explicit policy coverage. Focused test source was added but not executed per owner instruction. No emulator/device checks were performed; Batch 0 recorded that `adb` and emulator tooling are unavailable in the direct environment. |
 
 ## Batch 3 — P0 T3: VPN consent result handling
 

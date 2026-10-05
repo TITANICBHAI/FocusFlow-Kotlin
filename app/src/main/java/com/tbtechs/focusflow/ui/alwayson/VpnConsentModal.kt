@@ -1,5 +1,8 @@
 package com.tbtechs.focusflow.ui.alwayson
 
+import android.net.VpnService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -18,15 +21,19 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.ui.home.FocusFlowModalCard
 import com.tbtechs.focusflow.ui.home.FocusFlowPrimaryButton
 import com.tbtechs.focusflow.ui.home.FocusFlowSecondaryButton
@@ -36,6 +43,61 @@ import com.tbtechs.focusflow.ui.home.RefMuted
 import com.tbtechs.focusflow.ui.home.RefSecondary
 import com.tbtechs.focusflow.ui.home.RefText
 import com.tbtechs.focusflow.ui.theme.scaledSp
+
+internal enum class VpnConsentOutcome(val isGranted: Boolean) {
+    GRANTED(true),
+    NOT_GRANTED(false),
+}
+
+internal object VpnConsentPolicy {
+    fun afterResult(permissionGranted: Boolean): VpnConsentOutcome =
+        if (permissionGranted) VpnConsentOutcome.GRANTED else VpnConsentOutcome.NOT_GRANTED
+}
+
+/**
+ * Starts Android's VPN consent flow and reports success only after checking the
+ * actual VpnService permission state, rather than trusting the activity result.
+ */
+@Composable
+internal fun rememberVpnConsentRequester(
+    vpnRepository: VpnRepository?,
+    onConsentResult: (VpnConsentOutcome) -> Unit,
+): () -> Unit {
+    val context = LocalContext.current
+    val currentRepository by rememberUpdatedState(vpnRepository)
+    val currentOnConsentResult by rememberUpdatedState(onConsentResult)
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        val permissionGranted = runCatching {
+            VpnService.prepare(context) == null
+        }.getOrDefault(false)
+        currentOnConsentResult(VpnConsentPolicy.afterResult(permissionGranted))
+    }
+
+    return {
+        val intentResult = runCatching {
+            currentRepository?.consentIntentOrNull()
+                ?: VpnService.prepare(context)
+        }
+        val consentIntent = intentResult.getOrNull()
+        when {
+            intentResult.isFailure -> {
+                currentOnConsentResult(VpnConsentOutcome.NOT_GRANTED)
+            }
+            consentIntent == null -> {
+                val permissionGranted = runCatching {
+                    VpnService.prepare(context) == null
+                }.getOrDefault(false)
+                currentOnConsentResult(VpnConsentPolicy.afterResult(permissionGranted))
+            }
+            else -> {
+                runCatching { launcher.launch(consentIntent) }
+                    .onFailure { currentOnConsentResult(VpnConsentOutcome.NOT_GRANTED) }
+            }
+        }
+    }
+}
 
 /**
  * Plain-language explanation shown immediately before Android's VPN consent

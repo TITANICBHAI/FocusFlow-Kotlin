@@ -5,6 +5,13 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
+import com.tbtechs.focusflow.data.restore.RestoreGate
+import com.tbtechs.focusflow.di.AppModule
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
@@ -29,14 +36,20 @@ object VpnPolicyCoordinator {
     private const val PREF_DESIRED_POLICY = "net_block_desired_policy"
     private const val PREF_POLICY_GENERATION = "net_block_policy_generation"
     private const val PREF_FAILED_PKGS = "vpn_failed_packages"
+    private const val PREF_EXPLICIT_MIGRATED = "net_block_explicit_migrated"
     private const val POLICY_VERSION = 1
     private const val DISPATCH_DEBOUNCE_MS = 150L
     private const val LAUNCHER_CACHE_TTL_MS = 30_000L
 
     private val syncLock = Any()
+    private val explicitMigrationLock = Any()
+    private val explicitMigrationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val launcherCacheExecutor = Executors.newSingleThreadExecutor()
     private var pendingDispatch: Runnable? = null
+    private var migrationInFlight = false
+    private var pendingMigrationContext: Context? = null
+    private var pendingMigrationRecovery = false
     @Volatile private var cachedLauncherPackages: List<String> = emptyList()
     @Volatile private var cacheRefreshedAtMs: Long = 0L
 
@@ -92,18 +105,30 @@ object VpnPolicyCoordinator {
             ).isNotEmpty()
         ) return true
 
-        return parsePackageJson(
-            prefs.getString(PREF_EXPLICIT_PKGS, null)
-                ?: prefs.getString("net_block_packages", "[]")
-                ?: "[]",
-        ).isNotEmpty()
+        return ExplicitVpnPolicy.hasPersistentExplicitTargets(explicitCandidates(prefs))
     }
 
-    fun effectivePackages(context: Context, prefs: SharedPreferences): List<String> =
-        effectivePolicy(context, prefs).targets
+    fun effectivePackages(context: Context, prefs: SharedPreferences): List<String> {
+        return effectivePolicy(context, prefs).targets
+    }
 
-    fun effectivePackagesJson(context: Context, prefs: SharedPreferences): String =
-        JSONArray(effectivePolicy(context, prefs).targets).toString()
+    fun effectivePackagesJson(context: Context, prefs: SharedPreferences): String {
+        return JSONArray(effectivePolicy(context, prefs).targets).toString()
+    }
+
+    internal suspend fun ensureExplicitPackagesMigrated(
+        prefs: SharedPreferences,
+        restoreGate: RestoreGate,
+    ) {
+        if (prefs.getBoolean(PREF_EXPLICIT_MIGRATED, false)) return
+        withContext(Dispatchers.IO) {
+            restoreGate.write("VpnPolicyCoordinator.migrateExplicitVpnPackages") {
+                synchronized(explicitMigrationLock) {
+                    migrateExplicitPackagesNow(prefs)
+                }
+            }
+        }
+    }
 
     fun currentPolicyGeneration(prefs: SharedPreferences): Long =
         prefs.getLong(PREF_POLICY_GENERATION, 0L)
@@ -131,9 +156,13 @@ object VpnPolicyCoordinator {
     }
 
     private fun requestSyncInternal(context: Context, forceRecovery: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(PREF_EXPLICIT_MIGRATED, false)) {
+            deferSyncUntilExplicitMigration(context.applicationContext, forceRecovery)
+            return
+        }
         refreshLauncherPackageCacheIfStale(context.applicationContext)
         synchronized(syncLock) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val enabled = prefs.getBoolean("net_block_enabled", false)
             val vpnEnabled = prefs.getBoolean("net_block_vpn", true)
             val global = prefs.getBoolean("net_block_global", false)
@@ -190,6 +219,43 @@ object VpnPolicyCoordinator {
                 } else {
                     scheduleDispatch(context.applicationContext)
                 }
+            }
+        }
+    }
+
+    private fun deferSyncUntilExplicitMigration(context: Context, forceRecovery: Boolean) {
+        val shouldLaunchMigration = synchronized(explicitMigrationLock) {
+            pendingMigrationContext = context.applicationContext
+            pendingMigrationRecovery = pendingMigrationRecovery || forceRecovery
+            if (migrationInFlight) {
+                false
+            } else {
+                migrationInFlight = true
+                true
+            }
+        }
+        if (!shouldLaunchMigration) return
+
+        explicitMigrationScope.launch {
+            try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                ensureExplicitPackagesMigrated(prefs, AppModule.restoreGate)
+                val pending = synchronized(explicitMigrationLock) {
+                    val nextContext = pendingMigrationContext ?: context
+                    val nextRecovery = pendingMigrationRecovery
+                    pendingMigrationContext = null
+                    pendingMigrationRecovery = false
+                    migrationInFlight = false
+                    nextContext to nextRecovery
+                }
+                requestSyncInternal(pending.first, pending.second)
+            } catch (error: Throwable) {
+                synchronized(explicitMigrationLock) {
+                    pendingMigrationContext = null
+                    pendingMigrationRecovery = false
+                    migrationInFlight = false
+                }
+                throw error
             }
         }
     }
@@ -281,11 +347,7 @@ object VpnPolicyCoordinator {
     }
 
     private fun effectivePolicy(context: Context, prefs: SharedPreferences): EffectivePolicy {
-        val explicitCandidates = parsePackageJson(
-            prefs.getString(PREF_EXPLICIT_PKGS, null)
-                ?: prefs.getString("net_block_packages", "[]")
-                ?: "[]",
-        )
+        val explicitCandidates = explicitCandidates(prefs)
         val standaloneCandidates = if (isStandaloneBlockActive(prefs)) {
             parsePackageJson(
                 prefs.getString(PREF_STANDALONE_VPN_PKGS, "[]") ?: "[]",
@@ -313,7 +375,12 @@ object VpnPolicyCoordinator {
             emptyList()
         }
 
-        val sourcePackages = (explicitCandidates + standaloneCandidates + scheduleCandidates + focusTargets)
+        val sourcePackages = (
+            ExplicitVpnPolicy.effectiveTargets(
+                explicitCandidates = explicitCandidates,
+                focusTargets = focusTargets,
+            ) + standaloneCandidates + scheduleCandidates
+        )
             .filterNot { isExcludedPackage(it, context.packageName) }
             .distinct()
             .sorted()
@@ -326,6 +393,49 @@ object VpnPolicyCoordinator {
             focus = focusTargets.distinct().sorted(),
             invalid = invalid,
         )
+    }
+
+    private fun explicitCandidates(prefs: SharedPreferences): List<String> {
+        val explicitRaw = prefs.getString(PREF_EXPLICIT_PKGS, null)
+        val migrationComplete = prefs.getBoolean(PREF_EXPLICIT_MIGRATED, false)
+        val derivedSnapshot = if (explicitRaw == null && !migrationComplete) {
+            parsePackageJson(prefs.getString("net_block_packages", "[]") ?: "[]")
+        } else {
+            emptyList()
+        }
+        return ExplicitVpnPolicy.selectExplicitCandidates(
+            explicitKeyExists = prefs.contains(PREF_EXPLICIT_PKGS),
+            explicitPackages = explicitRaw?.let(::parsePackageJson),
+            migrationComplete = migrationComplete,
+            derivedSnapshot = derivedSnapshot,
+            policyGeneration = currentPolicyGeneration(prefs),
+        )
+    }
+
+    private fun migrateExplicitPackagesNow(prefs: SharedPreferences) {
+        if (prefs.getBoolean(PREF_EXPLICIT_MIGRATED, false)) return
+
+        val explicitKeyExists = prefs.contains(PREF_EXPLICIT_PKGS)
+        val derivedSnapshot = if (explicitKeyExists) {
+            emptyList()
+        } else {
+            parsePackageJson(prefs.getString("net_block_packages", "[]") ?: "[]")
+        }
+        val migration = ExplicitVpnPolicy.migrationPlan(
+            alreadyMigrated = false,
+            explicitKeyExists = explicitKeyExists,
+            derivedSnapshot = derivedSnapshot,
+            policyGeneration = currentPolicyGeneration(prefs),
+        ) ?: return
+
+        val editor = prefs.edit()
+        migration.explicitPackagesToWrite?.let { packages ->
+            editor.putString(PREF_EXPLICIT_PKGS, JSONArray(packages).toString())
+        }
+        editor.putBoolean(PREF_EXPLICIT_MIGRATED, migration.markMigrated)
+        check(editor.commit()) {
+            "Could not persist the one-time explicit VPN package migration"
+        }
     }
 
     private fun getCachedLauncherPackages(context: Context): List<String> {

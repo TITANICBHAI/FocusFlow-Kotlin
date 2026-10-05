@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.ui.launcher
 
-import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,8 +56,10 @@ import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.missingInstalledAppInfo
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
 import com.tbtechs.focusflow.data.repository.VpnRepository
+import com.tbtechs.focusflow.data.repository.VpnSelfHealPolicy
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnConsentModal
+import com.tbtechs.focusflow.ui.alwayson.rememberVpnConsentRequester
 import com.tbtechs.focusflow.ui.common.FocusFlowSwitch
 import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
@@ -195,7 +196,9 @@ fun VpnBlockListScreen(
                         removing && settings.pinProtectionEnabled
                     }?.let(::legacyPinHash),
                 )
-                vpnRepository.setVpnSelfHealEnabled(hasPackages)
+                if (VpnSelfHealPolicy.shouldEnableFromList(hasPackages)) {
+                    vpnRepository.setVpnSelfHealEnabled(true)
+                }
                 original = selected
                 pinDialog = false
                 pin = ""
@@ -549,19 +552,20 @@ fun VpnBlockListScreen(
         )
     }
 
+    val requestVpnConsent = rememberVpnConsentRequester(vpnRepository) { outcome ->
+        error = if (outcome.isGranted) {
+            "VPN permission granted. Tap Save again."
+        } else {
+            "VPN permission was not granted. Your list was not saved."
+        }
+    }
+
     VpnConsentModal(
         visible = showVpnConsent,
         onCancel = { showVpnConsent = false },
         onConfirm = {
             showVpnConsent = false
-            scope.launch {
-                try {
-                    vpnRepository.requestVpnPermission(context as? Activity)
-                    error = "Grant the Android VPN permission, then tap Save again."
-                } catch (exception: Exception) {
-                    error = exception.message ?: "Could not open VPN consent."
-                }
-            }
+            requestVpnConsent()
         },
     )
 }
