@@ -402,6 +402,10 @@ class FocusSessionViewModel(
             _focusSession.value      = null
             _focusViolationApp.value = null
         }
+        // Re-evaluate the scheduled-task status after Focus Mode releases its
+        // foreground notification. This can restore the live schedule card if
+        // the task's scheduled interval is still in progress.
+        taskAlarmReconciler.reconcile("focus_session_stopped")
     }
 
     suspend fun stopFocusModeForTaskAwait(taskId: String, pinHash: String? = null) {

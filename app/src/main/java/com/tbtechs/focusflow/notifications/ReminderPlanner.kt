@@ -11,6 +11,7 @@ enum class ReminderKind(
     val notificationType: String,
     val categoryIdentifier: String,
 ) {
+    LIVE_STATUS_START("live-task-status", "task-active"),
     PRE_START("reminder", "task-reminder"),
     AT_START("task-start", "task-active"),
     MID_SESSION("checkin", "task-active"),
@@ -42,6 +43,7 @@ object ReminderPlanner {
     private const val MID_SESSION_MIN_REMAINING_MS = 10 * MINUTES_MS
     private val excludedStatuses = setOf("completed", "skipped", "overdue")
     private val slotIdSuffixes = listOf(
+        "-live-start",
         "-mid1800000",
         "-mid900000",
         "-pre-600000",
@@ -66,8 +68,6 @@ object ReminderPlanner {
         remindersEnabled: Boolean = true,
         includeDueSlots: Boolean = false,
     ): List<ReminderSlot> {
-        if (!remindersEnabled) return emptyList()
-
         return tasks.asSequence()
             .filter { task ->
                 task.id.isNotBlank() && task.status !in excludedStatuses
@@ -79,7 +79,7 @@ object ReminderPlanner {
                 task to (startMs to endMs)
             }
             .flatMap { (task, times) ->
-                slotsFor(task, times.first, times.second, zoneId).asSequence()
+                slotsFor(task, times.first, times.second, zoneId, remindersEnabled).asSequence()
             }
             .filter { slot ->
                 includeDueSlots || slot.triggerMs >= nowMs + MIN_SCHEDULE_LEAD_MS
@@ -94,12 +94,27 @@ object ReminderPlanner {
         startMs: Long,
         endMs: Long,
         zoneId: ZoneId,
+        remindersEnabled: Boolean,
     ): List<ReminderSlot> {
         val endLabel = Instant.ofEpochMilli(endMs)
             .atZone(zoneId)
             .format(timeFormatter)
         val durationLabel = formatDuration(task.durationMinutes)
         val slots = mutableListOf<ReminderSlot>()
+
+        // Keep a start-time event in the alarm chain even when one-shot task
+        // reminders are disabled. The receiver uses it to show the ongoing
+        // status card without posting a reminder notification.
+        slots += ReminderSlot(
+            id = "${task.id}-live-start",
+            taskId = task.id,
+            kind = ReminderKind.LIVE_STATUS_START,
+            triggerMs = startMs,
+            title = task.title,
+            text = "Task in progress · ends at $endLabel",
+        )
+
+        if (!remindersEnabled) return slots
 
         val preStart = listOf(
             -10 * MINUTES_MS to "Starting in 10 min · ends at $endLabel · $durationLabel total",

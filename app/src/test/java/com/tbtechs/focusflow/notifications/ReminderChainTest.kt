@@ -45,6 +45,7 @@ class ReminderChainTest {
                 "focus-1-pre-600000",
                 "focus-1-pre-300000",
                 "focus-1-pre-60000",
+                "focus-1-live-start",
                 "focus-1-pre0",
                 "focus-1-mid900000",
                 "focus-1-mid1800000",
@@ -121,23 +122,24 @@ class ReminderChainTest {
             slots,
         )
         assertEquals(
-            listOf("task-64-pre-600000", "task-64-pre-300000"),
-            slots.filter { it.taskId == "task-64" }.map(ReminderSlot::id),
+            listOf("task-56-pre-600000", "task-56-pre-300000"),
+            slots.filter { it.taskId == "task-56" }.map(ReminderSlot::id),
         )
     }
 
     @Test
-    fun disabledDevicePreferenceProducesNoReminderSlots() {
+    fun disabledReminderPreferenceStillSchedulesLiveStatusStart() {
         val task = task("disabled", startMs, startMs + 60 * 60_000L)
 
-        assertTrue(
-            ReminderPlanner.plan(
-                tasks = listOf(task),
-                nowMs = beforeStartMs,
-                zoneId = ZoneOffset.UTC,
-                remindersEnabled = false,
-            ).isEmpty(),
+        val slots = ReminderPlanner.plan(
+            tasks = listOf(task),
+            nowMs = beforeStartMs,
+            zoneId = ZoneOffset.UTC,
+            remindersEnabled = false,
         )
+
+        assertEquals(listOf("disabled-live-start"), slots.map(ReminderSlot::id))
+        assertEquals(ReminderKind.LIVE_STATUS_START, slots.single().kind)
     }
 
     @Test
@@ -248,7 +250,9 @@ class ReminderChainTest {
             entries = mapOf(
                 "deleted-pre0" to startMs,
                 "completed-pre0" to startMs,
+                "completed-live-start" to startMs,
                 "task-1-pre0" to startMs,
+                "task-1-live-start" to startMs,
                 "task-1-almost" to startMs,
                 "task-10-pre0" to startMs,
             ),
@@ -265,7 +269,12 @@ class ReminderChainTest {
         )
 
         assertEquals(
-            listOf("completed-pre0", "deleted-pre0", "task-10-pre0"),
+            listOf(
+                "completed-live-start",
+                "completed-pre0",
+                "deleted-pre0",
+                "task-10-pre0",
+            ),
             cancelled.sorted(),
         )
     }

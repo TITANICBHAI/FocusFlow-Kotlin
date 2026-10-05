@@ -15,6 +15,7 @@ import android.os.Build
  */
 object NotificationChannels {
     const val TASK_REMINDERS = "task-reminders"
+    const val LIVE_TASK_STATUS = "live-task-status"
     const val MORNING_DIGEST = "morning-digest"
     const val WEEKLY_REPORT = "weekly-report"
     const val ACHIEVEMENTS = "achievements"
@@ -23,6 +24,7 @@ object NotificationChannels {
     const val DAY_RATING = "day-rating"
 
     const val TASK_REMINDERS_NAME = "Task Reminders"
+    const val LIVE_TASK_STATUS_NAME = "Live Task Status"
     const val MORNING_DIGEST_NAME = "Morning Digest"
     const val WEEKLY_REPORT_NAME = "Weekly Report"
     const val ACHIEVEMENTS_NAME = "Achievements"
@@ -52,6 +54,16 @@ object NotificationChannels {
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build(),
                 )
+            },
+            NotificationChannel(
+                LIVE_TASK_STATUS,
+                LIVE_TASK_STATUS_NAME,
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Ongoing status and controls for the task currently in progress."
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             },
             NotificationChannel(
                 MORNING_DIGEST,

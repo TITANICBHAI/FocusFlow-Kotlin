@@ -9,6 +9,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.ForegroundTaskService
+import com.tbtechs.focusflow.notifications.LiveTaskStatusNotificationPublisher
 
 /**
  * ForegroundServiceController
@@ -52,6 +53,9 @@ class ForegroundServiceController(private val context: Context) {
             nextName?.let { putExtra(ForegroundTaskService.EXTRA_NEXT_NAME, it) }
         }
         startForegroundService(intent)
+        // ForegroundTaskService owns the visible task card during an enforced
+        // focus session. Keep the schedule-only card from duplicating it.
+        LiveTaskStatusNotificationPublisher.cancel(appContext)
     }
 
     /** Compatibility overload for the bridge's JavaScript number timestamps. */

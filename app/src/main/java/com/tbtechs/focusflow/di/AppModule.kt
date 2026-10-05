@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import com.tbtechs.focusflow.notifications.AndroidReminderChainAlarmDriver
 import com.tbtechs.focusflow.notifications.ReminderChainLedger
 import com.tbtechs.focusflow.notifications.ReminderNotificationPublisher
+import com.tbtechs.focusflow.notifications.LiveTaskStatusNotificationPublisher
 import com.tbtechs.focusflow.notifications.ReminderChainScheduler
 import com.tbtechs.focusflow.notifications.SharedPreferencesReminderLedgerStore
 import com.tbtechs.focusflow.data.local.FocusFlowDatabase
@@ -248,6 +249,9 @@ object AppModule {
             reminderChainLedger = reminderChainLedger,
             cancelReminderNotification = { slotId ->
                 ReminderNotificationPublisher.cancel(app, slotId)
+            },
+            syncLiveTaskStatus = { tasks, nowMs ->
+                LiveTaskStatusNotificationPublisher.sync(app, tasks, nowMs)
             },
         )
         schedulerEngine = SchedulerEngine()

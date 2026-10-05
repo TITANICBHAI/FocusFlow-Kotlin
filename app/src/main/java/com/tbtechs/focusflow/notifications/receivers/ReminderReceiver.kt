@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.notifications.LiveTaskStatusNotificationPublisher
 import com.tbtechs.focusflow.notifications.ReminderChainAlarmIdentity
 import com.tbtechs.focusflow.notifications.ReminderDelivery
+import com.tbtechs.focusflow.notifications.ReminderKind
 import com.tbtechs.focusflow.notifications.ReminderNotificationPublisher
 import com.tbtechs.focusflow.notifications.ReminderPlanner
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
@@ -36,10 +38,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 withTimeout(RECEIVER_BUDGET_MS) {
                     AppModule.restoreGate.write("ReminderReceiver") {
                         val nowMs = System.currentTimeMillis()
-                        if (!AppModule.settingsRepository.readAppSettings().taskRemindersEnabled) {
-                            AppModule.reminderChainScheduler.rearm(null, nowMs)
-                            return@write
-                        }
+                        val remindersEnabled =
+                            AppModule.settingsRepository.readAppSettings().taskRemindersEnabled
 
                         val tasks = try {
                             withTimeoutOrNull(ROOM_READ_BUDGET_MS) {
@@ -63,29 +63,45 @@ class ReminderReceiver : BroadcastReceiver() {
                         val firePlan = ReminderPlanner.plan(
                             tasks = tasks,
                             nowMs = nowMs,
+                            remindersEnabled = remindersEnabled,
                             includeDueSlots = true,
                         )
-                        try {
-                            AppModule.reminderChainLedger.deliverDue(
-                                slots = ReminderDelivery.dueSlots(firePlan, nowMs),
-                                nowMs = nowMs,
-                                post = { slot -> ReminderNotificationPublisher.post(appContext, slot) },
-                                onPostFailure = { slot, error ->
-                                    Log.e(TAG, "Could not post reminder slot ${slot.id}.", error)
-                                },
-                            )
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (error: Exception) {
-                            Log.e(TAG, "Could not persist reminder delivery state.", error)
-                            AppErrorEvents.report(
-                                tag = "Task reminders",
-                                message = "A reminder was delivered but its duplicate-prevention state could not be saved.",
-                            )
+                        val dueReminderSlots = ReminderDelivery.dueSlots(firePlan, nowMs)
+                            .filter { it.kind != ReminderKind.LIVE_STATUS_START }
+                        if (dueReminderSlots.isNotEmpty()) {
+                            try {
+                                AppModule.reminderChainLedger.deliverDue(
+                                    slots = dueReminderSlots,
+                                    nowMs = nowMs,
+                                    post = { slot ->
+                                        ReminderNotificationPublisher.post(appContext, slot)
+                                    },
+                                    onPostFailure = { slot, error ->
+                                        Log.e(TAG, "Could not post reminder slot ${slot.id}.", error)
+                                    },
+                                )
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (error: Exception) {
+                                Log.e(TAG, "Could not persist reminder delivery state.", error)
+                                AppErrorEvents.report(
+                                    tag = "Task reminders",
+                                    message = "A reminder was delivered but its duplicate-prevention state could not be saved.",
+                                )
+                            }
                         }
 
+                        // This is independent of the one-shot reminder setting:
+                        // publish or refresh a live card only while a task's
+                        // scheduled interval is currently in progress.
+                        LiveTaskStatusNotificationPublisher.sync(appContext, tasks, nowMs)
+
                         val replanNowMs = System.currentTimeMillis()
-                        val nextPlan = ReminderPlanner.plan(tasks, replanNowMs)
+                        val nextPlan = ReminderPlanner.plan(
+                            tasks = tasks,
+                            nowMs = replanNowMs,
+                            remindersEnabled = remindersEnabled,
+                        )
                         AppModule.reminderChainScheduler.rearm(nextPlan, replanNowMs)
                     }
                 }

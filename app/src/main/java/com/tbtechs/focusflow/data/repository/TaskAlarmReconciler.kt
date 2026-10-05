@@ -55,6 +55,7 @@ class TaskAlarmReconciler(
     private val reminderChainScheduler: ReminderChainScheduler,
     private val reminderChainLedger: ReminderChainLedger,
     private val cancelReminderNotification: (String) -> Unit,
+    private val syncLiveTaskStatus: (List<Task>, Long) -> Unit = { _, _ -> },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val reconcileMutex = Mutex()
@@ -138,6 +139,7 @@ class TaskAlarmReconciler(
                     remindersEnabled = remindersEnabled,
                 )
                 reminderChainScheduler.rearm(reminderPlan, reminderNowMs)
+                syncLiveTaskStatus(tasks, reminderNowMs)
                 Log.i(TAG, "Task-end alarms reconciled reason=$reason count=${desired.size}")
                 return
             }
