@@ -28,7 +28,8 @@ data class ReminderSlot(
 )
 
 /**
- * Builds task reminders only from task IDs and task timestamps.
+ * Builds task reminders and live-status start triggers from task IDs and
+ * task timestamps.
  *
  * The normal plan drops expired and imminent slots so they are never armed.
  * The receiver opts into [includeDueSlots] to recover a slot whose alarm was

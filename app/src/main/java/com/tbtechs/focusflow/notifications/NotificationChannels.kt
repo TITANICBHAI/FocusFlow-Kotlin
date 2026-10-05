@@ -9,9 +9,9 @@ import android.os.Build
 /**
  * Channels formerly created by notificationService.ts.
  *
- * The persistent foreground-service and task-alarm channels remain owned by
- * their existing native components. These are the app-owned channels used by
- * user-scheduled, report, achievement, insight, and resistance notifications.
+ * Foreground-service and task-alarm channels remain owned by their existing
+ * native components. These channels also include app-owned scheduled reminders
+ * and the ongoing status card for a scheduled task.
  */
 object NotificationChannels {
     const val TASK_REMINDERS = "task-reminders"

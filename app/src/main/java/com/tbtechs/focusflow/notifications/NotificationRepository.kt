@@ -340,7 +340,7 @@ class NotificationRepository(
             ),
         )
         val plan = ReminderPlanner.plan(uniqueTasks, clock.millis(), clock.zone)
-        for (slot in plan) {
+        for (slot in plan.filter { it.kind != ReminderKind.LIVE_STATUS_START }) {
             if (budget.remaining <= 0) break
             schedule(
                 NotificationRequest(

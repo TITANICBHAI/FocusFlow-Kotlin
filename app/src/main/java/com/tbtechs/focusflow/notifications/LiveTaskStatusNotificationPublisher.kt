@@ -99,11 +99,6 @@ object LiveTaskStatusNotificationPublisher {
         .setUsesChronometer(true)
         .setChronometerCountDown(true)
         .setShowWhen(true)
-        .setProgress(
-            100,
-            progressPercent(liveTask.startMs, liveTask.endMs, nowMs),
-            false,
-        )
         .setTimeoutAfter((liveTask.endMs - nowMs).coerceAtLeast(1_000L))
         .setContentIntent(openTaskPendingIntent(context, liveTask.task.id))
         .addAction(
@@ -198,14 +193,6 @@ object LiveTaskStatusNotificationPublisher {
         Instant.ofEpochMilli(endMs)
             .atZone(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
-
-    private fun progressPercent(startMs: Long, endMs: Long, nowMs: Long): Int {
-        val duration = endMs - startMs
-        if (duration <= 0L) return 0
-        return (((nowMs - startMs).coerceAtLeast(0L) * 100L) / duration)
-            .toInt()
-            .coerceIn(0, 100)
-    }
 
     private data class LiveTask(
         val task: Task,

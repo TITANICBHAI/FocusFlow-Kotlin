@@ -44,8 +44,9 @@ object TaskAlarmReconcilePlan {
 }
 
 /**
- * Rebuilds task-end alarms and the reminder chain from Room. Normal runs
- * acquire the restore gate; restore recovery uses the explicit closed-gate entry.
+ * Rebuilds task-end alarms and the reminder chain from Room, then synchronizes
+ * the scheduled-task status card. Normal runs acquire the restore gate; restore
+ * recovery uses the explicit closed-gate entry.
  */
 class TaskAlarmReconciler(
     private val taskRepository: TaskRepository,
