@@ -119,23 +119,6 @@ class VpnRepository(
     }
 
     /**
-     * Returns all network-block settings as a JSON object string.
-     */
-    suspend fun getNetworkBlockSettingsJson(): String {
-        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
-        val obj = JSONObject().apply {
-            put("enabled",  prefs.getBoolean("net_block_enabled", false))
-            put("vpn",      prefs.getBoolean("net_block_vpn",     true))
-            put("wifi",     prefs.getBoolean("net_block_wifi",    true))
-            put("mobile",   prefs.getBoolean("net_block_mobile",  false))
-            put("global",   prefs.getBoolean("net_block_global",  false))
-            put("restore",  prefs.getBoolean("net_block_restore", true))
-            put("packages", prefs.getString("net_block_explicit_packages", "[]") ?: "[]")
-        }
-        return obj.toString()
-    }
-
-    /**
      * Persists network-block settings from a JSON object string.
      * Only keys present in [settingsJson] are updated; missing keys are left unchanged.
      */
@@ -233,23 +216,6 @@ class VpnRepository(
             appliedPolicyGeneration = appliedPolicyGeneration,
             invalidPackages = parsePackageList(invalid),
         )
-    }
-
-    /**
-     * Returns status JSON object string.
-     */
-    suspend fun getNetworkBlockStatusJson(): String {
-        val status = getNetworkBlockStatus()
-        return JSONObject().apply {
-            put("state", status.state)
-            put("running", status.running)
-            put("error", status.error ?: JSONObject.NULL)
-            put("failedPackages", JSONArray(status.failedPackages).toString())
-            put("invalidPackages", JSONArray(status.invalidPackages).toString())
-            put("desiredPolicy", status.desiredPolicy ?: JSONObject.NULL)
-            put("policyGeneration", status.policyGeneration)
-            put("appliedPolicyGeneration", status.appliedPolicyGeneration)
-        }.toString()
     }
 
     // ─── Active control ───────────────────────────────────────────────────────
@@ -357,24 +323,6 @@ class VpnRepository(
             if (prefs.getBoolean("net_block_mobile", false)) {
                 tryRestoreMobileDataInternal()
             }
-        }
-    }
-
-    /**
-     * Returns true if the VPN tunnel is currently active.
-     */
-    suspend fun isNetworkBlockActive(): Boolean {
-        return NetworkBlockerVpnService.isRunning
-    }
-
-    /**
-     * Returns true if a VPN from another app is currently active on the device.
-     */
-    suspend fun isAnotherVpnActive(): Boolean {
-        return try {
-            isAnotherVpnActiveInternal()
-        } catch (e: Exception) {
-            false
         }
     }
 

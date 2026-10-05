@@ -2,7 +2,7 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, the 143-test unit suite, and the debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7 is owner-authorized; Q2 remains pending and gates T8. No Batch 8+ work is authorized.
+**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, the 143-test unit suite, and the debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7 is owner-authorized; Q2 is decided and T8 will retain current behavior without new opt-ins. No Batch 8+ work is authorized.
 **Last updated:** 2026-10-05
 
 ## Tracking rules
@@ -221,7 +221,7 @@
 **Status:** In progress; owner-authorized on 2026-10-05. T8 is paused pending Q2.
 **Gate:** The owner authorized Batch 7 while Batch 6's device-only check remains open. Resolve Q2 before T8. T12 is optional and must not expand scope without a clear need.
 
-- [ ] Record the owner's Q2 decision on Wi-Fi/mobile-data side effects before changing T8 behavior.
+- [x] Record the owner's Q2 decision: retain current Wi-Fi/mobile-data behavior as-is, without adding opt-in controls; T8 behavior is unchanged.
 - [ ] Fix the `vpn_failed_packages` clobbering issue with a distinct, accurately exposed invalid-package state.
 - [ ] Remove dead code only after verifying zero call sites and completing dependent tasks.
 - [ ] Add the active-block guard to the Defense master toggle where approved by the plan.
@@ -241,7 +241,7 @@ Record each decision, date, and evidence before dependent work. Pending question
 | Plan question | Decision needed | Status | Owner answer / date / evidence |
 |---|---|---|---|
 | Q1 | Schedule VPN scope and active-window behavior | Decided (2026-10-05) | All apps in a VPN-enabled schedule's package list are VPN-blocked only while its configured window is active; selected the plan default in response to the owner question. |
-| Q2 | Remove Wi-Fi/mobile-data behavior, or expose it with safe defaults and a working restore path | Pending |  |
+| Q2 | Wi-Fi/mobile-data side effects | Decided (2026-10-05) | Keep existing behavior as-is; do not add opt-in controls. No T8 code changes. |
 | Q3 | Behavior when import includes a VPN list but Network Blocking is off | Decided (2026-10-05) | Request VPN consent during Import; on grant turn on Network Blocking and VPN Self-Healing and activate the imported list. On denial/cancel, continue restore with the list dormant. Use one informational expandable summary for imported protection categories; do not ask for another in-app confirmation. |
 | Q4 | Single source of truth for the explicit VPN list | Decided (2026-10-05) | `net_block_explicit_packages` is the canonical internal VPN-list source; preserve the existing `alwaysOnVpnPackages` backup field through explicit mapping. |
 

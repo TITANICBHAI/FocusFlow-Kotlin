@@ -50,20 +50,19 @@ import org.json.JSONArray
  *     addDisallowedApplication() so calls still work.
  *
  * Activation flow:
- *   1. A result-aware app UI launches the Android VPN consent dialog when needed.
- *   2. The UI verifies the permission was granted before enabling VPN blocking.
- *   3. AppBlockerAccessibilityService calls startNetworkBlock(pkg) whenever a
- *      blocked app is detected.
- *   4. This service starts, establishes the VPN, and holds it.
- *   5. ForegroundTaskService calls stopNetworkBlock() when the session ends,
- *      or BlockOverlayActivity calls it when the user navigates back to FocusFlow.
+ *   1. An app UI requests Android VPN consent when needed.
+ *   2. VpnPolicyCoordinator recalculates and persists the desired policy from
+ *      durable settings, then serializes service start/stop commands.
+ *   3. Accessibility, foreground, boot, and watchdog paths request a policy
+ *      sync or recovery; they do not pass ad hoc package lists to this service.
+ *   4. This service establishes the VPN tunnel and applies the selected scope.
  *
  * SharedPrefs keys consumed (read on start):
  *   net_block_mode          "per_app" | "global"
  *   net_block_packages      JSON array — packages to block (used in per_app mode)
  *
  * Static state:
- *   isRunning               Boolean — checked by AccessibilityService before starting
+ *   isRunning               Boolean — observed by coordinator health/recovery paths
  */
 class NetworkBlockerVpnService : VpnService() {
 

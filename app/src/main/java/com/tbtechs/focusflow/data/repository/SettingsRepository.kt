@@ -116,7 +116,6 @@ class SettingsRepository(
 
         private const val KEY_NETWORK_BLOCK_ENABLED = "net_block_enabled"
         private const val KEY_NETWORK_BLOCK_VPN = "net_block_vpn"
-        private const val KEY_VPN_SELECTED_PACKAGES = "vpn_selected_packages"
         private const val KEY_EXPLICIT_VPN_PACKAGES = "net_block_explicit_packages"
         private const val KEY_LEGACY_VPN_PACKAGES = "always_on_vpn_packages"
         private const val KEY_VPN_PACKAGES_MIGRATION_COMPLETE = "always_on_vpn_packages_migrated"
@@ -671,72 +670,6 @@ class SettingsRepository(
         pinHash: String? = null,
     ) = setStandaloneBlock(active, packages, untilMs.toLong(), pinHash)
 
-    /**
-     * Atomically publishes standalone state. Inactive snapshots clear the
-     * package and expiry values and persist an empty VPN package list.
-     */
-    suspend fun publishStandaloneSnapshot(
-        active: Boolean,
-        packages: List<String>,
-        untilMs: Long,
-        pinHash: String?,
-        vpnPackages: List<String>?,
-    ) {
-        restoreGate.write("SettingsRepository.publishStandaloneSnapshot") {
-        try {
-            if (!active && prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L) > System.currentTimeMillis()) {
-                requireValidSessionPin(
-                    pinHash,
-                    "A session PIN is set — supply the correct PIN hash to end the standalone block early",
-                )
-            }
-
-            val editor = prefs.edit()
-            if (active) {
-                editor
-                    .putBoolean(KEY_STANDALONE_ACTIVE, true)
-                    .putString(KEY_STANDALONE_PACKAGES, packages.toJsonArrayString())
-                    .putLong(KEY_STANDALONE_UNTIL_MS, untilMs)
-                    .putString(
-                        KEY_STANDALONE_VPN_PACKAGES,
-                        vpnPackages?.toJsonArrayString() ?: "[]",
-                    )
-            } else {
-                editor
-                    .putBoolean(KEY_STANDALONE_ACTIVE, false)
-                    .putString(KEY_STANDALONE_PACKAGES, "[]")
-                    .putLong(KEY_STANDALONE_UNTIL_MS, 0L)
-                    .putString(KEY_STANDALONE_VPN_PACKAGES, "[]")
-            }
-
-            commitEditor(editor, "publishStandaloneSnapshot")
-
-            Log.d(TAG, "[NATIVE_PREFS_OK] publishStandaloneSnapshot active=$active")
-            requestVpnSync()
-            pushWidgetUpdate()
-        } catch (error: SessionPinRequiredException) {
-            throw error
-        } catch (error: Exception) {
-            throw IllegalStateException("PREFS_ERROR: ${error.message}", error)
-        }
-        }
-    }
-
-    /** Compatibility overload for the bridge's JavaScript number timestamp. */
-    suspend fun publishStandaloneSnapshot(
-        active: Boolean,
-        packages: List<String>,
-        untilMs: Double,
-        pinHash: String?,
-        vpnPackages: List<String>?,
-    ) = publishStandaloneSnapshot(
-        active,
-        packages,
-        untilMs.toLong(),
-        pinHash,
-        vpnPackages,
-    )
-
     suspend fun setAlwaysBlockActive(active: Boolean, packages: List<String>) {
         restoreGate.write("SettingsRepository.setAlwaysBlockActive") {
         prefs.edit()
@@ -942,17 +875,6 @@ class SettingsRepository(
             standaloneUntilMs = prefs.getLong(KEY_STANDALONE_UNTIL_MS, 0L),
             nowMs = System.currentTimeMillis(),
         )
-
-    suspend fun setVpnSelectedPackages(packagesJson: String) {
-        restoreGate.write("SettingsRepository.setVpnSelectedPackages") {
-        VpnPolicyCoordinator.ensureExplicitPackagesMigrated(prefs, restoreGate)
-        prefs.edit()
-            .putString(KEY_VPN_SELECTED_PACKAGES, packagesJson)
-            .putString(KEY_EXPLICIT_VPN_PACKAGES, packagesJson)
-            .apply()
-        requestVpnSync()
-        }
-    }
 
     suspend fun setDailyAllowanceConfig(configJson: String) {
         restoreGate.write("SettingsRepository.setDailyAllowanceConfig") {

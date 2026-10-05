@@ -17,16 +17,14 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 
 /**
- * Native owner for the persisted VPN policy and its effective target set.
+ * Native owner for VPN target calculation, desired-policy persistence, and
+ * service dispatch. Sources are explicit VPN selections, active standalone
+ * packages, opt-in focus mirroring, and schedule packages inside their
+ * configured local-time windows. Invalid/uninstalled targets are persisted
+ * separately from VPN service registration failures.
  *
- * The coordinator deliberately keeps foreground Accessibility policy separate
- * from network policy. Its current sources are explicit VPN selections,
- * active standalone VPN packages, opt-in focus mirroring, and schedule packages
- * whose configured local-time windows are currently active.
- *
- * The desired policy is persisted before an asynchronous service command is
- * dispatched. Recovery paths can therefore recalculate from durable sources
- * even when the React process is not running.
+ * The desired policy is persisted before asynchronous service commands are
+ * dispatched, so recovery can recalculate from durable settings without a UI.
  */
 object VpnPolicyCoordinator {
     private const val PREFS_NAME = "focusday_prefs"
