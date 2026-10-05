@@ -174,10 +174,10 @@
 
 ## Batch 5 — P1 T5 and T6: standalone and schedule VPN enforcement
 
-**Status:** Not started
+**Status:** Blocked: Batch 4 is incomplete/Q4 is pending, and the owner has not recorded Q1; read-only audit complete
 **Gate:** Batch 4 complete. Resolve Q1 before implementing schedule VPN scope. T5/T6 share the boundary scheduler and must be coordinated.
 
-- [ ] Re-verify standalone-block VPN selection, persistence, expiry clearing, and all relevant callers.
+- [x] Re-verify standalone-block VPN selection, persistence, expiry clearing, and all relevant callers.
 - [ ] Record the owner's Q1 decision on which schedule apps are VPN-blocked and when.
 - [ ] Add/run fixed-time tests for schedule windows, overnight windows, and week boundaries.
 - [ ] Implement shared boundary start/stop scheduling and verify it is re-armed on the required lifecycle events.
@@ -188,7 +188,7 @@
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Read-only re-verification complete; implementation and tests remain blocked by the Batch 4 and Q1 gates. | `StandaloneBlockModal.kt`, `FocusScreen.kt`, `StandaloneBlockSetupScreen.kt`, `QuickBlockSheet.kt`, `ActiveScreen.kt`, `AppSettings.kt`, `SettingsViewModel.kt`, `SettingsRepository.kt`, `VpnPolicyCoordinator.kt`, `AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `BootReceiver.kt`, `TaskAlarmReconcileWorker.kt`, this tracker | Searched all standalone/schedule writers and callers, expiry-state mutations, boundary alarm symbols, and related test sources; inspected the state transitions and persisted schedule keys. No tests run. | The standalone modal emits its VPN selection, but both UI callers discard it; `StandaloneBlockAndAllowanceConfig` and its main repository writer have no VPN list field. A separate `publishStandaloneSnapshot` can persist one but has no callers; Quick Block and Active Screen use the basic setter. Expiry is cleared in the accessibility service, fallback service, and boot receiver, without a shared VPN boundary scheduler; the exact-alarm reconciliation receiver only handles task alarms. Schedules persist `vpnEnabled`/`vpnPackages`, but the VPN coordinator reads the flat `net_block_schedule_vpn_pkgs` snapshot; its writer is uncalled, schedule writes do not request VPN sync, and there is no pure fixed-time window helper or schedule boundary test coverage. Q1 is pending; Batch 4 remains blocked on Q4. No implementation or tests were started, and no device checks were attempted. |
 
 ## Batch 6 — P1 T7: permission-lost recovery banner
 
