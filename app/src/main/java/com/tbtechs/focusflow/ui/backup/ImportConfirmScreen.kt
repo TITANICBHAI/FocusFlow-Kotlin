@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.ui.backup
 
 import android.net.VpnService
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import com.tbtechs.focusflow.data.repository.BackupEnvelope
 import com.tbtechs.focusflow.data.repository.BackupParseResult
 import com.tbtechs.focusflow.data.repository.RestoreResult
 import com.tbtechs.focusflow.data.restore.RestorePreview
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,6 +66,8 @@ fun ImportConfirmScreen(
     initialReplaceTasks: Boolean = false,
     onBack: () -> Unit,
     onImported: () -> Unit,
+    onImportProgressChanged: (Boolean) -> Unit = {},
+    onImportFailed: (String) -> Unit = {},
 ) {
     var parsed by remember(pendingGeneration) { mutableStateOf<BackupParseResult?>(null) }
     var busy by remember(pendingGeneration) { mutableStateOf(false) }
@@ -85,15 +89,23 @@ fun ImportConfirmScreen(
     val context = LocalContext.current
 
     suspend fun performImport(pin: String?, activateImportedVpn: Boolean) {
-        val outcome = backupCoordinator.importPending(
-            replaceTasks = replaceTasks,
-            currentFocusActive = currentFocusActive,
-            restoreSettings = restoreSettings,
-            restoreTasks = restoreTasks,
-            defensePin = pin,
-            activateImportedVpnAfterGrant = activateImportedVpn,
-        )
-        busy = false
+        val outcome = try {
+            backupCoordinator.importPending(
+                replaceTasks = replaceTasks,
+                currentFocusActive = currentFocusActive,
+                restoreSettings = restoreSettings,
+                restoreTasks = restoreTasks,
+                defensePin = pin,
+                activateImportedVpnAfterGrant = activateImportedVpn,
+            )
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            RestoreResult.Error(error.message ?: "Could not import this backup.")
+        } finally {
+            busy = false
+            onImportProgressChanged(false)
+        }
         if (outcome is RestoreResult.Error && outcome.requiresPin) {
             showPinPrompt = true
             pinError = outcome.message
@@ -102,6 +114,9 @@ fun ImportConfirmScreen(
             defensePin = ""
             pinError = null
             result = outcome
+            if (outcome is RestoreResult.Error) {
+                onImportFailed(outcome.message)
+            }
         }
     }
 
@@ -147,6 +162,7 @@ fun ImportConfirmScreen(
     fun importBackup(pin: String? = null) {
         if (!restoreSettings && !restoreTasks) return
         busy = true
+        onImportProgressChanged(true)
         result = null
         scope.launch {
             val decision = runCatching {
@@ -194,12 +210,25 @@ fun ImportConfirmScreen(
         }
     }
 
+    BackHandler {
+        when {
+            busy -> Unit
+            result is RestoreResult.Success -> onImported()
+            showPinPrompt -> {
+                showPinPrompt = false
+                defensePin = ""
+            }
+            result is RestoreResult.Error -> result = null
+            else -> cancelImport()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Import backup") },
                 navigationIcon = {
-                    IconButton(onClick = ::cancelImport) {
+                    IconButton(onClick = ::cancelImport, enabled = !busy) {
                         Icon(Icons.Outlined.ArrowBack, contentDescription = "Cancel import")
                     }
                 },

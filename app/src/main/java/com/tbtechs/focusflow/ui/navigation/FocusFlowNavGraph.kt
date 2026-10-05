@@ -112,6 +112,9 @@ fun FocusFlowNavGraph(
     pendingImportGeneration: Int = 0,
     initialReplaceTasks: Boolean = false,
     onImportFinished: () -> Unit = {},
+    onImportCancelled: () -> Unit = {},
+    onImportProgressChanged: (Boolean) -> Unit = {},
+    onImportFailed: (String) -> Unit = {},
     onOnboardingTourFinished: () -> Unit = {},
     focusDayRating: Boolean = false,
 ) {
@@ -495,8 +498,10 @@ fun FocusFlowNavGraph(
                                 ?: error("Backup coordinator is required for import confirmation."),
                             currentFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
                             initialReplaceTasks = initialReplaceTasks,
-                            onBack = onImportFinished,
+                            onBack = onImportCancelled,
                             onImported = onImportFinished,
+                            onImportProgressChanged = onImportProgressChanged,
+                            onImportFailed = onImportFailed,
                         )
                     }
                 }

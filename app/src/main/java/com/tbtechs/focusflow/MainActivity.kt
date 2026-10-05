@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -87,11 +88,19 @@ class MainActivity : ComponentActivity() {
     private var focusDayRating by mutableStateOf(false)
     private var notificationEventNonce by mutableStateOf(0)
     private var resumeNonce by mutableStateOf(0)
+    private var externalBackupUri by mutableStateOf<Uri?>(null)
+    private var externalBackupRequestId by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StartupLogger.info("MainActivity", "Main activity created")
-        requestedRoute = routeFromIntent(intent)
+        externalBackupUri = externalBackupUriFromIntent(intent)
+        if (externalBackupUri != null) {
+            externalBackupRequestId += 1
+            requestedRoute = Routes.HOME
+        } else {
+            requestedRoute = routeFromIntent(intent)
+        }
         focusDayRating = intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING
         setTheme(R.style.Theme_FocusFlow)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -102,6 +111,9 @@ class MainActivity : ComponentActivity() {
                 notificationEventNonce = notificationEventNonce,
                 resumeNonce = resumeNonce,
                 vpnRepository = vpnRepository,
+                externalBackupUri = externalBackupUri,
+                externalBackupRequestId = externalBackupRequestId,
+                onExternalBackupConsumed = ::consumeExternalBackupIntent,
             )
         }
     }
@@ -110,10 +122,31 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         StartupLogger.info("MainActivity", "Main activity received a new intent")
         setIntent(intent)
-        requestedRoute = routeFromIntent(intent)
+        val openedBackupUri = externalBackupUriFromIntent(intent)
+        if (openedBackupUri != null) {
+            externalBackupUri = openedBackupUri
+            externalBackupRequestId += 1
+        } else {
+            requestedRoute = routeFromIntent(intent)
+        }
         focusDayRating = intent.action == LauncherActivity.ACTION_OPEN_DAY_RATING
         notificationEventNonce++
     }
+
+    private fun consumeExternalBackupIntent(requestId: Int) {
+        if (requestId != externalBackupRequestId) return
+        val consumedUri = externalBackupUri
+        externalBackupUri = null
+        if (consumedUri != null && intent?.data == consumedUri) {
+            setIntent(Intent(this, MainActivity::class.java))
+        }
+    }
+
+    private fun externalBackupUriFromIntent(intent: Intent?): Uri? =
+        intent
+            ?.takeIf { it.action == Intent.ACTION_VIEW }
+            ?.data
+            ?.takeIf { it.scheme == "content" }
 
     override fun onStart() {
         super.onStart()
@@ -149,6 +182,9 @@ private fun FocusFlowRoot(
     notificationEventNonce: Int,
     resumeNonce: Int,
     vpnRepository: VpnRepository,
+    externalBackupUri: Uri?,
+    externalBackupRequestId: Int,
+    onExternalBackupConsumed: (Int) -> Unit,
 ) {
     val context = LocalContext.current
     val uiScope = rememberCoroutineScope()
@@ -232,6 +268,7 @@ private fun FocusFlowRoot(
     var pendingImportGeneration by remember { mutableStateOf(0) }
     var noticeId by remember { mutableStateOf(0) }
     var inAppNotice by remember { mutableStateOf<InAppNotice?>(null) }
+    var importProgressNoticeId by remember { mutableStateOf<Int?>(null) }
 
     fun showInAppNotice(
         message: String,
@@ -245,6 +282,49 @@ private fun FocusFlowRoot(
             tone = tone,
             dismissAfterMillis = dismissAfterMillis,
         )
+    }
+
+    fun showImportProgress(message: String) {
+        showInAppNotice(
+            message = message,
+            tone = InAppNoticeTone.LOADING,
+            dismissAfterMillis = null,
+        )
+        importProgressNoticeId = noticeId
+    }
+
+    fun clearImportProgress() {
+        if (inAppNotice?.id == importProgressNoticeId) {
+            inAppNotice = null
+        }
+        importProgressNoticeId = null
+    }
+
+    fun stageImportFromUri(source: Uri, externalRequestId: Int? = null) {
+        showImportProgress("Reading backup…")
+        scope.launch {
+            val staged = try {
+                withContext(Dispatchers.IO) {
+                    backupCoordinator.stageImport(source)
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
+
+            externalRequestId?.let(onExternalBackupConsumed)
+            clearImportProgress()
+            if (staged.isSuccess) {
+                pendingImportGeneration += 1
+            } else {
+                showInAppNotice(
+                    "Import failed: " +
+                        (staged.exceptionOrNull()?.message ?: "The selected backup could not be read."),
+                    InAppNoticeTone.WARNING,
+                )
+            }
+        }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -288,49 +368,20 @@ private fun FocusFlowRoot(
         if (source == null) {
             showInAppNotice("Backup import cancelled.")
         } else {
-            showInAppNotice(
-                message = "Reading backup…",
-                tone = InAppNoticeTone.LOADING,
-                dismissAfterMillis = null,
-            )
-            scope.launch {
-                val staged = try {
-                    withContext(Dispatchers.IO) {
-                        backupCoordinator.stageImport(source)
-                    }
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (error: Exception) {
-                    Result.failure(error)
-                }
-                if (staged.isSuccess) {
-                    inAppNotice = null
-                    pendingImportGeneration += 1
-                    val sourceTab = navController.currentBackStackEntry?.let { entry ->
-                        RouteTextScaleContext.sourceTabForDestination(
-                            currentRoute = entry.destination.route,
-                            currentSourceTab = entry.arguments
-                                ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
-                            destinationRoute = Routes.IMPORT_CONFIRM,
-                        )
-                    }
-                    navController.navigate(
-                        RouteTextScaleContext.routeWithSourceTab(
-                            Routes.IMPORT_CONFIRM,
-                            sourceTab,
-                        ),
-                    ) {
-                        launchSingleTop = true
-                    }
-                } else {
-                    showInAppNotice(
-                        "Import failed: " +
-                            (staged.exceptionOrNull()?.message ?: "The selected backup could not be read."),
-                        InAppNoticeTone.WARNING,
-                    )
-                }
-            }
+            stageImportFromUri(source)
         }
+    }
+
+    var handledExternalBackupRequestId by remember { mutableStateOf(0) }
+    LaunchedEffect(externalBackupUri, externalBackupRequestId) {
+        val source = externalBackupUri ?: return@LaunchedEffect
+        if (externalBackupRequestId <= 0 ||
+            externalBackupRequestId == handledExternalBackupRequestId
+        ) {
+            return@LaunchedEffect
+        }
+        handledExternalBackupRequestId = externalBackupRequestId
+        stageImportFromUri(source, externalBackupRequestId)
     }
 
     var diagnosticsVisible by remember { mutableStateOf(false) }
@@ -568,6 +619,7 @@ private fun FocusFlowRoot(
                     pendingImportGeneration = pendingImportGeneration,
                     initialReplaceTasks = replaceTasksOnImport,
                     onImportFinished = {
+                        clearImportProgress()
                         showInAppNotice(
                             "Backup imported successfully.",
                             InAppNoticeTone.SUCCESS,
@@ -575,6 +627,22 @@ private fun FocusFlowRoot(
                         settingsViewModel.refreshFromStore()
                         replaceTasksOnImport = false
                         navController.popBackStack()
+                    },
+                    onImportCancelled = {
+                        clearImportProgress()
+                        showInAppNotice("Backup import cancelled.")
+                        replaceTasksOnImport = false
+                        navController.popBackStack()
+                    },
+                    onImportProgressChanged = { importing ->
+                        if (importing) {
+                            showImportProgress("Importing backup…")
+                        } else {
+                            clearImportProgress()
+                        }
+                    },
+                    onImportFailed = { message ->
+                        showInAppNotice("Import failed: $message", InAppNoticeTone.WARNING)
                     },
                     onOnboardingTourFinished = {
                         // A normal cold launch starts on Schedule, but the
