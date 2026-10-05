@@ -118,7 +118,14 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Tests
 
-Run local JVM tests with:
+Run local JVM tests with the repository's toolchain bootstrap:
+
+```bash
+bash scripts/test-unit.sh
+```
+
+This runs `:app:testDebugUnitTest` without assembling an APK. If JDK 17 and the
+Android SDK are already configured, the Gradle task can also be run directly:
 
 ```bash
 ./gradlew :app:testDebugUnitTest

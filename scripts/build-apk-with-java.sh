@@ -5,6 +5,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT_DIR"
 
+FOCUSFLOW_SKIP_APK_BUILD="${FOCUSFLOW_SKIP_APK_BUILD:-0}"
+case "$FOCUSFLOW_SKIP_APK_BUILD" in
+  0|false|no|"")
+    SKIP_APK_BUILD=0
+    GRADLE_TASKS=(":app:assembleDebug" "$@")
+    ;;
+  1|true|yes)
+    SKIP_APK_BUILD=1
+    if [[ "$#" -eq 0 ]]; then
+      echo "ERROR: Provide at least one Gradle task when FOCUSFLOW_SKIP_APK_BUILD is enabled." >&2
+      exit 1
+    fi
+    GRADLE_TASKS=("$@")
+    ;;
+  *)
+    echo "ERROR: FOCUSFLOW_SKIP_APK_BUILD must be 0/false/no or 1/true/yes." >&2
+    exit 1
+    ;;
+esac
+
 JDK_DOWNLOAD_DIR=""
 SDK_DOWNLOAD_DIR=""
 cleanup() {
@@ -17,7 +37,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "== FocusFlow debug APK build (JDK and Android SDK bootstrap) =="
+if [[ "$SKIP_APK_BUILD" -eq 1 ]]; then
+  echo "== FocusFlow Android Gradle task (JDK and Android SDK bootstrap) =="
+else
+  echo "== FocusFlow debug APK build (JDK and Android SDK bootstrap) =="
+fi
 echo "Started: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
 if [[ "$(uname -s)" != "Linux" ]]; then
@@ -62,6 +86,12 @@ assert_path_outside_repo() {
   esac
 }
 
+path_is_inside_repo() {
+  local candidate
+  candidate="$(canonical_path "$1")"
+  [[ "$candidate" == "$ROOT_DIR" || "$candidate" == "$ROOT_DIR"/* ]]
+}
+
 assert_sdk_outside_repo() {
   assert_path_outside_repo "$1" "Android SDK paths"
 }
@@ -93,12 +123,29 @@ if [[ -n "$JAVA_BIN" ]] && [[ "$(java_major_version "$JAVA_BIN")" == "17" ]]; th
   JAVA_HOME="$(java_home_for "$JAVA_BIN")"
   echo "Using existing JDK 17 at $JAVA_HOME"
 else
-  CACHE_BASE="${XDG_CACHE_HOME:-${HOME:-}}"
+  CACHE_BASE="${XDG_CACHE_HOME:-}"
   if [[ -z "$CACHE_BASE" ]]; then
-    echo "ERROR: HOME and XDG_CACHE_HOME are both unset; cannot cache JDK 17." >&2
+    CACHE_BASE="${HOME:-}"
+    if [[ -n "$CACHE_BASE" ]]; then
+      CACHE_BASE="$CACHE_BASE/.cache"
+    fi
+  fi
+  if [[ -z "$CACHE_BASE" ]]; then
+    CACHE_BASE="${TMPDIR:-/tmp}"
+  fi
+  if path_is_inside_repo "$CACHE_BASE"; then
+    if [[ -n "${HOME:-}" ]] && ! path_is_inside_repo "$HOME"; then
+      CACHE_BASE="$HOME/.cache"
+    else
+      CACHE_BASE="/tmp"
+    fi
+  fi
+  if path_is_inside_repo "$CACHE_BASE"; then
+    echo "ERROR: Could not find a JDK cache directory outside the Git repository." >&2
     exit 1
   fi
 
+  assert_path_outside_repo "$CACHE_BASE" "JDK cache paths"
   CACHE_DIR="$CACHE_BASE/focusflow/android-build"
   CACHED_JDK="$CACHE_DIR/jdk-17"
   mkdir -p "$CACHE_DIR"
@@ -239,14 +286,19 @@ yes | "$ANDROID_CLI" --no-metrics --sdk="$SDK_ROOT" sdk install \
   platform-tools
 set -o pipefail
 
-./gradlew :app:assembleDebug --no-daemon --console=plain --stacktrace "$@"
+./gradlew "${GRADLE_TASKS[@]}" --no-daemon --console=plain --stacktrace
 
-APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
-if [[ ! -f "$APK_PATH" ]]; then
-  echo "ERROR: Expected APK was not produced at $APK_PATH" >&2
-  exit 1
+if [[ "$SKIP_APK_BUILD" -eq 0 ]]; then
+  APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+  if [[ ! -f "$APK_PATH" ]]; then
+    echo "ERROR: Expected APK was not produced at $APK_PATH" >&2
+    exit 1
+  fi
+
+  echo "APK: $APK_PATH"
+  sha256sum "$APK_PATH"
+else
+  echo "Gradle tasks passed: ${GRADLE_TASKS[*]}"
 fi
 
-echo "APK: $APK_PATH"
-sha256sum "$APK_PATH"
 echo "Finished: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"

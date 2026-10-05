@@ -1,10 +1,12 @@
 ---
-name: Android build environment
-description: Environment limitation affecting Android Gradle verification in this workspace
+name: Android build and test environment
+description: Environment constraints and local verification guidance for Android builds and tests.
 ---
 
-The workspace may lack a usable Java command or `JAVA_HOME`; the Replit `java-graalvm22.3` module exposes GraalVM Java 19 on `PATH` without setting `JAVA_HOME`, not the project's required JDK 17. The checked-in Gradle wrapper downloads Gradle automatically. This workspace also lacks an Android SDK platform installation or `sdk.dir` configuration, so a Gradle APK build can stop before Kotlin source compilation even after Java is provisioned.
+The workspace may lack a usable Java command or `JAVA_HOME`; the Replit `java-graalvm22.3` module exposes GraalVM Java 19 on `PATH` without setting `JAVA_HOME`, not the project's required JDK 17. The checked-in Gradle wrapper downloads Gradle automatically. This workspace also lacks an Android SDK platform installation or `sdk.dir` configuration, so a Gradle build or test can stop before Kotlin source compilation even after Java is provisioned.
 
-**Why:** Build attempts here have stopped first for missing Java and then for the missing Android SDK; Java and Gradle can be bootstrapped independently, but the Android platform remains a separate prerequisite.
+For local unit-test runs, use the repository's bootstrap-backed test path so it can provision JDK 17 and the Android SDK outside the Git repository; it runs JVM unit tests without assembling an APK.
 
-**How to apply:** Check `java`, `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `local.properties` before spending time on compiler diagnostics. Use a JDK 17 for this project; do not treat missing Java or an SDK as a source regression.
+**Why:** Earlier build attempts stopped first for missing Java and then for the Android SDK. The user asked to keep the dedicated local test route in project memory so future Android verification doesn't mistake missing tools for a source failure.
+
+**How to apply:** Check `java`, `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `local.properties` before compiler diagnosis. When running local unit tests, use the bootstrap-backed test workflow; use JDK 17 and keep SDK files outside the repository. If prerequisites cannot be obtained, record the test as blocked rather than failed.
