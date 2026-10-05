@@ -41,6 +41,7 @@ import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
 import com.tbtechs.focusflow.data.repository.AlarmCapabilitySnapshotRecord
 import com.tbtechs.focusflow.data.repository.NetworkBlockSettings
+import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.di.AppModule
@@ -112,6 +113,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        val setupPersistence = SetupPersistenceManager(applicationContext)
+        if (setupPersistence.isUserConsentedBackgroundService() &&
+            setupPersistence.isOnboardingComplete()
+        ) {
+            AppModule.foregroundServiceController.ensureRunning()
+        }
         AppModule.requestTaskAlarmReconciliation("activity_start")
     }
 

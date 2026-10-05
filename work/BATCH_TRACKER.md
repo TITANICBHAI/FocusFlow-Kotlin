@@ -62,19 +62,19 @@
 
 ## Batch 1 — Phase 1: always-on lifecycle
 
-**Status:** Not started  
+**Status:** Complete
 **Gate:** Complete Batch 0 first. Follow the owner's recorded Q1 decision; do not add idle/active detection or an in-app off switch in this iteration.
 
-- [ ] Add a side-effect-free ensure-running service action and command branch; do not route through `startIdleService()` / `ACTION_SET_IDLE`.
-- [ ] Add `ForegroundServiceController.ensureRunning()` with failure logging and no thrown exception.
-- [ ] Add consent- and onboarding-gated calls from `MainActivity.onStart` and the onboarding completion step.
-- [ ] Leave `BootReceiver` unchanged.
+- [x] Add an idempotent ensure-running service action and command branch; do not route through `startIdleService()` / `ACTION_SET_IDLE`.
+- [x] Add `ForegroundServiceController.ensureRunning()` with failure logging and no thrown exception.
+- [x] Add consent- and onboarding-gated calls from `MainActivity.onStart` and the onboarding completion step.
+- [x] Leave `BootReceiver` unchanged.
 - [x] Record the owner's Q1 decision: keep the service running whenever existing background consent is granted, regardless of idle/active state; defer an idle-only opt-out and do not add that control now.
-- [ ] Implement the consented always-on lifecycle without adding idle/active-state checks or an in-app off switch.
-- [ ] Verify idle notification wording and count-up timer remain unchanged.
-- [ ] Verify all Phase 1 acceptance items from plan section 5, or clearly record device-only items that could not be run.
-- [ ] Verify no Phase 1 enforcement behavior changed and no prohibited keys, permissions, polling loops, or manifest changes were added.
-- [ ] Record build/test results and evidence.
+- [x] Implement the consented always-on lifecycle without adding idle/active-state checks or an in-app off switch.
+- [x] Verify idle notification wording and count-up timer remain unchanged.
+- [x] Verify all Phase 1 acceptance items from plan section 5, or clearly record device-only items that could not be run.
+- [x] Verify no Phase 1 enforcement behavior changed and no prohibited keys, permissions, polling loops, or manifest changes were added.
+- [x] Record build/test results and evidence.
 
 ### Decision record
 
@@ -86,30 +86,32 @@ Evidence: User's decision in chat; plan file intentionally unchanged.
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Complete; consented always-on lifecycle implemented and reviewed | `ForegroundTaskService.kt`, `ForegroundServiceController.kt`, `MainActivity.kt`, `OnboardingScreen.kt` | `git diff --check` passed; reviewed full code diff and call sites; confirmed no manifest or `BootReceiver` diff; Android build/tests intentionally skipped per owner | Ensure action preserves a live focus/break session and reuses existing persisted-session recovery if the service is newly created. `ForegroundTaskService.kt` remains 1,715 lines (line-neutral). Idle notification/timer code is unchanged. No off switch, idle/active checks, new keys, permissions, polling loops, or manifest changes. Device-only acceptance checks (fresh-install notification, recents swipe, API 29/31+/33/34 runtime smoke) remain unverified. The targetSdk 35/Android 15 service-type pass remains parked; no scope expansion. |
 
 ## Batch 2 — Phase 2: extract notification building
 
-**Status:** Not started  
+**Status:** Implementation complete; build/device acceptance verification blocked
 **Gate:** Complete Batch 1 first.
 
-- [ ] Create the status-card model, pure mapper, Android renderer, and shared task-action intent builder described in plan section 6.
-- [ ] Keep notification output equivalent: strings/emoji, action order, priority, ongoing/only-alert-once flags, and chronometer behavior.
-- [ ] Update the service and publisher to delegate to the extracted code.
-- [ ] Add JVM mapper tests for 12-hour label edge cases, progress clamping, and chronometer base math.
-- [ ] Verify the service file shrinks and new files meet the plan's size guidance.
-- [ ] Record before/after idle, active, and break notification evidence where available.
-- [ ] Record build/test results and evidence.
+- [x] Create the status-card model, pure mapper, Android renderer, and shared task-action intent builder described in plan section 6.
+- [x] Keep notification output equivalent: strings/emoji, action order, priority, ongoing/only-alert-once flags, and chronometer behavior.
+- [x] Update the service and publisher to delegate to the extracted code.
+- [x] Add JVM mapper tests for 12-hour label edge cases, progress clamping, and chronometer base math.
+- [x] Verify the service file shrinks and new files meet the plan's size guidance.
+- [x] Record before/after idle, active, and break notification evidence where available.
+- [x] Record build/test results and evidence.
 
 ### Batch 2 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Baseline audit complete | `ForegroundTaskService.kt`, `LiveTaskStatusNotificationPublisher.kt`, `NotificationActionReceiver.kt`, `app/build.gradle.kts`, existing JVM tests | Inspected Phase 2 contract and source renderers; checked toolchain availability | Before evidence from source: idle shows “FocusFlow” / “Monitoring active — tap to open” and counts up; focus shows “🎯 $taskName” with end label, optional next-task subtext, 0–100 progress, and Done / +15m / +30m / Skip; break shows “☕ Break · $taskName” and its two existing text lines. Focus and break count down. |
+| 2026-10-05 | Implementation complete; runtime acceptance verification blocked | `ForegroundTaskService.kt`, `LiveTaskStatusNotificationPublisher.kt`, `notifications/status/*.kt`, `StatusCardMapperTest.kt` | `git diff --check` passed; reviewed action/model/rendering diff; `ForegroundTaskService.kt` 1,715 → 1,593 lines; new production files 37–83 lines and tests 128 lines; `./gradlew :app:testDebugUnitTest` attempted | After source-level evidence matches the baseline strings, emoji, action order, priorities, ongoing/only-alert-once flags, and chronometer direction/base formulas. Required idle/active/break before-and-after screenshots were not captured, so visual acceptance remains unverified. The test task did not start: `JAVA_HOME` is unset and no `java` executable exists; Android SDK variables and `local.properties` are also absent. JVM tests and Android build remain unexecuted, not failed on source. No manifest changes. |
 
 ## Batch 3 — Phase 3: enforcement health state
 
-**Status:** Not started  
+**Status:** In progress; owner approved as useful but nonessential
+
 **Gate:** Owner says it is good to have but unnecessary most of the time; keep it low priority and nonessential to the core work.
 
 - [x] Record the owner's Q2 response and priority before implementation.
@@ -128,7 +130,7 @@ Priority: Useful but nonessential; do not make it a blocker for the core phases.
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-05 | Owner decision recorded; Batch 0 source audit complete | `PermissionSupport.kt`, `UsageStatsRepository.kt`, `LauncherController.kt`, `MainActivity.kt`, `Routes.kt`, `AndroidManifest.xml`, `ForegroundTaskService.kt`, `FocusFlowNavGraph.kt` | Rechecked permission definitions/checks, existing route path, lifecycle start, service startup, and fallback accessibility check | The three current non-optional permission definitions are Accessibility, Usage Access, and Overlay; their required set must continue to come from `permissionDefinitions.filterNot { it.optional }`. Existing direct checks are suspend functions; do not call UI-layer `checkPermission()`. `MainActivity.onStart()` already dispatches `ACTION_ENSURE_RUNNING`; service startup and its one-second fallback accessibility check provide the other planned refresh points. `Routes.fromPath(intent.data.path)` accepts the `permissions` path through the existing `focusflow` scheme. No implementation changes made before recording Q2. |
 
 ## Batch 4 — Phase 4: scheduled-task card
 

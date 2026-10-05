@@ -12,6 +12,8 @@ import com.tbtechs.focusflow.R
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.receivers.NotificationActionReceiver
+import com.tbtechs.focusflow.notifications.status.StatusCardAction
+import com.tbtechs.focusflow.notifications.status.TaskActionIntents
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -29,10 +31,6 @@ object LiveTaskStatusNotificationPublisher {
     private const val NOTIFICATION_ID = 1003
     private const val PREF_FOCUS_ACTIVE = "focus_active"
     private const val REQUEST_OPEN = 3000
-    private const val REQUEST_COMPLETE = 3001
-    private const val REQUEST_EXTEND_15 = 3002
-    private const val REQUEST_EXTEND_30 = 3003
-    private const val REQUEST_SKIP = 3004
     private val terminalStatuses = setOf("completed", "skipped", "overdue")
 
     fun sync(context: Context, tasks: List<Task>, nowMs: Long = System.currentTimeMillis()) {
@@ -103,44 +101,22 @@ object LiveTaskStatusNotificationPublisher {
         .addAction(
             0,
             "✓ Done",
-            actionPendingIntent(
-                context,
-                liveTask.task.id,
-                NotificationActionReceiver.ACTION_COMPLETE,
-                REQUEST_COMPLETE,
-            ),
+            TaskActionIntents.pendingIntent(context, liveTask.task.id, StatusCardAction.DONE),
         )
         .addAction(
             0,
             "+15m",
-            actionPendingIntent(
-                context,
-                liveTask.task.id,
-                NotificationActionReceiver.ACTION_EXTEND,
-                REQUEST_EXTEND_15,
-                minutes = 15,
-            ),
+            TaskActionIntents.pendingIntent(context, liveTask.task.id, StatusCardAction.EXTEND_15),
         )
         .addAction(
             0,
             "+30m",
-            actionPendingIntent(
-                context,
-                liveTask.task.id,
-                NotificationActionReceiver.ACTION_EXTEND,
-                REQUEST_EXTEND_30,
-                minutes = 30,
-            ),
+            TaskActionIntents.pendingIntent(context, liveTask.task.id, StatusCardAction.EXTEND_30),
         )
         .addAction(
             0,
             "Skip",
-            actionPendingIntent(
-                context,
-                liveTask.task.id,
-                NotificationActionReceiver.ACTION_SKIP,
-                REQUEST_SKIP,
-            ),
+            TaskActionIntents.pendingIntent(context, liveTask.task.id, StatusCardAction.SKIP),
         )
         .build()
 
@@ -155,29 +131,6 @@ object LiveTaskStatusNotificationPublisher {
         return PendingIntent.getActivity(
             context,
             REQUEST_OPEN,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
-    private fun actionPendingIntent(
-        context: Context,
-        taskId: String,
-        action: String,
-        requestCode: Int,
-        minutes: Int? = null,
-    ): PendingIntent {
-        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
-            this.action = action
-            data = Uri.parse(
-                "focusflow-internal://live-task/${Uri.encode(taskId)}/${Uri.encode(action)}",
-            )
-            putExtra(NotificationActionReceiver.EXTRA_TASK_ID, taskId)
-            minutes?.let { putExtra(NotificationActionReceiver.EXTRA_MINUTES, it) }
-        }
-        return PendingIntent.getBroadcast(
-            context,
-            requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

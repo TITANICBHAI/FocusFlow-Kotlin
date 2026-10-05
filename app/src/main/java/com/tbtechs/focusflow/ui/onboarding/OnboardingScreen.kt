@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.ui.permissions.AccessibilityRestrictedRecovery
 import com.tbtechs.focusflow.ui.permissions.PermissionCard
@@ -403,6 +404,11 @@ fun OnboardingScreen(
                                 val setupPersistence = SetupPersistenceManager(context)
                                 setupPersistence.setUserConsentedBackgroundService(true)
                                 setupPersistence.setOnboardingComplete(true)
+                                if (setupPersistence.isUserConsentedBackgroundService() &&
+                                    setupPersistence.isOnboardingComplete()
+                                ) {
+                                    AppModule.foregroundServiceController.ensureRunning()
+                                }
                                 onFinished()
                             }
                         }

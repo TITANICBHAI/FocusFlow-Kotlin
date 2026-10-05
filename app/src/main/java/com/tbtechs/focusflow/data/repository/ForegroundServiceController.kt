@@ -28,6 +28,26 @@ class ForegroundServiceController(private val context: Context) {
     private val appContext = context.applicationContext
 
     /**
+     * Ensures the foreground service is running without changing its current
+     * idle, focus, or break state. Start failures are logged and never propagated.
+     */
+    fun ensureRunning() {
+        try {
+            startForegroundService(
+                Intent(appContext, ForegroundTaskService::class.java).apply {
+                    action = ForegroundTaskService.ACTION_ENSURE_RUNNING
+                },
+            )
+        } catch (error: Exception) {
+            StartupLogger.error(
+                "ForegroundServiceController",
+                "Could not ensure the foreground task service is running",
+                error,
+            )
+        }
+    }
+
+    /**
      * Starts the service without task extras so ForegroundTaskService enters or
      * remains in idle monitoring mode.
      */
