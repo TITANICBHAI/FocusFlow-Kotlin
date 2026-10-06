@@ -1,11 +1,42 @@
 package com.tbtechs.focusflow.enforcement
 
+import android.content.SharedPreferences
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExplicitVpnPolicyTest {
+    @Test
+    fun t1CoordinatorDoesNotPromoteDerivedSnapshotToExplicitTargetsAfterFocusEnds() {
+        val derivedSnapshot = listOf("com.example.focusB", "com.example.focusC")
+        val preferences = ReadOnlyVpnPreferences(
+            mapOf(
+                "net_block_packages" to """["com.example.focusB","com.example.focusC"]""",
+                "net_block_policy_generation" to 1L,
+            ),
+        )
+
+        val explicitCandidates = VpnPolicyCoordinator.explicitCandidates(preferences)
+
+        assertEquals(emptyList<String>(), explicitCandidates)
+        assertEquals(
+            derivedSnapshot,
+            ExplicitVpnPolicy.effectiveTargets(
+                explicitCandidates = explicitCandidates,
+                focusTargets = derivedSnapshot,
+            ),
+        )
+        assertEquals(
+            emptyList<String>(),
+            ExplicitVpnPolicy.effectiveTargets(
+                explicitCandidates = explicitCandidates,
+                focusTargets = emptyList(),
+            ),
+        )
+        assertFalse(ExplicitVpnPolicy.hasPersistentExplicitTargets(explicitCandidates))
+    }
+
     @Test
     fun t1ReproFocusMirrorTargetsDoNotBecomePersistentAfterFocusEnds() {
         val focusTargets = listOf("com.example.appB", "com.example.appC")
@@ -114,4 +145,40 @@ class ExplicitVpnPolicyTest {
             ),
         )
     }
+}
+
+private class ReadOnlyVpnPreferences(
+    private val values: Map<String, Any>,
+) : SharedPreferences {
+    override fun getAll(): MutableMap<String, *> = values.toMutableMap()
+
+    override fun getString(key: String, defValue: String?): String? =
+        values[key] as? String ?: defValue
+
+    override fun getStringSet(
+        key: String,
+        defValues: MutableSet<String>?,
+    ): MutableSet<String>? = (values[key] as? Set<String>)?.toMutableSet() ?: defValues?.toMutableSet()
+
+    override fun getInt(key: String, defValue: Int): Int = values[key] as? Int ?: defValue
+
+    override fun getLong(key: String, defValue: Long): Long = values[key] as? Long ?: defValue
+
+    override fun getFloat(key: String, defValue: Float): Float = values[key] as? Float ?: defValue
+
+    override fun getBoolean(key: String, defValue: Boolean): Boolean =
+        values[key] as? Boolean ?: defValue
+
+    override fun contains(key: String): Boolean = values.containsKey(key)
+
+    override fun edit(): SharedPreferences.Editor =
+        throw UnsupportedOperationException("This test only reads VPN policy preferences.")
+
+    override fun registerOnSharedPreferenceChangeListener(
+        listener: SharedPreferences.OnSharedPreferenceChangeListener,
+    ) = Unit
+
+    override fun unregisterOnSharedPreferenceChangeListener(
+        listener: SharedPreferences.OnSharedPreferenceChangeListener,
+    ) = Unit
 }

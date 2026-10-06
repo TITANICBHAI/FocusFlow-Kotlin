@@ -96,6 +96,16 @@ class SettingsRepository(
         NetworkBlockerVpnService.requestSync(it)
     },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val pushWidgetUpdateAction: (Context) -> Unit = {
+        FocusFlowWidget.pushWidgetUpdate(it)
+    },
+    private val allowanceConfigChangedBroadcastAction: (Context) -> Unit = { context ->
+        context.sendBroadcast(
+            Intent(AppBlockerAccessibilityService.ACTION_ALLOWANCE_CONFIG_CHANGED).apply {
+                `package` = context.packageName
+            },
+        )
+    },
 ) {
 
     companion object {
@@ -632,7 +642,7 @@ class SettingsRepository(
     }
 
     fun pushWidgetUpdate() {
-        FocusFlowWidget.pushWidgetUpdate(appContext)
+        pushWidgetUpdateAction(appContext)
     }
 
     /** Controls standalone blocking and its optional early-cancel PIN gate. */
@@ -953,11 +963,7 @@ class SettingsRepository(
         }
         editor.putString(KEY_DAILY_ALLOWANCE_CONFIG, allowanceJson)
         commitEditor(editor, "standalone and allowance snapshot")
-        appContext.sendBroadcast(
-            Intent(AppBlockerAccessibilityService.ACTION_ALLOWANCE_CONFIG_CHANGED).apply {
-                `package` = appContext.packageName
-            },
-        )
+        allowanceConfigChangedBroadcastAction(appContext)
         requestVpnSync()
         pushWidgetUpdate()
         }

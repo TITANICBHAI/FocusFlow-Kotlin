@@ -159,6 +159,24 @@ class VpnPolicyBoundaryPolicyTest {
     }
 
     @Test
+    fun legacy2400EndRemainsActiveUntilMidnightAndSchedulesMidnightBoundary() {
+        val monday = listOf(Calendar.MONDAY)
+
+        assertTrue(isActive(monday, 9 * 60, 24 * 60, at(Calendar.MONDAY, 23, 59)))
+        assertFalse(isActive(monday, 9 * 60, 24 * 60, at(Calendar.TUESDAY, 0, 0)))
+        assertEquals(
+            at(Calendar.TUESDAY, 0, 0),
+            GreyoutWindowMath.nextBoundaryAfter(
+                daysOfWeek = monday,
+                startMinuteOfDay = 9 * 60,
+                endMinuteOfDay = 24 * 60,
+                afterMs = at(Calendar.MONDAY, 23, 30),
+                timeZone = utc,
+            ),
+        )
+    }
+
+    @Test
     fun standaloneVpnTargetsExpireAtTheScheduledBoundaryWithoutFurtherInput() {
         val expiry = at(Calendar.MONDAY, 9, 0)
 

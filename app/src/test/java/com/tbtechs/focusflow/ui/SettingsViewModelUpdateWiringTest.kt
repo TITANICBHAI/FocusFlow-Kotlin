@@ -2,8 +2,10 @@ package com.tbtechs.focusflow.ui
 
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModelStore
+import com.tbtechs.focusflow.data.model.StandaloneBlockAndAllowanceConfig
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.domain.PinManager
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +15,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -96,6 +99,66 @@ class SettingsViewModelUpdateWiringTest {
             Dispatchers.resetMain()
         }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun standaloneVpnPackagesArePersistedOnSaveAndClearedWhenTheBlockEnds() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val preferences = MemorySharedPreferences().apply {
+            edit().putBoolean("net_block_explicit_migrated", true).apply()
+        }
+        val context = TestContext(preferences)
+        val repository = SettingsRepository(
+            context,
+            requestVpnSyncAction = {},
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+            pushWidgetUpdateAction = {},
+            allowanceConfigChangedBroadcastAction = {},
+        )
+        val viewModel = SettingsViewModel(repository, PinManager(context), context)
+        val store = ViewModelStore().apply { put("settings", viewModel) }
+        val vpnPackages = listOf("com.example.networkA", "com.example.networkB")
+
+        try {
+            advanceUntilIdle()
+            viewModel.setStandaloneBlockAndAllowance(
+                StandaloneBlockAndAllowanceConfig(
+                    standaloneBlockActive = true,
+                    standaloneBlockPackages = listOf("com.example.blocked"),
+                    standaloneBlockUntilMs = System.currentTimeMillis() + 60_000L,
+                    allowanceEntries = emptyList(),
+                    standaloneBlockVpnPackages = vpnPackages,
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(
+                """["com.example.networkA","com.example.networkB"]""",
+                preferences.getString("net_block_standalone_vpn_packages", null),
+            )
+            assertEquals(vpnPackages, viewModel.settings.value.standaloneBlockVpnPackages)
+
+            viewModel.setStandaloneBlockAndAllowance(
+                StandaloneBlockAndAllowanceConfig(
+                    standaloneBlockActive = false,
+                    standaloneBlockPackages = emptyList(),
+                    standaloneBlockUntilMs = 0L,
+                    allowanceEntries = emptyList(),
+                    standaloneBlockVpnPackages = vpnPackages,
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(
+                "[]",
+                preferences.getString("net_block_standalone_vpn_packages", null),
+            )
+            assertEquals(emptyList<String>(), viewModel.settings.value.standaloneBlockVpnPackages)
+        } finally {
+            store.clear()
+            Dispatchers.resetMain()
+        }
+    }
 }
 
 private class TestContext(
@@ -106,6 +169,8 @@ private class TestContext(
     override fun getSharedPreferences(name: String, mode: Int): SharedPreferences = preferences
 
     override fun getPackageName(): String = "com.tbtechs.focusflow.test"
+
+    override fun sendBroadcast(intent: Intent) = Unit
 }
 
 private class MemorySharedPreferences : SharedPreferences {

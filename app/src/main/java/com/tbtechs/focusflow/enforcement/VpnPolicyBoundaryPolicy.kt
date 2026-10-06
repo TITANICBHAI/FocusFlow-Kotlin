@@ -77,10 +77,16 @@ internal object GreyoutWindowMath {
                 date,
                 LocalTime.of(startMinuteOfDay / 60, startMinuteOfDay % 60),
             )
-            val endDate = if (endMinuteOfDay <= startMinuteOfDay) date.plusDays(1) else date
+            val endAtNextMidnight = endMinuteOfDay == 24 * 60
+            val endDate = if (endAtNextMidnight || endMinuteOfDay <= startMinuteOfDay) {
+                date.plusDays(1)
+            } else {
+                date
+            }
+            val endMinuteOnDate = if (endAtNextMidnight) 0 else endMinuteOfDay
             val endLocal = LocalDateTime.of(
                 endDate,
-                LocalTime.of(endMinuteOfDay / 60, endMinuteOfDay % 60),
+                LocalTime.of(endMinuteOnDate / 60, endMinuteOnDate % 60),
             )
 
             for (localBoundary in listOf(startLocal, endLocal)) {
@@ -110,7 +116,7 @@ internal object GreyoutWindowMath {
     ): Boolean =
         daysOfWeek.any { it in Calendar.SUNDAY..Calendar.SATURDAY } &&
             startMinuteOfDay in 0 until 24 * 60 &&
-            endMinuteOfDay in 0 until 24 * 60
+            endMinuteOfDay in 0..24 * 60
 }
 
 internal object VpnPolicyBoundaryPolicy {

@@ -20,3 +20,4 @@
 - [VPN batch test deferral](vpn-batch-test-deferral.md) — defer all VPN batch test runs until final verification, even if an intermediate checklist says to run them; review each batch diff.
 - [Gradle test-filter verification](gradle-test-filter-verification.md) — confirm expected test classes appear in XML; a nonmatching `--tests` filter can still succeed.
 - [Coroutine test dispatchers](coroutine-test-dispatchers.md) — share the test scheduler with repository I/O in ViewModel tests to avoid stale assertions and late Main-dispatcher failures.
+- [Legacy 24:00 schedule ends](legacy-24-hour-schedules.md) — preserve midnight-exclusive ends in raw stored schedules without broadening UI or backup input.

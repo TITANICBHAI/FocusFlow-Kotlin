@@ -409,7 +409,7 @@ object VpnPolicyCoordinator {
         )
     }
 
-    private fun explicitCandidates(prefs: SharedPreferences): List<String> {
+    internal fun explicitCandidates(prefs: SharedPreferences): List<String> {
         val explicitRaw = prefs.getString(PREF_EXPLICIT_PKGS, null)
         val migrationComplete = prefs.getBoolean(PREF_EXPLICIT_MIGRATED, false)
         val derivedSnapshot = if (explicitRaw == null && !migrationComplete) {
