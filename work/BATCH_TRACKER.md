@@ -53,7 +53,7 @@
   - `8800` — temptation / heads-up notification sites in `TemptationReportReceiver` and `AppBlockerAccessibilityService`.
   - `8812` — day-rating reminder from `DayRatingReminderReceiver`.
   - `1`, reminder-slot tag — reminder notifications from `ReminderNotificationPublisher`.
-- **SDK values:** `minSdk = 26`, `targetSdk = 35`, `compileSdk = 35` in `app/build.gradle.kts`.
+- **SDK values:** `minSdk = 29`, `targetSdk = 35`, `compileSdk = 35` in `app/build.gradle.kts`.
 - **Accessibility checks:** They are not identical. The service synchronously searches the raw enabled-services setting for the app package substring. `UsageStatsRepository.hasAccessibilityPermission()` first checks `AccessibilityManager` for an enabled service from this package, then falls back to requiring both the package and `AppBlockerAccessibilityService` class name in the setting. The service check can therefore be broader in the fallback case.
 - **Required permissions (`optional = false`):** `ACCESSIBILITY`, `USAGE`, and `OVERLAY`.
 - **Tests/setup:** 23 local unit-test files and 4 instrumented-test files. Gradle config uses JUnit 4, coroutine test, Room testing, AndroidX JUnit/Espresso, and Compose UI test dependencies. Existing nearby tests include reminder-chain, task-end alarm contract, task-end alarm identity, and enforcement-health tests.

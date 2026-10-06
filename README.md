@@ -110,7 +110,7 @@ The APK is written to:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The app supports Android 8.0 (API 26) and later. Install the debug APK on a connected device with:
+The app supports Android 10 (API 29) and later. Install the debug APK on a connected device with:
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk

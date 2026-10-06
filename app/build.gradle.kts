@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tbtechs.focusflow"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 35
         versionCode = 13
         versionName = "1.1.4"
