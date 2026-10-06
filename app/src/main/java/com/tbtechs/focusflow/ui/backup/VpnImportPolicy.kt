@@ -31,4 +31,11 @@ internal object VpnImportPolicy {
         VpnImportConsentDecision.REQUEST_CONSENT -> vpnPermissionGranted
         VpnImportConsentDecision.PERMISSION_ALREADY_GRANTED -> true
     }
+
+    fun shouldActivateImportedVpnBlock(
+        restoreSettings: Boolean,
+        decision: VpnImportConsentDecision,
+        vpnPermissionGranted: Boolean,
+    ): Boolean =
+        restoreSettings && shouldActivateAfterConsent(decision, vpnPermissionGranted)
 }

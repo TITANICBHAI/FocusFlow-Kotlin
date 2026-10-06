@@ -6,28 +6,50 @@ import org.junit.Test
 
 class NetworkBlockingGuardTest {
     @Test
-    fun enablingNetworkBlockingOrVpnIsAllowedWhileABlockIsActive() {
-        assertTrue(
-            ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
-                currentlyEnabled = false,
-                requestedEnabled = true,
-                blockActive = true,
-            ),
+    fun enablingNetworkBlockingIsAllowedDuringFocusAndStandaloneBlocks() {
+        val nowMs = 1_000L
+        val focusActive = ActiveBlockGuardPolicy.isActive(
+            focusActive = true,
+            focusEndMs = 2_000L,
+            standaloneActive = false,
+            standaloneUntilMs = 0L,
+            nowMs = nowMs,
         )
-        assertTrue(
+        val standaloneActive = ActiveBlockGuardPolicy.isActive(
+            focusActive = false,
+            focusEndMs = 0L,
+            standaloneActive = true,
+            standaloneUntilMs = 2_000L,
+            nowMs = nowMs,
+        )
+
+        for (blockActive in listOf(focusActive, standaloneActive)) {
+            assertTrue(
+                ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
+                    currentlyEnabled = false,
+                    requestedEnabled = true,
+                    blockActive = blockActive,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun disablingAnEnabledProtectionIsRejectedDuringAnActiveBlock() {
+        assertFalse(
             ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
-                currentlyEnabled = false,
-                requestedEnabled = true,
+                currentlyEnabled = true,
+                requestedEnabled = false,
                 blockActive = true,
             ),
         )
     }
 
     @Test
-    fun disablingEitherProtectionSwitchIsRejectedWhileABlockIsActive() {
-        assertFalse(
+    fun disablingAProtectionThatIsAlreadyOffIsAllowedDuringAnActiveBlock() {
+        assertTrue(
             ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
-                currentlyEnabled = true,
+                currentlyEnabled = false,
                 requestedEnabled = false,
                 blockActive = true,
             ),

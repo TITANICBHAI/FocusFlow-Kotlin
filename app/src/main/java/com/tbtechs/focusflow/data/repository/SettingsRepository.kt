@@ -91,6 +91,9 @@ class SessionPinRequiredException(message: String) : SecurityException(message)
 class SettingsRepository(
     context: Context,
     private val restoreGate: RestoreGate = RestoreGate(),
+    private val requestVpnSyncAction: (Context) -> Unit = {
+        NetworkBlockerVpnService.requestSync(it)
+    },
 ) {
 
     companion object {
@@ -1389,9 +1392,7 @@ class SettingsRepository(
         }
     }
 
-    private fun requestVpnSync() {
-        NetworkBlockerVpnService.requestSync(appContext)
-    }
+    private fun requestVpnSync() = requestVpnSyncAction(appContext)
 
     /**
      * SharedPreferences.commit() is reserved for durability boundaries and is

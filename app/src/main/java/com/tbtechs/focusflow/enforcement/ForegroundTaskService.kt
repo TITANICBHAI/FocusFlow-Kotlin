@@ -1462,38 +1462,15 @@ class ForegroundTaskService : Service() {
 
         // ── Greyout schedule ──────────────────────────────────────────────
         if (greyoutJson != "[]" && greyoutJson.isNotEmpty()) {
-            try {
-                val arr = org.json.JSONArray(greyoutJson)
-                val cal = java.util.Calendar.getInstance()
-                val currentDay  = cal.get(java.util.Calendar.DAY_OF_WEEK)
-                val currentMins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 +
-                                  cal.get(java.util.Calendar.MINUTE)
-                for (i in 0 until arr.length()) {
-                    val entry = arr.optJSONObject(i) ?: continue
-                    if (!entry.optString("pkg").equals(pkg, ignoreCase = true)) continue
-                    val days = entry.optJSONArray("days") ?: continue
-                    val startMins = entry.optInt("startHour") * 60 + entry.optInt("startMin")
-                    val endMins   = entry.optInt("endHour")   * 60 + entry.optInt("endMin")
-                    val overnight = startMins > endMins
-                    val afterMidnight = overnight && currentMins < endMins
-                    val dayForWindow = if (afterMidnight) {
-                        if (currentDay == java.util.Calendar.SUNDAY) {
-                            java.util.Calendar.SATURDAY
-                        } else {
-                            currentDay - 1
-                        }
-                    } else {
-                        currentDay
-                    }
-                    val dayMatch = (0 until days.length()).any { days.optInt(it) == dayForWindow }
-                    if (!dayMatch) continue
-                    val inWindow  = if (startMins <= endMins)
-                        currentMins in startMins until endMins
-                    else
-                        currentMins >= startMins || currentMins < endMins
-                    if (inWindow) return true
-                }
-            } catch (_: Exception) { }
+            if (
+                ForegroundTaskGreyoutPolicy.isPackageBlocked(
+                    greyoutJson = greyoutJson,
+                    packageName = pkg,
+                    atMs = System.currentTimeMillis(),
+                )
+            ) {
+                return true
+            }
         }
 
         // ── Always-on enforcement ─────────────────────────────────────────

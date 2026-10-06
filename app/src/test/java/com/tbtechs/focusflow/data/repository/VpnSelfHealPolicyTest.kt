@@ -82,6 +82,51 @@ class VpnSelfHealPolicyTest {
     }
 
     @Test
+    fun staleSettingsSnapshotPreservesStoredValueButExplicitChangesStillWin() {
+        val preservedValue = VpnSelfHealPolicy.valueToPersist(
+            loadedValue = false,
+            requestedValue = false,
+            storedValue = true,
+        )
+        assertTrue(preservedValue)
+        assertEquals(
+            VpnSelfHealPolicy.ToggleEffect.NONE,
+            VpnSelfHealPolicy.toggleDecision(
+                currentValue = true,
+                requestedValue = preservedValue,
+            ).effect,
+        )
+
+        val explicitlyDisabled = VpnSelfHealPolicy.valueToPersist(
+            loadedValue = true,
+            requestedValue = false,
+            storedValue = true,
+        )
+        assertFalse(explicitlyDisabled)
+        assertEquals(
+            VpnSelfHealPolicy.ToggleEffect.CANCEL_WATCHDOG,
+            VpnSelfHealPolicy.toggleDecision(
+                currentValue = true,
+                requestedValue = explicitlyDisabled,
+            ).effect,
+        )
+
+        val explicitlyEnabled = VpnSelfHealPolicy.valueToPersist(
+            loadedValue = false,
+            requestedValue = true,
+            storedValue = false,
+        )
+        assertTrue(explicitlyEnabled)
+        assertEquals(
+            VpnSelfHealPolicy.ToggleEffect.REQUEST_RECOVERY_SYNC,
+            VpnSelfHealPolicy.toggleDecision(
+                currentValue = false,
+                requestedValue = explicitlyEnabled,
+            ).effect,
+        )
+    }
+
+    @Test
     fun emptyVpnListCannotDisableSelfHeal() {
         assertFalse(VpnSelfHealPolicy.shouldEnableFromList(hasVpnPackages = false))
         assertTrue(VpnSelfHealPolicy.shouldEnableFromList(hasVpnPackages = true))

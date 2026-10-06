@@ -80,4 +80,43 @@ class VpnImportPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun importActivatesVpnProtectionOnlyForASettingsRestoreWithConsent() {
+        assertTrue(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = true,
+                decision = VpnImportConsentDecision.PERMISSION_ALREADY_GRANTED,
+                vpnPermissionGranted = false,
+            ),
+        )
+        assertTrue(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = true,
+                decision = VpnImportConsentDecision.REQUEST_CONSENT,
+                vpnPermissionGranted = true,
+            ),
+        )
+        assertFalse(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = true,
+                decision = VpnImportConsentDecision.REQUEST_CONSENT,
+                vpnPermissionGranted = false,
+            ),
+        )
+        assertFalse(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = false,
+                decision = VpnImportConsentDecision.PERMISSION_ALREADY_GRANTED,
+                vpnPermissionGranted = true,
+            ),
+        )
+        assertFalse(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = true,
+                decision = VpnImportConsentDecision.NOT_REQUIRED,
+                vpnPermissionGranted = true,
+            ),
+        )
+    }
 }

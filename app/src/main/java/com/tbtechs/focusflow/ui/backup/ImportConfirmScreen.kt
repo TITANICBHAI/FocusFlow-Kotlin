@@ -133,9 +133,10 @@ fun ImportConfirmScreen(
             scope.launch {
                 performImport(
                     pin,
-                    VpnImportPolicy.shouldActivateAfterConsent(
-                        VpnImportConsentDecision.REQUEST_CONSENT,
-                        permissionGranted,
+                    VpnImportPolicy.shouldActivateImportedVpnBlock(
+                        restoreSettings = restoreSettings,
+                        decision = VpnImportConsentDecision.REQUEST_CONSENT,
+                        vpnPermissionGranted = permissionGranted,
                     ),
                 )
             }
@@ -169,9 +170,24 @@ fun ImportConfirmScreen(
                 backupCoordinator.vpnImportConsentDecision(restoreSettings)
             }.getOrDefault(VpnImportConsentDecision.NOT_REQUIRED)
             when (decision) {
-                VpnImportConsentDecision.NOT_REQUIRED -> performImport(pin, activateImportedVpn = false)
+                VpnImportConsentDecision.NOT_REQUIRED ->
+                    performImport(
+                        pin,
+                        VpnImportPolicy.shouldActivateImportedVpnBlock(
+                            restoreSettings = restoreSettings,
+                            decision = decision,
+                            vpnPermissionGranted = false,
+                        ),
+                    )
                 VpnImportConsentDecision.PERMISSION_ALREADY_GRANTED ->
-                    performImport(pin, activateImportedVpn = true)
+                    performImport(
+                        pin,
+                        VpnImportPolicy.shouldActivateImportedVpnBlock(
+                            restoreSettings = restoreSettings,
+                            decision = decision,
+                            vpnPermissionGranted = false,
+                        ),
+                    )
                 VpnImportConsentDecision.REQUEST_CONSENT -> {
                     pendingConsentPin = pin
                     awaitingVpnConsent = true
@@ -186,7 +202,11 @@ fun ImportConfirmScreen(
                         }.getOrDefault(false)
                         performImport(
                             pin,
-                            VpnImportPolicy.shouldActivateAfterConsent(decision, permissionGranted),
+                            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                                restoreSettings = restoreSettings,
+                                decision = decision,
+                                vpnPermissionGranted = permissionGranted,
+                            ),
                         )
                     } else {
                         runCatching {
