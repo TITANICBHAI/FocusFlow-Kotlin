@@ -160,7 +160,7 @@ Evidence: User's decision in chat; scheduled-task notification remains a separat
 ## Batch 5 — Phase 5: usage and allowance pipeline
 
 **Status:** Not started  
-**Gate:** Deferred; do not begin without explicit owner approval. The authoritative scope is [Phase 5 v3](../attached_assets/PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3_1791307301222.md), which replaces the earlier allowance handoff proposal.
+**Gate:** Deferred; do not begin without explicit owner approval. The authoritative scope is [Phase 5 v3](PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3.md), which replaces the earlier allowance handoff proposal.
 
 - [x] Record the owner's decision: defer Phase 5 until later; this is not implementation authorization.
 - [ ] Follow v3 Phase 5.0: verify the compatibility contract, current data writers/readers, and device behavior before implementation.

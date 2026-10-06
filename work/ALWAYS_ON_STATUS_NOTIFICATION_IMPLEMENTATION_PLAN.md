@@ -100,7 +100,7 @@ Suggested path: ship Phases 1–3, look at it on a device, and only do B if the 
 ## 9. Phase 5: usage and allowance pipeline (replaced)
 
 The previous Phase 5 allowance outline is superseded in full by the owner's v3 plan:
-[Phase 5 (v3): one usage pipeline, one allowance ledger, one Stats source](../attached_assets/PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3_1791307301222.md).
+[Phase 5 (v3): one usage pipeline, one allowance ledger, one Stats source](PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3.md).
 That document is the authoritative Phase 5 contract; do not combine it with the former 15-second / 60-second / heartbeat handoff design in this plan.
 
 The existing owner decision to defer Phase 5 still applies. This replacement updates the scope and implementation contract; it does not authorize starting the work.
