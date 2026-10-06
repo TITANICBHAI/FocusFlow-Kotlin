@@ -54,7 +54,7 @@ internal const val FOCUSFLOW_EXTERNAL_IMPORT_NOTE =
 
 internal const val FOCUSFLOW_GENERATION_NOTE =
     "Copy the AI task-backup prompt above and describe the tasks, dates, time zone, and constraints. " +
-        "It creates a task-only .focusflow file without changing FocusFlow's other features or global settings."
+        "It creates a task-only .focusflow file with task records, without changing FocusFlow's other features or global settings."
 
 internal val FOCUSFLOW_FILE_FACTS = listOf(
     FocusFlowGuideItem("Extension", ".focusflow"),

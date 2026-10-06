@@ -69,9 +69,11 @@ If they disagree with this reference, explain the mismatch instead of guessing.
 - Omit `focusAllowedPackages` by default so the device's existing global
   allow-list is used. If I explicitly request a task-specific Focus-mode
   allow-list, include exact Android package IDs only when I provide or verify
-  them. Missing or `null` means use the global allow-list; `[]` means allow all
-  apps for that task; a non-empty array means allow only the listed packages.
-  Never invent package IDs.
+  them. Use at most 5,000 package IDs; each must be at most 255 characters and
+  match the importer pattern
+  `^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$`. Missing or `null` means use the
+  global allow-list; `[]` means allow all apps for that task; a non-empty array
+  means allow only the listed packages. Never invent package IDs.
 - Set `focusMode` to `true` only when I request Focus mode for a task; otherwise
   use `false`. This is a task-level option, not a change to global blocking or
   network settings.

@@ -50,5 +50,12 @@ class FocusFlowAgentGuideTest {
         assertTrue(FOCUSFLOW_FOCUS_ALLOWED_PACKAGES_NOTE.contains("Missing or null"))
         assertTrue(FOCUSFLOW_FOCUS_ALLOWED_PACKAGES_NOTE.contains("empty array means"))
         assertTrue(FOCUSFLOW_FOCUS_ALLOWED_PACKAGES_NOTE.contains("all apps are allowed"))
+        assertTrue(FOCUSFLOW_TASK_BACKUP_PROMPT.contains("at most 5,000 package IDs"))
+        assertTrue(FOCUSFLOW_TASK_BACKUP_PROMPT.contains("at most 255 characters"))
+        assertTrue(
+            FOCUSFLOW_TASK_BACKUP_PROMPT.contains(
+                """^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$""",
+            ),
+        )
     }
 }
