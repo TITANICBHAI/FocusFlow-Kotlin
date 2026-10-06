@@ -14,7 +14,7 @@ Package root: `app/src/main/java/com/tbtechs/focusflow/` (called `<root>/` below
 4. **Keep existing pref key names** unless a task says to migrate one. Migrations must be one-time, idempotent and must never delete user data without copying it first.
 5. **Write the failing test first** for P0 tasks (see §5). If the test passes on current code, stop and report — the audit finding was wrong.
 6. Do not touch the Launcher, the Linux app, or backup file-format versions.
-7. After each task: build, run unit tests, and run the grep checks in §6.
+7. After each implementation task: review the diff and run applicable source checks. Defer unit-test execution until the designated final verification, as recorded in the tracker. Do not build or test for a plan-only update.
 
 ---
 
@@ -191,11 +191,55 @@ Remove only after the tasks above, and only if `grep` shows zero call sites:
 `setVpnSelectedPackages` (+`vpn_selected_packages`), `publishStandaloneSnapshot` (both overloads, once T5 no longer needs it), `publishScheduleVpnSnapshot`, `getNetworkBlockSettingsJson`, `getNetworkBlockStatusJson`, `isNetworkBlockActive`, `VpnRepository.isAnotherVpnActive`.
 Update the `NetworkBlockerVpnService` header (it still describes the JS bridge and says `AppBlockerAccessibilityService` calls `startNetworkBlock`) and the coordinator header.
 
-### T11. Guard parity for the Defense master toggle
-`SettingsRepository.setNetworkBlockEnabled` has no "block is active" guard, whereas `VpnRepository.setNetworkBlockSettings` throws while Focus or Standalone is active. Only the Defense screen gates the toggle. Add the active-block guard to `setNetworkBlockEnabled` (PIN verification can stay in the UI).
+### T11. Guard parity for the Defense master toggle (implemented in Batch 7; see T13)
+
+**Original finding:** `SettingsRepository.setNetworkBlockEnabled` had no active-block guard, while `VpnRepository.setNetworkBlockSettings` guarded changes during Focus or Standalone Block.
+
+**Current-source update (2026-10-06):** Batch 7 added the expiry-aware guard. The remaining defect is directional: `SettingsRepository.setNetworkBlockEnabled` currently rejects every change while a block is active, including enabling protection; `VpnRepository.setNetworkBlockSettings` rejects disabling protection. See T13 for the verified follow-up. Do not repeat the already-completed guard addition.
 
 ### T12. (Optional) Make the policy testable
 Extract the pure part of `effectivePolicy` into `VpnPolicyCalculator.compute(snapshot: PrefsSnapshot, nowMs, installed: Set<String>, launcher: List<String>)` so T1/T5/T6 can be covered with plain JVM tests.
+
+### Batch 8 follow-up — source-verified correctness gaps (planned 2026-10-06; implementation not authorized)
+
+The attached VPN follow-up notes and candidate tests were checked against the current source. The following are the only new code items in this follow-up; optional items from the attachment (banner freshness, Focus expiry fallback, migration-failure handling, dead-code cleanup, and duplicate schedule math) are not included.
+
+#### T13. Allow enabling network protection during an active block and keep the switch truthful
+
+**Evidence:** `ActiveBlockGuardPolicy.isActive` and its repository wiring were added in Batch 7. `SettingsRepository.setNetworkBlockEnabled` still throws for both enabling and disabling while Focus or Standalone Block is active. `VpnRepository.setNetworkBlockSettings` only blocks a transition that disables an enabled Network Blocking or VPN setting. `SettingsViewModel.updateSettings` does not handle the repository rejection locally and assigns `_settings.value = newSettings` after the repository calls.
+
+**Change**
+1. Extend `ActiveBlockGuardPolicy` with a direction-aware rule: while a block is active, allow no-op changes and `false → true`; reject only `true → false`.
+2. Apply the same rule to the master and VPN switches in both repository entry points. Preserve the expiry-aware active-state calculation, `restoreGate.write(...)`, existing PIN checks, and coordinator sync behavior.
+3. Handle the expected rejection in `SettingsViewModel` through the existing app error surface. Preserve unrelated settings in the same update, but ensure the final published `networkBlockEnabled` value reflects storage; an inline refresh must not be overwritten by the trailing `_settings.value = newSettings`.
+4. Add policy coverage and a view-model/repository-level regression for successful enable, rejected disable, expiry, error reporting, and the switch returning to its stored value.
+
+**Done when:** users can enable Network Blocking during Focus or Standalone Block; disabling remains guarded; and a rejected change is reported without leaving the UI switch in the rejected state.
+
+#### T14. Preserve the stored VPN self-heal value when a settings snapshot is stale
+
+**Evidence:** `SettingsRepository.setDefensePreferences` persists the self-heal value supplied in `AppSettings`. `AlwaysOnScreen` can enable self-heal through `VpnRepository` and then call `SettingsViewModel.updateSettings` with its previously captured settings. A later Defense preference change can pass that stale self-heal value back to the repository.
+
+**Change**
+1. Add `VpnSelfHealPolicy.valueToPersist(loadedValue, requestedValue, storedValue)`: if the requested value is unchanged from the value originally loaded by the view model, preserve the current stored value; if the user explicitly changed it, use the requested value.
+2. Use the resolved value consistently for Defense preference persistence and the settings state published by `SettingsViewModel`.
+3. In `AlwaysOnScreen`, refresh settings after enabling self-heal and construct the subsequent update from fresh state. Keep the existing refresh behavior in the VPN-list screen.
+4. Test both the pure policy and its wiring: stale `false` must not overwrite stored `true` during an unrelated Defense edit, while an explicit user change to `false` must still be honored.
+
+**Done when:** saving Always-On or editing another Defense preference cannot silently turn off self-heal that is already enabled.
+
+#### T15. Schedule both occurrences of repeated local times and resync at DST transitions
+
+**Evidence:** `GreyoutWindowMath.nextBoundaryAfter` currently builds local boundaries with `Calendar`; the policy does not include a time-zone transition as a boundary. The attached `ZonedDateTime.ofLocal(local, zone, null)` reference selects only the earlier occurrence when a local time repeats, so it misses a later state change after the clock falls back.
+
+**Change**
+1. Use `java.time` zone rules to convert local schedule boundaries to candidate instants. When a local boundary has two valid offsets, include both instants. When a local time is in a spring-forward gap, include the transition instant so schedule activity is recalculated at the clock jump.
+2. Include the next transition instant for active schedule windows and keep the existing receiver → coordinator resync/reschedule path.
+3. Add deterministic tests for spring-forward gaps, both occurrences of a repeated start and end, and a non-hour transition such as Lord Howe. Include this regression: for New York's Saturday 20:00–Sunday 01:30 window, at `2026-11-01T06:10Z` the next boundary must be `2026-11-01T06:30Z`, the second 01:30 occurrence.
+
+**Done when:** every schedule state change caused by a DST gap, overlap, or transition has a boundary alarm, including the second occurrence of a repeated wall-clock time.
+
+**Import decision alignment:** The attached follow-up's import-activation owner question is already resolved as Q3 in the tracker (2026-10-05). Keep the decided consent-gated activation and informational summary; do not reopen that decision.
 
 ---
 
@@ -218,6 +262,14 @@ Extract the pure part of `effectivePolicy` into `VpnPolicyCalculator.compute(sna
 | T4-no-vpn-restore | Restore without a non-empty VPN list or with settings restore disabled | No VPN consent prompt; other selected restore behavior remains unchanged |
 | T4-vpn-permission-pregranted | Restore a non-empty VPN list with permission already granted and Network Blocking off | No system prompt; activate the list and both switches, then report active |
 | T4-summary | Restore supported Always-On, daily allowance, keyword, and Greyout/block schedule settings | One informational summary has collapsible cards only for imported categories and does not misstate activation |
+| T13-enable | Focus or Standalone Block is active; master Network Blocking or VPN is off and requested on | Enabling is allowed and synced |
+| T13-disable | Focus or Standalone Block is active; protection is on and requested off | Disable is rejected, surfaced to the user, and the published switch remains at its stored value |
+| T13-expiry | Focus/Standalone state is expired or inactive | Guard permits the requested switch change |
+| T14-stale-self-heal | ViewModel loaded `false`, storage is `true`, and an unrelated Defense preference changes | Self-heal remains `true` in storage and published settings |
+| T14-explicit-off | Loaded and stored values are `true`, and the user explicitly requests `false` | Self-heal is persisted as `false` |
+| T15-spring-gap | A scheduled boundary falls in a spring-forward gap | The transition instant triggers a resync and the next applicable boundary is scheduled |
+| T15-fall-overlap | A schedule starts or ends during a repeated hour | Both valid instants are considered; the second occurrence is not skipped |
+| T15-fall-end-regression | New York Saturday 20:00–Sunday 01:30 window, `now=2026-11-01T06:10Z` | Next boundary is `2026-11-01T06:30Z`, not the already-past first 01:30 |
 
 ---
 
@@ -244,10 +296,11 @@ Manual device checklist (needs a real device or emulator with another VPN app in
 
 ## 7. Owner questions and recorded decisions
 
-- **Q1 — schedule VPN scope.** Default: all apps in the schedule are VPN-blocked while its window is active.
-- **Q2 — Wi-Fi/mobile knobs.** Default: delete them (T8). Alternative: expose with `wifi=false` default.
+- **Q1 — RESOLVED (2026-10-05):** All apps in a VPN-enabled schedule's package list are VPN-blocked only while that schedule's configured window is active.
+- **Q2 — RESOLVED (2026-10-05):** Keep existing Wi-Fi/mobile-data behavior as-is; do not add opt-in controls.
 - **Q3 — RESOLVED (2026-10-05):** When a selected settings restore contains a non-empty VPN list and Network Blocking is off, request Android VPN consent during Import. If granted, enable Network Blocking (VPN) and VPN Self-Healing and activate the imported list. If denied or canceled, continue the selected restore but keep the list stored and inactive. Afterward, show one informational notice with collapsible cards for imported protection categories; it reports outcomes rather than asking for another confirmation. Android's required system-consent dialog remains.
-- **Q4 — single source of truth for the VPN list.** Default: `net_block_explicit_packages` (T4).
+- **Q4 — RESOLVED (2026-10-05):** `net_block_explicit_packages` is the canonical internal VPN-list source; preserve the existing `alwaysOnVpnPackages` backup field through explicit mapping.
+- **T12 — RESOLVED (2026-10-05):** Skip the optional pure policy calculator.
 
 ## 8. Suggested order and commit boundaries
 
@@ -255,6 +308,7 @@ Manual device checklist (needs a real device or emulator with another VPN app in
 2. T4, then T8-a
 3. T5 + T6 together (they share the boundary scheduler and `GreyoutWindowMath`)
 4. T7
-5. T8, T9, T10, T11, T12
+5. T8, T9, T10, T11, T12 (Batch 7 complete; T12 skipped by owner decision)
+6. T13–T15 are the planned Batch 8 follow-up. They are documented only; implementation requires separate owner authorization. Keep unit-test execution deferred until final verification.
 
 If any "Evidence" item doesn't match the code, **stop and report the mismatch** rather than adapting the fix.

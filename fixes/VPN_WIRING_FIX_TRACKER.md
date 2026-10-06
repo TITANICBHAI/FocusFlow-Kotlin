@@ -2,8 +2,8 @@
 
 **Implementation plan:** [VPN_WIRING_FIX_PLAN.md](VPN_WIRING_FIX_PLAN.md)
 **Agent instructions:** [VPN_WIRING_AGENT_PRE_PROMPT.md](VPN_WIRING_AGENT_PRE_PROMPT.md)
-**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, unit suite, and debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7's approved T9–T11 scope is complete; Q2 retains existing Wi-Fi/mobile behavior, and the optional T12 calculator was skipped. No Batch 8+ work is authorized.
-**Last updated:** 2026-10-05
+**Overall status:** Batch 4 is complete for sequencing. Batch 5 implementation, unit suite, and debug APK build are complete; its real-device alarm/tunnel check remains blocked. Batch 6 T7 code and automated tests are complete; actual permission-revocation UI behavior remains unverified without a device. Batch 7's approved T9–T11 scope is complete; Q2 retains existing Wi-Fi/mobile behavior, and the optional T12 calculator was skipped. Batch 8 follow-up scope is documented only; implementation still requires separate owner authorization.
+**Last updated:** 2026-10-06
 
 ## Tracking rules
 
@@ -270,8 +270,16 @@ Record each decision, date, and evidence before dependent work. Pending question
 - [x] T8-a: empty-list master-switch policy is unit-tested and used by both VPN list save screens; device interaction remains unavailable.
 - [x] T9: service-registration failures survive unrelated status updates and remain separate from invalid/uninstalled targets; focused policy tests pass.
 - [x] T11: the repository master-toggle setter uses the active/expiry guard; active, expired, and inactive states are covered by unit tests.
+- [ ] T13-enable: active Focus/Standalone Block does not prevent enabling Network Blocking or VPN.
+- [ ] T13-disable: a rejected disable is reported and the UI state remains equal to the stored value.
+- [ ] T13-expiry: expired/inactive blocks allow requested changes.
+- [ ] T14-stale-self-heal: unrelated Defense edits do not overwrite a newer stored self-heal value.
+- [ ] T14-explicit-off: an explicit user request to disable self-heal is still persisted.
+- [ ] T15-spring-gap: a gap/transition boundary triggers resync and subsequent boundary scheduling.
+- [ ] T15-fall-overlap: both valid instants are scheduled for a repeated local start/end.
+- [ ] T15-fall-end-regression: New York Saturday 20:00–Sunday 01:30 at `2026-11-01T06:10Z` returns `2026-11-01T06:30Z`.
 
-## Final verification
+## Batch 7 final verification
 
 - [x] Build and run unit tests for the completed scope; Batch 5 passed 143, Batch 6 passed 146, and Batch 7 passed 152 full-suite tests plus 47 focused VPN tests, all with 0 failures/errors/skips. The debug APK built successfully.
 - [x] Run applicable verification greps from plan §6; obsolete schedule snapshot/class references are absent, boundary receiver/scheduler wiring is present, and T10 candidates were checked against live call sites.
@@ -286,4 +294,33 @@ Record each decision, date, and evidence before dependent work. Pending question
 |---|---|---|---|---|
 | 2026-10-05 | Handoff documents prepared; no implementation started | `fixes/VPN_WIRING_FIX_PLAN.md`, `fixes/VPN_WIRING_FIX_TRACKER.md`, `fixes/VPN_WIRING_AGENT_PRE_PROMPT.md` | Read the full attached plan and the existing `work/BATCH_TRACKER.md` and `work/AGENT_PRE_PROMPT.md`; no code/build/test changes made | Plan moved under `fixes/`; implementation status remains Not started. Batch 0 and all owner decisions remain open. |
 | 2026-10-05 | Final handoff for the authorized Batch 3–4 scope. | VPN backup mapping/migration, consent-result import flow, list-save switches, protection summary, focused policy tests, and this tracker. | `bash scripts/test-unit.sh`: 137/137 passed; `git diff --check` passed; focused VPN-key and consent API greps passed. No GitHub push or Actions polling. | Batch 3–4 implementation is complete for sequencing. Android system consent, post-import screen interaction, and device behavior remain unverified because no device/emulator is available. Do not start Batch 5 or later or resolve Q2 without new authorization. The backup contract's v13 heading/intended-v14 discrepancy remains documented. |
-| 2026-10-05 | Handoff for the approved Batch 7 scope. | `NetworkBlockerVpnService.kt`, `VpnRegistrationFailurePolicy.kt`, `VpnRegistrationFailurePolicyTest.kt`, and this tracker; T10/T11 source verification | `bash scripts/test-unit.sh`: 152 passed, 0 failures/errors/skips; `bash scripts/build-apk-with-java.sh`: debug APK built; `git diff --check`; scoped VPN-key, consent API, status-separation, and dead-code greps. | T9–T11 complete; T8 unchanged per Q2; T12 skipped per owner choice. The first test attempt timed out during initial JDK/SDK provisioning; the cached-tool retry passed. Batch 5/6 device-only checks remain unverified. No Batch 8+ work authorized. No GitHub push or Actions polling. |
+| 2026-10-05 | Handoff for the approved Batch 7 scope. | `NetworkBlockerVpnService.kt`, `VpnRegistrationFailurePolicy.kt`, `VpnRegistrationFailurePolicyTest.kt`, and this tracker; T10/T11 source verification | `bash scripts/test-unit.sh`: 152 passed, 0 failures/errors/skips; `bash scripts/build-apk-with-java.sh`: debug APK built; `git diff --check`; scoped VPN-key, consent API, status-separation, and dead-code greps. | T9–T11 complete; T8 unchanged per Q2; T12 skipped per owner choice. The first test attempt timed out during initial JDK/SDK provisioning; the cached-tool retry passed. Batch 5/6 device-only checks remain unverified. No Batch 8+ implementation authorized. No GitHub push or Actions polling. |
+
+## Batch 8 — follow-up correctness plan (not started)
+
+**Status:** Plan-only update completed on 2026-10-06. No application implementation is authorized or started.
+**Gate:** The owner must separately authorize Batch 8 implementation. Keep VPN unit-test execution deferred until final verification.
+
+### Verified scope
+
+- **T13 — direction-aware active-block guard:** Batch 7's expiry-aware guard is already present. The remaining mismatch is that `SettingsRepository.setNetworkBlockEnabled` rejects enabling as well as disabling while a block is active; the VPN repository guards disabling. The view model also needs to preserve the stored switch after a rejected request instead of publishing the attempted value.
+- **T14 — stale self-heal state:** `AlwaysOnScreen` can enable self-heal through `VpnRepository`, then submit a captured settings snapshot. A later Defense preference edit can persist that stale self-heal value. Resolve unchanged-vs-explicit changes against the current stored value and refresh Always-On settings before its subsequent update.
+- **T15 — DST boundary completeness:** keep the transition instant as a scheduled boundary and enumerate both valid offsets for repeated local times. The supplied `ZonedDateTime.ofLocal(..., null)` reference chooses only the first occurrence and misses the second. The tracker includes the deterministic New York second-occurrence case.
+- **Import activation:** the attached follow-up raised this as an owner decision, but it is already resolved by Q3 above. Do not reopen it; retain consent-gated activation and the informational summary.
+
+### Planned checklist
+
+- [x] Compare the attached follow-up plan and tests with current source and record the mismatches.
+- [x] Add T13–T15 and their regression scenarios to `VPN_WIRING_FIX_PLAN.md`.
+- [x] Record that Q3 import activation is already decided and keep Batch 8 implementation gated.
+- [ ] After separate authorization, implement T13 and verify error/state recovery without changing unrelated settings.
+- [ ] After separate authorization, implement T14 and verify both stale preservation and explicit self-heal changes.
+- [ ] After separate authorization, implement T15 with both overlap offsets and transition resync.
+- [ ] Add the planned tests; do not execute the accumulated VPN suite before final verification.
+- [ ] At final verification, run the configured Android unit-test path, review the full diff, and record unavailable device checks.
+
+### Batch 8 planning work log
+
+| Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
+|---|---|---|---|---|
+| 2026-10-06 | Drafted Batch 8 plan only; no implementation started. | `fixes/VPN_WIRING_FIX_PLAN.md`, this tracker; inspected current active-block guard, self-heal policy/settings update, Always-On save, and VPN boundary policy/test sources. | Source inspection and targeted searches; `git diff --check`. No application code, tests, build, device, workflow, or GitHub action run. | T13–T15 are documented as follow-up scope. The DST reference is incomplete because it omits the second valid offset in a repeated hour. The import-activation question is already resolved as Q3 in the tracker. Batch 8 still requires separate implementation authorization; VPN test execution remains deferred until final verification. |
