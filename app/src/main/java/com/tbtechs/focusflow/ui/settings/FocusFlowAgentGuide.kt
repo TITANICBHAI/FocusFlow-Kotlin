@@ -71,7 +71,7 @@ If they disagree with this reference, explain the mismatch instead of guessing.
   allow-list, include exact Android package IDs only when I provide or verify
   them. Use at most 5,000 package IDs; each must be at most 255 characters and
   match the importer pattern
-  `^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$`. Missing or `null` means use the
+  `^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+${'$'}`. Missing or `null` means use the
   global allow-list; `[]` means allow all apps for that task; a non-empty array
   means allow only the listed packages. Never invent package IDs.
 - Set `focusMode` to `true` only when I request Focus mode for a task; otherwise
