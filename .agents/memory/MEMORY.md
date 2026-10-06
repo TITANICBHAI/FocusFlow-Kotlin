@@ -12,6 +12,7 @@
 - [Backup contract authority](backup-contract-authority.md) — verify backup behavior against v14/current code; describe FocusFlow broadly while keeping task-backup scope narrow.
 - [Replit config side effects](replit-config-side-effects.md) — invoking an unconfigured runtime can add a module to `.replit`; use the validated replacement flow to restore config.
 - [Compose scope audits](kotlin-compose-scope-audits.md) — stop expression-bodied local functions at their expression end when checking `@Composable` call scope.
+- [Kotlin raw-string interpolation](kotlin-raw-string-interpolation.md) — triple-quoted Kotlin strings still parse `$` templates; preserve literal regex anchors near Markdown delimiters.
 - [Settings help and text-size destinations](settings-guides.md) — keep sliders on a separate Settings screen and integrate guarded-change help into the expanded How to Use guide.
 - [GitHub push and build polling](github-push-build-polling.md) — only push or monitor GitHub Actions when the user explicitly asks.
 - [Navigation icon states](navigation-icon-states.md) — Focus nav has separate Ionicons timer vectors; Ready artwork stays on its shared component, and Defense uses its supplied active shield.
