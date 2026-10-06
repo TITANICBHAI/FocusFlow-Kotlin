@@ -38,4 +38,9 @@ internal object VpnImportPolicy {
         vpnPermissionGranted: Boolean,
     ): Boolean =
         restoreSettings && shouldActivateAfterConsent(decision, vpnPermissionGranted)
+
+    fun shouldActivateImportedVpnBlock(
+        restoreSettings: Boolean,
+        activationRequested: Boolean,
+    ): Boolean = restoreSettings && activationRequested
 }

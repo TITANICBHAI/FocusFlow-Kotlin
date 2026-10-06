@@ -193,17 +193,22 @@ class BackupCoordinator(
                         add("${admission.counts.downgradedToSkipped} past tasks were marked skipped.")
                     }
                 }
-                if (restoreSettings) {
-                    if (activateImportedVpnAfterGrant) {
-                        runCatching {
-                            vpnRepository.activateImportedVpnBlock()
-                        }.onFailure {
-                            warnings.add(
-                                "The VPN list was imported but could not be activated: " +
-                                    (it.message ?: "VPN activation failed."),
-                            )
-                        }
+                if (
+                    VpnImportPolicy.shouldActivateImportedVpnBlock(
+                        restoreSettings = restoreSettings,
+                        activationRequested = activateImportedVpnAfterGrant,
+                    )
+                ) {
+                    runCatching {
+                        vpnRepository.activateImportedVpnBlock()
+                    }.onFailure {
+                        warnings.add(
+                            "The VPN list was imported but could not be activated: " +
+                                (it.message ?: "VPN activation failed."),
+                        )
                     }
+                }
+                if (restoreSettings) {
                     runCatching {
                         settingsViewModel.refreshSettingsFromStore()
                     }.onFailure {

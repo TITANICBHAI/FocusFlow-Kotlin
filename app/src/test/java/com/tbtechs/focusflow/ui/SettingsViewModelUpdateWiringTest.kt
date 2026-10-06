@@ -10,7 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,10 +27,15 @@ class SettingsViewModelUpdateWiringTest {
                 .putBoolean("net_block_enabled", true)
                 .putBoolean("net_block_vpn", true)
                 .putBoolean("focus_active", true)
+                .putBoolean("net_block_explicit_migrated", true)
                 .apply()
         }
         val context = TestContext(preferences)
-        val repository = SettingsRepository(context, requestVpnSyncAction = {})
+        val repository = SettingsRepository(
+            context,
+            requestVpnSyncAction = {},
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
         val viewModel = SettingsViewModel(repository, PinManager(context), context)
         val store = ViewModelStore().apply { put("settings", viewModel) }
 
@@ -59,9 +66,15 @@ class SettingsViewModelUpdateWiringTest {
     @Test
     fun defenseEditPreservesNewerStoredSelfHealValueThroughViewModelAndRepository() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-        val preferences = MemorySharedPreferences()
+        val preferences = MemorySharedPreferences().apply {
+            edit().putBoolean("net_block_explicit_migrated", true).apply()
+        }
         val context = TestContext(preferences)
-        val repository = SettingsRepository(context, requestVpnSyncAction = {})
+        val repository = SettingsRepository(
+            context,
+            requestVpnSyncAction = {},
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
         val viewModel = SettingsViewModel(repository, PinManager(context), context)
         val store = ViewModelStore().apply { put("settings", viewModel) }
 

@@ -119,4 +119,26 @@ class VpnImportPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun importActivationFlagCannotEnableProtectionWhenSettingsAreNotRestored() {
+        assertTrue(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = true,
+                activationRequested = true,
+            ),
+        )
+        assertFalse(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = false,
+                activationRequested = true,
+            ),
+        )
+        assertFalse(
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = true,
+                activationRequested = false,
+            ),
+        )
+    }
 }

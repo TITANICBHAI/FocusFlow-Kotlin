@@ -42,7 +42,7 @@ object VpnPolicyCoordinator {
     private val syncLock = Any()
     private val explicitMigrationLock = Any()
     private val explicitMigrationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val launcherCacheExecutor = Executors.newSingleThreadExecutor()
     private var pendingDispatch: Runnable? = null
     private var migrationInFlight = false

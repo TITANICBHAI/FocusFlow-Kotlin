@@ -24,6 +24,7 @@ import com.tbtechs.focusflow.data.restore.RestoreCounts
 import kotlinx.serialization.json.JsonObject
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -94,6 +95,7 @@ class SettingsRepository(
     private val requestVpnSyncAction: (Context) -> Unit = {
         NetworkBlockerVpnService.requestSync(it)
     },
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
     companion object {
@@ -250,7 +252,7 @@ class SettingsRepository(
         check(restoreGate.state.value != RestoreGate.State.OPEN) {
             "Restore settings writes require a closed RestoreGate."
         }
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val values = TsSettingsAdapter.normalizeForLegacyMigration(settingsPlan)
             val editor = prefs.edit()
             var protectionMode: String? = null
@@ -289,7 +291,7 @@ class SettingsRepository(
         check(restoreGate.state.value != RestoreGate.State.OPEN) {
             "Restore reconciliation requires a closed RestoreGate."
         }
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val userWindows = parseJsonArrayObjects(
                 stringPreference(KEY_USER_GREYOUT_WINDOWS, "[]"),
             ).filter { it.optString("scheduleId").isBlank() }
@@ -326,7 +328,7 @@ class SettingsRepository(
             put("externalResourcesUnresolved", counts.unresolvedExternalResources)
             put("completedAtMs", System.currentTimeMillis())
         }
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             check(prefs.edit().putString("last_restore_result", result.toString()).commit()) {
                 "The restore result could not be saved."
             }
@@ -1328,7 +1330,7 @@ class SettingsRepository(
     }
 
     private suspend fun ensureVpnSelfHealPreferenceMigrated() {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             restoreGate.write("SettingsRepository.migrateVpnSelfHealPreference") {
                 synchronized(VpnSelfHealPolicy.preferenceLock) {
                     val migrationValue = VpnSelfHealPolicy.migrationValue(
@@ -1403,7 +1405,7 @@ class SettingsRepository(
         editor: SharedPreferences.Editor,
         operation: String,
     ) {
-        val committed = withContext(Dispatchers.IO) { editor.commit() }
+        val committed = withContext(ioDispatcher) { editor.commit() }
         if (!committed) {
             Log.e(TAG, "[NATIVE_PREFS_COMMIT_FAILED] $operation")
             throw IllegalStateException("PREFS_WRITE_FAILED: $operation commit() returned false")

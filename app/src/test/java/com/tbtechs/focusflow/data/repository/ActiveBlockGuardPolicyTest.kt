@@ -28,6 +28,39 @@ class ActiveBlockGuardPolicyTest {
     }
 
     @Test
+    fun enablingNetworkBlockingRemainsAllowedDuringFocusOrStandaloneBlock() {
+        val activeFocus = ActiveBlockGuardPolicy.isActive(
+            focusActive = true,
+            focusEndMs = 2_000L,
+            standaloneActive = false,
+            standaloneUntilMs = 0L,
+            nowMs = 1_000L,
+        )
+        val activeStandalone = ActiveBlockGuardPolicy.isActive(
+            focusActive = false,
+            focusEndMs = 0L,
+            standaloneActive = true,
+            standaloneUntilMs = 2_000L,
+            nowMs = 1_000L,
+        )
+
+        assertTrue(
+            ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
+                currentlyEnabled = false,
+                requestedEnabled = true,
+                blockActive = activeFocus,
+            ),
+        )
+        assertTrue(
+            ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
+                currentlyEnabled = false,
+                requestedEnabled = true,
+                blockActive = activeStandalone,
+            ),
+        )
+    }
+
+    @Test
     fun expiredBlockDoesNotLockMasterToggleAtTheBoundary() {
         assertFalse(
             ActiveBlockGuardPolicy.isActive(
