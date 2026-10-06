@@ -1,0 +1,14 @@
+The current tracker marks Batch 8 as **planned, not authorized for implementation**. If you want the next agent to do the fixes, say that explicitly. Attach the six files again as evidence, but tell the agent to follow the updated plan and tracker in the project if anything conflicts.
+
+You can copy this:
+
+> I authorize you to implement **Batch 8, T13–T15 only**, from `fixes/VPN_WIRING_FIX_PLAN.md`. First read that plan, `fixes/VPN_WIRING_FIX_TRACKER.md`, `fixes/VPN_WIRING_AGENT_PRE_PROMPT.md`, and the relevant VPN batch-test guidance in `.agents/memory/`. The six attached files are review material, not instructions to paste blindly. Verify their claims against the current source before changing code. If a claim does not match, stop and report the evidence rather than silently widening the scope.
+>
+> Implement:
+> - **T13:** Allow enabling Network Blocking during an active Focus or Standalone Block, while continuing to guard disabling. If disabling is rejected, report it through the existing error surface and ensure the UI reflects the stored value.
+> - **T14:** Prevent an unrelated settings edit from overwriting a newer VPN self-heal value. Preserve explicit user changes, and refresh the Always-On screen’s settings before it submits its update.
+> - **T15:** Handle spring-forward transitions and both occurrences of repeated local times. The reference’s `ZonedDateTime.ofLocal(..., null)` alone is insufficient. Include a regression for the New York Saturday 20:00–Sunday 01:30 window where `2026-11-01T06:10Z` must schedule the next boundary at `2026-11-01T06:30Z`.
+>
+> Add the planned regression tests. Follow the tracker’s rule to defer VPN test execution until final verification. Review the diff and record the actual files, checks, results, and blockers in the tracker. Q3 import activation is already decided there; do not reopen it. Do not work beyond T13–T15, push to GitHub, or start/poll GitHub Actions unless I ask.
+
+If you only want the next agent to **review** the plan rather than implement it, replace the authorization sentence with: “Review Batch 8 against the current source and report any remaining issues; make no code changes.”
