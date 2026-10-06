@@ -10,3 +10,9 @@ For local unit-test runs, use the repository's bootstrap-backed test path so it 
 **Why:** Earlier build attempts stopped first for missing Java and then for the Android SDK. The user asked to keep the dedicated local test route in project memory so future Android verification doesn't mistake missing tools for a source failure.
 
 **How to apply:** Check `java`, `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `local.properties` before compiler diagnosis. When running local unit tests, use the bootstrap-backed test workflow; use JDK 17 and keep SDK files outside the repository. If prerequisites cannot be obtained, record the test as blocked rather than failed.
+
+On a fresh workspace, the first bootstrap-backed run can exceed a short shell timeout while it downloads and installs JDK, Android SDK packages, Gradle, and compiles Kotlin. A timed-out shell invocation is not evidence of a test failure; after setup, a background run can complete successfully with cached prerequisites.
+
+**Why:** The first two test invocations timed out during environment setup and initial Kotlin compilation; a later run with the same code completed successfully.
+
+**How to apply:** For a first-time or partially cached build, run `bash scripts/test-unit.sh` in the background and inspect its final Gradle result rather than retrying immediately or treating the timeout as a code failure.
