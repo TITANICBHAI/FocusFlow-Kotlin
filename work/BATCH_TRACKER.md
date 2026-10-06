@@ -157,23 +157,24 @@ Evidence: User's decision in chat; scheduled-task notification remains a separat
 |---|---|---|---|---|
 | 2026-10-05 | In progress; source-level duplicate path confirmed and suppression guard plus unit test added; runtime reproduction/verification blocked | `LiveTaskStatusNotificationPublisher.kt`, `ForegroundTaskService.kt`, `ReminderReceiver.kt`, `AppModule.kt`; added `LiveTaskStatusPolicyTest.kt` | Inspected `enterBreak()` state writes, both publisher call paths, and shared prefs name; `git diff --check` passed; attempted `./gradlew :app:testDebugUnitTest --tests com.tbtechs.focusflow.notifications.LiveTaskStatusPolicyTest` (stopped before Gradle: `JAVA_HOME` unset/no `java`); `adb devices -l` (command not found); `ANDROID_HOME`/`ANDROID_SDK_ROOT` unset | Source-level reproduction path: `enterBreak()` writes `focus_active=false` and a future `focus_break_until_ms`; `ReminderReceiver` still calls `LiveTaskStatusNotificationPublisher.sync`; the publisher previously suppressed only on `focus_active`, allowing notification 1003 alongside the service's break card 1001. The publisher now suppresses while focus is active or the existing break deadline is future, and still allows Option A's separate scheduled-task card outside focus/break. Added pure policy tests for active focus, active break, and expired/absent break. Physical reproduction/disproof, API level, JVM execution, and device verification remain unavailable; do not mark runtime acceptance complete. |
 
-## Batch 5 — Phase 5: allowance ownership refactor
+## Batch 5 — Phase 5: usage and allowance pipeline
 
 **Status:** Not started  
-**Gate:** Separate effort; do not begin without explicit owner approval.
+**Gate:** Deferred; do not begin without explicit owner approval. The authoritative scope is [Phase 5 v3](../attached_assets/PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3_1791307301222.md), which replaces the earlier allowance handoff proposal.
 
-- [x] Record the owner's decision: now, later, or never.
-- [ ] If approved for now, add characterization tests for the existing handoff rules before extraction.
-- [ ] Preserve the current 15-second, 60-second, and 2-minute intervals and the live-session real-time behavior.
-- [ ] Extract only according to plan section 9; stop after the ledger if accessibility-service extraction is too risky.
-- [ ] Keep notification code out of this phase.
-- [ ] Record build/test results and evidence.
+- [x] Record the owner's decision: defer Phase 5 until later; this is not implementation authorization.
+- [ ] Follow v3 Phase 5.0: verify the compatibility contract, current data writers/readers, and device behavior before implementation.
+- [ ] Follow v3 Phase 5.1–5.3: characterize behavior, add pipeline tests, and run the new pipeline in shadow mode.
+- [ ] Follow v3 Phase 5.4–5.5: cut allowance over to pipeline readings, then unify Stats with the same source and Room rollups.
+- [ ] Follow v3 Phase 5.6: remove superseded code only after cutover and rerun the required compatibility checks.
+- [ ] Keep this effort deferred until the owner explicitly reopens it; preserve the v3 plan's phase gates and do not treat this checklist as authorization.
+- [ ] Record build/test/device results and evidence when implementation is authorized.
 
 ### Decision record
 
 **Q4: Allowance refactor — now, later, or never?**  
-Owner decision (2026-10-05): Later; keep the allowance refactor in Phase 5 of the plan.
-Evidence: User's decision in chat; plan file already contains Phase 5 and remains unchanged.
+Owner decision (2026-10-05): Later; Phase 5 remains deferred. The replacement scope is the linked v3 usage-and-allowance plan.
+Evidence: User's decision in chat; the implementation plan now points to the authoritative v3 replacement. This decision does not authorize implementation.
 
 ### Batch 5 work log
 
@@ -207,4 +208,4 @@ Evidence: User's decision in chat; plan file already contains Phase 5 and remain
 |---|---|---|---|
 | Phase 3 health state | Implementation is present; build/test/device verification has not run because JDK, Android SDK, and device are unavailable | Revisit when JDK, Android SDK, and device verification are available | Blocked |
 | Phase 4 duplicate-during-break check | Source path guarded; runtime reproduction and test remain blocked by absent Android tooling/device | Verify on an Android device/API before closing Batch 4 | Blocked |
-| Phase 5 allowance refactor | Owner deferred it until later | Owner reopens the work | Deferred |
+| Phase 5 usage and allowance pipeline | Owner deferred it until later; v3 is the authoritative scope | Owner reopens the work | Deferred |

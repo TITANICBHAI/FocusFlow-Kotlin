@@ -97,17 +97,13 @@ The idle card must not say "Monitoring active" when enforcement cannot work. Add
 
 Suggested path: ship Phases 1–3, look at it on a device, and only do B if the two cards bother the owner.
 
-## 9. Phase 5: allowance, single owner of the number (Recommended, separate effort)
+## 9. Phase 5: usage and allowance pipeline (replaced)
 
-Current design is primary plus fallback, not two competing counters. `AppBlockerAccessibilityService` times the live session and checkpoints every 15 s. `ForegroundTaskService` re-reads UsageEvents every 60 s and only raises the stored total. It skips an app while the accessibility heartbeat is under 2 minutes old, and otherwise writes a handoff timestamp. The two files carry contradictory comments about who owns the accounting.
+The previous Phase 5 allowance outline is superseded in full by the owner's v3 plan:
+[Phase 5 (v3): one usage pipeline, one allowance ledger, one Stats source](../attached_assets/PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3_1791307301222.md).
+That document is the authoritative Phase 5 contract; do not combine it with the former 15-second / 60-second / heartbeat handoff design in this plan.
 
-Goal: one component owns reads and writes of `daily_allowance_used`, the lock and the handoff rules, instead of two services touching the prefs directly. **Do not move to UsageStats-only**: it lags and cannot block in real time.
-
-- Extract by responsibility, verbatim first, then switch callers: `AllowanceLedger` (storage, lock, JSON schema), `AllowanceSessionTracker` (live timing and checkpoints), `UsageEventsReconciler` (the event queries and raise-only merge), `AllowanceHandoff` (heartbeat and TTL rules).
-- Write characterization tests first for the handoff rules (fresh heartbeat skip, raise-only merge, interval-window mismatch skip, handoff timestamp).
-- Do not change the numbers (15 s, 60 s, 2 min) in this phase. Fix the contradictory comments.
-- No notification code here. If the card ever shows allowance, it reads the ledger only and never counts on its own.
-- If extracting from the accessibility file proves too risky, stop after the ledger.
+The existing owner decision to defer Phase 5 still applies. This replacement updates the scope and implementation contract; it does not authorize starting the work.
 
 ## 10. Parked (do not do now)
 
@@ -123,7 +119,7 @@ Goal: one component owns reads and writes of `daily_allowance_used`, the lock an
 1. May the background service be switched off while a focus session, standalone block or always-on block is active? Suggested: only with the PIN, or not at all while enforcing.
 2. Do you want the health state (Phase 3)?
 3. Scheduled-task card: leave separate (A) or fold in (B)?
-4. Allowance refactor (Phase 5): now, later, or never?
+4. Phase 5 implementation remains deferred per the owner's decision; its authoritative v3 scope is linked in section 9.
 
 ## 12. Verification checklist
 
