@@ -264,8 +264,9 @@ fun AlwaysOnScreen(
                     packages = selected.toList().sorted(),
                 )
 
+                settingsViewModel.refreshSettingsFromStore()
                 settingsViewModel.updateSettings(
-                    settings.copy(
+                    settingsViewModel.settings.value.copy(
                         alwaysBlockEnabled = selected.isNotEmpty(),
                         alwaysBlockPackages = selected.toList().sorted(),
                         networkBlockEnabled = masterSwitches.enabled,

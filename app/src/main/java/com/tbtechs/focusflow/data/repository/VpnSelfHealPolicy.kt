@@ -38,5 +38,13 @@ internal object VpnSelfHealPolicy {
             },
         )
 
+    /** Preserve newer stored state unless this edit explicitly changes the loaded value. */
+    fun valueToPersist(
+        loadedValue: Boolean,
+        requestedValue: Boolean,
+        storedValue: Boolean,
+    ): Boolean =
+        if (requestedValue == loadedValue) storedValue else requestedValue
+
     fun shouldEnableFromList(hasVpnPackages: Boolean): Boolean = hasVpnPackages
 }

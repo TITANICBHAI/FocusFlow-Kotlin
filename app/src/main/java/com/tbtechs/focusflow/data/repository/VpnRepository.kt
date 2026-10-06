@@ -131,10 +131,23 @@ class VpnRepository(
         val requestedEnabled = if (obj.has("enabled")) obj.getBoolean("enabled") else currentEnabled
         val requestedVpn = if (obj.has("vpn")) obj.getBoolean("vpn") else currentVpn
 
+        val blockActive = isBlockingSessionActive()
+        val disablingWhileBlocked =
+            !ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
+                currentlyEnabled = currentEnabled,
+                requestedEnabled = requestedEnabled,
+                blockActive = blockActive,
+            ) ||
+                !ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
+                    currentlyEnabled = currentVpn,
+                    requestedEnabled = requestedVpn,
+                    blockActive = blockActive,
+                )
+        if (disablingWhileBlocked) {
+            throw NetworkBlockingChangeRejectedException()
+        }
+
         if ((currentEnabled && !requestedEnabled) || (currentVpn && !requestedVpn)) {
-            if (isBlockingSessionActive()) {
-                throw IllegalStateException("Network blocking cannot be disabled while Focus or Standalone Block is active")
-            }
             val storedDefenseHash = prefs.getString(PREF_DEFENSE_PIN_HASH, null)
             val suppliedDefenseHash = obj.optString("defensePinHash", null)
             if (!storedDefenseHash.isNullOrBlank() &&

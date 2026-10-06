@@ -17,6 +17,7 @@ import com.tbtechs.focusflow.data.repository.AllowanceUsage
 import com.tbtechs.focusflow.data.repository.AllowanceSnapshot
 import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
+import com.tbtechs.focusflow.data.repository.VpnSelfHealPolicy
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.FocusPinManager
@@ -24,6 +25,7 @@ import com.tbtechs.focusflow.domain.PinReuseTracker
 import com.tbtechs.focusflow.domain.PinSessionState
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
+import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -183,6 +185,12 @@ class SettingsViewModel(
             var dayRatingScheduleChanged = false
             restoreGate.write("SettingsViewModel.updateSettings") {
             val current = _settings.value
+            var networkBlockEnabledForUi = newSettings.networkBlockEnabled
+            val selfHealEnabled = VpnSelfHealPolicy.valueToPersist(
+                loadedValue = current.vpnSelfHealEnabled,
+                requestedValue = newSettings.vpnSelfHealEnabled,
+                storedValue = settingsRepository.isVpnSelfHealEnabledNow(),
+            )
             taskReminderPreferenceChanged =
                 newSettings.taskRemindersEnabled != current.taskRemindersEnabled
             dayRatingScheduleChanged =
@@ -200,7 +208,19 @@ class SettingsViewModel(
             }
             // networkBlockEnabled: SettingsRepository.setNetworkBlockEnabled(enabled)
             if (newSettings.networkBlockEnabled != current.networkBlockEnabled) {
-                settingsRepository.setNetworkBlockEnabled(newSettings.networkBlockEnabled)
+                networkBlockEnabledForUi =
+                    NetworkBlockSettingsUpdatePolicy.persistToggleOrRestoreStoredValue(
+                        requestedValue = newSettings.networkBlockEnabled,
+                        persist = settingsRepository::setNetworkBlockEnabled,
+                        readStoredValue = settingsRepository::isNetworkBlockEnabledNow,
+                    ) { exception ->
+                        AppErrorEvents.report(
+                            tag = "Network Blocking",
+                            message = exception.message
+                                ?: "Network Blocking could not be changed during an active block.",
+                            throwable = exception,
+                        )
+                    }
             }
             // systemGuardEnabled: SettingsRepository.setSystemGuardEnabled(enabled)
             if (newSettings.systemGuardEnabled != current.systemGuardEnabled) {
@@ -276,13 +296,18 @@ class SettingsViewModel(
                 newSettings.autoRescheduleEnabled != current.autoRescheduleEnabled ||
                 newSettings.autoCopyToAlwaysOn != current.autoCopyToAlwaysOn
             ) {
-                settingsRepository.setDefensePreferences(newSettings)
+                settingsRepository.setDefensePreferences(
+                    newSettings.copy(vpnSelfHealEnabled = selfHealEnabled),
+                )
             }
             if (newSettings != current) {
                 settingsRepository.setNotificationPreferences(newSettings)
             }
 
-            _settings.value = newSettings
+            _settings.value = newSettings.copy(
+                networkBlockEnabled = networkBlockEnabledForUi,
+                vpnSelfHealEnabled = selfHealEnabled,
+            )
             }
             if (dayRatingScheduleChanged) {
                 DayRatingNotificationScheduler.ensureScheduled(appContext)

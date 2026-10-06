@@ -3,7 +3,7 @@ name: Replit config side effects
 description: Automatic toolchain provisioning and protected .replit edits in this workspace
 ---
 
-Invoking a language runtime that is not already configured can automatically add its module to `.replit`. Direct edits to `.replit` are blocked by the workspace; restore or change it by writing the full TOML to a temporary file inside the workspace and passing its absolute path to `verifyAndReplaceDotReplit`. Relative paths fail with `DOT_REPLIT_EDITING_ERROR`.
+Invoking a language runtime that is not already configured can automatically add its module to `.replit`. Direct edits to `.replit` are blocked by the workspace; restore or change it by writing the full TOML to a temporary file inside the workspace and calling `verifyAndReplaceDotReplit({ tempFilePath: absolutePath })`. Relative paths fail with `DOT_REPLIT_EDITING_ERROR`.
 
 **Why:** A Python source-check command caused an unrelated module entry to appear, and the normal patch operation was rejected by the config guard.
 

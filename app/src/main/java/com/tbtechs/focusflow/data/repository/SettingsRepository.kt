@@ -854,18 +854,30 @@ class SettingsRepository(
 
     suspend fun setNetworkBlockEnabled(enabled: Boolean) {
         restoreGate.write("SettingsRepository.setNetworkBlockEnabled") {
-        if (isBlockingSessionActive()) {
-            throw IllegalStateException(
-                "Network blocking cannot be changed while Focus or Standalone Block is active",
-            )
-        }
-        prefs.edit()
-            .putBoolean(KEY_NETWORK_BLOCK_ENABLED, enabled)
-            .putBoolean(KEY_NETWORK_BLOCK_VPN, enabled)
-            .apply()
-        requestVpnSync()
+            val currentlyEnabled =
+                prefs.getBoolean(KEY_NETWORK_BLOCK_ENABLED, false) ||
+                    prefs.getBoolean(KEY_NETWORK_BLOCK_VPN, false)
+            if (!ActiveBlockGuardPolicy.mayChangeNetworkBlocking(
+                    currentlyEnabled = currentlyEnabled,
+                    requestedEnabled = enabled,
+                    blockActive = isBlockingSessionActive(),
+                )
+            ) {
+                throw NetworkBlockingChangeRejectedException()
+            }
+            prefs.edit()
+                .putBoolean(KEY_NETWORK_BLOCK_ENABLED, enabled)
+                .putBoolean(KEY_NETWORK_BLOCK_VPN, enabled)
+                .apply()
+            requestVpnSync()
         }
     }
+
+    fun isNetworkBlockEnabledNow(): Boolean =
+        prefs.getBoolean(KEY_NETWORK_BLOCK_ENABLED, false)
+
+    fun isVpnSelfHealEnabledNow(): Boolean =
+        prefs.getBoolean(KEY_VPN_SELF_HEAL_ENABLED, false)
 
     private fun isBlockingSessionActive(): Boolean =
         ActiveBlockGuardPolicy.isActive(
@@ -1281,34 +1293,34 @@ class SettingsRepository(
     suspend fun setDefensePreferences(settings: AppSettings) {
         ensureVpnSelfHealPreferenceMigrated()
         restoreGate.write("SettingsRepository.setDefensePreferences") {
-        val previousSelfHealValue = prefs.getBoolean(KEY_VPN_SELF_HEAL_ENABLED, false)
-        val selfHealDecision = VpnSelfHealPolicy.toggleDecision(
-            currentValue = previousSelfHealValue,
-            requestedValue = settings.vpnSelfHealEnabled,
-        )
-        val editor = prefs.edit()
-            .putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, settings.launcherBlockUninstall)
-            .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, selfHealDecision.persistedValue)
-            .putBoolean(KEY_FOCUS_MIRROR_VPN_ENABLED, settings.focusMirrorVpnEnabled)
-            .putBoolean(KEY_AVERSION_DIMMER_ENABLED, settings.aversionDimmerEnabled)
-            .putBoolean(KEY_AVERSION_VIBRATE_ENABLED, settings.aversionVibrateEnabled)
-            .putBoolean(KEY_AVERSION_SOUND_ENABLED, settings.aversionSoundEnabled)
-            .putBoolean(
-                KEY_KEEP_FOCUS_ACTIVE_UNTIL_TASK_END,
-                settings.keepFocusActiveUntilTaskEnd,
+            val previousSelfHealValue = prefs.getBoolean(KEY_VPN_SELF_HEAL_ENABLED, false)
+            val selfHealDecision = VpnSelfHealPolicy.toggleDecision(
+                currentValue = previousSelfHealValue,
+                requestedValue = settings.vpnSelfHealEnabled,
             )
-            .putBoolean(KEY_AUTO_RESCHEDULE_ENABLED, settings.autoRescheduleEnabled)
-            .putBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, settings.autoCopyToAlwaysOn)
-        commitEditor(editor, "defense preferences")
-        when (selfHealDecision.effect) {
-            VpnSelfHealPolicy.ToggleEffect.CANCEL_WATCHDOG -> {
-                VpnWatchdogReceiver.cancel(appContext)
-                requestVpnSync()
+            val editor = prefs.edit()
+                .putBoolean(KEY_LAUNCHER_BLOCK_UNINSTALL, settings.launcherBlockUninstall)
+                .putBoolean(KEY_VPN_SELF_HEAL_ENABLED, selfHealDecision.persistedValue)
+                .putBoolean(KEY_FOCUS_MIRROR_VPN_ENABLED, settings.focusMirrorVpnEnabled)
+                .putBoolean(KEY_AVERSION_DIMMER_ENABLED, settings.aversionDimmerEnabled)
+                .putBoolean(KEY_AVERSION_VIBRATE_ENABLED, settings.aversionVibrateEnabled)
+                .putBoolean(KEY_AVERSION_SOUND_ENABLED, settings.aversionSoundEnabled)
+                .putBoolean(
+                    KEY_KEEP_FOCUS_ACTIVE_UNTIL_TASK_END,
+                    settings.keepFocusActiveUntilTaskEnd,
+                )
+                .putBoolean(KEY_AUTO_RESCHEDULE_ENABLED, settings.autoRescheduleEnabled)
+                .putBoolean(KEY_AUTO_COPY_TO_ALWAYS_ON, settings.autoCopyToAlwaysOn)
+            commitEditor(editor, "defense preferences")
+            when (selfHealDecision.effect) {
+                VpnSelfHealPolicy.ToggleEffect.CANCEL_WATCHDOG -> {
+                    VpnWatchdogReceiver.cancel(appContext)
+                    requestVpnSync()
+                }
+                VpnSelfHealPolicy.ToggleEffect.REQUEST_RECOVERY_SYNC ->
+                    VpnPolicyCoordinator.requestRecoverySync(appContext)
+                VpnSelfHealPolicy.ToggleEffect.NONE -> requestVpnSync()
             }
-            VpnSelfHealPolicy.ToggleEffect.REQUEST_RECOVERY_SYNC ->
-                VpnPolicyCoordinator.requestRecoverySync(appContext)
-            VpnSelfHealPolicy.ToggleEffect.NONE -> requestVpnSync()
-        }
         }
     }
 

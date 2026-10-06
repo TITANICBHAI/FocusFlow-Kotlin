@@ -296,10 +296,10 @@ Record each decision, date, and evidence before dependent work. Pending question
 | 2026-10-05 | Final handoff for the authorized Batch 3–4 scope. | VPN backup mapping/migration, consent-result import flow, list-save switches, protection summary, focused policy tests, and this tracker. | `bash scripts/test-unit.sh`: 137/137 passed; `git diff --check` passed; focused VPN-key and consent API greps passed. No GitHub push or Actions polling. | Batch 3–4 implementation is complete for sequencing. Android system consent, post-import screen interaction, and device behavior remain unverified because no device/emulator is available. Do not start Batch 5 or later or resolve Q2 without new authorization. The backup contract's v13 heading/intended-v14 discrepancy remains documented. |
 | 2026-10-05 | Handoff for the approved Batch 7 scope. | `NetworkBlockerVpnService.kt`, `VpnRegistrationFailurePolicy.kt`, `VpnRegistrationFailurePolicyTest.kt`, and this tracker; T10/T11 source verification | `bash scripts/test-unit.sh`: 152 passed, 0 failures/errors/skips; `bash scripts/build-apk-with-java.sh`: debug APK built; `git diff --check`; scoped VPN-key, consent API, status-separation, and dead-code greps. | T9–T11 complete; T8 unchanged per Q2; T12 skipped per owner choice. The first test attempt timed out during initial JDK/SDK provisioning; the cached-tool retry passed. Batch 5/6 device-only checks remain unverified. No Batch 8+ implementation authorized. No GitHub push or Actions polling. |
 
-## Batch 8 — follow-up correctness plan (not started)
+## Batch 8 — T13–T15 implementation
 
-**Status:** Plan-only update completed on 2026-10-06. No application implementation is authorized or started.
-**Gate:** The owner must separately authorize Batch 8 implementation. Keep VPN unit-test execution deferred until final verification.
+**Status:** The owner authorized implementation of T13–T15 on 2026-10-06; those items are implemented and verified.
+**Scope gate:** Only T13–T15 were implemented. Do not reopen Q3 import activation or start later batches without separate authorization.
 
 ### Verified scope
 
@@ -313,14 +313,22 @@ Record each decision, date, and evidence before dependent work. Pending question
 - [x] Compare the attached follow-up plan and tests with current source and record the mismatches.
 - [x] Add T13–T15 and their regression scenarios to `VPN_WIRING_FIX_PLAN.md`.
 - [x] Record that Q3 import activation is already decided and keep Batch 8 implementation gated.
-- [ ] After separate authorization, implement T13 and verify error/state recovery without changing unrelated settings.
-- [ ] After separate authorization, implement T14 and verify both stale preservation and explicit self-heal changes.
-- [ ] After separate authorization, implement T15 with both overlap offsets and transition resync.
-- [ ] Add the planned tests; do not execute the accumulated VPN suite before final verification.
-- [ ] At final verification, run the configured Android unit-test path, review the full diff, and record unavailable device checks.
+- [x] Implement T13 direction-aware Network Blocking guards in both repository paths; rejected disables report through the existing app error surface and restore the persisted switch value without aborting unrelated settings updates.
+- [x] Implement T14 stale self-heal preservation while honoring explicit changes; refresh settings before the Always-On save.
+- [x] Implement T15 boundaries for both offsets in repeated local times, gap transitions, and zone-transition resynchronization.
+- [x] Add T13–T15 regression tests and defer test execution until final verification.
+- [x] Run the configured Android unit-test path and review the diff; `git diff --check` passes and `.replit` is unchanged.
+- [ ] Complete manual Android device checks; no connected device or emulator is available in this environment.
 
-### Batch 8 planning work log
+### Batch 8 final verification
+
+- [x] `bash scripts/test-unit.sh`: 166 tests passed, 0 failures, 0 errors, 0 skipped. This includes six DST boundary tests, three guard-policy tests, three stale self-heal tests, and two settings-update recovery tests.
+- [x] Review implementation diff and `git diff --check`; no unrelated `.replit` modification remains.
+- [ ] Complete feasible manual device checks from plan §6; `adb devices -l` lists no connected device and no emulator executable is available.
+- [x] Confirm only T13–T15 were implemented, Q3 was not reopened, and no GitHub push or Actions run was started.
+
+### Batch 8 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-| 2026-10-06 | Drafted Batch 8 plan only; no implementation started. | `fixes/VPN_WIRING_FIX_PLAN.md`, this tracker; inspected current active-block guard, self-heal policy/settings update, Always-On save, and VPN boundary policy/test sources. | Source inspection and targeted searches; `git diff --check`. No application code, tests, build, device, workflow, or GitHub action run. | T13–T15 are documented as follow-up scope. The DST reference is incomplete because it omits the second valid offset in a repeated hour. The import-activation question is already resolved as Q3 in the tracker. Batch 8 still requires separate implementation authorization; VPN test execution remains deferred until final verification. |
+| 2026-10-06 | Implemented and verified the authorized T13–T15 scope. | Direction-aware active-block policy and repository guards; settings update error/state recovery; self-heal stale-write resolution and Always-On refresh; DST-aware VPN boundary math; four regression-test classes; this tracker. | `bash scripts/test-unit.sh`: 166 passed, 0 failures/errors/skips; `git diff --check`; inspected JUnit XML suite totals and `.replit` diff; `adb devices -l`. No GitHub push or Actions polling. | T13 enabling remains allowed while a block is active; rejected disables report and keep the switch at its stored value. T14 preserves newer stored self-heal state unless explicitly changed. T15 covers New York repeated starts/ends, spring-forward gaps, transition resync, and Lord Howe's half-hour shift. No Android device or emulator is available for manual checks. Only T13–T15 were authorized and changed. |

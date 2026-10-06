@@ -1,5 +1,8 @@
 package com.tbtechs.focusflow.enforcement
 
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -57,42 +60,45 @@ internal object GreyoutWindowMath {
             return null
         }
 
-        val midnight = Calendar.getInstance(timeZone).apply {
-            timeInMillis = afterMs
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+        val zone = timeZone.toZoneId()
+        val rules = zone.rules
+        val today = Instant.ofEpochMilli(afterMs).atZone(zone).toLocalDate()
         var next: Long? = null
 
         // Include yesterday so an overnight window's end can be found after
         // midnight, and eight future days so every weekday can be considered.
-        for (dayOffset in -1..8) {
-            val start = (midnight.clone() as Calendar).apply {
-                add(Calendar.DAY_OF_YEAR, dayOffset)
-            }
-            if (start.get(Calendar.DAY_OF_WEEK) !in daysOfWeek) continue
-            start.set(Calendar.HOUR_OF_DAY, startMinuteOfDay / 60)
-            start.set(Calendar.MINUTE, startMinuteOfDay % 60)
-            start.set(Calendar.SECOND, 0)
-            start.set(Calendar.MILLISECOND, 0)
+        for (dayOffset in -1L..8L) {
+            val date = today.plusDays(dayOffset)
+            // Calendar.SUNDAY == 1 ... SATURDAY == 7; java.time Monday == 1 ... Sunday == 7.
+            val calendarDay = date.dayOfWeek.value % 7 + 1
+            if (calendarDay !in daysOfWeek) continue
 
-            val end = (start.clone() as Calendar).apply {
-                if (endMinuteOfDay <= startMinuteOfDay) {
-                    add(Calendar.DAY_OF_YEAR, 1)
-                }
-                set(Calendar.HOUR_OF_DAY, endMinuteOfDay / 60)
-                set(Calendar.MINUTE, endMinuteOfDay % 60)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
+            val startLocal = LocalDateTime.of(
+                date,
+                LocalTime.of(startMinuteOfDay / 60, startMinuteOfDay % 60),
+            )
+            val endDate = if (endMinuteOfDay <= startMinuteOfDay) date.plusDays(1) else date
+            val endLocal = LocalDateTime.of(
+                endDate,
+                LocalTime.of(endMinuteOfDay / 60, endMinuteOfDay % 60),
+            )
 
-            listOf(start.timeInMillis, end.timeInMillis)
-                .filter { it > afterMs }
-                .forEach { boundary ->
-                    if (next == null || boundary < next!!) next = boundary
+            for (localBoundary in listOf(startLocal, endLocal)) {
+                val offsets = rules.getValidOffsets(localBoundary)
+                val instants = if (offsets.isEmpty()) {
+                    // A wall-clock boundary inside a spring-forward gap first takes effect
+                    // when the clock jumps across the gap.
+                    listOfNotNull(rules.getTransition(localBoundary)?.instant?.toEpochMilli())
+                } else {
+                    // Include both instants when the local time repeats during fall-back.
+                    offsets.map { localBoundary.toInstant(it).toEpochMilli() }
                 }
+                for (boundary in instants) {
+                    if (boundary > afterMs && (next == null || boundary < next!!)) {
+                        next = boundary
+                    }
+                }
+            }
         }
         return next
     }
@@ -108,6 +114,11 @@ internal object GreyoutWindowMath {
 }
 
 internal object VpnPolicyBoundaryPolicy {
+    fun nextZoneTransitionMs(timeZone: TimeZone, afterMs: Long): Long? =
+        timeZone.toZoneId().rules
+            .nextTransition(Instant.ofEpochMilli(afterMs))
+            ?.instant?.toEpochMilli()
+
     fun isStandaloneActive(active: Boolean, untilMs: Long, nowMs: Long): Boolean =
         active && (untilMs <= 0L || nowMs < untilMs)
 
@@ -155,8 +166,10 @@ internal object VpnPolicyBoundaryPolicy {
             ) {
                 add(standaloneUntilMs)
             }
-            windows.asSequence()
+            val vpnWindows = windows.asSequence()
                 .filter { it.enabled && it.vpnEnabled && it.packages.isNotEmpty() }
+                .toList()
+            val scheduleBoundaries = vpnWindows.asSequence()
                 .mapNotNull {
                     GreyoutWindowMath.nextBoundaryAfter(
                         daysOfWeek = it.daysOfWeek,
@@ -166,7 +179,13 @@ internal object VpnPolicyBoundaryPolicy {
                         timeZone = timeZone,
                     )
                 }
-                .forEach(::add)
+                .toList()
+            addAll(scheduleBoundaries)
+            if (scheduleBoundaries.isNotEmpty()) {
+                // The wall-clock meaning of recurring windows can change when the zone offset
+                // changes, even when no configured edge falls at that exact time.
+                nextZoneTransitionMs(timeZone, nowMs)?.let(::add)
+            }
         }
         return boundaries.minOrNull()
     }
