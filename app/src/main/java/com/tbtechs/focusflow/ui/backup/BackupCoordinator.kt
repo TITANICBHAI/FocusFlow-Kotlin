@@ -58,6 +58,12 @@ class BackupCoordinator(
         },
     )
 
+    private data class VpnImportState(
+        val importedVpnPackageCount: Int,
+        val networkBlockEnabled: Boolean,
+        val vpnPermissionGranted: Boolean,
+    )
+
     fun createExportIntent() = manager.createExportDocumentIntent()
 
     fun createImportIntent() = manager.createImportDocumentIntent()
@@ -106,13 +112,34 @@ class BackupCoordinator(
     internal suspend fun vpnImportConsentDecision(
         restoreSettings: Boolean,
     ): VpnImportConsentDecision {
-        if (!restoreSettings) return VpnImportConsentDecision.NOT_REQUIRED
-        val loaded = restoreCoordinator.loadPending() as? PendingBackupResult.Ready
+        val state = vpnImportState(restoreSettings)
             ?: return VpnImportConsentDecision.NOT_REQUIRED
+        return VpnImportPolicy.consentDecision(
+            restoreSettings = restoreSettings,
+            importedVpnPackageCount = state.importedVpnPackageCount,
+            networkBlockEnabled = state.networkBlockEnabled,
+            vpnPermissionGranted = state.vpnPermissionGranted,
+        )
+    }
+
+    internal suspend fun vpnImportNotice(restoreSettings: Boolean): VpnImportNotice? {
+        val state = vpnImportState(restoreSettings) ?: return null
+        return VpnImportPolicy.notice(
+            restoreSettings = restoreSettings,
+            importedVpnPackageCount = state.importedVpnPackageCount,
+            networkBlockEnabled = state.networkBlockEnabled,
+            vpnPermissionGranted = state.vpnPermissionGranted,
+        )
+    }
+
+    private suspend fun vpnImportState(restoreSettings: Boolean): VpnImportState? {
+        if (!restoreSettings) return null
+        val loaded = restoreCoordinator.loadPending() as? PendingBackupResult.Ready
+            ?: return null
         val importedSettings = loaded.backup.toBackupEnvelope().settings
         val importedPackageCount =
             importedSettings.optJSONArray("alwaysOnVpnPackages")?.length() ?: 0
-        if (importedPackageCount == 0) return VpnImportConsentDecision.NOT_REQUIRED
+        if (importedPackageCount == 0) return null
 
         val networkBlockEnabled = runCatching {
             val local = vpnRepository.getNetworkBlockSettings()
@@ -121,8 +148,7 @@ class BackupCoordinator(
             // Unknown local state must not trigger automatic activation.
             true
         }
-        return VpnImportPolicy.consentDecision(
-            restoreSettings = true,
+        return VpnImportState(
             importedVpnPackageCount = importedPackageCount,
             networkBlockEnabled = networkBlockEnabled,
             vpnPermissionGranted = vpnRepository.isVpnPermissionGranted(),
@@ -284,11 +310,10 @@ class BackupCoordinator(
                 featureEnabled = enabled,
                 requiredPermissionAvailable = vpnPermissionAvailable,
                 activeDetails = "$count apps are protected by Network Blocking (VPN).",
-                inactiveDetails = inactiveDetails(
+                inactiveDetails = VpnImportPolicy.inactiveDetails(
                     count,
                     enabled,
                     vpnPermissionAvailable,
-                    "Android VPN permission",
                 ),
             )
         }

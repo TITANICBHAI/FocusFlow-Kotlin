@@ -77,6 +77,7 @@ fun ImportConfirmScreen(
     var result by remember(pendingGeneration) { mutableStateOf<RestoreResult?>(null) }
     var preview by remember(pendingGeneration) { mutableStateOf<RestorePreview?>(null) }
     var requiresDefensePin by remember(pendingGeneration) { mutableStateOf(false) }
+    var vpnNotice by remember(pendingGeneration) { mutableStateOf<VpnImportNotice?>(null) }
     var showPinPrompt by remember(pendingGeneration) { mutableStateOf(false) }
     var defensePin by remember(pendingGeneration) { mutableStateOf("") }
     var pinError by remember(pendingGeneration) { mutableStateOf<String?>(null) }
@@ -150,6 +151,16 @@ fun ImportConfirmScreen(
     LaunchedEffect(pendingGeneration, parsed, restoreSettings) {
         requiresDefensePin = parsed is BackupParseResult.Success &&
             backupCoordinator.requiresDefensePin(restoreSettings)
+    }
+
+    LaunchedEffect(pendingGeneration, parsed, restoreSettings) {
+        vpnNotice = if (parsed is BackupParseResult.Success) {
+            runCatching {
+                backupCoordinator.vpnImportNotice(restoreSettings)
+            }.getOrNull()
+        } else {
+            null
+        }
     }
 
     LaunchedEffect(pendingGeneration, replaceTasks, restoreSettings, restoreTasks) {
@@ -269,6 +280,7 @@ fun ImportConfirmScreen(
                 onReplaceTasksChange = { replaceTasks = it },
                 restoreSettings = restoreSettings,
                 onRestoreSettingsChange = { restoreSettings = it },
+                vpnNotice = vpnNotice,
                 restoreTasks = restoreTasks,
                 onRestoreTasksChange = {
                     restoreTasks = it
@@ -481,6 +493,7 @@ private fun ImportReview(
     onReplaceTasksChange: (Boolean) -> Unit,
     restoreSettings: Boolean,
     onRestoreSettingsChange: (Boolean) -> Unit,
+    vpnNotice: VpnImportNotice?,
     restoreTasks: Boolean,
     onRestoreTasksChange: (Boolean) -> Unit,
     busy: Boolean,
@@ -607,6 +620,25 @@ private fun ImportReview(
                         if (currentFocusActive) "Replace is unavailable while a focus session is active."
                         else "Replace tasks is destructive. Existing task rows will be deleted.",
                         color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+        vpnNotice?.let { notice ->
+            Card {
+                Row(
+                    Modifier.padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        VpnImportPolicy.noticeText(notice),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
