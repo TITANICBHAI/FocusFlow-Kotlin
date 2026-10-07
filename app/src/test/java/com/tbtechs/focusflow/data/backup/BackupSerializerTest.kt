@@ -46,10 +46,16 @@ class BackupSerializerTest {
             "alwaysBlockEnabled",
             "networkBlockEnabled",
             "pomodoroEnabled",
+            "aversionDimmerEnabled",
+            "aversionVibrateEnabled",
+            "aversionSoundEnabled",
             "pinProtectionEnabled",
             "vpnSelfHealEnabled",
             "autoCopyToAlwaysOn",
             "systemGuardEnabled",
+            "blockInstallActionsEnabled",
+            "blockYoutubeShortsEnabled",
+            "blockInstagramReelsEnabled",
         ).forEach { key ->
             assertFalse("Unexpected device-local setting: $key", portable.containsKey(key))
         }
