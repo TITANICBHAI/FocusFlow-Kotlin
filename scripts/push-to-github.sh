@@ -46,7 +46,9 @@ if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
   fi
 fi
 
-git add -A
+# User uploads can contain private backups or source material; never publish them
+# as part of a project sync.
+git add -A -- . ':(exclude)attached_assets' ':(exclude)attached_assets/**'
 if git diff --cached --quiet; then
   echo "No local changes to commit."
 else
