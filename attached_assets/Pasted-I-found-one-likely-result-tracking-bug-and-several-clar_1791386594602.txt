@@ -1,0 +1,17 @@
+I found **one likely result-tracking bug** and several clarity problems in the import UI. This is a code review; I didn’t run the Android UI on a device.
+
+1. **A restore can succeed on Retry while the import screen still says “Import failed.”** If the first import attempt gets blocked, the coordinator returns an error to the screen. The screen keeps that error in its local state. If you then tap **Retry** in the app-wide recovery dialog and recovery completes, nothing clears the old import error or refreshes the confirmation screen. After closing the error, its preview can also be stale because the staged backup has already been consumed.  
+   `BackupCoordinator.kt:214–215`, `ImportConfirmScreen.kt:105–120, 305–311`; recovery UI is separate in `MainActivity.kt:691–718`.
+
+2. **The initial choices describe a different scope from what they do.** **Add tasks** starts Merge, but the next screen has portable settings selected by default too. **Replace everything** selects task replacement; settings are controlled separately, and the confirmation screen says existing task rows are deleted—not everything. These labels could lead someone to import settings or replace tasks without expecting it.  
+   `SettingsScreen.kt:651–681`, `ImportConfirmScreen.kt:75–76, 563–568`.
+
+3. **The success summary can be confusing.** It reports task counts but doesn’t explicitly confirm whether settings were restored. For your file, it could say **“136 tasks added. 0 skipped”** and then separately warn that 9 past tasks were marked skipped. The distinction between “record imported” and “task marked skipped” isn’t clear in that summary. The app also stores a last-restore result internally, but I found no UI that displays it as import history.  
+   `ImportConfirmScreen.kt:313–330`; `SettingsRepository.kt:326–344`.
+
+4. **A failed preview is silently ignored.** If preview calculation fails, the screen drops the error and leaves the preview counts blank. Merge can still be tapped; the coordinator does check for ID conflicts later, so this does not appear to cause a silent overwrite, but the user gets feedback only after attempting import.  
+   `ImportConfirmScreen.kt:166–172, 656–661`; `RestoreCoordinator.kt:143–160`.
+
+On the “stuck” concern: the restore UI does show a spinner, but only says **“Finishing restore…”**—no phase, task count, or elapsed time. Recovery has a 120-second timeout and then offers Retry or Discard, so I found no obvious endless-spinner path in the recovery code, but a slow restore could look stalled while it runs. Export has clearer normal feedback: **Saving backup…**, followed by success, failure, or cancellation.
+
+Want me to fix the stale import result and improve the misleading labels, progress, and completion summary?
