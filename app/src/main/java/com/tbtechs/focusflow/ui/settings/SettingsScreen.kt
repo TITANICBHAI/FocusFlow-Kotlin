@@ -30,6 +30,8 @@ import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Policy
@@ -51,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,12 +65,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tbtechs.focusflow.data.backup.BackupSerializer
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
+import com.tbtechs.focusflow.ui.backup.BackupViewModel
+import com.tbtechs.focusflow.ui.backup.ExportState
+import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
+import com.tbtechs.focusflow.ui.backup.ImportState
 import com.tbtechs.focusflow.ui.AppBootViewModel
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
@@ -99,6 +110,7 @@ import org.json.JSONObject
 @Composable
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+    backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.factory(settingsViewModel)),
     taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
     focusSessionViewModel: FocusSessionViewModel = viewModel(factory = FocusSessionViewModel.Factory),
     appBootViewModel: AppBootViewModel = viewModel(factory = AppBootViewModel.Factory),
@@ -110,6 +122,7 @@ fun SettingsScreen(
     onReportIssue: (() -> Unit)? = null,
     onOpenChangelog: () -> Unit = {},
     onOpenPrivacyTerms: () -> Unit = {},
+    onOpenImportConfirmation: (() -> Unit)? = null,
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
@@ -118,6 +131,9 @@ fun SettingsScreen(
     val isLoading by appBootViewModel.isLoading.collectAsState()
     val isDbReady by appBootViewModel.isDbReady.collectAsState()
     val context = LocalContext.current
+    val exportState by backupViewModel.exportState.collectAsState()
+    val importState by backupViewModel.importState.collectAsState()
+    val pendingImportEnvelope by backupViewModel.pendingImportEnvelope.collectAsState()
 
     var overlayAppearanceVisible by remember { mutableStateOf(false) }
     var clearAllConfirmationVisible by remember { mutableStateOf(false) }
@@ -126,6 +142,10 @@ fun SettingsScreen(
     var focusPinVisible by remember { mutableStateOf(false) }
     var pendingClearAll by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<SettingsNotice?>(null) }
+    var exportNotice by remember { mutableStateOf<ExportState?>(null) }
+    var importErrorNotice by remember { mutableStateOf<String?>(null) }
+    var showInlineImportConfirmation by remember { mutableStateOf(false) }
+    var navigatingToImportConfirmation by remember { mutableStateOf(false) }
     val installedAppsRepository = remember { InstalledAppsRepository(context) }
     val profile = runCatching {
         settingsViewModel.getUserProfileJson()?.let(::JSONObject)
@@ -144,6 +164,48 @@ fun SettingsScreen(
         )
     }
 
+    val createBackupDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        if (uri != null) {
+            backupViewModel.beginExport(context.contentResolver, uri)
+        }
+    }
+
+    val openBackupDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            backupViewModel.beginImport(context.contentResolver, uri)
+        }
+    }
+
+    LaunchedEffect(importState) {
+        when (val state = importState) {
+            is ImportState.PendingConfirm -> {
+                if (onOpenImportConfirmation == null) {
+                    showInlineImportConfirmation = true
+                } else {
+                    navigatingToImportConfirmation = true
+                    onOpenImportConfirmation()
+                }
+            }
+            is ImportState.Error -> {
+                if (!showInlineImportConfirmation && !navigatingToImportConfirmation) {
+                    importErrorNotice = state.message
+                }
+            }
+            ImportState.Idle -> navigatingToImportConfirmation = false
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(exportState) {
+        if (exportState is ExportState.Success || exportState is ExportState.Error) {
+            exportNotice = exportState
+        }
+    }
+
     fun unavailable(feature: String, detail: String) {
         notice = SettingsNotice(feature, detail)
     }
@@ -158,6 +220,19 @@ fun SettingsScreen(
         } else {
             context.startActivity(emailIntent)
         }
+    }
+
+    if (showInlineImportConfirmation) {
+        ImportConfirmScreen(
+            importState = importState,
+            pendingEnvelope = pendingImportEnvelope,
+            onConfirm = backupViewModel::confirmImport,
+            onCancelImport = backupViewModel::cancelImport,
+            onResetImport = backupViewModel::resetImport,
+            onDone = { showInlineImportConfirmation = false },
+            onCancel = { showInlineImportConfirmation = false },
+        )
+        return
     }
 
     if (isLoading || !isDbReady) {
@@ -236,7 +311,32 @@ fun SettingsScreen(
                 }
             }
 
-            // 2. APPEARANCE
+            // 2. BACKUP & RESTORE
+            item {
+                SettingsSectionHeader("BACKUP & RESTORE")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.FileUpload,
+                        title = "Export backup",
+                        description = "Save your settings and tasks to a .focusflow file",
+                        enabled = exportState != ExportState.Building,
+                        onClick = {
+                            createBackupDocument.launch(BackupSerializer.buildSuggestedFilename())
+                        },
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.FileDownload,
+                        title = "Import backup",
+                        description = "Restore settings and tasks from a .focusflow file",
+                        enabled = importState != ImportState.Reading &&
+                            importState != ImportState.Restoring,
+                        onClick = { openBackupDocument.launch(arrayOf("*/*")) },
+                    )
+                }
+            }
+
+            // 3. APPEARANCE
             item {
                 SettingsSectionHeader("APPEARANCE")
                 SettingsCard {
@@ -673,6 +773,115 @@ fun SettingsScreen(
             },
         )
     }
+
+    if (exportState == ExportState.Building) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text("Saving backup", fontWeight = FontWeight.Bold) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(
+                        color = BrandPrimary,
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text("Writing the backup file…")
+                }
+            },
+        )
+    }
+
+    if (importState == ImportState.Reading) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text("Reading backup", fontWeight = FontWeight.Bold) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(
+                        color = BrandPrimary,
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text("Checking the selected backup…")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = backupViewModel::cancelImport) {
+                    Text("Cancel", color = DarkTextSecondary)
+                }
+            },
+        )
+    }
+
+    exportNotice?.let { state ->
+        val succeeded = state is ExportState.Success
+        AlertDialog(
+            onDismissRequest = {
+                exportNotice = null
+                backupViewModel.resetExport()
+            },
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = {
+                Text(
+                    if (succeeded) "Backup exported" else "Export failed",
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Text(
+                    when (state) {
+                        is ExportState.Success -> "The backup was saved successfully."
+                        is ExportState.Error -> state.message
+                        else -> "",
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        exportNotice = null
+                        backupViewModel.resetExport()
+                    },
+                ) { Text("OK", color = BrandPrimary) }
+            },
+        )
+    }
+
+    importErrorNotice?.let { message ->
+        AlertDialog(
+            onDismissRequest = {
+                importErrorNotice = null
+                backupViewModel.resetImport()
+            },
+            containerColor = DarkCard,
+            titleContentColor = DarkTextPrimary,
+            textContentColor = DarkTextSecondary,
+            title = { Text("Import failed", fontWeight = FontWeight.Bold) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        importErrorNotice = null
+                        backupViewModel.resetImport()
+                    },
+                ) { Text("OK", color = BrandPrimary) }
+            },
+        )
+    }
 }
 
 @Composable
@@ -683,7 +892,9 @@ private fun SettingsSectionHeader(title: String) {
         fontWeight = FontWeight.Bold,
         color = DarkTextMuted,
         letterSpacing = 0.8.scaledSp,
-        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+        modifier = Modifier
+            .padding(start = 4.dp, bottom = 6.dp)
+            .semantics { heading() },
     )
 }
 
@@ -710,12 +921,18 @@ private fun SettingsActionRow(
     description: String? = null,
     destructive: Boolean = false,
     iconContainer: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .then(if (enabled) Modifier else Modifier.background(DarkCard.copy(alpha = 0.7f)))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -2,7 +2,7 @@
 
 ## Current status
 
-- **Overall:** Batch 2 complete — Batch 1 and Batch 2 verified; Batch 3 not started
+- **Overall:** Batch 5 in progress — Batches 1, 2, 3, and 4 verified; Phase 5 UI underway
 - **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
 - **Scope note:** This tracker organizes the supplied plan; creating it does not authorize implementation. The feature is currently removed from the app.
@@ -17,7 +17,7 @@ Read [`AGENT_PRE_PROMPT.md`](AGENT_PRE_PROMPT.md) and [`focusflow-import-export-
 - If work is blocked, leave its completion boxes unchecked and record the blocker and next decision needed.
 - If an item is skipped or its scope changes, document why rather than silently removing it.
 - Keep unrelated changes and user data out of the implementation.
-- Android Gradle/build/test commands must not run on Replit. Use GitHub Actions only when the user explicitly requests remote verification.
+- Run local Android unit tests through the configured workflow or scripts under `scripts/`, as allowed by `AGENT_PRE_PROMPT.md`. Use remote GitHub Actions only when explicitly requested.
 
 ## Batch 0 — Authorization and current-state review
 
@@ -93,34 +93,55 @@ Plan phase: **Phase 2 — Restore engine**
 
 Plan phase: **Phase 3 — File I/O**
 
-- [ ] Implement ContentResolver reads and writes for document URIs.
-- [ ] Enforce the existing byte limit, UTF-8 validation, and JSON preflight behavior; do not duplicate an existing preflight implementation.
-- [ ] Add tests for size rejection, malformed input, and read/write round-trip behavior.
+**Status:** Complete — implementation and local unit tests verified.
+
+**Initial notes**
+
+- `BackupFileManager.kt` and its focused tests do not exist yet. Reuse `BackupJsonPreflight.readUtf8Bounded` for byte-cap and UTF-8 enforcement; `BackupSerializer.parseAndValidate` already delegates JSON bounds/syntax checks to `validateAndStripBom`.
+- The tracker’s previous prohibition on Replit tests conflicts with `AGENT_PRE_PROMPT.md` and the preceding batch evidence. Follow the current pre-prompt and use the bootstrap-backed `bash scripts/test-unit.sh`; do not invoke remote CI or push.
+- No mocking library is configured for local JVM tests. Keep stream-level helpers internal and test them with in-memory streams, while the public methods remain direct `ContentResolver` adapters.
+
+- [x] Implement ContentResolver reads and writes for document URIs.
+- [x] Enforce the existing byte limit, UTF-8 validation, and JSON preflight behavior; do not duplicate an existing preflight implementation.
+- [x] Add tests for size rejection, malformed input, and read/write round-trip behavior.
 
 **Evidence / notes**
 
-- Changed files:
-- Tests/checks and results:
-- Decisions or blockers:
+- Changed files: Added `app/src/main/java/com/tbtechs/focusflow/data/backup/BackupFileManager.kt` and `app/src/test/java/com/tbtechs/focusflow/data/backup/BackupFileManagerTest.kt`.
+- Tests/checks and results: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. XML reports show 141 tests per flavor, with 0 failures, 0 errors, and 0 skipped; `BackupFileManagerTest` appears with all 4 tests in each flavor. `git diff --check` passed.
+- Decisions or blockers: The public methods directly adapt `ContentResolver` streams; internal stream helpers allow deterministic JVM tests without introducing a mocking dependency. Bounds and UTF-8 decoding delegate to `BackupJsonPreflight`; JSON scanning remains in `BackupSerializer.parseAndValidate`. No blockers. No remote CI or push was requested or run.
 
 ## Batch 4 — Intent relay and ViewModel
 
 Plan phase: **Phase 4 — ViewModel**
 
-- [ ] Implement pending external-import URI relay behavior.
-- [ ] Implement export/import state transitions, confirmation, cancellation, reset, and error handling.
-- [ ] Refresh settings after a successful restore.
-- [ ] Add focused tests for state transitions and failure/cancel paths.
+**Status:** Complete — implementation and expanded local unit tests verified.
+
+**Initial notes**
+
+- Batch 4 is limited to the pending-URI relay and backup state orchestration. Settings entry points, confirmation UI, routes, MainActivity intent dispatch, and manifest filters remain for their later batches.
+- The existing `BackupRestoreEngine` owns validated restore mutations; the new ViewModel will call it off the main thread and refresh the existing `SettingsViewModel` only after a successful restore.
+- The app has no dedicated ViewModel test rule. Use an injected test dispatcher sharing `runTest`'s scheduler, and keep file/repository operations behind focused internal seams for deterministic state-transition tests.
+
+- [x] Implement pending external-import URI relay behavior.
+- [x] Implement export/import state transitions, confirmation, cancellation, reset, and error handling.
+- [x] Refresh settings after a successful restore.
+- [x] Add focused tests for state transitions and failure/cancel paths.
 
 **Evidence / notes**
 
-- Changed files:
-- Tests/checks and results:
-- Decisions or blockers:
+- Changed files: Added `app/src/main/java/com/tbtechs/focusflow/BackupImportIntentRelay.kt`, `app/src/main/java/com/tbtechs/focusflow/ui/backup/BackupViewModel.kt`, `app/src/test/java/com/tbtechs/focusflow/BackupImportIntentRelayTest.kt`, and `app/src/test/java/com/tbtechs/focusflow/ui/backup/BackupViewModelTest.kt`.
+- Tests/checks and results: Final `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. Each XML report shows 150 tests, 0 failures, 0 errors, and 0 skipped; `BackupImportIntentRelayTest` has 2 passing tests and `BackupViewModelTest` has 7 passing tests in both flavors. `git diff --check` passed.
+- Decisions or blockers: The relay is a synchronized single-slot handoff. The ViewModel cancels stale reads, refuses cancellation while a restore is already mutating data, and keeps a validated envelope available for retry after restore failure; parse/read errors reset to Idle. A settings-refresh failure is reported as a warning after a successful restore. Internal operation seams keep state tests deterministic without new dependencies. No blockers; no remote CI or push was requested or run.
 
 ## Batch 5 — Settings and confirmation UI
 
 Plan phase: **Phase 5 — UI**
+
+**Status:** In progress.
+
+- Phase 5 scope is the Settings backup section and confirmation composable. The route constant, NavHost destination, external-intent dispatch, and manifest filters remain in Phase 6.
+- The existing BackupViewModel already holds validated import envelopes and provides progress/result states; the UI must preserve that pending envelope until explicit confirm/cancel and must not reset state when the document picker is dismissed.
 
 - [ ] Add the Settings export/import entry points in the agreed location.
 - [ ] Add the import confirmation screen and all plan-required summary fields.
@@ -187,3 +208,7 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | 2026-10-08 | Replit Agent | Batch 0 current-state review | Read the required docs and current project context. `removed.zip` is missing; current legacy database migration uses `LegacySettingsAdapter`. User authorized implementation according to the saved plan; Batch 1 is now in progress. |
 | 2026-10-08 | Replit Agent | Batch 1 — data models and serialization | Added envelope, portable settings mapping, serialization/validation, and focused tests. At the end of Batch 1 implementation, Android/Gradle tests and remote CI had not been run; a later authorized local test run verified Batch 1 and Batch 2. |
 | 2026-10-08 | Replit Agent | Batch 1 and Batch 2 verification | `bash scripts/test-unit.sh` passed both product-flavor JVM unit-test tasks (137 tests each, no failures/errors/skips). Both backup test classes appear in both XML reports. Remote CI and pushing were not requested or run. |
+| 2026-10-08 | Replit Agent | Batch 3 start — file I/O | Current pre-prompt permits local tests through the configured workflow or `scripts/`; tracker wording that prohibited them was inconsistent with that instruction and prior batch evidence. Batch 3 will use the local bootstrap-backed test script only. |
+| 2026-10-08 | Replit Agent | Batch 3 implementation | Added the ContentResolver adapter and stream tests for byte limit, UTF-8, round-trip, and parser preflight. Local verification is pending; no app code outside Batch 3 was changed. |
+| 2026-10-08 | Replit Agent | Batch 3 verification | `bash scripts/test-unit.sh` passed both product-flavor JVM test tasks; each XML report contains 141 tests with 0 failures/errors/skips, including all 4 `BackupFileManagerTest` cases. `git diff --check` passed. No remote CI or push ran. |
+| 2026-10-08 | Replit Agent | Batch 4 verification | Added the pending import URI relay and export/import ViewModel state orchestration. Final `bash scripts/test-unit.sh` passed both flavor tasks; each XML report has 150 tests with 0 failures/errors/skips, including 2 relay and 7 ViewModel tests. `git diff --check` passed. No remote CI or push ran. |
