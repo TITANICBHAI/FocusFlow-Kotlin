@@ -43,6 +43,9 @@ data class BackupSummary(
 )
 
 sealed interface BackupParseResult {
-    data class Success(val envelope: BackupEnvelope) : BackupParseResult
+    data class Success(
+        val envelope: BackupEnvelope,
+        val warnings: List<String> = emptyList(),
+    ) : BackupParseResult
     data class Failure(val message: String) : BackupParseResult
 }

@@ -1,8 +1,8 @@
 package com.tbtechs.focusflow.ui.backup
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,26 +16,36 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +54,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -55,16 +67,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.backup.BackupEnvelope
-import com.tbtechs.focusflow.data.backup.BackupSummary
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkCard
+import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.WarningBorder
+import com.tbtechs.focusflow.ui.theme.WarningIcon
+import com.tbtechs.focusflow.ui.theme.WarningSurface
 import com.tbtechs.focusflow.ui.theme.scaledSp
 
+private val ImportDangerRed = Color(0xFFEF4444)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportConfirmScreen(
     importState: ImportState,
@@ -96,11 +114,12 @@ fun ImportConfirmScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Restore Backup",
+                        text = "Import backup",
                         color = DarkTextPrimary,
+                        fontSize = 18.scaledSp,
                         fontWeight = FontWeight.Bold,
                     )
                 },
@@ -110,12 +129,13 @@ fun ImportConfirmScreen(
                         enabled = canCancel,
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Cancel import and return to Settings",
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = "Cancel import",
                             tint = if (canCancel) DarkTextPrimary else DarkTextMuted,
                         )
                     }
                 },
+                actions = { Spacer(Modifier.size(48.dp)) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
             )
         },
@@ -125,91 +145,73 @@ fun ImportConfirmScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             pendingEnvelope?.let { envelope ->
+                ImportHeroCard()
+                ImportSectionLabel("THIS FILE CONTAINS")
                 BackupSummaryCard(envelope = envelope)
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .toggleable(
-                                    value = replaceTasks,
-                                    enabled = importState is ImportState.PendingConfirm,
-                                    role = Role.Switch,
-                                    onValueChange = { replaceTasks = it },
-                                )
-                                .semantics {
-                                    stateDescription = if (replaceTasks) "On" else "Off"
-                                }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "Replace all existing tasks",
-                                modifier = Modifier.weight(1f),
-                                color = DarkTextPrimary,
-                                fontSize = 15.scaledSp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Spacer(Modifier.size(12.dp))
-                            Switch(
-                                checked = replaceTasks,
-                                onCheckedChange = null,
-                                enabled = importState is ImportState.PendingConfirm,
-                            )
-                        }
-                        if (replaceTasks) {
-                            HorizontalDivider(color = DarkBorder)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .semantics { liveRegion = LiveRegionMode.Polite }
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Warning,
-                                    contentDescription = null,
-                                    tint = BrandPrimary,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                                Text(
-                                    text = "This will permanently delete all your current tasks.",
-                                    color = DarkTextSecondary,
-                                    fontSize = 14.scaledSp,
-                                    lineHeight = 19.scaledSp,
-                                )
-                            }
-                        }
-                    }
-                }
-            } ?: run {
                 Text(
-                    text = when (importState) {
-                        ImportState.Reading -> "Reading backup…"
-                        ImportState.Restoring -> "Restoring backup…"
-                        else -> "No backup is ready to restore."
-                    },
+                    text = "Exported ${envelope.exportedAtHuman.ifBlank { "Unknown" }} · " +
+                        "App version ${envelope.appVersion?.takeIf(String::isNotBlank) ?: "Unknown"}",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { liveRegion = LiveRegionMode.Polite }
-                        .padding(vertical = 24.dp),
-                    color = DarkTextSecondary,
-                    fontSize = 16.scaledSp,
+                        .padding(horizontal = 4.dp),
+                    color = DarkTextMuted,
+                    fontSize = 12.scaledSp,
+                    lineHeight = 17.scaledSp,
+                    textAlign = TextAlign.Center,
                 )
+                val previewWarnings =
+                    (importState as? ImportState.PendingConfirm)?.warnings.orEmpty()
+                if (previewWarnings.isNotEmpty()) {
+                    ImportWarningCard(
+                        warnings = previewWarnings,
+                        backgroundColor = WarningSurface,
+                        borderColor = WarningBorder,
+                        iconColor = WarningIcon,
+                    )
+                }
+
+                ImportSectionLabel("IMPORT BEHAVIOR")
+                ImportBehaviorCard(
+                    replaceTasks = replaceTasks,
+                    enabled = importState is ImportState.PendingConfirm,
+                    onReplaceTasksChange = { replaceTasks = it },
+                )
+                if (replaceTasks) {
+                    DestructiveImportWarning()
+                }
+            } ?: run {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CloudDownload,
+                        contentDescription = null,
+                        tint = DarkTextMuted,
+                        modifier = Modifier.size(34.dp),
+                    )
+                    Text(
+                        text = when (importState) {
+                            ImportState.Reading -> "Reading backup…"
+                            ImportState.Restoring -> "Restoring backup…"
+                            else -> "No backup is ready to import."
+                        },
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        color = DarkTextSecondary,
+                        fontSize = 14.scaledSp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
 
-            if (importState == ImportState.Reading || isRestoring) {
+            if (importState == ImportState.Reading) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -225,7 +227,7 @@ fun ImportConfirmScreen(
                         strokeWidth = 2.dp,
                     )
                     Text(
-                        text = if (isRestoring) "Restoring backup…" else "Reading backup…",
+                        text = "Reading backup…",
                         color = DarkTextSecondary,
                         fontSize = 14.scaledSp,
                     )
@@ -239,8 +241,13 @@ fun ImportConfirmScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (replaceTasks) ImportDangerRed else BrandPrimary,
+                        contentColor = Color.White,
+                        disabledContainerColor = DarkSurfaceVariant,
+                        disabledContentColor = DarkTextMuted,
+                    ),
+                    shape = RoundedCornerShape(10.dp),
                 ) {
                     if (isRestoring) {
                         CircularProgressIndicator(
@@ -253,18 +260,27 @@ fun ImportConfirmScreen(
                         Spacer(Modifier.size(10.dp))
                     }
                     Text(
-                        text = if (isRestoring) "Restoring…" else "Restore",
+                        text = when {
+                            isRestoring -> "Restoring…"
+                            replaceTasks -> "Replace & Import"
+                            else -> "Merge & Import"
+                        },
                         fontWeight = FontWeight.Bold,
                     )
                 }
                 if (canCancel) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = ::cancelAndReturn,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(50.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, DarkBorder),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = DarkTextPrimary,
+                        ),
                     ) {
-                        Text("Cancel import", color = DarkTextSecondary)
+                        Text("Cancel", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -350,53 +366,284 @@ fun ImportConfirmScreen(
 }
 
 @Composable
-private fun BackupSummaryCard(envelope: BackupEnvelope) {
+private fun ImportHeroCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
+        border = BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Surface(
+                shape = CircleShape,
+                color = BrandPrimary.copy(alpha = 0.12f),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.CloudDownload,
+                    contentDescription = null,
+                    tint = BrandPrimary,
+                    modifier = Modifier
+                        .padding(14.dp)
+                        .size(28.dp),
+                )
+            }
             Text(
-                text = "Backup contents",
+                text = "FocusFlow backup",
                 color = DarkTextPrimary,
-                fontSize = 17.scaledSp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 22.scaledSp,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
             )
-            HorizontalDivider(color = DarkBorder)
-            BackupSummaryRow("Exported", envelope.exportedAtHuman.ifBlank { "Unknown" })
-            BackupSummaryRow("App version", envelope.appVersion?.takeIf(String::isNotBlank) ?: "Unknown")
-            HorizontalDivider(color = DarkBorder)
-            BackupSummaryRow("Tasks", envelope.summary.taskCount.toString())
-            BackupSummaryRow("Blocked words", envelope.summary.blockedWordCount.toString())
-            BackupSummaryRow("Schedule windows", envelope.summary.greyoutWindowCount.toString())
-            BackupSummaryRow("Daily allowances", envelope.summary.dailyAllowanceCount.toString())
+            Text(
+                text = "Review what will be brought onto this device before anything changes.",
+                color = DarkTextSecondary,
+                fontSize = 13.scaledSp,
+                lineHeight = 20.scaledSp,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
 
 @Composable
-private fun BackupSummaryRow(label: String, value: String) {
+private fun ImportSectionLabel(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(top = 4.dp),
+        color = DarkTextSecondary,
+        fontSize = 13.scaledSp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = 0.6.sp,
+    )
+}
+
+@Composable
+private fun ImportWarningCard(
+    warnings: List<String>,
+    backgroundColor: Color,
+    borderColor: Color,
+    iconColor: Color,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        border = BorderStroke(1.dp, borderColor),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(19.dp),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                warnings.forEach { warning ->
+                    Text(
+                        text = warning,
+                        color = DarkTextPrimary,
+                        fontSize = 13.scaledSp,
+                        lineHeight = 19.scaledSp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportBehaviorCard(
+    replaceTasks: Boolean,
+    enabled: Boolean,
+    onReplaceTasksChange: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        border = BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = replaceTasks,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = onReplaceTasksChange,
+                )
+                .semantics {
+                    stateDescription = if (replaceTasks) {
+                        "Replace all existing tasks"
+                    } else {
+                        "Merge with existing tasks"
+                    }
+                }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = if (replaceTasks) {
+                        "Replace all existing tasks"
+                    } else {
+                        "Merge with existing tasks"
+                    },
+                    color = DarkTextPrimary,
+                    fontSize = 15.scaledSp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = if (replaceTasks) {
+                        "Current tasks will be deleted before backup tasks are restored. " +
+                            "Portable settings are still merged."
+                    } else {
+                        "Existing task IDs are kept. New tasks are added, and portable settings " +
+                            "are merged without clearing other current settings."
+                    },
+                    color = DarkTextSecondary,
+                    fontSize = 13.scaledSp,
+                    lineHeight = 19.scaledSp,
+                )
+            }
+            Switch(
+                checked = replaceTasks,
+                onCheckedChange = null,
+                enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = ImportDangerRed,
+                    checkedTrackColor = ImportDangerRed.copy(alpha = 0.45f),
+                    uncheckedThumbColor = DarkTextSecondary,
+                    uncheckedTrackColor = DarkBorder,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DestructiveImportWarning() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = ImportDangerRed.copy(alpha = 0.10f),
+        ),
+        border = BorderStroke(1.dp, ImportDangerRed.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = ImportDangerRed,
+                modifier = Modifier.size(19.dp),
+            )
+            Text(
+                text = "This permanently deletes all current tasks. Replacement is blocked " +
+                    "while a Focus Session is active.",
+                color = DarkTextPrimary,
+                fontSize = 13.scaledSp,
+                lineHeight = 19.scaledSp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackupSummaryCard(envelope: BackupEnvelope) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        border = BorderStroke(1.dp, DarkBorder.copy(alpha = 0.55f)),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+            BackupSummaryRow(
+                icon = Icons.Outlined.FormatListBulleted,
+                label = "Tasks",
+                value = envelope.summary.taskCount.toString(),
+            )
+            HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
+            BackupSummaryRow(
+                icon = Icons.Outlined.Settings,
+                label = "Settings fields",
+                value = envelope.settings.size.toString(),
+            )
+            HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
+            BackupSummaryRow(
+                icon = Icons.Outlined.Block,
+                label = "Blocked words",
+                value = envelope.summary.blockedWordCount.toString(),
+            )
+            HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
+            BackupSummaryRow(
+                icon = Icons.Outlined.AccessTime,
+                label = "Schedule windows",
+                value = envelope.summary.greyoutWindowCount.toString(),
+            )
+            HorizontalDivider(color = DarkBorder.copy(alpha = 0.6f))
+            BackupSummaryRow(
+                icon = Icons.Outlined.Timer,
+                label = "Daily allowances",
+                value = envelope.summary.dailyAllowanceCount.toString(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackupSummaryRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 52.dp)
             .semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = DarkTextSecondary, fontSize = 14.scaledSp)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = BrandPrimary,
+            modifier = Modifier.size(19.dp),
+        )
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            color = DarkTextPrimary,
+            fontSize = 15.scaledSp,
+            fontWeight = FontWeight.SemiBold,
+        )
         Text(
             text = value,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp),
+            modifier = Modifier.padding(start = 8.dp),
             color = DarkTextPrimary,
-            fontSize = 14.scaledSp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 15.scaledSp,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.End,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

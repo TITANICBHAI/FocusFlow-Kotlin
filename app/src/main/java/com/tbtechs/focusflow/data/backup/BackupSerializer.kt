@@ -103,8 +103,33 @@ object BackupSerializer {
                 return BackupParseResult.Failure("Backup contains too many tasks.")
             }
 
-            val envelope = json.decodeFromJsonElement<BackupEnvelope>(root)
-            BackupParseResult.Success(envelope)
+            // Decode the envelope metadata independently so one malformed task
+            // row does not reject otherwise usable settings and task records.
+            val metadataRoot = JsonObject(root + ("tasks" to JsonArray(emptyList())))
+            val metadata = json.decodeFromJsonElement<BackupEnvelope>(metadataRoot)
+            val validTasks = mutableListOf<Task>()
+            var malformedTaskCount = 0
+            tasks.forEach { taskElement ->
+                try {
+                    validTasks += json.decodeFromJsonElement<Task>(taskElement)
+                } catch (_: Exception) {
+                    malformedTaskCount++
+                }
+            }
+
+            val warnings = if (malformedTaskCount == 0) {
+                emptyList()
+            } else {
+                val recordWord = if (malformedTaskCount == 1) "record will" else "records will"
+                listOf("$malformedTaskCount malformed task $recordWord be skipped.")
+            }
+            BackupParseResult.Success(
+                envelope = metadata.copy(
+                    tasks = validTasks,
+                    summary = metadata.summary.copy(taskCount = tasks.size),
+                ),
+                warnings = warnings,
+            )
         } catch (exception: BackupJsonFormatException) {
             BackupParseResult.Failure(exception.message ?: "Backup JSON is invalid.")
         } catch (exception: SerializationException) {

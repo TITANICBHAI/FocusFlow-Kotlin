@@ -8,6 +8,12 @@ import com.tbtechs.focusflow.data.backup.RestoreResult
 import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.Task
 import java.io.IOException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -99,6 +105,38 @@ class BackupViewModelTest {
         assertEquals(1, harness.operations.refreshCount)
         harness.viewModel.resetImport()
         assertEquals(ImportState.Idle, harness.viewModel.importState.value)
+    }
+
+    @Test
+    fun malformedTaskWarningsAppearInPreviewAndSurviveRetry() = runTest {
+        val harness = createHarness(testScheduler)
+        val parseWarning = "2 malformed task records will be skipped."
+        harness.viewModel.beginImport { backupWithMalformedTasks() }
+        runCurrent()
+
+        val pending = harness.viewModel.importState.value as ImportState.PendingConfirm
+        assertEquals(listOf(parseWarning), pending.warnings)
+
+        harness.operations.restoreResult = RestoreResult.Failure("Temporary restore failure.")
+        harness.viewModel.confirmImport(replaceTasks = false)
+        runCurrent()
+        harness.viewModel.resetImport()
+        assertEquals(
+            listOf(parseWarning),
+            (harness.viewModel.importState.value as ImportState.PendingConfirm).warnings,
+        )
+
+        harness.operations.restoreResult = RestoreResult.Success(
+            tasksImported = 0,
+            tasksSkipped = 0,
+            warnings = listOf("Another restore warning."),
+        )
+        harness.viewModel.confirmImport(replaceTasks = false)
+        runCurrent()
+        assertEquals(
+            listOf(parseWarning, "Another restore warning."),
+            (harness.viewModel.importState.value as ImportState.Success).warnings,
+        )
     }
 
     @Test
@@ -216,6 +254,17 @@ class BackupViewModelTest {
             appVersion = "test",
         ),
     )
+
+    private fun backupWithMalformedTasks(): String {
+        val root = Json.parseToJsonElement(validBackupJson()).jsonObject
+        val malformedTasks = JsonArray(
+            listOf(
+                JsonNull,
+                JsonObject(mapOf("id" to JsonPrimitive("incomplete-task"))),
+            ),
+        )
+        return JsonObject(root + ("tasks" to malformedTasks)).toString()
+    }
 
     private data class Harness(
         val viewModel: BackupViewModel,

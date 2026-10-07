@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
+import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
 import com.tbtechs.focusflow.enforcement.receivers.VpnWatchdogReceiver
@@ -258,6 +259,71 @@ class SettingsRepository(
     suspend fun putInt(key: String, value: Int) {
         restoreGate.write("SettingsRepository.putInt") {
             prefs.edit().putInt(key, value).apply()
+        }
+    }
+
+    suspend fun putFloat(key: String, value: Float) {
+        restoreGate.write("SettingsRepository.putFloat") {
+            prefs.edit().putFloat(key, value).apply()
+        }
+    }
+
+    suspend fun removePreference(key: String) {
+        restoreGate.write("SettingsRepository.removePreference") {
+            prefs.edit().remove(key).apply()
+        }
+    }
+
+    suspend fun refreshBackupSettingSideEffects(preferenceKeys: Set<String>): List<String> {
+        if (preferenceKeys.isEmpty()) return emptyList()
+
+        return restoreGate.write("SettingsRepository.refreshBackupSettingSideEffects") {
+            val warnings = mutableListOf<String>()
+
+            suspend fun runSideEffect(label: String, action: suspend () -> Unit) {
+                try {
+                    action()
+                } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                    throw cancellation
+                } catch (exception: Exception) {
+                    val detail = exception.message?.takeIf(String::isNotBlank)
+                    warnings += if (detail == null) {
+                        "$label could not be refreshed after restoring settings."
+                    } else {
+                        "$label could not be refreshed after restoring settings: $detail"
+                    }
+                }
+            }
+
+            if ("daily_allowance_config" in preferenceKeys) {
+                runSideEffect("Daily allowance enforcement") {
+                    allowanceConfigChangedBroadcastAction(appContext)
+                }
+            }
+
+            val schedulePreferences = setOf("recurring_block_schedules", "user_greyout_windows")
+            val vpnPreferences = setOf("net_block_explicit_packages", "net_block_focus_mirror")
+            if (preferenceKeys.any(schedulePreferences::contains)) {
+                runSideEffect("Block schedules") {
+                    setRecurringBlockSchedules(readAppSettings().recurringBlockSchedules)
+                }
+            } else if (preferenceKeys.any(vpnPreferences::contains)) {
+                runSideEffect("VPN settings") { requestVpnSync() }
+            }
+
+            if ("block_overlay_quotes" in preferenceKeys) {
+                runSideEffect("Overlay quotes") {
+                    setOverlayQuotes(parseStringArray(stringPreference(KEY_OVERLAY_QUOTES, "[]")))
+                }
+            }
+
+            if ("bed_time" in preferenceKeys || "reflection_prompts_enabled" in preferenceKeys) {
+                runSideEffect("Reflection reminder schedule") {
+                    DayRatingNotificationScheduler.ensureScheduled(appContext)
+                }
+            }
+
+            warnings
         }
     }
 

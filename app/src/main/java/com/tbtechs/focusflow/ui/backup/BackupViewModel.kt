@@ -40,7 +40,10 @@ sealed interface ExportState {
 sealed interface ImportState {
     data object Idle : ImportState
     data object Reading : ImportState
-    data class PendingConfirm(val envelope: BackupEnvelope) : ImportState
+    data class PendingConfirm(
+        val envelope: BackupEnvelope,
+        val warnings: List<String> = emptyList(),
+    ) : ImportState
     data object Restoring : ImportState
     data class Success(
         val tasksImported: Int,
@@ -73,6 +76,7 @@ class BackupViewModel internal constructor(
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
     private val _pendingImportEnvelope = MutableStateFlow<BackupEnvelope?>(null)
     val pendingImportEnvelope: StateFlow<BackupEnvelope?> = _pendingImportEnvelope.asStateFlow()
+    private var pendingImportWarnings: List<String> = emptyList()
 
     private var exportJob: Job? = null
     private var importJob: Job? = null
@@ -118,6 +122,7 @@ class BackupViewModel internal constructor(
 
         importJob?.cancel()
         _pendingImportEnvelope.value = null
+        pendingImportWarnings = emptyList()
         _importState.value = ImportState.Reading
         importJob = viewModelScope.launch(ioDispatcher) {
             try {
@@ -128,7 +133,11 @@ class BackupViewModel internal constructor(
                 when (result) {
                     is BackupParseResult.Success -> {
                         _pendingImportEnvelope.value = result.envelope
-                        _importState.value = ImportState.PendingConfirm(result.envelope)
+                        pendingImportWarnings = result.warnings
+                        _importState.value = ImportState.PendingConfirm(
+                            envelope = result.envelope,
+                            warnings = result.warnings,
+                        )
                     }
                     is BackupParseResult.Failure ->
                         _importState.value = ImportState.Error(result.message)
@@ -161,7 +170,7 @@ class BackupViewModel internal constructor(
                         _importState.value = ImportState.Error(result.message)
                     }
                     is RestoreResult.Success -> {
-                        val warnings = result.warnings.toMutableList()
+                        val warnings = (pending.warnings + result.warnings).toMutableList()
                         try {
                             operations.refreshSettingsFromStore()
                         } catch (cancellation: CancellationException) {
@@ -175,6 +184,7 @@ class BackupViewModel internal constructor(
                             }
                         }
                         _pendingImportEnvelope.value = null
+                        pendingImportWarnings = emptyList()
                         _importState.value = ImportState.Success(
                             tasksImported = result.tasksImported,
                             tasksSkipped = result.tasksSkipped,
@@ -198,6 +208,7 @@ class BackupViewModel internal constructor(
         importJob?.cancel()
         importJob = null
         _pendingImportEnvelope.value = null
+        pendingImportWarnings = emptyList()
         _importState.value = ImportState.Idle
     }
 
@@ -213,12 +224,13 @@ class BackupViewModel internal constructor(
             is ImportState.Success -> {
                 importJob = null
                 _pendingImportEnvelope.value = null
+                pendingImportWarnings = emptyList()
                 _importState.value = ImportState.Idle
             }
             is ImportState.Error -> {
                 importJob = null
                 _importState.value = _pendingImportEnvelope.value?.let {
-                    ImportState.PendingConfirm(it)
+                    ImportState.PendingConfirm(it, pendingImportWarnings)
                 } ?: ImportState.Idle
             }
             else -> Unit

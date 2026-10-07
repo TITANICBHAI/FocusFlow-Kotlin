@@ -28,6 +28,8 @@ sealed interface RestoreResult {
  */
 internal interface BackupRestoreAccess {
     suspend fun writePreference(key: String, value: LegacyPreferenceValue)
+    suspend fun writePortablePreference(key: String, value: BackupPreferenceValue)
+    suspend fun refreshRestoredSettings(preferenceKeys: Set<String>): List<String>
     suspend fun getAllTasks(): List<Task>
     suspend fun deleteAllTasks()
     suspend fun insertTask(task: Task)
@@ -84,7 +86,17 @@ class BackupRestoreEngine internal constructor(
                 exception.message ?: "Backup settings could not be read.",
             )
         }
+        val additionalPreferenceWrites = try {
+            BackupSettingsAdapter.additionalPreferenceWrites(envelope.settings)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (exception: Exception) {
+            return RestoreResult.Failure(
+                exception.message ?: "Backup settings could not be read.",
+            )
+        }
 
+        val settingsWarnings = mutableListOf<String>()
         val workResult = try {
             writeGate.write("BackupRestoreEngine.restore") {
                 if (replaceTasks && access.hasActiveFocusSession()) {
@@ -97,6 +109,13 @@ class BackupRestoreEngine internal constructor(
                 writeGate.write("BackupRestoreEngine.settings") {
                     preferenceWrites.forEach { (key, value) ->
                         access.writePreference(key, value)
+                    }
+                    additionalPreferenceWrites.forEach { (key, value) ->
+                        access.writePortablePreference(key, value)
+                    }
+                    val changedPreferenceKeys = preferenceWrites.keys + additionalPreferenceWrites.keys
+                    if (changedPreferenceKeys.isNotEmpty()) {
+                        settingsWarnings += access.refreshRestoredSettings(changedPreferenceKeys)
                     }
                 }
 
@@ -115,7 +134,7 @@ class BackupRestoreEngine internal constructor(
                 }
                 val importedIds = mutableSetOf<String>()
                 val tasksToSchedule = mutableListOf<Task>()
-                val warnings = mutableListOf<String>()
+                val warnings = settingsWarnings.toMutableList()
                 var importedCount = 0
                 var skippedCount = 0
                 val now = clock()
@@ -162,7 +181,9 @@ class BackupRestoreEngine internal constructor(
                 // Reconcile once after the batch. Replace mode also needs a
                 // pass when it imported no future schedules, to clear alarms
                 // belonging to tasks it deleted.
-                if (replaceTasks || tasksToSchedule.isNotEmpty()) {
+                if (replaceTasks || tasksToSchedule.isNotEmpty() ||
+                    "task_reminders_enabled" in additionalPreferenceWrites
+                ) {
                     writeGate.write("BackupRestoreEngine.reconcileAlarms") {
                         access.reconcileAlarms(reason = "backup-restore")
                     }
@@ -225,6 +246,19 @@ private class RepositoryBackupRestoreAccess(
                 settingsRepository.putInt(key, value.value)
         }
     }
+
+    override suspend fun writePortablePreference(key: String, value: BackupPreferenceValue) {
+        when (value) {
+            is BackupPreferenceValue.StringValue -> settingsRepository.putString(key, value.value)
+            is BackupPreferenceValue.BooleanValue -> settingsRepository.putBoolean(key, value.value)
+            is BackupPreferenceValue.IntValue -> settingsRepository.putInt(key, value.value)
+            is BackupPreferenceValue.FloatValue -> settingsRepository.putFloat(key, value.value)
+            BackupPreferenceValue.Remove -> settingsRepository.removePreference(key)
+        }
+    }
+
+    override suspend fun refreshRestoredSettings(preferenceKeys: Set<String>): List<String> =
+        settingsRepository.refreshBackupSettingSideEffects(preferenceKeys)
 
     override suspend fun getAllTasks(): List<Task> = taskRepository.getAllTasks()
 

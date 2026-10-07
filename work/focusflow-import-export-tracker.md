@@ -2,10 +2,10 @@
 
 ## Current status
 
-- **Overall:** Batches 1–6 complete and locally verified; Batch 7 in progress
+- **Overall:** Batches 1–10 implementation and local unit verification complete; Android device-only checks remain deferred
 - **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
-- **Scope note:** Implementation is batch-specific. Batch 6 is complete; later acceptance/stability work remains pending.
+- **Scope note:** Batch 10 is limited to import robustness and clearer preview behavior found in the second source comparison; export behavior is out of scope.
 
 Read [`AGENT_PRE_PROMPT.md`](AGENT_PRE_PROMPT.md) and [`focusflow-import-export-plan.md`](focusflow-import-export-plan.md) before acting on this tracker.
 
@@ -268,3 +268,108 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | 2026-10-08 | Replit Agent | Batch 6 — navigation, external intents, and manifest | Added the confirmation route, shared ViewModel destination, staged external-file handoff, and manifest filters. Both local flavor test tasks passed with 154 tests each; merged manifests contain no FileProvider. Device interactions remain untested because `adb` is unavailable. No remote CI or push ran. |
 | 2026-10-08 | Replit Agent | Batch 7 — acceptance and stability | Reconciled all Section 8 items against current source, focused tests, both merged manifests, and fresh test XML. Both local variants passed (154 tests each, no failures/errors/skips). Recorded the portable-settings restore gap, device-only checks, and no-touch review. No app source changes, remote CI, or push. |
 | 2026-10-08 | Replit Agent | Backup UI and error-display QA | Reviewed Settings export/import dialogs, restore confirmation, ViewModel transitions, navigation, and external-intent handoff. Bounded long backup metadata in summary rows, made large restore-warning lists lazy and scrollable, and made long error details scrollable. Both local test variants passed (154 each, 0 failures/errors/skips); `git diff --check` passed. `adb devices -l` reports no device, and no emulator is installed, so rendered device verification remains deferred. |
+
+## Batch 9 — Reference-source comparison and Kotlin improvements
+
+**Status:** Complete — source comparison and portable-setting restore improvements are verified; device-rendered UI checks remain deferred.
+
+**Scope**
+
+- Compare the supplied TypeScript/hybrid and flattened feature bundles with the current native Kotlin import/export implementation.
+- Use the reference behavior to close confirmed Kotlin import/export gaps without changing the v1 `.focusflow` envelope contract, weakening safety, or importing React Native code.
+- Keep the existing Kotlin preview/confirmation flow, restore gate, no-touch list, and current v1 parser protections unless evidence supports a scoped improvement.
+
+**Checklist**
+
+- [x] Compare archive import/export behavior and Settings/confirmation-screen flows with the Kotlin source.
+- [x] Restore current portable settings not covered by the legacy adapter, while keeping device-local settings out.
+- [x] Refresh existing native setting side effects and reconcile task alarms when reminder settings are restored.
+- [x] Verify the change with the configured local Android unit-test script for both product flavors.
+- [ ] Render Settings, the system picker, and the restore-confirmation screen on a device/emulator; none is available in this environment.
+
+**Initial notes**
+
+- Baseline before app edits: branch `main` was already one commit ahead of `origin/main`; the two supplied ZIPs and the existing `allowance/` documentation were untracked. No tracked app changes were present.
+- Both ZIPs were listed before extraction and their paths checked; contents were extracted only under `/tmp/focusflow-import-export-review/`.
+- The feature-specific backup service, Settings screen, import-confirm screen, and pending-import handoff files in the flat bundle are byte-identical to their counterparts in the full hybrid archive.
+- Initial comparison confirms the Kotlin exporter includes current portable fields, while `BackupRestoreEngine` restores only fields recognized by the one-time `LegacySettingsAdapter`. Existing acceptance notes already identify missing portable-setting restoration; the legacy migration adapter and policy are plan no-touch files and must not be broadened.
+- The hybrid Settings flow allows merge/replace before selecting a file and restores immediately; the native Kotlin flow already previews the selected backup and requires confirmation, with replacement off by default. Preserve the safer Kotlin flow.
+
+**Evidence / notes**
+
+- Reference files reviewed: `backupService.ts`, `types.ts`, `AppContext.tsx`, TypeScript Settings, `import-confirm.tsx`, pending-import staging, and root external-file dispatch in the full archive; feature-specific duplicate files in the flat bundle were byte-compared.
+- Current Kotlin files reviewed: `BackupSerializer`, `PortableSettingsPolicy`, `BackupRestoreEngine`, `BackupViewModel`, `SettingsRepository`, `SettingsViewModel`, `AppSettings`, `RestoreGate`, and focused backup tests.
+- Confirmed comparisons: both formats use the v1 `FocusFlowBackupV1` envelope and SAF document flows; TypeScript shallow-validates kind/settings/tasks but does not enforce version or equivalent preflight bounds, and can hide task-read failure by exporting an empty task list. Kotlin already enforces the version/resource checks, fails task-read errors, shows confirmation after file selection, defaults replacement off, checks active sessions, and reconciles alarms after the batch.
+- UI source comparison: both implementations expose import/export actions in Settings. Native Kotlin routes a picked backup to a dedicated full-screen summary/confirmation view, with replacement off by default, a destructive warning, progress, and outcome dialogs. The existing Kotlin flow is safer than the hybrid flow and remains unchanged.
+- Changed files: `BackupSettingsAdapter.kt`, `BackupRestoreEngine.kt`, `PortableSettingsPolicy.kt`, `SettingsRepository.kt`, `BackupRestoreEngineTest.kt`, and this tracker. `TsSettingsAdapter.kt`, `LegacySettingsPolicy.kt`, and `LegacySettingsMigration.kt` remain untouched.
+- Initial edit issue: the first multi-file patch did not apply its engine hunks because patch hunks were ordered incorrectly; those changes were reapplied in a separate patch and are included in the passing final test run.
+- First verification attempt: `bash scripts/test-unit.sh` passed both product flavors (155 tests each, 0 failures/errors/skips), and `git diff --check` passed. Source review then identified native scheduling/enforcement side effects, which were added before the final verification.
+- Follow-up implementation: settings restore refreshes the existing allowance, recurring-schedule, VPN, overlay-quote, and reflection-reminder effects as applicable; task alarms reconcile when the imported task-reminder preference is present. Failed refreshes are returned as restore warnings.
+- Final checks and results: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`; each XML report contains 155 tests, 0 failures, 0 errors, and 0 skipped, including `BackupRestoreEngineTest.currentPortableSettingsRestoreBeyondLegacyMappingAndIgnoreLocalFields`. `git diff --check` passed after the final source edits.
+- Environment side effect and cleanup: a Python-based XML summary command added `python-base-3.13` to `.replit`. The validated replacement helper restored the exact pre-test `.replit` content; the final diff is empty and the temporary file is absent.
+- Decisions, blockers, and deferred work: leave the TypeScript app and both supplied ZIPs unchanged; no push or GitHub Actions were requested or performed. Preserve the current Kotlin confirmation flow and parser. Actual Android-rendered UI and SAF-provider behavior remain unverified because no device/emulator is available.
+
+| 2026-10-08 | Replit Agent | Batch 9 — reference comparison and portable settings parity | Compared both archive source flows with Kotlin; added portable setting restoration and native side-effect refreshes without changing legacy migration or replacement safety. Both local product flavors passed (155 tests each, 0 failures/errors/skips); `git diff --check` passed. Restored the incidental `.replit` module addition. No push/Actions. Device-rendered UI and SAF checks remain deferred. |
+
+## Batch 10 — Import behavior parity audit
+
+**Status:** Complete for source and local-test scope — import parity improvements passed both product flavors; rendered device checks remain deferred.
+
+**Scope**
+
+- Compare only the TS and Kotlin import parser, restore path, and confirmation preview.
+- Skip structurally malformed task rows without rejecting unrelated valid tasks/settings, and surface the skipped-row count before confirmation and after restore.
+- Make merge and replacement effects explicit in the Kotlin preview. Preserve the replace-off default, explicit confirmation, active-session guard, version/size limits, and all plan no-touch rules.
+
+**Checklist**
+
+- [x] Add per-task structural parsing that tolerates malformed rows but retains strict envelope validation.
+- [x] Propagate bounded parse warnings through preview, retry, and successful restore states.
+- [x] Clarify merge vs replace behavior and show the settings-field count on the Kotlin confirmation screen.
+- [x] Add regression tests for mixed valid/invalid rows and warning persistence.
+- [x] Run the local Android unit-test script for both flavors and reconcile all evidence.
+- [ ] Render the changed confirmation screen and exercise a real picker on an Android device/emulator; none is available here.
+
+**Initial notes**
+
+- At batch start, the worktree already contains uncommitted Batch 9 changes and both attached reference ZIPs are untracked. Preserve all of them; no app files were changed before this batch.
+- The TS importer validates the top-level envelope, then skips malformed task entries individually and continues importing valid tasks. Kotlin validates the envelope by decoding its entire `List<Task>` at once, so one structurally malformed row rejects the complete file. Plan §4 explicitly says malformed task rows should be skipped.
+- The TS confirmation screen states what merge keeps/adds and that settings are merged in both modes; it also shows the count of settings fields. Kotlin confirms replacement is destructive but does not explain merge semantics or that replacement affects tasks only.
+- No changes to `BackupJsonLimits.kt`, `TsSettingsAdapter.kt`, `LegacySettingsPolicy.kt`, `LegacySettingsMigration.kt`, or any other no-touch path.
+
+**Progress notes**
+
+- Parser change and regression test verified in both flavors: envelope metadata remains strict, task rows are decoded independently under the existing task-count bound, valid rows are retained, and a single bounded warning reports malformed rows.
+- ViewModel and preview changes verified in both flavors: parse warnings remain visible on the confirmation screen, survive a retryable restore failure, and join the final success warnings. The preview now explains merge versus replacement and shows the settings-field count.
+- Final implementation files for this batch: `BackupEnvelope.kt`, `BackupSerializer.kt`, `BackupViewModel.kt`, `ImportConfirmScreen.kt`, `BackupSerializerTest.kt`, and `BackupViewModelTest.kt`. The source and tests compile in both variants.
+- Final verification: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. Each XML report set has 36 suites, 157 tests, 0 failures, 0 errors, and 0 skipped; both new regression tests appear in each variant. `git diff --check` passed. No-touch-path diff query returned no files.
+- Verification-report issue: the first XML aggregation expression assumed a specific attribute order and printed zero suites/tests; it did not indicate a Gradle test failure. A corrected count of the `tests` attribute reported 36 suites and 157 tests per variant, and the expected test names were present.
+- Device limitation: source-level confirmation copy was reviewed, but no rendered Compose interaction or real SAF picker run was possible without an Android device/emulator.
+- No GitHub Actions or push was requested or performed; `.replit` is unchanged.
+
+| 2026-10-08 | Replit Agent | Batch 10 — import behavior parity | Made Kotlin task parsing tolerant of malformed individual rows while preserving strict envelope checks; propagated a bounded skip warning through confirmation, retry, and success. Clarified merge/replacement effects and added the settings-field count. Both local variants passed (157 tests each, 0 failures/errors/skips); `git diff --check` passed. Device UI/picker checks remain deferred. No push/Actions. |
+
+## Batch 11 — Import UI parity
+**Status:** In progress — comparing the complete TS settings entry and import-confirm flow with Kotlin before making UI-only changes.
+**Scope**
+- Compare import/export placement within Settings, file review hierarchy, merge/replace choice presentation, warnings, progress, and completion UI across the supplied TS references.
+- Update Kotlin Compose UI to follow the TS hierarchy and compact sizing while preserving the existing platform picker, data summary, confirmation, restore behavior, and safety guards.
+- Do not alter backup format, import semantics, persistence, or unrelated Settings sections.
+**Checklist**
+- [x] Audit both supplied TS UI sources and the current Kotlin Settings/import screen entry paths.
+- [ ] Implement matching Settings placement and import-confirm screen hierarchy/states in Kotlin.
+- [ ] Add/update UI-level tests where supported; run the local Android unit-test script for both flavors.
+- [ ] Reconcile the tracker with actual code, tests, and explicitly deferred device rendering.
+**Initial notes**
+- Preserve Batch 9/10 uncommitted changes, both attached ZIPs, and current `.replit`; no push or GitHub Actions without explicit request.
+- Existing Kotlin Settings places Backup & Restore directly after Profile and before Appearance; TS Settings must be located across both supplied extracts before deciding whether this placement matches.
+- Device/emulator rendering and SAF picker interaction are not available in this workspace; do not claim visual runtime verification.
+
+**Progress notes**
+- Reference audit complete: the flat TS Settings places “Backup & Data” after Pomodoro and before Permissions; the TS hybrid Settings omits the entry, but its import route uses the same confirmation layout as the flat screen.
+- Both TS confirmation screens use a centered cloud-download hero, “This file contains” icon rows, an explicit merge/replace choice, a red destructive warning and red replacement action, then an outlined Cancel action. Kotlin currently uses an uncentered title, summary-first layout, a persistent switch label, and a primary-colored Restore action.
+- Kotlin currently places Backup & Restore directly after Profile, so it will move to the TS location between Pomodoro and Permissions. The existing list-based summary, parser warnings, and native document picker remain.
+- Search found no Compose UI test setup or existing `ImportConfirmScreen` tests; local Android tests will compile the changed screen and cover the existing backup ViewModel behavior.
+- An initial patch application failed because its hunks were not in file order; it made no source changes. Reapplying with ordered hunks.
+- Settings section moved to match the flat TS position after Pomodoro and before Permissions; changed the rows to cloud upload/download icons and clarified that import opens a file for review. Picker behavior is unchanged; UI build verification is pending.
+- Import confirmation now follows the TS hierarchy: centered cloud-download hero, icon-based summary rows, metadata line, merge/replace choice, red replacement warning/action, and outlined Cancel button. Existing task/settings counts, parser warnings, confirmation default, and session guard are retained; compilation and tests are pending.

@@ -190,6 +190,58 @@ class BackupRestoreEngineTest {
     }
 
     @Test
+    fun currentPortableSettingsRestoreBeyondLegacyMappingAndIgnoreLocalFields() = runTest {
+        val gate = RecordingGate()
+        val access = FakeAccess(gate = gate)
+        val engine = engine(access, gate)
+        val settings = JsonObject(
+            mapOf(
+                "generalTextScale" to JsonPrimitive(1.2),
+                "homeTextScale" to kotlinx.serialization.json.JsonNull,
+                "screenTextScales" to JsonObject(
+                    mapOf("focus.home" to JsonPrimitive(0.9)),
+                ),
+                "morningDigestEnabled" to JsonPrimitive(false),
+                "launcherWallpaperUri" to kotlinx.serialization.json.JsonNull,
+                "lastShownDebriefSessionId" to kotlinx.serialization.json.JsonNull,
+                "bedTime" to JsonPrimitive("23:15"),
+                "taskRemindersEnabled" to JsonPrimitive(false),
+                "standaloneBlockActive" to JsonPrimitive(true),
+                "vpnSelfHealEnabled" to JsonPrimitive(true),
+            ),
+        )
+
+        val result = engine.restore(
+            envelope(settings = settings),
+            currentSettings = AppSettings(),
+            replaceTasks = false,
+        )
+
+        assertTrue(result is RestoreResult.Success)
+        assertEquals(
+            mapOf(
+                "general_text_scale" to BackupPreferenceValue.FloatValue(1.2f),
+                "home_text_scale" to BackupPreferenceValue.Remove,
+                "screen_text_scales" to BackupPreferenceValue.StringValue("""{"focus.home":0.9}"""),
+                "morning_digest_enabled" to BackupPreferenceValue.BooleanValue(false),
+                "launcher_wallpaper_uri" to BackupPreferenceValue.Remove,
+                "last_shown_debrief_session_id" to BackupPreferenceValue.Remove,
+                "bed_time" to BackupPreferenceValue.StringValue("23:15"),
+                "task_reminders_enabled" to BackupPreferenceValue.BooleanValue(false),
+            ),
+            access.portablePreferenceWrites,
+        )
+        assertTrue(access.preferenceWrites.isEmpty())
+        assertTrue(access.refreshedSettingKeys.containsAll(setOf(
+            "general_text_scale",
+            "bed_time",
+            "task_reminders_enabled",
+        )))
+        assertEquals(listOf("backup-restore"), access.reconcileReasons)
+        assertTrue(gate.owners.contains("BackupRestoreEngine.settings"))
+    }
+
+    @Test
     fun malformedTaskEndTimeIsSkippedWithWarning() = runTest {
         val gate = RecordingGate()
         val access = FakeAccess(gate = gate)
@@ -281,6 +333,8 @@ class BackupRestoreEngineTest {
         private val activeSession: Boolean = false,
     ) : BackupRestoreAccess {
         val preferenceWrites = linkedMapOf<String, LegacyPreferenceValue>()
+        val portablePreferenceWrites = linkedMapOf<String, BackupPreferenceValue>()
+        var refreshedSettingKeys = emptySet<String>()
         val events = mutableListOf<String>()
         val reconcileReasons = mutableListOf<String>()
         val insertedTasks = mutableListOf<Task>()
@@ -290,6 +344,19 @@ class BackupRestoreEngineTest {
             check(gate.depth > 0) { "Preference write bypassed RestoreGate." }
             preferenceWrites[key] = value
             events += "preference:$key"
+        }
+
+        override suspend fun writePortablePreference(key: String, value: BackupPreferenceValue) {
+            check(gate.depth > 0) { "Portable preference write bypassed RestoreGate." }
+            portablePreferenceWrites[key] = value
+            events += "portable-preference:$key"
+        }
+
+        override suspend fun refreshRestoredSettings(preferenceKeys: Set<String>): List<String> {
+            check(gate.depth > 0) { "Settings refresh bypassed RestoreGate." }
+            refreshedSettingKeys = preferenceKeys
+            events += "refreshSettings"
+            return emptyList()
         }
 
         override suspend fun getAllTasks(): List<Task> {

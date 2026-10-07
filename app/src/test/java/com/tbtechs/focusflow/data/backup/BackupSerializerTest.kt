@@ -5,6 +5,10 @@ import com.tbtechs.focusflow.data.model.AllowedAppPreset
 import com.tbtechs.focusflow.data.model.BlockPreset
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import com.tbtechs.focusflow.data.model.Task
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -126,6 +130,35 @@ class BackupSerializerTest {
         )
         assertTrue(missingTasks is BackupParseResult.Failure)
         assertTrue((missingTasks as BackupParseResult.Failure).message.contains("tasks"))
+    }
+
+    @Test
+    fun parserSkipsMalformedTaskRowsAndKeepsValidRowsAndSettings() {
+        val validJson = BackupSerializer.serializeToJson(
+            BackupSerializer.buildEnvelope(sampleSettings(), listOf(sampleTask()), "1.1.4"),
+        )
+        val root = Json.parseToJsonElement(validJson).jsonObject
+        val taskRows = root.getValue("tasks").jsonArray
+        val mixedTasks = JsonArray(
+            listOf(
+                taskRows.single(),
+                JsonNull,
+                JsonObject(mapOf("id" to JsonPrimitive("incomplete-task"))),
+            ),
+        )
+        val mixedBackup = JsonObject(root + ("tasks" to mixedTasks)).toString()
+
+        val result = BackupSerializer.parseAndValidate(mixedBackup)
+
+        assertTrue(result is BackupParseResult.Success)
+        val parsed = result as BackupParseResult.Success
+        assertEquals(listOf(sampleTask()), parsed.envelope.tasks)
+        assertEquals(3, parsed.envelope.summary.taskCount)
+        assertEquals(
+            listOf("2 malformed task records will be skipped."),
+            parsed.warnings,
+        )
+        assertEquals(JsonPrimitive(false), parsed.envelope.settings["darkMode"])
     }
 
     @Test

@@ -20,6 +20,9 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 object PortableSettingsPolicy {
     private val json = Json {}
+    private val portableBackupKeys: Set<String> by lazy {
+        toPortableJson(AppSettings()).keys
+    }
 
     private val deviceLocalFields = setOf(
         "standaloneBlockActive",
@@ -135,6 +138,15 @@ object PortableSettingsPolicy {
 
         return JsonObject(fields)
     }
+
+    /**
+     * Returns whether [key] is part of the current backup contract.
+     *
+     * Restore uses this allow-list for backup-only settings. It is derived from
+     * the same projection used by export so future additions cannot accidentally
+     * make device-local settings importable.
+     */
+    fun isPortableBackupKey(key: String): Boolean = key in portableBackupKeys
 
     internal fun parseArray(fieldName: String, raw: String): JsonArray {
         val parsed = try {

@@ -31,10 +31,10 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Policy
@@ -321,32 +321,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 2. BACKUP & RESTORE
-            item {
-                SettingsSectionHeader("BACKUP & RESTORE")
-                SettingsCard {
-                    SettingsActionRow(
-                        icon = Icons.Outlined.FileUpload,
-                        title = "Export backup",
-                        description = "Save your settings and tasks to a .focusflow file",
-                        enabled = exportState != ExportState.Building,
-                        onClick = {
-                            createBackupDocument.launch(BackupSerializer.buildSuggestedFilename())
-                        },
-                    )
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    SettingsActionRow(
-                        icon = Icons.Outlined.FileDownload,
-                        title = "Import backup",
-                        description = "Restore settings and tasks from a .focusflow file",
-                        enabled = importState != ImportState.Reading &&
-                            importState != ImportState.Restoring,
-                        onClick = { openBackupDocument.launch(arrayOf("*/*")) },
-                    )
-                }
-            }
-
-            // 3. APPEARANCE
+            // 2. APPEARANCE
             item {
                 SettingsSectionHeader("APPEARANCE")
                 SettingsCard {
@@ -566,7 +541,32 @@ fun SettingsScreen(
                 }
             }
 
-            // 8. PERMISSIONS
+            // 8. BACKUP & DATA — keep the safety-net actions before device permissions.
+            item {
+                SettingsSectionHeader("BACKUP & DATA")
+                SettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Outlined.CloudUpload,
+                        title = "Export backup",
+                        description = "Choose a location to save a .focusflow backup file",
+                        enabled = exportState != ExportState.Building,
+                        onClick = {
+                            createBackupDocument.launch(BackupSerializer.buildSuggestedFilename())
+                        },
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.CloudDownload,
+                        title = "Import backup",
+                        description = "Choose a .focusflow file to review before restoring",
+                        enabled = importState != ImportState.Reading &&
+                            importState != ImportState.Restoring,
+                        onClick = { openBackupDocument.launch(arrayOf("*/*")) },
+                    )
+                }
+            }
+
+            // 9. PERMISSIONS
             item {
                 SettingsSectionHeader("PERMISSIONS")
                 SettingsCard {
@@ -579,7 +579,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 9. DIAGNOSTICS
+            // 10. DIAGNOSTICS
             item {
                 SettingsSectionHeader("DIAGNOSTICS")
                 SettingsCard {
@@ -598,7 +598,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 10. DATA
+            // 11. DATA
             item {
                 SettingsSectionHeader("DATA")
                 SettingsCard {
@@ -612,7 +612,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 11. ABOUT
+            // 12. ABOUT
             item {
                 SettingsSectionHeader("ABOUT")
                 SettingsCard {
