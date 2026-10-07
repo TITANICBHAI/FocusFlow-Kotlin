@@ -2,8 +2,8 @@
 
 ## Current status
 
-- **Overall:** Batch 0 in progress; implementation authorization is pending
-- **Authorization:** Not yet granted. The current request is treated as Batch 0 review only.
+- **Overall:** Batch 1 in progress
+- **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
 - **Scope note:** This tracker organizes the supplied plan; creating it does not authorize implementation. The feature is currently removed from the app.
 
@@ -21,18 +21,28 @@ Read [`AGENT_PRE_PROMPT.md`](AGENT_PRE_PROMPT.md) and [`focusflow-import-export-
 
 ## Batch 0 — Authorization and current-state review
 
-- [ ] Receive explicit user authorization to implement or restore this feature.
+- [x] Receive explicit user authorization to implement or restore this feature.
 - [x] Read the pre-prompt, this tracker, and the complete plan.
 - [x] Read applicable project instructions and inspect current source, repository status, and relevant paths before editing.
 - [x] Check whether plan references such as `removed.zip` exist; verify against the current code instead of assuming old paths or APIs still apply.
-- [ ] Record the agreed scope and any plan conflicts before implementation.
+- [x] Record the agreed scope and any plan conflicts before implementation.
 
 **Evidence / notes**
 
-- Authorization and scope: The current request is treated as Batch 0 review only. No explicit authorization to restore/implement `.focusflow` import/export has been received; app implementation is not authorized yet.
-- Baseline repository state: Branch `main`, commit `9d2f40f`; working tree was clean when checked.
+- Authorization and scope: User explicitly authorized reimplementation according to the saved plan on 2026-10-08. Scope is the supplied `.focusflow` plan, adapted to the current Kotlin source.
+- Baseline repository state: Branch `main`, commit `80bc745`; working tree was clean when checked before Batch 1.
 - Relevant files inspected: `replit.md`; all three `work/` documents; `LegacySettingsPolicy.kt`, `LegacySettingsMigration.kt`, `TsSettingsAdapter.kt`, `RestoreGate.kt`; legacy migration call in `FocusFlowDatabase.kt`; targeted `.focusflow` entry-point search in Settings, navigation, and AndroidManifest files.
 - Conflicts, missing references, or decisions: `removed.zip` is absent. The plan names `TsSettingsAdapter`, but the current object is `LegacySettingsAdapter` in `TsSettingsAdapter.kt`; the current migration still uses the adapter for the legacy database settings blob. No active `.focusflow` UI, route, or manifest entry point was found. Await explicit authorization and agreed implementation scope before app changes.
+
+## Batch 1 — Data models and serialization
+
+**Status:** In progress — current-source API review before implementation.
+
+**Initial notes**
+
+- `removed.zip` is unavailable; implementation must use the current Kotlin source and preserve existing legacy migration behavior.
+- No app code has been changed in this batch yet.
+- Do not run Android Gradle/build/test commands on Replit. Remote CI or pushing still requires a separate explicit request.
 
 ## Batch 1 — Data models and serialization
 
@@ -161,4 +171,4 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | Date | Agent | Batch / scope | Evidence, notes, decisions, or blockers |
 |---|---|---|---|
 | 2026-10-08 | Replit Agent | Created this tracker and organized the supplied plan; no feature implementation performed | Feature remains removed. All implementation checkboxes are intentionally unchecked pending explicit authorization. |
-| 2026-10-08 | Replit Agent | Batch 0 current-state review | Read the required docs and current project context. `removed.zip` is missing; current legacy database migration uses `LegacySettingsAdapter`. Review is documented; implementation authorization and agreed implementation scope remain pending. |
+| 2026-10-08 | Replit Agent | Batch 0 current-state review | Read the required docs and current project context. `removed.zip` is missing; current legacy database migration uses `LegacySettingsAdapter`. User authorized implementation according to the saved plan; Batch 1 is now in progress. |
