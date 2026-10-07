@@ -2,8 +2,8 @@
 
 ## Current status
 
-- **Overall:** Not started
-- **Authorization:** Awaiting an explicit user request to restore or implement `.focusflow` import/export
+- **Overall:** Batch 0 in progress; implementation authorization is pending
+- **Authorization:** Not yet granted. The current request is treated as Batch 0 review only.
 - **Last updated:** 2026-10-08
 - **Scope note:** This tracker organizes the supplied plan; creating it does not authorize implementation. The feature is currently removed from the app.
 
@@ -22,17 +22,17 @@ Read [`AGENT_PRE_PROMPT.md`](AGENT_PRE_PROMPT.md) and [`focusflow-import-export-
 ## Batch 0 — Authorization and current-state review
 
 - [ ] Receive explicit user authorization to implement or restore this feature.
-- [ ] Read the pre-prompt, this tracker, and the complete plan.
-- [ ] Read applicable project instructions and inspect current source, repository status, and relevant paths before editing.
-- [ ] Check whether plan references such as `removed.zip` exist; verify against the current code instead of assuming old paths or APIs still apply.
+- [x] Read the pre-prompt, this tracker, and the complete plan.
+- [x] Read applicable project instructions and inspect current source, repository status, and relevant paths before editing.
+- [x] Check whether plan references such as `removed.zip` exist; verify against the current code instead of assuming old paths or APIs still apply.
 - [ ] Record the agreed scope and any plan conflicts before implementation.
 
 **Evidence / notes**
 
-- Authorization and scope:
-- Baseline repository state:
-- Relevant files inspected:
-- Conflicts, missing references, or decisions:
+- Authorization and scope: The current request is treated as Batch 0 review only. No explicit authorization to restore/implement `.focusflow` import/export has been received; app implementation is not authorized yet.
+- Baseline repository state: Branch `main`, commit `9d2f40f`; working tree was clean when checked.
+- Relevant files inspected: `replit.md`; all three `work/` documents; `LegacySettingsPolicy.kt`, `LegacySettingsMigration.kt`, `TsSettingsAdapter.kt`, `RestoreGate.kt`; legacy migration call in `FocusFlowDatabase.kt`; targeted `.focusflow` entry-point search in Settings, navigation, and AndroidManifest files.
+- Conflicts, missing references, or decisions: `removed.zip` is absent. The plan names `TsSettingsAdapter`, but the current object is `LegacySettingsAdapter` in `TsSettingsAdapter.kt`; the current migration still uses the adapter for the legacy database settings blob. No active `.focusflow` UI, route, or manifest entry point was found. Await explicit authorization and agreed implementation scope before app changes.
 
 ## Batch 1 — Data models and serialization
 
@@ -161,3 +161,4 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | Date | Agent | Batch / scope | Evidence, notes, decisions, or blockers |
 |---|---|---|---|
 | 2026-10-08 | Replit Agent | Created this tracker and organized the supplied plan; no feature implementation performed | Feature remains removed. All implementation checkboxes are intentionally unchecked pending explicit authorization. |
+| 2026-10-08 | Replit Agent | Batch 0 current-state review | Read the required docs and current project context. `removed.zip` is missing; current legacy database migration uses `LegacySettingsAdapter`. Review is documented; implementation authorization and agreed implementation scope remain pending. |
