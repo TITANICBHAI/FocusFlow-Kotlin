@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import com.tbtechs.focusflow.data.repository.AlarmCapabilitySnapshotRecord
 import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
     private var requestedRoute by mutableStateOf(Routes.HOME)
     private var focusDayRating by mutableStateOf(false)
     private var notificationEventNonce by mutableStateOf(0)
+    private var externalBackupImportNonce by mutableStateOf(0)
     private var resumeNonce by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,6 +89,7 @@ class MainActivity : ComponentActivity() {
                 requestedRoute = requestedRoute,
                 focusDayRating = focusDayRating,
                 notificationEventNonce = notificationEventNonce,
+                externalBackupImportNonce = externalBackupImportNonce,
                 resumeNonce = resumeNonce,
                 vpnRepository = vpnRepository,
             )
@@ -121,12 +124,28 @@ class MainActivity : ComponentActivity() {
         AppModule.requestTaskAlarmReconciliation("activity_resume")
     }
 
-    private fun routeFromIntent(intent: Intent?): String =
+    private fun routeFromIntent(intent: Intent?): String {
         if (intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING) {
-            Routes.STATS
-        } else {
-            Routes.fromPath(intent?.data?.path)
+            return Routes.STATS
         }
+
+        val uri = intent?.data
+        if (
+            uri != null &&
+            ExternalBackupIntentPolicy.shouldStage(
+                action = intent.action,
+                uriScheme = uri.scheme,
+                mimeType = intent.type,
+                lastPathSegment = uri.lastPathSegment,
+            )
+        ) {
+            BackupImportIntentRelay.stage(uri)
+            externalBackupImportNonce++
+            return Routes.SETTINGS
+        }
+
+        return Routes.fromPath(uri?.path)
+    }
 }
 
 @Composable
@@ -134,6 +153,7 @@ private fun FocusFlowRoot(
     requestedRoute: String,
     focusDayRating: Boolean,
     notificationEventNonce: Int,
+    externalBackupImportNonce: Int,
     resumeNonce: Int,
     vpnRepository: VpnRepository,
 ) {
@@ -224,6 +244,7 @@ private fun FocusFlowRoot(
     }
     var showFullScreenIntentPrompt by remember { mutableStateOf(false) }
     var dismissedAchievementId by remember { mutableStateOf<String?>(null) }
+    var handledExternalBackupImportNonce by remember { mutableStateOf(0) }
     val achievementState by statsViewModel.achievementState.collectAsState()
     val newlyEarned = achievementState?.newlyEarnedIds.orEmpty()
         .firstOrNull()
@@ -272,6 +293,7 @@ private fun FocusFlowRoot(
         isDbReady,
         privacyAccepted,
         onboardingComplete,
+        externalBackupImportNonce,
     ) {
         if (!isDbReady) return@LaunchedEffect
         val currentRoute = navController.currentBackStackEntry?.destination?.route
@@ -284,6 +306,20 @@ private fun FocusFlowRoot(
                 requestedRoute != Routes.PRIVACY_POLICY &&
                 requestedRoute != Routes.ONBOARDING -> Routes.ONBOARDING
             else -> requestedRoute
+        }
+
+        if (
+            externalBackupImportNonce != handledExternalBackupImportNonce &&
+            guardedRoute == Routes.SETTINGS
+        ) {
+            handledExternalBackupImportNonce = externalBackupImportNonce
+            navController.navigate(Routes.SETTINGS) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = false
+                }
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
         }
 
         // When user just completed onboarding and is viewing the How-To-Use onboarding tour,
@@ -392,6 +428,7 @@ private fun FocusFlowRoot(
                     appBootViewModel = appBootViewModel,
                     statsViewModel = statsViewModel,
                     vpnRepository = vpnRepository,
+                    externalBackupImportNonce = externalBackupImportNonce,
                     onOnboardingTourFinished = {
                         // A normal cold launch starts on Schedule, but the
                         // first post-onboarding handoff intentionally lands on

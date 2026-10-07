@@ -28,4 +28,10 @@ class RoutesTest {
         assertEquals(Routes.PERMISSIONS, Routes.fromPath("/permissions"))
         assertTrue(Routes.PERMISSIONS in Routes.externalLinkableRoutes)
     }
+
+    @Test
+    fun importConfirmationIsInternalAndPartOfTheArchitectureRoutes() {
+        assertTrue(Routes.IMPORT_CONFIRM in Routes.architectureRoutes)
+        assertFalse(Routes.IMPORT_CONFIRM in Routes.externalLinkableRoutes)
+    }
 }

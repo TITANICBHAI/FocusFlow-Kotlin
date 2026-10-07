@@ -8,3 +8,9 @@ Invoking a language runtime that is not already configured can automatically add
 **Why:** A Python source-check command caused an unrelated module entry to appear, and the normal patch operation was rejected by the config guard.
 
 **How to apply:** Prefer already-configured shell or Node tools for one-off checks. If a `.replit` change is needed, use the validated temporary-file replacement flow and verify the final diff.
+
+The validated replacement helper may remove its temporary input file; check before trying to clean it up manually.
+
+**Why:** After a successful replacement, the prepared temporary file was already absent.
+
+**How to apply:** Verify the `.replit` diff after replacement. Treat a missing temporary file afterward as normal rather than as a failed restore.

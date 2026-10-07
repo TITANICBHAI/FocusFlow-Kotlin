@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tbtechs.focusflow.BackupImportIntentRelay
 import com.tbtechs.focusflow.data.backup.BackupSerializer
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.ui.backup.BackupViewModel
@@ -123,6 +124,7 @@ fun SettingsScreen(
     onOpenChangelog: () -> Unit = {},
     onOpenPrivacyTerms: () -> Unit = {},
     onOpenImportConfirmation: (() -> Unit)? = null,
+    externalImportEventNonce: Int = 0,
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val settings by settingsViewModel.settings.collectAsState()
@@ -178,6 +180,11 @@ fun SettingsScreen(
         if (uri != null) {
             backupViewModel.beginImport(context.contentResolver, uri)
         }
+    }
+
+    LaunchedEffect(externalImportEventNonce) {
+        val uri = BackupImportIntentRelay.consume() ?: return@LaunchedEffect
+        backupViewModel.beginImport(context.contentResolver, uri)
     }
 
     LaunchedEffect(importState) {
@@ -794,6 +801,7 @@ fun SettingsScreen(
                     Text("Writing the backup file…")
                 }
             },
+            confirmButton = {},
         )
     }
 
@@ -817,6 +825,7 @@ fun SettingsScreen(
                     Text("Checking the selected backup…")
                 }
             },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = backupViewModel::cancelImport) {
                     Text("Cancel", color = DarkTextSecondary)
@@ -846,7 +855,7 @@ fun SettingsScreen(
                     when (state) {
                         is ExportState.Success -> "The backup was saved successfully."
                         is ExportState.Error -> state.message
-                        else -> "",
+                        else -> ""
                     },
                 )
             },

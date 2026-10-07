@@ -11,6 +11,7 @@ object Routes {
     const val FOCUS = "focus"
     const val STATS = "stats"
     const val SETTINGS = "settings"
+    const val IMPORT_CONFIRM = "import_confirm"
     const val TEXT_SIZE_SETTINGS = "text_size_settings"
     const val SETTINGS_HOW_TO_USE = "settings_how_to_use"
     const val DEFENSE = "defense"
@@ -40,6 +41,7 @@ object Routes {
         FOCUS,
         STATS,
         SETTINGS,
+        IMPORT_CONFIRM,
         TEXT_SIZE_SETTINGS,
         SETTINGS_HOW_TO_USE,
         DEFENSE,

@@ -193,7 +193,7 @@ fun ImportConfirmScreen(
                     text = when (importState) {
                         ImportState.Reading -> "Reading backup…"
                         ImportState.Restoring -> "Restoring backup…"
-                        else -> "No backup is ready to restore.",
+                        else -> "No backup is ready to restore."
                     },
                     modifier = Modifier
                         .fillMaxWidth()

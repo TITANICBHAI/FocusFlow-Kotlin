@@ -47,6 +47,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tbtechs.focusflow.data.repository.InstalledAppsRepository
 import com.tbtechs.focusflow.data.repository.LauncherController
 import com.tbtechs.focusflow.data.repository.VpnRepository
@@ -57,6 +58,8 @@ import com.tbtechs.focusflow.ui.AppBootViewModel
 import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
+import com.tbtechs.focusflow.ui.backup.BackupViewModel
+import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
 import com.tbtechs.focusflow.ui.active.ActiveScreen
 import com.tbtechs.focusflow.ui.alwayson.AlwaysOnScreen
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
@@ -103,6 +106,7 @@ fun FocusFlowNavGraph(
     appBootViewModel: AppBootViewModel,
     statsViewModel: com.tbtechs.focusflow.ui.stats.StatsViewModel,
     vpnRepository: VpnRepository,
+    externalBackupImportNonce: Int = 0,
     onOnboardingTourFinished: () -> Unit = {},
     focusDayRating: Boolean = false,
 ) {
@@ -121,6 +125,9 @@ fun FocusFlowNavGraph(
     var pendingQuickBlockPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingQuickBlockAppName by rememberSaveable { mutableStateOf("") }
     val settings by settingsViewModel.settings.collectAsState()
+    val backupViewModel: BackupViewModel = viewModel(
+        factory = BackupViewModel.factory(settingsViewModel),
+    )
 
     fun navigate(route: String) {
         val destinationBase = RouteTextScaleContext.routeBase(route) ?: route
@@ -270,9 +277,11 @@ fun FocusFlowNavGraph(
                         ScreenBoundary(Routes.SETTINGS) {
                             SettingsScreen(
                                 settingsViewModel = settingsViewModel,
+                                backupViewModel = backupViewModel,
                                 taskViewModel = taskViewModel,
                                 focusSessionViewModel = focusSessionViewModel,
                                 appBootViewModel = appBootViewModel,
+                                externalImportEventNonce = externalBackupImportNonce,
                                 onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
                                 onOpenTextSize = { navigate(Routes.TEXT_SIZE_SETTINGS) },
                                 onOpenHowToUse = { navigate(Routes.SETTINGS_HOW_TO_USE) },
@@ -282,9 +291,27 @@ fun FocusFlowNavGraph(
                                 onOpenPrivacyTerms = {
                                     navigate("${Routes.PRIVACY_POLICY}?revisit=true")
                                 },
+                                onOpenImportConfirmation = {
+                                    navigate(Routes.IMPORT_CONFIRM)
+                                },
                             )
                         }
                     }
+                }
+            }
+            composable(Routes.IMPORT_CONFIRM) {
+                val importState by backupViewModel.importState.collectAsState()
+                val pendingImportEnvelope by backupViewModel.pendingImportEnvelope.collectAsState()
+                ScreenBoundary(Routes.IMPORT_CONFIRM) {
+                    ImportConfirmScreen(
+                        importState = importState,
+                        pendingEnvelope = pendingImportEnvelope,
+                        onConfirm = backupViewModel::confirmImport,
+                        onCancelImport = backupViewModel::cancelImport,
+                        onResetImport = backupViewModel::resetImport,
+                        onDone = { navigate(Routes.SETTINGS) },
+                        onCancel = ::back,
+                    )
                 }
             }
             composable(

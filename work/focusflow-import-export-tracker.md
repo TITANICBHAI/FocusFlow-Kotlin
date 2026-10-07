@@ -2,10 +2,10 @@
 
 ## Current status
 
-- **Overall:** Batch 5 in progress — Batches 1, 2, 3, and 4 verified; Phase 5 UI underway
+- **Overall:** Batches 1–6 complete and locally verified; Batch 7 remains pending
 - **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
-- **Scope note:** This tracker organizes the supplied plan; creating it does not authorize implementation. The feature is currently removed from the app.
+- **Scope note:** Implementation is batch-specific. Batch 6 is complete; later acceptance/stability work remains pending.
 
 Read [`AGENT_PRE_PROMPT.md`](AGENT_PRE_PROMPT.md) and [`focusflow-import-export-plan.md`](focusflow-import-export-plan.md) before acting on this tracker.
 
@@ -138,38 +138,53 @@ Plan phase: **Phase 4 — ViewModel**
 
 Plan phase: **Phase 5 — UI**
 
-**Status:** In progress.
+**Status:** Complete — both local unit-test variants passed.
 
 - Phase 5 scope is the Settings backup section and confirmation composable. The route constant, NavHost destination, external-intent dispatch, and manifest filters remain in Phase 6.
 - The existing BackupViewModel already holds validated import envelopes and provides progress/result states; the UI must preserve that pending envelope until explicit confirm/cancel and must not reset state when the document picker is dismissed.
 
-- [ ] Add the Settings export/import entry points in the agreed location.
-- [ ] Add the import confirmation screen and all plan-required summary fields.
-- [ ] Keep task replacement off by default and show the deletion warning when enabled.
-- [ ] Handle progress, success, and errors without losing pending state or changing data on cancellation.
-- [ ] Verify accessibility, navigation, and screen states affected by the UI.
+**Initial notes — resumed 2026-10-08**
+
+- Baseline at review start: `main`; no tracked or staged code changes. The only untracked file was the user's attached read-first instruction; no app files had been modified yet.
+- The current Settings screen already includes SAF export/import launchers, a Backup & Restore section after Profile, and the inline confirmation fallback. The confirmation UI includes all four summary counts, defaults replacement off, warns on replacement, exposes progress/results/errors, and has accessible labels/state semantics.
+- Keep this in-screen confirmation for Batch 5. Do not add `IMPORT_CONFIRM`, a NavHost destination, file-open dispatch, or manifest filters; those stay in Batch 6.
+- State review found that a cancelled document picker leaves the ViewModel state untouched, explicit cancellation clears the pending envelope, and retryable restore errors preserve it. Local JVM ViewModel tests cover these state transitions. `adb` is unavailable, so device-based Compose UI tests are not currently runnable.
+
+- [x] Add the Settings export/import entry points in the agreed location.
+- [x] Add the import confirmation screen and all plan-required summary fields.
+- [x] Keep task replacement off by default and show the deletion warning when enabled.
+- [x] Handle progress, success, and errors without losing pending state or changing data on cancellation.
+- [x] Verify accessibility, navigation, and screen states affected by the UI.
 
 **Evidence / notes**
 
-- Changed files:
-- UI checks and results:
-- Data-safety review:
-- Decisions or blockers:
+- Verification history: the first `bash scripts/test-unit.sh` run failed KSP parsing on invalid trailing commas after final `else` entries in two UI `when` expressions. The second run passed KSP but failed Kotlin compilation because the two progress `AlertDialog` calls lacked the required `confirmButton` slot. Both issues were fixed.
+- Changed files: `app/src/main/java/com/tbtechs/focusflow/ui/backup/ImportConfirmScreen.kt`, `app/src/main/java/com/tbtechs/focusflow/ui/settings/SettingsScreen.kt`, and `work/focusflow-import-export-tracker.md`; the Backup & Restore UI was already present and was retained.
+- Tests/checks and results: final `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`, each with 150 tests, 0 failures, 0 errors, and 0 skipped. `git diff --check` passed.
+- UI checks and results: reviewed the Settings entry-point placement and inline confirmation flow, including back/cancel/done callbacks, switch role and state description, warning live region, progress descriptions, and result/error handling. Existing `BackupViewModelTest` state tests passed in both variants. `adb` is unavailable, so device-based Compose UI testing was not run.
+- Data-safety review: replacement starts off; the permanent-deletion warning appears only when selected. Dismissing the document picker does not mutate import state, explicit cancellation clears pending import without restoring, and a retryable restore error returns to the pending confirmation.
+- Decisions or blockers: Batch 5 uses the in-screen confirmation. `IMPORT_CONFIRM`, a NavHost destination, external file-open routing, and manifest filters remain in Phase 6. No current Batch 5 blocker.
 
 ## Batch 6 — Navigation, external intents, and manifest
 
 Plan phase: **Phase 6 — Navigation and plumbing**
 
-- [ ] Add the confirmation route and navigation destination.
-- [ ] Route staged external file-open intents through the in-app confirmation flow.
-- [ ] Add only the necessary manifest intent filters; do not add a FileProvider unless new evidence requires it.
-- [ ] Verify cancellation and completion return to the expected destination.
+**Status:** Complete — both local test variants passed; navigation and packaged manifests reviewed.
+
+- [x] Add the confirmation route and navigation destination.
+- [x] Route staged external file-open intents through the in-app confirmation flow.
+- [x] Add only the necessary manifest intent filters; do not add a FileProvider unless new evidence requires it.
+- [x] Verify cancellation and completion return to the expected destination.
 
 **Evidence / notes**
 
-- Changed files:
-- Checks and results:
-- Decisions or blockers:
+- Changed files: `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/tbtechs/focusflow/MainActivity.kt`, `ExternalBackupIntentPolicy.kt`, `ui/navigation/FocusFlowNavGraph.kt`, `ui/navigation/Routes.kt`, `ui/settings/SettingsScreen.kt`, `app/src/test/java/com/tbtechs/focusflow/ExternalBackupIntentPolicyTest.kt`, `ui/navigation/RoutesTest.kt`, and this tracker. The existing Batch 5 confirmation screen changes and the user's untracked read-first attachment were preserved.
+- Tests/checks and results: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. Both XML report sets contain 154 tests, 0 failures, 0 errors, and 0 skipped; the new `ExternalBackupIntentPolicyTest` and updated `RoutesTest` appear in both. `git diff --check` passed.
+- Intent/manifest verification: both packaged flavor manifests include the new octet-stream and `.focusflow` `ACTION_VIEW` filters on `MainActivity`; neither contains a `FileProvider` entry.
+- Navigation review: Settings consumes the staged URI and navigates only after validation reaches `PendingConfirm`. Cancel clears the pending import and pops back to Settings; successful completion resets state and navigates to Settings. External reopens reset the back stack to Settings so an older confirmation cannot remain underneath.
+- Device checks and limitations: `adb` is unavailable, so file-open, cancel, and completion interactions were not exercised on a device. The routing, callback wiring, manifest merge, and corresponding JVM policy/route tests were verified locally.
+- Decisions or blockers: Accept only `ACTION_VIEW` content/file URIs with `application/octet-stream` or a `.focusflow` path suffix; preserve existing app deep links. No FileProvider, push, or GitHub Actions run was added or requested. Batch 7 remains out of scope.
+- Local environment side effect: The post-test Python XML-report summary added `python-base-3.13` to `.replit`. The validated replacement flow restored the tracked baseline; the final `.replit` diff is empty, and the temporary restore file was absent after replacement.
 
 ## Batch 7 — Acceptance and stability
 
@@ -212,3 +227,4 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | 2026-10-08 | Replit Agent | Batch 3 implementation | Added the ContentResolver adapter and stream tests for byte limit, UTF-8, round-trip, and parser preflight. Local verification is pending; no app code outside Batch 3 was changed. |
 | 2026-10-08 | Replit Agent | Batch 3 verification | `bash scripts/test-unit.sh` passed both product-flavor JVM test tasks; each XML report contains 141 tests with 0 failures/errors/skips, including all 4 `BackupFileManagerTest` cases. `git diff --check` passed. No remote CI or push ran. |
 | 2026-10-08 | Replit Agent | Batch 4 verification | Added the pending import URI relay and export/import ViewModel state orchestration. Final `bash scripts/test-unit.sh` passed both flavor tasks; each XML report has 150 tests with 0 failures/errors/skips, including 2 relay and 7 ViewModel tests. `git diff --check` passed. No remote CI or push ran. |
+| 2026-10-08 | Replit Agent | Batch 6 — navigation, external intents, and manifest | Added the confirmation route, shared ViewModel destination, staged external-file handoff, and manifest filters. Both local flavor test tasks passed with 154 tests each; merged manifests contain no FileProvider. Device interactions remain untested because `adb` is unavailable. No remote CI or push ran. |
