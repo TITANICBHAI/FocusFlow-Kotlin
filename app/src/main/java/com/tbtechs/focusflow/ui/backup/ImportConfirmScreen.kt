@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +50,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.data.backup.BackupEnvelope
@@ -273,7 +278,14 @@ fun ImportConfirmScreen(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Could not restore backup", fontWeight = FontWeight.Bold) },
-            text = { Text(error.message) },
+            text = {
+                Text(
+                    text = error.message,
+                    modifier = Modifier
+                        .heightIn(max = 180.dp)
+                        .verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = onResetImport) {
                     Text("OK", color = BrandPrimary)
@@ -296,8 +308,30 @@ fun ImportConfirmScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("${success.tasksImported} tasks imported.")
                     Text("${success.tasksSkipped} tasks skipped.")
-                    success.warnings.forEach { warning ->
-                        Text(warning, color = DarkTextSecondary)
+                    if (success.warnings.isNotEmpty()) {
+                        Text(
+                            text = if (success.warnings.size == 1) {
+                                "1 note"
+                            } else {
+                                "${success.warnings.size} notes"
+                            },
+                            color = DarkTextSecondary,
+                            fontSize = 13.scaledSp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 220.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            itemsIndexed(
+                                items = success.warnings,
+                                key = { index, _ -> index },
+                            ) { _, warning ->
+                                Text(warning, color = DarkTextSecondary)
+                            }
+                        }
                     }
                 }
             },
@@ -355,6 +389,17 @@ private fun BackupSummaryRow(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = DarkTextSecondary, fontSize = 14.scaledSp)
-        Text(value, color = DarkTextPrimary, fontSize = 14.scaledSp, fontWeight = FontWeight.Medium)
+        Text(
+            text = value,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp),
+            color = DarkTextPrimary,
+            fontSize = 14.scaledSp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

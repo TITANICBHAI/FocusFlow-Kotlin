@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Apps
@@ -851,13 +854,18 @@ fun SettingsScreen(
                 )
             },
             text = {
-                Text(
-                    when (state) {
-                        is ExportState.Success -> "The backup was saved successfully."
-                        is ExportState.Error -> state.message
-                        else -> ""
-                    },
-                )
+                when (state) {
+                    is ExportState.Success ->
+                        Text("The backup was saved successfully.")
+                    is ExportState.Error ->
+                        Text(
+                            text = state.message,
+                            modifier = Modifier
+                                .heightIn(max = 180.dp)
+                                .verticalScroll(rememberScrollState()),
+                        )
+                    else -> Unit
+                }
             },
             confirmButton = {
                 TextButton(
@@ -880,7 +888,14 @@ fun SettingsScreen(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Import failed", fontWeight = FontWeight.Bold) },
-            text = { Text(message) },
+            text = {
+                Text(
+                    text = message,
+                    modifier = Modifier
+                        .heightIn(max = 180.dp)
+                        .verticalScroll(rememberScrollState()),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
