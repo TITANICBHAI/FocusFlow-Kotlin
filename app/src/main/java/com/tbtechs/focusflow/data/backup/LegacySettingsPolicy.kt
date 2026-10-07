@@ -1,11 +1,11 @@
-package com.tbtechs.focusflow.data.repository
+package com.tbtechs.focusflow.data.backup
 
 /**
- * Device-local enforcement/runtime state is never portable, even in older
- * backup files that included these keys.
+ * Settings from the retired TypeScript app that represent runtime or
+ * device-local state must not overwrite the native app's preferences.
  */
-object BackupSettingsPolicy {
-    val neverApplyImportKeys: Set<String> = setOf(
+object LegacySettingsPolicy {
+    private val deviceLocalKeys = setOf(
         "standaloneBlockPackages",
         "standaloneBlockUntil",
         "standaloneVpnPackages",
@@ -29,8 +29,5 @@ object BackupSettingsPolicy {
         "pinProtectionEnabled",
     )
 
-    fun mayApplyImportKey(key: String): Boolean = key !in neverApplyImportKeys
-
-    fun importableKeys(keys: Iterable<String>): Set<String> =
-        keys.filterTo(linkedSetOf()) { mayApplyImportKey(it) }
+    fun mayMigrateKey(key: String): Boolean = key !in deviceLocalKeys
 }

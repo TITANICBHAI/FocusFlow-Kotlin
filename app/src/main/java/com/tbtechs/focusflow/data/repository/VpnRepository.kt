@@ -376,37 +376,6 @@ class VpnRepository(
     }
 
     /**
-     * Activates the VPN list after the user grants consent during backup import.
-     * Both Defense switches are committed together before the coordinator sync.
-     */
-    suspend fun activateImportedVpnBlock() {
-        restoreGate.write("VpnRepository.activateImportedVpnBlock") {
-            if (!isVpnPermissionGranted()) {
-                throw SecurityException("VPN permission was not granted")
-            }
-            if (parsePackageList(
-                    prefs.getString("net_block_explicit_packages", "[]") ?: "[]",
-                ).isEmpty()
-            ) {
-                throw IllegalStateException("The imported VPN list is empty")
-            }
-
-            synchronized(VpnSelfHealPolicy.preferenceLock) {
-                check(
-                    prefs.edit()
-                        .putBoolean("net_block_enabled", true)
-                        .putBoolean("net_block_vpn", true)
-                        .putBoolean(VpnSelfHealPolicy.NATIVE_PREFERENCE_KEY, true)
-                        .commit(),
-                ) {
-                    "Could not activate the imported VPN list"
-                }
-            }
-            VpnPolicyCoordinator.requestRecoverySync(context)
-        }
-    }
-
-    /**
      * Direct WiFi disable.
      */
     suspend fun tryDisableWifi() {

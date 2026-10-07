@@ -28,10 +28,7 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.CloudDownload
-import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Notifications
@@ -110,11 +107,8 @@ fun SettingsScreen(
     onOpenHowToUse: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
-    onExportBackup: (() -> Unit)? = null,
-    onImportBackup: ((replaceTasks: Boolean) -> Unit)? = null,
     onReportIssue: (() -> Unit)? = null,
     onOpenChangelog: () -> Unit = {},
-    onOpenFocusFlowFileGuide: () -> Unit = {},
     onOpenPrivacyTerms: () -> Unit = {},
 ) {
     val dimensions = LocalFocusFlowDimensions.current
@@ -127,7 +121,6 @@ fun SettingsScreen(
 
     var overlayAppearanceVisible by remember { mutableStateOf(false) }
     var clearAllConfirmationVisible by remember { mutableStateOf(false) }
-    var importChoiceVisible by remember { mutableStateOf(false) }
     var reportIssueVisible by remember { mutableStateOf(false) }
     var allowedAppsVisible by remember { mutableStateOf(false) }
     var focusPinVisible by remember { mutableStateOf(false) }
@@ -463,36 +456,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 8. BACKUP & DATA
-            item {
-                SettingsSectionHeader("BACKUP & DATA")
-                SettingsCard {
-                    SettingsActionRow(
-                        icon = Icons.Outlined.CloudUpload,
-                        title = "Export Backup",
-                        description = "Save a .focusflow file — share to Drive, Files, or email",
-                        onClick = {
-                            if (onExportBackup == null) {
-                                unavailable(
-                                    "Backup export unavailable",
-                                    "Backup export is unavailable in this app session.",
-                                )
-                            } else {
-                                onExportBackup()
-                            }
-                        },
-                    )
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    SettingsActionRow(
-                        icon = Icons.Outlined.CloudDownload,
-                        title = "Import Backup",
-                        description = "Restore from a .focusflow backup file",
-                        onClick = { importChoiceVisible = true },
-                    )
-                }
-            }
-
-            // 9. PERMISSIONS
+            // 8. PERMISSIONS
             item {
                 SettingsSectionHeader("PERMISSIONS")
                 SettingsCard {
@@ -505,7 +469,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 10. DIAGNOSTICS
+            // 9. DIAGNOSTICS
             item {
                 SettingsSectionHeader("DIAGNOSTICS")
                 SettingsCard {
@@ -524,7 +488,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 11. DATA
+            // 10. DATA
             item {
                 SettingsSectionHeader("DATA")
                 SettingsCard {
@@ -538,7 +502,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 12. ABOUT
+            // 11. ABOUT
             item {
                 SettingsSectionHeader("ABOUT")
                 SettingsCard {
@@ -547,13 +511,6 @@ fun SettingsScreen(
                         title = "How to Use",
                         description = "Learn the modes, protections, and settings",
                         onClick = onOpenHowToUse,
-                    )
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    SettingsActionRow(
-                        icon = Icons.Outlined.Description,
-                        title = "FocusFlow File Guide",
-                        description = "Project references and a copy-ready guide for coding agents",
-                        onClick = onOpenFocusFlowFileGuide,
                     )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsActionRow(
@@ -641,53 +598,6 @@ fun SettingsScreen(
         },
         onClose = { allowedAppsVisible = false },
     )
-
-    if (importChoiceVisible) {
-        AlertDialog(
-            onDismissRequest = { importChoiceVisible = false },
-            containerColor = DarkCard,
-            titleContentColor = DarkTextPrimary,
-            textContentColor = DarkTextSecondary,
-            title = { Text("Restore from backup", fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    "Choose how to handle tasks. On the next screen, you can also choose " +
-                        "whether to import portable settings.",
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        importChoiceVisible = false
-                        if (onImportBackup == null) {
-                            unavailable("Backup import unavailable", "Backup import is unavailable in this app session.")
-                        } else {
-                            onImportBackup(false)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                ) { Text("Merge tasks") }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = { importChoiceVisible = false }) {
-                        Text("Cancel", color = DarkTextSecondary)
-                    }
-                    TextButton(onClick = {
-                        importChoiceVisible = false
-                        if (onImportBackup == null) {
-                            unavailable("Backup import unavailable", "Backup import is unavailable in this app session.")
-                        } else {
-                            onImportBackup(true)
-                        }
-                    }) {
-                        Text("Replace tasks", color = Color(0xFFEF4444))
-                    }
-                }
-            },
-        )
-    }
 
     if (clearAllConfirmationVisible) {
         AlertDialog(

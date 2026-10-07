@@ -45,8 +45,7 @@ object TaskAlarmReconcilePlan {
 
 /**
  * Rebuilds task-end alarms and the reminder chain from Room, then synchronizes
- * the scheduled-task status card. Normal runs acquire the restore gate; restore
- * recovery uses the explicit closed-gate entry.
+ * the scheduled-task status card.
  */
 class TaskAlarmReconciler(
     private val taskRepository: TaskRepository,
@@ -63,26 +62,15 @@ class TaskAlarmReconciler(
 
     suspend fun reconcile(reason: String) =
         restoreGate.write("TaskAlarmReconciler:$reason") {
-            reconcileMutex.withLock { reconcileLocked(reason, duringRestore = false) }
+            reconcileMutex.withLock { reconcileLocked(reason) }
         }
 
-    suspend fun reconcileDuringRestore() {
-        check(restoreGate.state.value != RestoreGate.State.OPEN) {
-            "Restore reconciliation requires the restore gate to remain closed."
-        }
-        reconcileMutex.withLock { reconcileLocked("restore", duringRestore = true) }
-    }
-
-    private suspend fun reconcileLocked(reason: String, duringRestore: Boolean) {
+    private suspend fun reconcileLocked(reason: String) {
         var passes = 0
         while (passes++ <= TaskAlarmReconcilePlan.MAX_ARMED_ALARMS) {
             val nowMs = clock()
             val canonicalNow = CanonicalTimestamp.format(Instant.ofEpochMilli(nowMs))
-            if (duringRestore) {
-                taskRepository.markOverdueDuringRestore(canonicalNow)
-            } else {
-                taskRepository.markOverdue(canonicalNow)
-            }
+            taskRepository.markOverdue(canonicalNow)
 
             val tasks = taskRepository.getAllTasks()
             val desired = TaskAlarmReconcilePlan.desired(tasks, clock())

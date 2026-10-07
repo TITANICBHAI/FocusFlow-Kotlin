@@ -6,7 +6,7 @@ import com.tbtechs.focusflow.data.model.AppSettings
  * Resolves the text-scale owner for destinations outside the root tab content.
  *
  * A null sourceTab means the destination was entered directly (for example
- * from an external intent or a startup restore), so it uses General.
+ * from an external intent or a startup navigation), so it uses General.
  */
 internal object RouteTextScaleContext {
     const val SOURCE_TAB_ARGUMENT = "sourceTab"
@@ -26,12 +26,10 @@ internal object RouteTextScaleContext {
     private val ownerTabByRoute = mapOf(
         Routes.TEXT_SIZE_SETTINGS to Routes.SETTINGS,
         Routes.SETTINGS_HOW_TO_USE to Routes.SETTINGS,
-        Routes.FOCUSFLOW_FILE_GUIDE to Routes.SETTINGS,
         Routes.USER_PROFILE to Routes.SETTINGS,
         Routes.CHANGELOG to Routes.SETTINGS,
         Routes.PRIVACY_POLICY to Routes.SETTINGS,
         Routes.TERMS_OF_SERVICE to Routes.SETTINGS,
-        Routes.IMPORT_CONFIRM to Routes.SETTINGS,
         Routes.REPORTS to Routes.STATS,
         Routes.REPORT to Routes.STATS,
         Routes.ALWAYS_ON to Routes.DEFENSE,

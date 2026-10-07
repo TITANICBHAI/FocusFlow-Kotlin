@@ -57,7 +57,6 @@ class RouteTextScaleContextTest {
             Routes.CHANGELOG to Routes.SETTINGS,
             Routes.PRIVACY_POLICY to Routes.SETTINGS,
             Routes.TERMS_OF_SERVICE to Routes.SETTINGS,
-            Routes.IMPORT_CONFIRM to Routes.SETTINGS,
             Routes.REPORTS to Routes.STATS,
             Routes.REPORT to Routes.STATS,
             Routes.ALWAYS_ON to Routes.DEFENSE,
@@ -151,19 +150,6 @@ class RouteTextScaleContextTest {
                 RouteTextScaleContext.FOCUS_STANDALONE_PANEL_SCREEN,
                 configured,
                 inheritedScale = 1.2f,
-            ),
-            0f,
-        )
-    }
-
-    @Test
-    fun focusFlowFileGuideUsesSettingsTextScale() {
-        assertEquals(
-            1.4f,
-            RouteTextScaleContext.scaleFor(
-                Routes.FOCUSFLOW_FILE_GUIDE,
-                Routes.SETTINGS,
-                settings,
             ),
             0f,
         )

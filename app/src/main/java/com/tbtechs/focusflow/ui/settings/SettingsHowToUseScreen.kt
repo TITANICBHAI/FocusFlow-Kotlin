@@ -3,7 +3,6 @@ package com.tbtechs.focusflow.ui.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.ui.graphics.Color
@@ -157,17 +156,10 @@ private val GUARDED_ADJUSTMENT_GUIDE = listOf(
         ),
     ),
     GuideSection(
-        title = "Backups and protection changes",
-        icon = Icons.Outlined.Lock,
+        title = "Protection changes",
         iconBg = Color(0xFF450A0A),
         iconTint = Color(0xFFF87171),
         steps = listOf(
-            GuideStep(
-                heading = "Why does restoring some backups ask for my Defense PIN?",
-                body = "If a backup would remove protection entries or turn off Focus Mirror, the import flow requires the Defense PIN before applying those changes. Other import confirmations are separate from this protection check.",
-                destination = Routes.SETTINGS,
-                destinationLabel = "Open Settings backup options",
-            ),
             GuideStep(
                 heading = "Why do some changes stay locked instead of showing a PIN prompt?",
                 body = "An active-block lock is stronger than a PIN prompt for some actions: the change is unavailable until the block ends. Adding a safeguard may still be allowed when removing or weakening it is not.",

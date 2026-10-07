@@ -54,9 +54,6 @@ class FocusFlowApp : Application() {
         StartupLogger.info("Migration", "Checking legacy settings migration")
         FocusFlowDatabase.migrateSettingsBlobToSharedPrefs(this, AppModule.database)
 
-        // Journal recovery waits until Room and the shared stores are available.
-        AppModule.startRestoreRecovery()
-
         // 4. Register app-level notification channels.
         StartupLogger.info("Notifications", "Creating application notification channels")
         NotificationChannels.createAll(this)

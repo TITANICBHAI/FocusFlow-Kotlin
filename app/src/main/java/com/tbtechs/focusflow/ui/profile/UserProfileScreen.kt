@@ -106,7 +106,6 @@ fun UserProfileScreen(
     isEditMode: Boolean = true,
     onBack: () -> Unit,
     onFinished: () -> Unit,
-    onImportBackup: (suspend () -> Unit)? = null,
     focusSessionRepository: FocusSessionRepository? = null,
     settingsViewModel: SettingsViewModel? = null,
 ) {
@@ -128,7 +127,6 @@ fun UserProfileScreen(
     var weeklyReviewDay by remember { mutableStateOf("") }
     var weekUsageReportStartDay by remember { mutableStateOf("mon") }
     var saving by remember { mutableStateOf(false) }
-    var importBusy by remember { mutableStateOf(false) }
     var usageVisible by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf<ProfileStats?>(null) }
     var showSavedToast by remember { mutableStateOf(false) }

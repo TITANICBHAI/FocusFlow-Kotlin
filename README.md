@@ -12,68 +12,9 @@ The Android app is implemented in Kotlin with Jetpack Compose. It has two Gradle
 - Focus sessions, task scheduling, and notifications
 - Usage and progress reports, achievements, and daily ratings
 - App-blocking controls, including Accessibility and VPN-based enforcement
-- Profiles, settings, backup and restore, and a home-screen widget
+- Profiles, settings, and a home-screen widget
 
 Some blocking and background features require the corresponding Android permissions or system settings to be enabled by the user.
-
-## `.focusflow` backup files
-
-FocusFlow backups are UTF-8 JSON files using the V1 envelope. The exported file
-is named with the `.focusflow` extension and starts with the format marker
-`"kind": "FocusFlowBackupV1"`. The `settings` object contains portable settings;
-the `tasks` array contains task records and their reminders. Exported files
-also include metadata such as an export timestamp and a task-count summary.
-The importer requires `settings` to be an object and `tasks` to be an array.
-Include `"version": 1` in hand-written files; the current importer also treats
-an omitted version as V1.
-
-Here is a small example with one scheduled task:
-
-```json
-{
-  "kind": "FocusFlowBackupV1",
-  "version": 1,
-  "exportedAt": "2026-10-04T10:00:00.000Z",
-  "settings": {},
-  "tasks": [
-    {
-      "id": "weekly-review",
-      "title": "Weekly review",
-      "description": "",
-      "startTime": "2026-10-05T09:00:00.000Z",
-      "endTime": "2026-10-05T09:50:00.000Z",
-      "durationMinutes": 50,
-      "status": "scheduled",
-      "priority": "medium",
-      "tags": ["planning"],
-      "reminders": [],
-      "color": "#6366f1",
-      "focusMode": false,
-      "focusAllowedPackages": [],
-      "createdAt": "2026-10-04T10:00:00.000Z",
-      "updatedAt": "2026-10-04T10:00:00.000Z"
-    }
-  ]
-}
-```
-
-Task timestamps use ISO-8601 date-times with an explicit offset (`Z` for UTC is
-a good choice). Each task needs a unique `id`, a title, start/end and
-created/updated timestamps, a `durationMinutes` integer, a supported `status`
-(`scheduled`, `active`, `completed`, `skipped`, or `overdue`), and a supported
-`priority` (`low`, `medium`, `high`, or `critical`). Tags, reminders, color,
-`focusMode`, and `focusAllowedPackages` are also represented in task records.
-
-Import shows a review before applying changes. Matching portable settings are
-updated while settings omitted from the file stay local. Tasks can be merged
-with the existing list or replaced; **Replace removes existing task rows
-first**. Keep a copy of your current backup and review the import warnings
-before confirming.
-
-For a fuller field guide and an offline JSON editor/checker, see
-[`docs/focusflow-backup-builder.html`](docs/focusflow-backup-builder.html).
-The app's import preview and validation remain authoritative, especially for
-settings and device-specific protection.
 
 ## Build flavor debug APKs
 
@@ -163,7 +104,7 @@ This workflow creates a **debug** APK; it is not a signed release or publishing 
 ## Project layout
 
 - `app/src/main/java/com/tbtechs/focusflow/ui/` — Compose screens and navigation
-- `app/src/main/java/com/tbtechs/focusflow/data/` — persistence, repositories, backup, and restore
+- `app/src/main/java/com/tbtechs/focusflow/data/` — persistence and repositories
 - `app/src/main/java/com/tbtechs/focusflow/analytics/` — usage insights and progress summaries
 - `app/src/main/java/com/tbtechs/focusflow/enforcement/` — focus enforcement, services, and receivers
 - `app/src/main/java/com/tbtechs/focusflow/notifications/` — reminders and notification scheduling

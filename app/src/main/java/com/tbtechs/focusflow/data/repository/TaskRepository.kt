@@ -2,21 +2,17 @@ package com.tbtechs.focusflow.data.repository
 
 import com.tbtechs.focusflow.data.local.dao.TaskDao
 import com.tbtechs.focusflow.data.local.dao.TasksByHourRow
-import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.local.entity.TaskEntity
 import com.tbtechs.focusflow.data.model.Reminder
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.data.model.withCanonicalTimestamps
 import com.tbtechs.focusflow.data.restore.RestoreGate
-import com.tbtechs.focusflow.data.restore.RestorePlan
-import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 
@@ -42,7 +38,6 @@ import java.time.ZoneId
  */
 class TaskRepository(
     private val taskDao: TaskDao,
-    private val database: FocusFlowDatabase? = null,
     private val restoreGate: RestoreGate = RestoreGate(),
 ) {
 
@@ -77,25 +72,12 @@ class TaskRepository(
     fun observeAllTasks(): Flow<List<Task>> =
         taskDao.observeAllTasks().map { entities -> entities.map { it.toDomain() } }
 
-    /** One-shot task snapshot used by the native backup coordinator. */
+    /** One-shot task snapshot for app services that need a current task list. */
     suspend fun getAllTasks(): List<Task> = observeAllTasks().first()
 
     /** One-shot lookup used by status mutations and focus-session coordination. */
     suspend fun getTaskById(taskId: String): Task? =
         taskDao.getTaskById(taskId)?.toDomain()
-
-    /**
-     * Keeps the backup envelope field names aligned with the serialized domain
-     * model used by the existing React Native backup format.
-     */
-    fun taskToBackupJson(task: Task): JSONObject =
-        JSONObject(json.encodeToString(task))
-
-    /** Parses one backup task without dropping unknown future fields. */
-    fun taskFromBackupJson(raw: JSONObject): Task? =
-        runCatching {
-            json.decodeFromString<Task>(raw.toString()).withCanonicalTimestamps()
-        }.getOrNull()
 
     /**
      * Tasks that ended within the last 24 h but are still unresolved.
@@ -167,14 +149,6 @@ class TaskRepository(
             taskDao.markOverdueTasks(canonicalNow)
         }
 
-    /** Restore-only form used while the coordinator deliberately holds the gate closed. */
-    internal suspend fun markOverdueDuringRestore(canonicalNow: String): Int {
-        check(restoreGate.state.value != RestoreGate.State.OPEN) {
-            "Restore overdue writes require a closed RestoreGate."
-        }
-        return taskDao.markOverdueTasks(canonicalNow)
-    }
-
     /** Deletes the task with [taskId]. Maps to `dbDeleteTask`. */
     suspend fun deleteTask(taskId: String) {
         restoreGate.write("TaskRepository.deleteTask") { taskDao.deleteTask(taskId) }
@@ -189,26 +163,6 @@ class TaskRepository(
     suspend fun deleteAllTasksExcept(preservedTaskId: String) {
         restoreGate.write("TaskRepository.deleteAllTasksExcept") {
             taskDao.deleteAllTasksExcept(preservedTaskId)
-        }
-    }
-
-    /**
-     * Restore-only absolute task write. The entire replace/delete + insert
-     * sequence is one Room transaction; it intentionally bypasses public
-     * setters while the process-wide gate is closed.
-     */
-    internal suspend fun applyRestoreTaskPlan(plan: RestorePlan) {
-        check(restoreGate.state.value != RestoreGate.State.OPEN) {
-            "Restore task writes require a closed RestoreGate."
-        }
-        val room = requireNotNull(database) {
-            "Restore transactions require the application Room database."
-        }
-        room.withTransaction {
-            if (plan.deleteAllExisting) taskDao.deleteAllTasks()
-            plan.tasksToInsert.forEach { task ->
-                taskDao.insertTask(task.withCanonicalTimestamps().toEntity())
-            }
         }
     }
 

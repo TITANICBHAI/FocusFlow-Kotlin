@@ -60,9 +60,6 @@ private val CHANGELOG = listOf(
         ChangeSection("Protection controls", listOf(
             "Improved app-list loading, scheduled block labels, VPN permission handling, and active-protection guidance.",
         )),
-        ChangeSection("Backup import", listOf(
-            "Added a clearer review step so you can see what will be merged or replaced before importing.",
-        )),
         ChangeSection("Release Metadata", listOf("Updated FocusFlow to v1.1.4 (build 13).")),
     )),
     ChangeEntry("1.1.3", "September 2026", listOf(
@@ -88,7 +85,6 @@ private val CHANGELOG = listOf(
     ChangeEntry("1.0.9", "August 2026", listOf(
         ChangeSection("Block Overlay Cleanup", listOf("Removed the duplicate React Native blocked-app banner; native blocking remains unchanged.")),
         ChangeSection("Navigation and Focus Workflow", listOf("Reordered bottom navigation and improved task-form keyboard behavior.")),
-        ChangeSection("Backup and Import Safety", listOf("Task imports now handle complete-database ID collisions safely.")),
     )),
     ChangeEntry("1.0.8", "August 2026", listOf(
         ChangeSection("Accessibility and Enforcement", listOf("Improved recovery when Android restricts or stops AccessibilityService.")),

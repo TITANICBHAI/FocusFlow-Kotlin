@@ -1,5 +1,3 @@
-import org.gradle.api.tasks.testing.Test
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,7 +5,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
 }
-
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
@@ -128,19 +125,4 @@ dependencies {
     androidTestImplementation("androidx.room:room-testing:2.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-}
-
-val focusFlowFileImportFixtureTest =
-    "com.tbtechs.focusflow.data.backupfixture.FocusFlowFileImportFixtureTest"
-
-// The supplied user-data fixture is opt-in; routine unit-test workflows must not run it.
-val runFocusFlowFileFixture =
-    providers.gradleProperty("runFocusFlowFileFixture").isPresent
-tasks.withType<Test>().configureEach {
-    if (
-        !runFocusFlowFileFixture &&
-        (name == "testProductionDebugUnitTest" || name == "testTbtechsdevDebugUnitTest")
-    ) {
-        filter.excludeTestsMatching(focusFlowFileImportFixtureTest)
-    }
 }

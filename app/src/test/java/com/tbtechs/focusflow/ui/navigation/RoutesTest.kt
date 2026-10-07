@@ -7,13 +7,10 @@ import org.junit.Test
 
 class RoutesTest {
     @Test
-    fun internalImportAndStatefulRoutesAreRejectedFromExternalPaths() {
-        assertEquals(Routes.NOT_FOUND, Routes.fromPath("import_confirm"))
-        assertEquals(Routes.NOT_FOUND, Routes.fromPath("import-confirm"))
+    fun internalAndStatefulRoutesAreRejectedFromExternalPaths() {
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("onboarding"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("active"))
         assertEquals(Routes.NOT_FOUND, Routes.fromPath("guarded_adjustments"))
-        assertFalse(Routes.IMPORT_CONFIRM in Routes.externalLinkableRoutes)
         assertFalse(Routes.TEXT_SIZE_SETTINGS in Routes.externalLinkableRoutes)
         assertFalse(Routes.SETTINGS_HOW_TO_USE in Routes.externalLinkableRoutes)
     }

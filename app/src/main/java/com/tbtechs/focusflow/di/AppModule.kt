@@ -30,12 +30,7 @@ import com.tbtechs.focusflow.data.repository.DayRatingRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
 import com.tbtechs.focusflow.data.repository.BehaviouralHypothesisRepository
 import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
-import com.tbtechs.focusflow.data.restore.AndroidRestorePhaseActions
-import com.tbtechs.focusflow.data.restore.AtomicPendingImportStore
-import com.tbtechs.focusflow.data.restore.AtomicRestoreJournalStore
-import com.tbtechs.focusflow.data.restore.RestoreCoordinator
 import com.tbtechs.focusflow.data.restore.RestoreGate
-import com.tbtechs.focusflow.data.restore.RestoreRecoveryEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -75,9 +70,6 @@ object AppModule {
         private set
 
     lateinit var restoreGate: RestoreGate
-        private set
-
-    lateinit var restoreCoordinator: RestoreCoordinator
         private set
 
     private lateinit var applicationScope: CoroutineScope
@@ -189,16 +181,7 @@ object AppModule {
         val app = context.applicationContext
         applicationContext = app
 
-        // Only inspect file existence here. Recovery parsing and Room access
-        // start later on the application IO scope.
-        val pendingStore = AtomicPendingImportStore(app)
-        val journalStore = AtomicRestoreJournalStore(app)
-        val initialRestoreState = when {
-            journalStore.hasQuarantine() -> RestoreGate.State.RECOVERY_BLOCKED
-            journalStore.hasJournal() -> RestoreGate.State.RECOVERING
-            else -> RestoreGate.State.OPEN
-        }
-        restoreGate = RestoreGate(initialRestoreState)
+        restoreGate = RestoreGate()
         applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         // Room database — name must match the hybrid app's file ("focusday.db").
@@ -235,7 +218,6 @@ object AppModule {
 
         taskRepository = TaskRepository(
             taskDao = database.taskDao(),
-            database = database,
             restoreGate = restoreGate,
         )
         reminderChainScheduler = ReminderChainScheduler(AndroidReminderChainAlarmDriver(app))
@@ -299,32 +281,6 @@ object AppModule {
             clarifyingQuestionRepository = clarifyingQuestionRepository,
         )
 
-        val recoveryEngine = RestoreRecoveryEngine(
-            gate = restoreGate,
-            journalStore = journalStore,
-            pendingImportStore = pendingStore,
-            actions = AndroidRestorePhaseActions(
-                taskRepository = taskRepository,
-                settingsRepository = settingsRepository,
-                taskAlarmReconciler = taskAlarmReconciler,
-            ),
-        )
-        restoreCoordinator = RestoreCoordinator(
-            gate = restoreGate,
-            pendingStore = pendingStore,
-            journalStore = journalStore,
-            readLocalTasks = { taskRepository.getAllTasks() },
-            hasActiveFocusSession = {
-                focusSessionRepository.getActiveFocusSession()?.isActive == true
-            },
-            recoveryEngine = recoveryEngine,
-            applicationScope = applicationScope,
-            isRuntimeFocusActive = { settingsRepository.isFocusActive() },
-        )
-    }
-
-    fun startRestoreRecovery() {
-        restoreCoordinator.startStartupRecovery()
     }
 
     fun requestTaskAlarmReconciliation(reason: String) {

@@ -59,9 +59,6 @@ import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.active.ActiveScreen
 import com.tbtechs.focusflow.ui.alwayson.AlwaysOnScreen
-import com.tbtechs.focusflow.ui.backup.BackupCoordinator
-import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
-import com.tbtechs.focusflow.data.restore.RestoreUiState
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
 import com.tbtechs.focusflow.ui.common.SideMenu
 import com.tbtechs.focusflow.ui.defense.DefenseScreen
@@ -79,7 +76,6 @@ import com.tbtechs.focusflow.ui.onboarding.OnboardingScreen
 import com.tbtechs.focusflow.ui.permissions.PermissionsScreen
 import com.tbtechs.focusflow.ui.profile.PasswordProtectionScreen
 import com.tbtechs.focusflow.ui.profile.UserProfileScreen
-import com.tbtechs.focusflow.ui.settings.FocusFlowFileGuideScreen
 import com.tbtechs.focusflow.ui.settings.SettingsHowToUseScreen
 import com.tbtechs.focusflow.ui.settings.SettingsScreen
 import com.tbtechs.focusflow.ui.settings.TextSizeSettingsScreen
@@ -107,16 +103,6 @@ fun FocusFlowNavGraph(
     appBootViewModel: AppBootViewModel,
     statsViewModel: com.tbtechs.focusflow.ui.stats.StatsViewModel,
     vpnRepository: VpnRepository,
-    backupCoordinator: BackupCoordinator? = null,
-    onExportBackup: () -> Unit = {},
-    onImportBackup: (Boolean) -> Unit = {},
-    pendingImportGeneration: Int = 0,
-    initialReplaceTasks: Boolean = false,
-    restoreUiState: RestoreUiState = RestoreUiState.Idle,
-    onImportFinished: () -> Unit = {},
-    onImportCancelled: () -> Unit = {},
-    onImportProgressChanged: (Boolean) -> Unit = {},
-    onImportFailed: (String) -> Unit = {},
     onOnboardingTourFinished: () -> Unit = {},
     focusDayRating: Boolean = false,
 ) {
@@ -290,12 +276,9 @@ fun FocusFlowNavGraph(
                                 onOpenActiveBlocks = { navigate(Routes.ACTIVE) },
                                 onOpenTextSize = { navigate(Routes.TEXT_SIZE_SETTINGS) },
                                 onOpenHowToUse = { navigate(Routes.SETTINGS_HOW_TO_USE) },
-                                onExportBackup = backupCoordinator?.let { onExportBackup },
-                                onImportBackup = backupCoordinator?.let { onImportBackup },
                                 onOpenProfile = { navigate(Routes.USER_PROFILE) },
                                 onOpenPermissions = { navigate(Routes.PERMISSIONS) },
                                 onOpenChangelog = { navigate(Routes.CHANGELOG) },
-                                onOpenFocusFlowFileGuide = { navigate(Routes.FOCUSFLOW_FILE_GUIDE) },
                                 onOpenPrivacyTerms = {
                                     navigate("${Routes.PRIVACY_POLICY}?revisit=true")
                                 },
@@ -337,21 +320,6 @@ fun FocusFlowNavGraph(
                             onBack = ::back,
                             onOpenRoute = ::navigate,
                         )
-                    }
-                }
-            }
-            composable(
-                route = RouteTextScaleContext.routePattern(Routes.FOCUSFLOW_FILE_GUIDE),
-                arguments = listOf(sourceTabArgument()),
-            ) { backStackEntry ->
-                RouteTextScaleProvider(
-                    route = Routes.FOCUSFLOW_FILE_GUIDE,
-                    sourceTab = backStackEntry.arguments
-                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
-                    settings = settings,
-                ) {
-                    ScreenBoundary(Routes.FOCUSFLOW_FILE_GUIDE) {
-                        FocusFlowFileGuideScreen(onBack = ::back)
                     }
                 }
             }
@@ -479,32 +447,6 @@ fun FocusFlowNavGraph(
                             installedAppsRepository = installedAppsRepository,
                             launcherController = launcherController,
                             onBack = ::back,
-                        )
-                    }
-                }
-            }
-            composable(
-                route = RouteTextScaleContext.routePattern(Routes.IMPORT_CONFIRM),
-                arguments = listOf(sourceTabArgument()),
-            ) { backStackEntry ->
-                RouteTextScaleProvider(
-                    route = Routes.IMPORT_CONFIRM,
-                    sourceTab = backStackEntry.arguments
-                        ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
-                    settings = settings,
-                ) {
-                    ScreenBoundary(Routes.IMPORT_CONFIRM) {
-                        ImportConfirmScreen(
-                            pendingGeneration = pendingImportGeneration,
-                            backupCoordinator = backupCoordinator
-                                ?: error("Backup coordinator is required for import confirmation."),
-                            restoreUiState = restoreUiState,
-                            currentFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
-                            initialReplaceTasks = initialReplaceTasks,
-                            onBack = onImportCancelled,
-                            onImported = onImportFinished,
-                            onImportProgressChanged = onImportProgressChanged,
-                            onImportFailed = onImportFailed,
                         )
                     }
                 }
@@ -729,9 +671,6 @@ fun FocusFlowNavGraph(
                             isEditMode = true,
                             onBack = ::back,
                             onFinished = ::back,
-                            onImportBackup = backupCoordinator?.let {
-                                { onImportBackup(false) }
-                            },
                             focusSessionRepository = AppModule.focusSessionRepository,
                             settingsViewModel = settingsViewModel,
                         )

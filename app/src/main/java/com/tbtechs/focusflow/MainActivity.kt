@@ -1,22 +1,16 @@
 package com.tbtechs.focusflow
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,8 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
 import com.tbtechs.focusflow.data.repository.AlarmCapabilitySnapshotRecord
@@ -45,8 +37,6 @@ import com.tbtechs.focusflow.data.repository.SetupPersistenceManager
 import com.tbtechs.focusflow.data.repository.StartupLogger
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.di.AppModule
-import com.tbtechs.focusflow.data.restore.RestoreGate
-import com.tbtechs.focusflow.data.restore.RestoreUiState
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.LauncherActivity
 import com.tbtechs.focusflow.enforcement.receivers.NotificationActionReceiver
@@ -55,8 +45,6 @@ import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnPermissionLostBanner
-import com.tbtechs.focusflow.ui.backup.BackupCoordinator
-import com.tbtechs.focusflow.ui.backup.progressDisplayOrNull
 import com.tbtechs.focusflow.ui.common.AchievementCelebrationModal
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import com.tbtechs.focusflow.ui.common.ErrorAlertBanner
@@ -73,9 +61,6 @@ import com.tbtechs.focusflow.ui.support.DiagnosticLogLevel
 import com.tbtechs.focusflow.ui.support.DiagnosticsModal
 import com.tbtechs.focusflow.ui.splash.FocusFlowSplashOverlay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Normal app activity host. LauncherActivity remains a separate CATEGORY_HOME
@@ -89,23 +74,11 @@ class MainActivity : ComponentActivity() {
     private var focusDayRating by mutableStateOf(false)
     private var notificationEventNonce by mutableStateOf(0)
     private var resumeNonce by mutableStateOf(0)
-    private var externalBackupUri by mutableStateOf<Uri?>(null)
-    private var externalBackupRequestId by mutableStateOf(0)
-    private var externalFileUriNoticeId by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StartupLogger.info("MainActivity", "Main activity created")
-        externalBackupUri = externalBackupUriFromIntent(intent)
-        if (externalBackupUri != null) {
-            externalBackupRequestId += 1
-            requestedRoute = Routes.HOME
-        } else if (isUnsupportedFileUriIntent(intent)) {
-            externalFileUriNoticeId += 1
-            requestedRoute = Routes.HOME
-        } else {
-            requestedRoute = routeFromIntent(intent)
-        }
+        requestedRoute = routeFromIntent(intent)
         focusDayRating = intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING
         setTheme(R.style.Theme_FocusFlow)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -116,10 +89,6 @@ class MainActivity : ComponentActivity() {
                 notificationEventNonce = notificationEventNonce,
                 resumeNonce = resumeNonce,
                 vpnRepository = vpnRepository,
-                externalBackupUri = externalBackupUri,
-                externalBackupRequestId = externalBackupRequestId,
-                externalFileUriNoticeId = externalFileUriNoticeId,
-                onExternalBackupConsumed = ::consumeExternalBackupIntent,
             )
         }
     }
@@ -128,40 +97,10 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         StartupLogger.info("MainActivity", "Main activity received a new intent")
         setIntent(intent)
-        val openedBackupUri = externalBackupUriFromIntent(intent)
-        if (openedBackupUri != null) {
-            externalBackupUri = openedBackupUri
-            externalBackupRequestId += 1
-        } else if (isUnsupportedFileUriIntent(intent)) {
-            externalFileUriNoticeId += 1
-            requestedRoute = Routes.HOME
-        } else {
-            requestedRoute = routeFromIntent(intent)
-        }
+        requestedRoute = routeFromIntent(intent)
         focusDayRating = intent.action == LauncherActivity.ACTION_OPEN_DAY_RATING
         notificationEventNonce++
     }
-
-    private fun consumeExternalBackupIntent(requestId: Int) {
-        if (requestId != externalBackupRequestId) return
-        val consumedUri = externalBackupUri
-        externalBackupUri = null
-        if (consumedUri != null && intent?.data == consumedUri) {
-            setIntent(Intent(this, MainActivity::class.java))
-        }
-    }
-
-    private fun externalBackupUriFromIntent(intent: Intent?): Uri? =
-        intent
-            ?.takeIf { it.action == Intent.ACTION_VIEW }
-            ?.data
-            ?.takeIf { it.scheme == "content" }
-
-    private fun isUnsupportedFileUriIntent(intent: Intent?): Boolean =
-        intent
-            ?.takeIf { it.action == Intent.ACTION_VIEW }
-            ?.data
-            ?.scheme == "file"
 
     override fun onStart() {
         super.onStart()
@@ -197,10 +136,6 @@ private fun FocusFlowRoot(
     notificationEventNonce: Int,
     resumeNonce: Int,
     vpnRepository: VpnRepository,
-    externalBackupUri: Uri?,
-    externalBackupRequestId: Int,
-    externalFileUriNoticeId: Int,
-    onExternalBackupConsumed: (Int) -> Unit,
 ) {
     val context = LocalContext.current
     val uiScope = rememberCoroutineScope()
@@ -253,8 +188,6 @@ private fun FocusFlowRoot(
     val onboardingComplete by settingsViewModel.onboardingComplete.collectAsState()
     val isLoading by appBootViewModel.isLoading.collectAsState()
     val isDbReady by appBootViewModel.isDbReady.collectAsState()
-    val restoreState by AppModule.restoreCoordinator.state.collectAsState()
-    val restoreGateState by AppModule.restoreGate.state.collectAsState()
     val statsViewModel = remember {
         StatsViewModel(
             analyticsProcessor = AppModule.analyticsProcessor,
@@ -267,24 +200,8 @@ private fun FocusFlowRoot(
             settingsRepository = AppModule.settingsRepository,
         )
     }
-    val backupCoordinator = remember {
-        BackupCoordinator(
-            context = context,
-            taskRepository = AppModule.taskRepository,
-            focusSessionRepository = AppModule.focusSessionRepository,
-            settingsRepository = AppModule.settingsRepository,
-            settingsViewModel = settingsViewModel,
-            restoreCoordinator = AppModule.restoreCoordinator,
-            restoreGate = AppModule.restoreGate,
-        )
-    }
-    val pendingImportAvailable = backupCoordinator.restorePendingAvailable()
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var replaceTasksOnImport by remember { mutableStateOf(false) }
-    var pendingImportGeneration by remember { mutableStateOf(0) }
     var noticeId by remember { mutableStateOf(0) }
     var inAppNotice by remember { mutableStateOf<InAppNotice?>(null) }
-    var importProgressNoticeId by remember { mutableStateOf<Int?>(null) }
 
     fun showInAppNotice(
         message: String,
@@ -300,173 +217,13 @@ private fun FocusFlowRoot(
         )
     }
 
-    fun showImportProgress(message: String) {
-        showInAppNotice(
-            message = message,
-            tone = InAppNoticeTone.LOADING,
-            dismissAfterMillis = null,
-        )
-        importProgressNoticeId = noticeId
-    }
-
-    fun clearImportProgress() {
-        if (inAppNotice?.id == importProgressNoticeId) {
-            inAppNotice = null
-        }
-        importProgressNoticeId = null
-    }
-
-    fun stageImportFromUri(source: Uri, externalRequestId: Int? = null) {
-        showImportProgress("Reading backup…")
-        scope.launch {
-            val staged = try {
-                withContext(Dispatchers.IO) {
-                    backupCoordinator.stageImport(source)
-                }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Exception) {
-                Result.failure(error)
-            }
-
-            externalRequestId?.let(onExternalBackupConsumed)
-            clearImportProgress()
-            if (staged.isSuccess) {
-                pendingImportGeneration += 1
-            } else {
-                showInAppNotice(
-                    "Import failed: " +
-                        (staged.exceptionOrNull()?.message ?: "The selected backup could not be read."),
-                    InAppNoticeTone.WARNING,
-                )
-            }
-        }
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        val destination = result.data?.data
-        if (destination == null) {
-            showInAppNotice("Backup export cancelled.")
-        } else {
-            showInAppNotice(
-                message = "Saving backup…",
-                tone = InAppNoticeTone.LOADING,
-                dismissAfterMillis = null,
-            )
-            scope.launch {
-                val outcome = try {
-                    withContext(Dispatchers.IO) {
-                        backupCoordinator.export(settings, destination)
-                    }
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (error: Exception) {
-                    null
-                }
-                if (outcome?.ok == true) {
-                    showInAppNotice("Backup exported successfully.", InAppNoticeTone.SUCCESS)
-                } else {
-                    showInAppNotice(
-                        outcome?.error?.let { "Backup export failed: $it" }
-                            ?: "Backup export failed. Please try again.",
-                        InAppNoticeTone.WARNING,
-                    )
-                }
-            }
-        }
-    }
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        val source = result.data?.data
-        if (source == null) {
-            showInAppNotice("Backup import cancelled.")
-        } else {
-            stageImportFromUri(source)
-        }
-    }
-
-    var handledExternalBackupRequestId by remember { mutableStateOf(0) }
-    LaunchedEffect(externalBackupUri, externalBackupRequestId) {
-        val source = externalBackupUri ?: return@LaunchedEffect
-        if (externalBackupRequestId <= 0 ||
-            externalBackupRequestId == handledExternalBackupRequestId
-        ) {
-            return@LaunchedEffect
-        }
-        handledExternalBackupRequestId = externalBackupRequestId
-        stageImportFromUri(source, externalBackupRequestId)
-    }
-
-    var handledExternalFileUriNoticeId by remember { mutableStateOf(0) }
-    LaunchedEffect(externalFileUriNoticeId) {
-        if (
-            externalFileUriNoticeId <= 0 ||
-            externalFileUriNoticeId == handledExternalFileUriNoticeId
-        ) {
-            return@LaunchedEffect
-        }
-        handledExternalFileUriNoticeId = externalFileUriNoticeId
-        showInAppNotice(
-            "Unsupported file location. Use Import in Settings.",
-            InAppNoticeTone.WARNING,
-        )
-    }
-
     var diagnosticsVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(
-        isDbReady,
-        pendingImportGeneration,
-        privacyAccepted,
-        onboardingComplete,
-        pendingImportAvailable,
-        diagnosticsVisible,
-    ) {
-        if (
-            isDbReady &&
-            privacyAccepted &&
-            onboardingComplete &&
-            pendingImportAvailable &&
-            RouteTextScaleContext.routeBase(navController.currentDestination?.route) !=
-            Routes.IMPORT_CONFIRM
-        ) {
-            val sourceTab = if (pendingImportGeneration > 0) {
-                navController.currentBackStackEntry?.let { entry ->
-                    RouteTextScaleContext.sourceTabForDestination(
-                        currentRoute = entry.destination.route,
-                        currentSourceTab = entry.arguments
-                            ?.getString(RouteTextScaleContext.SOURCE_TAB_ARGUMENT),
-                        destinationRoute = Routes.IMPORT_CONFIRM,
-                    )
-                }
-            } else {
-                null
-            }
-            navController.navigate(
-                RouteTextScaleContext.routeWithSourceTab(
-                    Routes.IMPORT_CONFIRM,
-                    sourceTab,
-                ),
-            ) {
-                launchSingleTop = true
-            }
-        }
-    }
-
-    LaunchedEffect(restoreState) {
-        if (restoreState is RestoreUiState.Completed) {
-            settingsViewModel.refreshFromStore()
-        }
-    }
     var diagnosticEvents by remember { mutableStateOf(startupDiagnosticEntries()) }
     var alarmCapabilitySnapshots by remember {
         mutableStateOf(AppModule.alarmRepository.capabilitySnapshots())
     }
     var showFullScreenIntentPrompt by remember { mutableStateOf(false) }
     var dismissedAchievementId by remember { mutableStateOf<String?>(null) }
-    var showDiscardRestorePrompt by remember { mutableStateOf(false) }
     val achievementState by statsViewModel.achievementState.collectAsState()
     val newlyEarned = achievementState?.newlyEarnedIds.orEmpty()
         .firstOrNull()
@@ -482,14 +239,12 @@ private fun FocusFlowRoot(
         isDbReady,
         privacyAccepted,
         onboardingComplete,
-        pendingImportAvailable,
     ) {
         if (
             resumeNonce > 0 &&
             isDbReady &&
             privacyAccepted &&
             onboardingComplete &&
-            !pendingImportAvailable &&
             !diagnosticsVisible &&
             Build.VERSION.SDK_INT >= 34 &&
             !AppModule.alarmRepository.canUseFullScreenIntent() &&
@@ -517,7 +272,6 @@ private fun FocusFlowRoot(
         isDbReady,
         privacyAccepted,
         onboardingComplete,
-        pendingImportAvailable,
     ) {
         if (!isDbReady) return@LaunchedEffect
         val currentRoute = navController.currentBackStackEntry?.destination?.route
@@ -529,7 +283,6 @@ private fun FocusFlowRoot(
             privacyAccepted && !onboardingComplete &&
                 requestedRoute != Routes.PRIVACY_POLICY &&
                 requestedRoute != Routes.ONBOARDING -> Routes.ONBOARDING
-            pendingImportAvailable -> Routes.IMPORT_CONFIRM
             else -> requestedRoute
         }
 
@@ -639,43 +392,6 @@ private fun FocusFlowRoot(
                     appBootViewModel = appBootViewModel,
                     statsViewModel = statsViewModel,
                     vpnRepository = vpnRepository,
-                    backupCoordinator = backupCoordinator,
-                    restoreUiState = restoreState,
-                    onExportBackup = {
-                        exportLauncher.launch(backupCoordinator.createExportIntent())
-                    },
-                    onImportBackup = { replace ->
-                        replaceTasksOnImport = replace
-                        importLauncher.launch(backupCoordinator.createImportIntent())
-                    },
-                    pendingImportGeneration = pendingImportGeneration,
-                    initialReplaceTasks = replaceTasksOnImport,
-                    onImportFinished = {
-                        clearImportProgress()
-                        showInAppNotice(
-                            "Backup imported successfully.",
-                            InAppNoticeTone.SUCCESS,
-                        )
-                        settingsViewModel.refreshFromStore()
-                        replaceTasksOnImport = false
-                        navController.popBackStack()
-                    },
-                    onImportCancelled = {
-                        clearImportProgress()
-                        showInAppNotice("Backup import cancelled.")
-                        replaceTasksOnImport = false
-                        navController.popBackStack()
-                    },
-                    onImportProgressChanged = { importing ->
-                        if (importing) {
-                            showImportProgress("Importing backup…")
-                        } else {
-                            clearImportProgress()
-                        }
-                    },
-                    onImportFailed = { message ->
-                        showInAppNotice("Import failed: $message", InAppNoticeTone.WARNING)
-                    },
                     onOnboardingTourFinished = {
                         // A normal cold launch starts on Schedule, but the
                         // first post-onboarding handoff intentionally lands on
@@ -689,104 +405,6 @@ private fun FocusFlowRoot(
                 visible = isLoading || !isDbReady,
                 modifier = Modifier.fillMaxSize(),
             )
-
-            when {
-                restoreState is RestoreUiState.Blocked -> {
-                    val blocked = restoreState as RestoreUiState.Blocked
-                    AlertDialog(
-                        onDismissRequest = {},
-                        title = { Text("Restore could not be completed") },
-                        text = {
-                            Column {
-                                Text(blocked.message)
-                                if (blocked.unreadableJournal) {
-                                    Text(
-                                        "If retrying does not help, choose Discard to keep your current data.",
-                                        modifier = Modifier.padding(top = 8.dp),
-                                    )
-                                }
-                            }
-                        },
-                        confirmButton = {
-                            Button(onClick = {
-                                scope.launch { AppModule.restoreCoordinator.retryRecovery() }
-                            }) { Text("Retry") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showDiscardRestorePrompt = true }) {
-                                Text("Discard")
-                            }
-                        },
-                    )
-                }
-                restoreGateState != RestoreGate.State.OPEN -> {
-                    val progress = restoreState.progressDisplayOrNull()
-                    Dialog(
-                        onDismissRequest = {},
-                        properties = DialogProperties(
-                            dismissOnBackPress = false,
-                            dismissOnClickOutside = false,
-                        ),
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(28.dp),
-                        ) {
-                            CircularProgressIndicator()
-                            Text(
-                                progress?.message ?: "Starting restore…",
-                                modifier = Modifier.padding(top = 16.dp),
-                            )
-                            progress?.step?.let { step ->
-                                Text(
-                                    "Step $step of ${progress.totalSteps}",
-                                    modifier = Modifier.padding(top = 4.dp),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (showDiscardRestorePrompt) {
-                AlertDialog(
-                    onDismissRequest = { showDiscardRestorePrompt = false },
-                    title = { Text("Discard this restore?") },
-                    text = {
-                        Text(
-                            "Some tasks or settings may already have changed. Discarding keeps the current data, repairs derived state where possible, and reopens the app.",
-                        )
-                    },
-                    confirmButton = {
-                        Button(onClick = {
-                            showDiscardRestorePrompt = false
-                            scope.launch {
-                                val result = AppModule.restoreCoordinator.discardRecovery()
-                                if (result.isFailure) {
-                                    val reopened =
-                                        AppModule.restoreGate.state.value == RestoreGate.State.OPEN
-                                    Toast.makeText(
-                                        context,
-                                        if (reopened) {
-                                            "The app reopened, but some derived state could not be refreshed."
-                                        } else {
-                                            "The restore could not be discarded. Please try again."
-                                        },
-                                        Toast.LENGTH_LONG,
-                                    ).show()
-                                }
-                            }
-                        }) { Text("Discard and reopen") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDiscardRestorePrompt = false }) {
-                            Text("Keep trying")
-                        }
-                    },
-                )
-            }
 
             VpnPermissionLostBanner(vpnRepository)
 

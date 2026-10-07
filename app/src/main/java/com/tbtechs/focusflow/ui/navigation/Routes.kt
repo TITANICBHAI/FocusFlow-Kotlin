@@ -13,7 +13,6 @@ object Routes {
     const val SETTINGS = "settings"
     const val TEXT_SIZE_SETTINGS = "text_size_settings"
     const val SETTINGS_HOW_TO_USE = "settings_how_to_use"
-    const val FOCUSFLOW_FILE_GUIDE = "focusflow_file_guide"
     const val DEFENSE = "defense"
     const val ACTIVE = "active"
     const val ALWAYS_ON = "always_on"
@@ -32,7 +31,6 @@ object Routes {
     const val TERMS_OF_SERVICE = "terms_of_service"
     const val USER_PROFILE = "user_profile"
     const val VPN_BLOCK_LIST = "vpn_block_list"
-    const val IMPORT_CONFIRM = "import_confirm"
     const val NOT_FOUND = "not_found"
 
     val tabRoutes: Set<String> = setOf(HOME, FOCUS, STATS, SETTINGS, DEFENSE)
@@ -44,7 +42,6 @@ object Routes {
         SETTINGS,
         TEXT_SIZE_SETTINGS,
         SETTINGS_HOW_TO_USE,
-        FOCUSFLOW_FILE_GUIDE,
         DEFENSE,
         ACTIVE,
         ALWAYS_ON,
@@ -62,12 +59,11 @@ object Routes {
         TERMS_OF_SERVICE,
         USER_PROFILE,
         VPN_BLOCK_LIST,
-        IMPORT_CONFIRM,
     )
 
     /**
      * Destinations that may be opened by an external VIEW intent. Keep
-     * stateful startup, active-session, and import-confirmation routes internal.
+     * stateful startup and active-session routes internal.
      */
     val externalLinkableRoutes: Set<String> = setOf(
         HOME,

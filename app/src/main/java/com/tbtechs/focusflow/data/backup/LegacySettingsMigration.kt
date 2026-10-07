@@ -22,8 +22,8 @@ object LegacySettingsMigration {
             return LegacySettingsMigrationPlan(emptyMap(), markComplete = false)
         }
 
-        val source = TsSettingsAdapter.parseLegacySettingsJson(settingsJson)
-        val preferences = TsSettingsAdapter.normalizeForLegacyMigration(source)
+        val source = LegacySettingsAdapter.parseLegacySettingsJson(settingsJson)
+        val preferences = LegacySettingsAdapter.toSharedPreferencesValues(source)
         return LegacySettingsMigrationPlan(preferences, markComplete = true)
     }
 }

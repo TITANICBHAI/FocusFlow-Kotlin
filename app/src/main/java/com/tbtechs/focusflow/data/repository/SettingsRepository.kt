@@ -16,12 +16,7 @@ import com.tbtechs.focusflow.data.model.AppSettings
 import com.tbtechs.focusflow.data.model.BlockPreset
 import com.tbtechs.focusflow.data.model.DailyAllowanceEntry
 import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
-import com.tbtechs.focusflow.data.backup.LegacyPreferenceValue
-import com.tbtechs.focusflow.data.backup.TsSettingsAdapter
 import com.tbtechs.focusflow.data.restore.RestoreGate
-import com.tbtechs.focusflow.data.restore.RestorePlan
-import com.tbtechs.focusflow.data.restore.RestoreCounts
-import kotlinx.serialization.json.JsonObject
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.CoroutineDispatcher
@@ -250,97 +245,6 @@ class SettingsRepository(
                 )
                 SetupPersistenceManager.KEY_PROTECTION_MODE -> setupPersistence.setProtectionMode(value)
                 else -> prefs.edit().putString(key, value).apply()
-            }
-        }
-    }
-
-    /**
-     * Internal absolute restore applier. Mappings come only from the reviewed
-     * TypeScript wire adapter; derived greyout_schedule is deferred to reconcile.
-     */
-    internal suspend fun applyPortableRestoreSettings(settingsPlan: JsonObject) {
-        check(restoreGate.state.value != RestoreGate.State.OPEN) {
-            "Restore settings writes require a closed RestoreGate."
-        }
-        withContext(ioDispatcher) {
-            val values = TsSettingsAdapter.normalizeForLegacyMigration(settingsPlan)
-            val editor = prefs.edit()
-            var protectionMode: String? = null
-
-            values.forEach { (key, value) ->
-                if (key == "greyout_schedule") return@forEach
-                when (value) {
-                    is LegacyPreferenceValue.StringValue -> {
-                        if (key == SetupPersistenceManager.KEY_PROTECTION_MODE) {
-                            protectionMode = value.value
-                        }
-                        editor.putString(key, value.value)
-                    }
-                    is LegacyPreferenceValue.BooleanValue -> editor.putBoolean(key, value.value)
-                    is LegacyPreferenceValue.IntValue -> editor.putInt(key, value.value)
-                }
-            }
-            check(editor.commit()) { "Portable settings could not be committed." }
-
-            protectionMode?.let { mode ->
-                val backup = appContext.getSharedPreferences(
-                    SetupPersistenceManager.BACKUP_PREFS_NAME,
-                    Context.MODE_PRIVATE,
-                )
-                check(
-                    backup.edit()
-                        .putString(SetupPersistenceManager.KEY_PROTECTION_MODE, mode)
-                        .commit(),
-                ) { "Protection mode backup could not be committed." }
-            }
-        }
-    }
-
-    /** Replaces side effects of portable-setting setters without calling them. */
-    internal suspend fun syncFromStoreAfterRestore() {
-        check(restoreGate.state.value != RestoreGate.State.OPEN) {
-            "Restore reconciliation requires a closed RestoreGate."
-        }
-        withContext(ioDispatcher) {
-            val userWindows = parseJsonArrayObjects(
-                stringPreference(KEY_USER_GREYOUT_WINDOWS, "[]"),
-            ).filter { it.optString("scheduleId").isBlank() }
-            val recurring = parseRecurringSchedules(
-                stringPreference(KEY_RECURRING_BLOCK_SCHEDULES, "[]"),
-            )
-            val combined = userWindows + buildScheduleGreyoutWindows(recurring)
-            commitEditor(
-                prefs.edit().putString("greyout_schedule", JSONArray(combined).toString()),
-                "restore greyout reconciliation",
-            )
-            appContext.sendBroadcast(
-                Intent(AppBlockerAccessibilityService.ACTION_ALLOWANCE_CONFIG_CHANGED).apply {
-                    `package` = appContext.packageName
-                },
-            )
-            VpnPolicyCoordinator.requestSync(appContext)
-            pushWidgetUpdate()
-        }
-    }
-
-    internal suspend fun persistLastRestoreResult(plan: RestorePlan) {
-        check(restoreGate.state.value != RestoreGate.State.OPEN) {
-            "Restore result persistence requires a closed RestoreGate."
-        }
-        val counts: RestoreCounts = plan.counts
-        val result = JSONObject().apply {
-            put("mode", plan.mode.name)
-            put("tasksInserted", counts.tasksInserted)
-            put("identicalDuplicates", counts.identicalDuplicates)
-            put("invalidTasks", counts.invalidTasks)
-            put("downgradedToSkipped", counts.downgradedToSkipped)
-            put("settingsApplied", counts.settingsKeys)
-            put("externalResourcesUnresolved", counts.unresolvedExternalResources)
-            put("completedAtMs", System.currentTimeMillis())
-        }
-        withContext(ioDispatcher) {
-            check(prefs.edit().putString("last_restore_result", result.toString()).commit()) {
-                "The restore result could not be saved."
             }
         }
     }

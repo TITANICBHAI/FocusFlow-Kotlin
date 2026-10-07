@@ -1,11 +1,6 @@
 package com.tbtechs.focusflow.data.backup
 
-import com.tbtechs.focusflow.data.model.AllowedAppPreset
-import com.tbtechs.focusflow.data.model.AppSettings
-import com.tbtechs.focusflow.data.model.BlockPreset
-import com.tbtechs.focusflow.data.model.RecurringBlockSchedule
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
-import com.tbtechs.focusflow.data.repository.BackupSettingsPolicy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -13,25 +8,13 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
-data class TsSettingsNormalization(
+data class LegacySettingsNormalization(
     val settings: JsonObject,
     val warnings: List<String>,
     val fatalError: String? = null,
-)
-
-data class TsSettingsApplyResult(
-    val settings: AppSettings,
-    /** Null means the backup did not provide userProfile. */
-    val userProfileJson: String? = null,
-    /** Null means the backup did not provide protectionMode. */
-    val protectionMode: String? = null,
-    val warnings: List<String> = emptyList(),
 )
 
 sealed class LegacyPreferenceValue {
@@ -41,13 +24,10 @@ sealed class LegacyPreferenceValue {
 }
 
 /**
- * The only mapping between the TypeScript V1 settings names and Kotlin storage.
- *
- * Import and legacy migration first pass through normalizeForImport; export
- * uses toWireSettings; migration uses normalizeForLegacyMigration. This keeps
- * portability and validation rules from drifting between code paths.
+ * Reads settings stored by the older TypeScript app and maps them to native
+ * SharedPreferences values during the one-time database migration.
  */
-object TsSettingsAdapter {
+object LegacySettingsAdapter {
     const val DARK_MODE = "darkMode"
     const val DEFAULT_DURATION = "defaultDuration"
     const val POMODORO_DURATION = "pomodoroDuration"
@@ -92,32 +72,17 @@ object TsSettingsAdapter {
         "onboardingComplete",
         "privacyAccepted",
     )
-    private val profileFields = setOf(
-        "name",
-        "occupation",
-        "dailyGoalHours",
-        "wakeUpTime",
-        "sleepTime",
-        "focusGoals",
-        "chronotype",
-        "focusSessionLength",
-        "breakStyle",
-        "distractionTriggers",
-        "motivationStyle",
-        "weeklyReviewDay",
-    )
-
     /**
-     * Validates portable settings independently: malformed fields are omitted
-     * with warnings, while a protectionMode outside the supported enum rejects
-     * the whole import before any restore mutation.
+     * Validates legacy settings before mapping them to native preference
+     * values. Invalid fields are omitted, while unsupported protection modes
+     * reject the migration rather than writing an invalid value.
      */
-    fun normalizeForImport(input: JsonObject): TsSettingsNormalization {
+    private fun normalizeLegacySettings(input: JsonObject): LegacySettingsNormalization {
         val output = linkedMapOf<String, JsonElement>()
         val warnings = mutableListOf<String>()
 
         input.forEach { (key, value) ->
-            if (!BackupSettingsPolicy.mayApplyImportKey(key) || key in ignoredKeys) {
+            if (!LegacySettingsPolicy.mayMigrateKey(key) || key in ignoredKeys) {
                 return@forEach
             }
 
@@ -203,7 +168,7 @@ object TsSettingsAdapter {
                     if (mode == "standard" || mode == "iron") {
                         JsonPrimitive(mode)
                     } else {
-                        return TsSettingsNormalization(
+                        return LegacySettingsNormalization(
                             settings = JsonObject(output),
                             warnings = warnings,
                             fatalError = "Unsupported protectionMode. Supported values are standard and iron.",
@@ -215,12 +180,12 @@ object TsSettingsAdapter {
             if (normalized != null) output[key] = normalized
         }
 
-        return TsSettingsNormalization(JsonObject(output), warnings)
+        return LegacySettingsNormalization(JsonObject(output), warnings)
     }
 
     /**
-     * Parses a legacy app_settings blob through the same strict duplicate-key,
-     * byte, depth, and node checks as an imported backup settings object.
+     * Parses the old app_settings blob with strict duplicate-key, byte, depth,
+     * and node checks before migration.
      */
     fun parseLegacySettingsJson(text: String): JsonObject {
         val normalized = BackupJsonPreflight.validateAndStripBom(text)
@@ -235,8 +200,8 @@ object TsSettingsAdapter {
      * value types. Migration still writes each entry only when its target key
      * is absent, preserving existing Kotlin-owned state.
      */
-    fun normalizeForLegacyMigration(input: JsonObject): Map<String, LegacyPreferenceValue> {
-        val normalized = normalizeForImport(input)
+    fun toSharedPreferencesValues(input: JsonObject): Map<String, LegacyPreferenceValue> {
+        val normalized = normalizeLegacySettings(input)
         normalized.fatalError?.let { throw BackupJsonFormatException(it) }
         val values = normalized.settings
         val result = linkedMapOf<String, LegacyPreferenceValue>()
@@ -290,192 +255,6 @@ object TsSettingsAdapter {
         return result
     }
 
-    /** Serializes only portable V1 fields using their TypeScript wire names. */
-    fun toWireSettings(
-        settings: AppSettings,
-        userProfileJson: String? = null,
-        protectionMode: String? = null,
-    ): JsonObject {
-        val output = linkedMapOf<String, JsonElement>()
-        output[DARK_MODE] = JsonPrimitive(settings.darkModeEnabled)
-        output[DEFAULT_DURATION] = JsonPrimitive(settings.defaultDurationMinutes)
-        output[POMODORO_DURATION] = JsonPrimitive(settings.pomodoroWorkMinutes)
-        output[POMODORO_BREAK] = JsonPrimitive(settings.pomodoroBreakMinutes)
-        output[ALLOWED_IN_FOCUS] = JsonArray(settings.allowedFocusPackages.map(::JsonPrimitive))
-        output[ALWAYS_ON_PACKAGES] = JsonArray(settings.alwaysBlockPackages.map(::JsonPrimitive))
-        output[ALWAYS_ON_VPN_PACKAGES] =
-            JsonArray(settings.alwaysOnVpnPackages.map(::JsonPrimitive))
-        output[FOCUS_MIRROR_VPN_ENABLED] = JsonPrimitive(settings.focusMirrorVpnEnabled)
-        output[BLOCKED_WORDS] = JsonArray(settings.blockedWords.map(::JsonPrimitive))
-        output[DAILY_ALLOWANCE_ENTRIES] = normalizeAllowanceEntries(
-            parseJsonArray(settings.dailyAllowanceConfigJson) ?: JsonArray(emptyList()),
-            mutableListOf(),
-        ) ?: JsonArray(emptyList())
-        output[ALLOWED_APP_PRESETS] = JsonArray(settings.launcherPresets.map { preset ->
-            JsonObject(
-                mapOf(
-                    "id" to JsonPrimitive(preset.id),
-                    "name" to JsonPrimitive(preset.name),
-                    "packages" to JsonArray(preset.packages.map(::JsonPrimitive)),
-                ),
-            )
-        })
-        output[BLOCK_PRESETS] = JsonArray(settings.blockPresets.map { preset ->
-            JsonObject(
-                mapOf(
-                    "id" to JsonPrimitive(preset.id),
-                    "name" to JsonPrimitive(preset.name),
-                    "packages" to JsonArray(preset.packages.map(::JsonPrimitive)),
-                ),
-            )
-        })
-        output[RECURRING_BLOCK_SCHEDULES] =
-            JsonArray(settings.recurringBlockSchedules.map(::scheduleToWire))
-        output[GREYOUT_SCHEDULE] =
-            createGreyoutWindows(settings.userGreyoutWindowsJson, settings.recurringBlockSchedules)
-        output[LAUNCHER_THEME] = JsonPrimitive(settings.launcherTheme)
-        output[FOCUS_TOOL_PACKAGES] = JsonArray(settings.focusToolPackages.map(::JsonPrimitive))
-        output[LAUNCHER_HIDDEN_PACKAGES] =
-            JsonArray(settings.launcherHiddenPackages.map(::JsonPrimitive))
-        output[LAUNCHER_DOCK_PACKAGES] =
-            JsonArray(settings.launcherDockPackages.map(::JsonPrimitive))
-        if (settings.launcherClockStyle.isNotBlank()) {
-            output[LAUNCHER_CLOCK_STYLE] = JsonPrimitive(settings.launcherClockStyle)
-        }
-        output[LAUNCHER_BLOCK_UNINSTALL] = JsonPrimitive(settings.launcherBlockUninstall)
-        output[LAUNCHER_LOCK_DURING_STANDALONE] =
-            JsonPrimitive(settings.launcherLockDuringStandalone)
-        output[KEEP_FOCUS_ACTIVE_UNTIL_TASK_END] =
-            JsonPrimitive(settings.keepFocusActiveUntilTaskEnd)
-        output[AUTO_RESCHEDULE_ENABLED] = JsonPrimitive(settings.autoRescheduleEnabled)
-        output[OVERLAY_QUOTES] = JsonArray(settings.overlayQuotes.map(::JsonPrimitive))
-
-        parseJsonObject(userProfileJson)
-            ?.let(::portableUserProfile)
-            ?.let { output[USER_PROFILE] = it }
-        protectionMode
-            ?.takeIf { it == "standard" || it == "iron" }
-            ?.let { output[PROTECTION_MODE] = JsonPrimitive(it) }
-        return JsonObject(output)
-    }
-
-    /**
-     * Applies normalized V1 settings to the in-memory settings model. Side
-     * effects for userProfile and protectionMode are returned separately so
-     * the coordinator can persist them through their owning repositories.
-     */
-    fun applyToSettings(
-        current: AppSettings,
-        input: JsonObject,
-        currentUserProfileJson: String? = null,
-    ): TsSettingsApplyResult {
-        val normalized = normalizeForImport(input)
-        normalized.fatalError?.let { throw BackupJsonFormatException(it) }
-        val values = normalized.settings
-        val next = current.copy(
-            darkModeEnabled = values[DARK_MODE]?.booleanValue() ?: current.darkModeEnabled,
-            defaultDurationMinutes = values[DEFAULT_DURATION]?.intValue()
-                ?: current.defaultDurationMinutes,
-            pomodoroWorkMinutes = values[POMODORO_DURATION]?.intValue()
-                ?: current.pomodoroWorkMinutes,
-            pomodoroBreakMinutes = values[POMODORO_BREAK]?.intValue()
-                ?: current.pomodoroBreakMinutes,
-            allowedFocusPackages = values[ALLOWED_IN_FOCUS]?.stringList() ?: current.allowedFocusPackages,
-            alwaysBlockPackages = values[ALWAYS_ON_PACKAGES]?.stringList() ?: current.alwaysBlockPackages,
-            alwaysOnVpnPackages = values[ALWAYS_ON_VPN_PACKAGES]?.stringList()
-                ?: current.alwaysOnVpnPackages,
-            focusMirrorVpnEnabled = values[FOCUS_MIRROR_VPN_ENABLED]?.booleanValue()
-                ?: current.focusMirrorVpnEnabled,
-            blockedWords = values[BLOCKED_WORDS]?.stringList() ?: current.blockedWords,
-            dailyAllowanceConfigJson = values[DAILY_ALLOWANCE_ENTRIES]
-                ?.let(::toInternalAllowanceJson)
-                ?: current.dailyAllowanceConfigJson,
-            launcherPresets = values[ALLOWED_APP_PRESETS]?.let(::toAllowedPresets)
-                ?: current.launcherPresets,
-            blockPresets = values[BLOCK_PRESETS]?.let(::toBlockPresets)
-                ?: current.blockPresets,
-            recurringBlockSchedules = values[RECURRING_BLOCK_SCHEDULES]
-                ?.let(::toRecurringSchedules)
-                ?: current.recurringBlockSchedules,
-            userGreyoutWindowsJson = values[GREYOUT_SCHEDULE]?.toString()
-                ?: current.userGreyoutWindowsJson,
-            launcherTheme = values[LAUNCHER_THEME]?.stringValue() ?: current.launcherTheme,
-            focusToolPackages = values[FOCUS_TOOL_PACKAGES]?.stringList()
-                ?: current.focusToolPackages,
-            launcherHiddenPackages = values[LAUNCHER_HIDDEN_PACKAGES]?.stringList()
-                ?: current.launcherHiddenPackages,
-            launcherDockPackages = values[LAUNCHER_DOCK_PACKAGES]?.stringList()
-                ?: current.launcherDockPackages,
-            launcherClockStyle = values[LAUNCHER_CLOCK_STYLE]?.stringValue()
-                ?: current.launcherClockStyle,
-            launcherBlockUninstall = values[LAUNCHER_BLOCK_UNINSTALL]?.booleanValue()
-                ?: current.launcherBlockUninstall,
-            launcherLockDuringStandalone =
-                values[LAUNCHER_LOCK_DURING_STANDALONE]?.booleanValue()
-                    ?: current.launcherLockDuringStandalone,
-            keepFocusActiveUntilTaskEnd =
-                values[KEEP_FOCUS_ACTIVE_UNTIL_TASK_END]?.booleanValue()
-                    ?: current.keepFocusActiveUntilTaskEnd,
-            autoRescheduleEnabled = values[AUTO_RESCHEDULE_ENABLED]?.booleanValue()
-                ?: current.autoRescheduleEnabled,
-            overlayQuotes = values[OVERLAY_QUOTES]?.stringList() ?: current.overlayQuotes,
-        )
-        val profileJson = (values[USER_PROFILE] as? JsonObject)
-            ?.let { mergeUserProfile(currentUserProfileJson, it) }
-        return TsSettingsApplyResult(
-            settings = next,
-            userProfileJson = profileJson,
-            protectionMode = values[PROTECTION_MODE]?.stringValue(),
-            warnings = normalized.warnings,
-        )
-    }
-
-    private fun scheduleToWire(schedule: RecurringBlockSchedule): JsonObject = JsonObject(
-        mapOf(
-            "id" to JsonPrimitive(schedule.id),
-            "name" to JsonPrimitive(schedule.name.ifBlank { schedule.id }),
-            "packages" to JsonArray(schedule.packages.map(::JsonPrimitive)),
-            "days" to JsonArray(schedule.daysOfWeek.map { JsonPrimitive(it.coerceIn(0, 6) + 1) }),
-            "startHour" to JsonPrimitive(schedule.startHour),
-            "startMin" to JsonPrimitive(schedule.startMinute),
-            "endHour" to JsonPrimitive(schedule.endHour),
-            "endMin" to JsonPrimitive(schedule.endMinute),
-            "enabled" to JsonPrimitive(schedule.enabled),
-            "vpnEnabled" to JsonPrimitive(schedule.vpnEnabled),
-            "vpnPackages" to JsonArray(schedule.vpnPackages.map(::JsonPrimitive)),
-        ),
-    )
-
-    private fun createGreyoutWindows(
-        userWindowsJson: String,
-        schedules: List<RecurringBlockSchedule>,
-    ): JsonArray {
-        val userWindows = parseJsonArray(userWindowsJson)
-            ?.let { normalizeGreyoutWindows(it, mutableListOf()) }
-            ?: JsonArray(emptyList())
-        val derived = schedules
-            .filter { it.enabled && it.packages.isNotEmpty() }
-            .map { schedule ->
-                JsonObject(
-                    mapOf(
-                        "pkgs" to JsonArray(schedule.packages.map(::JsonPrimitive)),
-                        "startHour" to JsonPrimitive(schedule.startHour),
-                        "startMin" to JsonPrimitive(schedule.startMinute),
-                        "endHour" to JsonPrimitive(schedule.endHour),
-                        "endMin" to JsonPrimitive(schedule.endMinute),
-                        "days" to JsonArray(schedule.daysOfWeek.map {
-                            JsonPrimitive(it.coerceIn(0, 6) + 1)
-                        }),
-                        "scheduleId" to JsonPrimitive(schedule.id),
-                        "scheduleName" to JsonPrimitive(schedule.name.ifBlank { schedule.id }),
-                        "vpnEnabled" to JsonPrimitive(schedule.vpnEnabled),
-                        "vpnPackages" to JsonArray(schedule.vpnPackages.map(::JsonPrimitive)),
-                    ),
-                )
-            }
-        return JsonArray(userWindows + derived)
-    }
-
     private fun toInternalAllowanceJson(element: JsonElement): String {
         val array = element as? JsonArray ?: return "[]"
         val internal = array.mapNotNull { entry ->
@@ -522,68 +301,6 @@ object TsSettingsAdapter {
             )
         }
         return JsonArray(stored).toString()
-    }
-
-    private fun toAllowedPresets(element: JsonElement): List<AllowedAppPreset> =
-        (element as? JsonArray).orEmpty().mapNotNull { value ->
-            val preset = value as? JsonObject ?: return@mapNotNull null
-            val id = preset["id"]?.stringValue() ?: return@mapNotNull null
-            val name = preset["name"]?.stringValue() ?: return@mapNotNull null
-            val packages = preset["packages"]?.stringList() ?: return@mapNotNull null
-            AllowedAppPreset(id = id, name = name, packages = packages)
-        }
-
-    private fun toBlockPresets(element: JsonElement): List<BlockPreset> =
-        (element as? JsonArray).orEmpty().mapNotNull { value ->
-            val preset = value as? JsonObject ?: return@mapNotNull null
-            val id = preset["id"]?.stringValue() ?: return@mapNotNull null
-            val name = preset["name"]?.stringValue() ?: return@mapNotNull null
-            val packages = preset["packages"]?.stringList() ?: return@mapNotNull null
-            BlockPreset(id = id, name = name, packages = packages)
-        }
-
-    private fun toRecurringSchedules(element: JsonElement): List<RecurringBlockSchedule> =
-        (element as? JsonArray).orEmpty().mapNotNull { value ->
-            val schedule = value as? JsonObject ?: return@mapNotNull null
-            val id = schedule["id"]?.stringValue() ?: return@mapNotNull null
-            val name = schedule["name"]?.stringValue().orEmpty()
-            val packages = schedule["packages"]?.stringList() ?: return@mapNotNull null
-            val days = schedule["days"]?.jsonArray?.mapNotNull { it.intValue() }
-                ?.map { it - 1 }
-                ?: emptyList()
-            RecurringBlockSchedule(
-                id = id,
-                name = name,
-                packages = packages,
-                startHour = schedule["startHour"]?.intValue() ?: 0,
-                startMinute = schedule["startMin"]?.intValue() ?: 0,
-                endHour = schedule["endHour"]?.intValue() ?: 0,
-                endMinute = schedule["endMin"]?.intValue() ?: 0,
-                daysOfWeek = days,
-                enabled = schedule["enabled"]?.booleanValue() ?: true,
-                vpnEnabled = schedule["vpnEnabled"]?.booleanValue() ?: false,
-                vpnPackages = schedule["vpnPackages"]?.stringList() ?: emptyList(),
-            )
-        }
-
-    private fun mergeUserProfile(currentRaw: String?, incoming: JsonObject): String {
-        val current = parseJsonObject(currentRaw)?.toMutableMap() ?: mutableMapOf()
-        profileFields.forEach(current::remove)
-        current.putAll(incoming)
-        return JsonObject(current).toString()
-    }
-
-    private fun portableUserProfile(profile: JsonObject): JsonObject? =
-        normalizeUserProfile(profile, mutableListOf())
-
-    private fun parseJsonArray(raw: String?): JsonArray? {
-        if (raw.isNullOrBlank()) return null
-        return runCatching { json.parseToJsonElement(raw) as? JsonArray }.getOrNull()
-    }
-
-    private fun parseJsonObject(raw: String?): JsonObject? {
-        if (raw.isNullOrBlank()) return null
-        return runCatching { json.parseToJsonElement(raw) as? JsonObject }.getOrNull()
     }
 
     private fun JsonElement.stringList(): List<String>? =

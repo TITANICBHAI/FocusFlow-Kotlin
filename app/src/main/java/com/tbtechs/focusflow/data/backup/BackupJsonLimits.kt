@@ -7,10 +7,11 @@ import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
 /**
- * Central limits for the FocusFlow V1 backup parser.
+ * Central JSON and data-field limits shared by legacy settings migration and
+ * task-tag validation.
  *
- * Keep changes to backup bounds here so the streaming preflight and the
- * record-level validators use the same contract.
+ * Keep changes to parser bounds here so the streaming preflight and record
+ * validators use the same contract.
  */
 object BackupJsonLimits {
     const val MAX_FILE_BYTES = 8 * 1024 * 1024
