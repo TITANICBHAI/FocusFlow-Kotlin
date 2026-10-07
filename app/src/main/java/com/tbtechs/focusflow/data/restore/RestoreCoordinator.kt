@@ -145,6 +145,20 @@ class RestoreCoordinator(
         restoreSettings: Boolean,
         restoreTasks: Boolean,
     ): Result<RestorePreview> {
+        return try {
+            previewUnsafe(mode, restoreSettings, restoreTasks)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
+        }
+    }
+
+    private suspend fun previewUnsafe(
+        mode: RestoreMode,
+        restoreSettings: Boolean,
+        restoreTasks: Boolean,
+    ): Result<RestorePreview> {
         val loaded = loadPending()
         if (loaded !is PendingBackupResult.Ready) {
             val message = (loaded as? PendingBackupResult.Error)?.message
@@ -152,7 +166,7 @@ class RestoreCoordinator(
             return Result.failure(IllegalStateException(message))
         }
         val backup = loaded.backup.parsed
-        val local = readLocalTasks()
+        val local = if (restoreTasks) readLocalTasks() else emptyList()
         val allConflicts = if (mode == RestoreMode.MERGE && restoreTasks) {
             RestorePlanBuilder.conflicts(backup.envelope, local)
         } else {

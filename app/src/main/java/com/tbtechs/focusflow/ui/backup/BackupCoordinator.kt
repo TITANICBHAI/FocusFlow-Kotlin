@@ -23,8 +23,10 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.data.repository.VpnRepository
 import com.tbtechs.focusflow.data.restore.PendingBackupResult
 import com.tbtechs.focusflow.data.restore.RestoreAdmissionResult
+import com.tbtechs.focusflow.data.restore.RestoreCounts
 import com.tbtechs.focusflow.data.restore.RestoreCoordinator
 import com.tbtechs.focusflow.data.restore.RestoreMode
+import com.tbtechs.focusflow.data.restore.RestoreUiState
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import org.json.JSONObject
 import org.json.JSONArray
@@ -69,6 +71,25 @@ class BackupCoordinator(
     fun createImportIntent() = manager.createImportDocumentIntent()
 
     fun restorePendingAvailable(): Boolean = restoreCoordinator.hasPendingImport()
+
+    fun isRestoreRecoveryBlocked(): Boolean =
+        restoreCoordinator.state.value is RestoreUiState.Blocked
+
+    suspend fun summarizeRecoveredImport(
+        envelope: BackupEnvelope,
+        counts: RestoreCounts,
+        restoreSettings: Boolean,
+        restoreTasks: Boolean,
+        replaceTasks: Boolean,
+        activateImportedVpnAfterGrant: Boolean,
+    ): RestoreResult.Success = successfulImportResult(
+        envelope = envelope,
+        counts = counts,
+        restoreSettings = restoreSettings,
+        restoreTasks = restoreTasks,
+        replaceTasks = replaceTasks,
+        activateImportedVpnAfterGrant = activateImportedVpnAfterGrant,
+    )
 
     suspend fun export(settings: AppSettings, destination: Uri): BackupFileResult =
         manager.exportBackup(
@@ -214,57 +235,77 @@ class BackupCoordinator(
             is RestoreAdmissionResult.RecoveryBlocked ->
                 RestoreResult.Error(admission.message)
             is RestoreAdmissionResult.Finished -> {
-                val warnings = loaded.backup.record.warnings.toMutableList().apply {
-                }
-                if (
-                    VpnImportPolicy.shouldActivateImportedVpnBlock(
-                        restoreSettings = restoreSettings,
-                        activationRequested = activateImportedVpnAfterGrant,
-                    )
-                ) {
-                    runCatching {
-                        vpnRepository.activateImportedVpnBlock()
-                    }.onFailure {
-                        warnings.add(
-                            "The VPN list was imported but could not be activated: " +
-                                (it.message ?: "VPN activation failed."),
-                        )
-                    }
-                }
-                if (restoreSettings) {
-                    runCatching {
-                        settingsViewModel.refreshSettingsFromStore()
-                    }.onFailure {
-                        warnings.add("Some restored settings may not appear until the app refreshes.")
-                    }
-                }
-                val protectionCategories = if (restoreSettings) {
-                    runCatching {
-                        buildImportedProtectionCategories(loaded.backup.toBackupEnvelope().settings)
-                    }.getOrElse {
-                        warnings.add("Protection status could not be checked after import.")
-                        emptyList()
-                    }
-                } else {
-                    emptyList()
-                }
-                RestoreResult.Success(
-                    com.tbtechs.focusflow.data.repository.ImportSummary(
-                        settings = restoreSettings,
-                        tasksImported = admission.counts.tasksInserted,
-                        tasksSkipped = admission.counts.invalidTasks +
-                            admission.counts.identicalDuplicates,
-                        warnings = warnings,
-                        protectionCategories = protectionCategories,
-                        tasksReplaced = replaceTasks && restoreTasks,
-                        tasksMarkedSkipped = admission.counts.downgradedToSkipped,
-                        tasksSkippedExisting = admission.counts.identicalDuplicates,
-                        invalidTasksSkipped = admission.counts.invalidTasks,
-                        settingsFieldsApplied = admission.counts.settingsKeys,
-                    ),
+                successfulImportResult(
+                    envelope = loaded.backup.toBackupEnvelope(),
+                    counts = admission.counts,
+                    restoreSettings = restoreSettings,
+                    restoreTasks = restoreTasks,
+                    replaceTasks = replaceTasks,
+                    activateImportedVpnAfterGrant = activateImportedVpnAfterGrant,
                 )
             }
         }
+    }
+
+    private suspend fun successfulImportResult(
+        envelope: BackupEnvelope,
+        counts: RestoreCounts,
+        restoreSettings: Boolean,
+        restoreTasks: Boolean,
+        replaceTasks: Boolean,
+        activateImportedVpnAfterGrant: Boolean,
+    ): RestoreResult.Success {
+        val warnings = envelope.warnings.toMutableList()
+        if (
+            VpnImportPolicy.shouldActivateImportedVpnBlock(
+                restoreSettings = restoreSettings,
+                activationRequested = activateImportedVpnAfterGrant,
+            )
+        ) {
+            runCatching {
+                vpnRepository.activateImportedVpnBlock()
+            }.onFailure {
+                warnings.add(
+                    "The VPN list was imported but could not be activated: " +
+                        (it.message ?: "VPN activation failed."),
+                )
+            }
+        }
+        if (restoreSettings) {
+            runCatching {
+                settingsViewModel.refreshSettingsFromStore()
+            }.onFailure {
+                warnings.add("Some restored settings may not appear until the app refreshes.")
+            }
+        }
+        val protectionCategories = if (restoreSettings) {
+            runCatching {
+                buildImportedProtectionCategories(envelope.settings)
+            }.getOrElse {
+                warnings.add("Protection status could not be checked after import.")
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+        return RestoreResult.Success(
+            com.tbtechs.focusflow.data.repository.ImportSummary(
+                settings = restoreSettings,
+                tasksImported = if (restoreTasks) counts.tasksInserted else 0,
+                tasksSkipped = if (restoreTasks) {
+                    counts.invalidTasks + counts.identicalDuplicates
+                } else {
+                    0
+                },
+                warnings = warnings,
+                protectionCategories = protectionCategories,
+                tasksReplaced = replaceTasks && restoreTasks,
+                tasksMarkedSkipped = if (restoreTasks) counts.downgradedToSkipped else 0,
+                tasksSkippedExisting = if (restoreTasks) counts.identicalDuplicates else 0,
+                invalidTasksSkipped = if (restoreTasks) counts.invalidTasks else 0,
+                settingsFieldsApplied = if (restoreSettings) counts.settingsKeys else 0,
+            ),
+        )
     }
 
     private suspend fun buildImportedProtectionCategories(

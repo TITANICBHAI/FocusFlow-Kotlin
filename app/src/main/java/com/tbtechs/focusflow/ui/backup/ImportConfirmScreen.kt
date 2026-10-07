@@ -55,6 +55,7 @@ import com.tbtechs.focusflow.data.repository.BackupEnvelope
 import com.tbtechs.focusflow.data.repository.BackupParseResult
 import com.tbtechs.focusflow.data.repository.RestoreResult
 import com.tbtechs.focusflow.data.restore.RestorePreview
+import com.tbtechs.focusflow.data.restore.RestoreUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -62,6 +63,7 @@ import kotlinx.coroutines.launch
 fun ImportConfirmScreen(
     pendingGeneration: Int,
     backupCoordinator: BackupCoordinator,
+    restoreUiState: RestoreUiState,
     currentFocusActive: Boolean,
     initialReplaceTasks: Boolean = false,
     onBack: () -> Unit,
@@ -76,6 +78,11 @@ fun ImportConfirmScreen(
     var restoreTasks by remember(pendingGeneration) { mutableStateOf(true) }
     var result by remember(pendingGeneration) { mutableStateOf<RestoreResult?>(null) }
     var preview by remember(pendingGeneration) { mutableStateOf<RestorePreview?>(null) }
+    var previewError by remember(pendingGeneration) { mutableStateOf<String?>(null) }
+    var previewLoading by remember(pendingGeneration) { mutableStateOf(true) }
+    var previewRetryNonce by remember(pendingGeneration) { mutableStateOf(0) }
+    var awaitingRecovery by remember(pendingGeneration) { mutableStateOf(false) }
+    var recoveryVpnActivationRequested by remember(pendingGeneration) { mutableStateOf(false) }
     var requiresDefensePin by remember(pendingGeneration) { mutableStateOf(false) }
     var vpnNotice by remember(pendingGeneration) { mutableStateOf<VpnImportNotice?>(null) }
     var showPinPrompt by remember(pendingGeneration) { mutableStateOf(false) }
@@ -110,10 +117,21 @@ fun ImportConfirmScreen(
         if (outcome is RestoreResult.Error && outcome.requiresPin) {
             showPinPrompt = true
             pinError = outcome.message
+        } else if (
+            outcome is RestoreResult.Error &&
+            backupCoordinator.isRestoreRecoveryBlocked()
+        ) {
+            awaitingRecovery = true
+            recoveryVpnActivationRequested = activateImportedVpn
+            showPinPrompt = false
+            defensePin = ""
+            pinError = null
+            result = null
         } else {
             showPinPrompt = false
             defensePin = ""
             pinError = null
+            awaitingRecovery = false
             result = outcome
             if (outcome is RestoreResult.Error) {
                 onImportFailed(outcome.message)
@@ -163,12 +181,63 @@ fun ImportConfirmScreen(
         }
     }
 
-    LaunchedEffect(pendingGeneration, replaceTasks, restoreSettings, restoreTasks) {
-        preview = backupCoordinator.preview(
-            replaceTasks = replaceTasks,
-            restoreSettings = restoreSettings,
-            restoreTasks = restoreTasks,
-        ).getOrNull()
+    LaunchedEffect(
+        pendingGeneration,
+        replaceTasks,
+        restoreSettings,
+        restoreTasks,
+        previewRetryNonce,
+    ) {
+        preview = null
+        previewError = null
+        previewLoading = true
+        try {
+            val outcome = backupCoordinator.preview(
+                replaceTasks = replaceTasks,
+                restoreSettings = restoreSettings,
+                restoreTasks = restoreTasks,
+            )
+            preview = outcome.getOrNull()
+            previewError = outcome.exceptionOrNull()?.message
+                ?: if (preview == null) "Could not prepare an import preview." else null
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            previewError = error.message ?: "Could not prepare an import preview."
+        } finally {
+            previewLoading = false
+        }
+    }
+
+    LaunchedEffect(restoreUiState, awaitingRecovery, parsed) {
+        when {
+            awaitingRecovery && restoreUiState is RestoreUiState.Completed -> {
+                val envelope = (parsed as? BackupParseResult.Success)?.envelope
+                if (envelope != null) {
+                    result = backupCoordinator.summarizeRecoveredImport(
+                        envelope = envelope,
+                        counts = restoreUiState.counts,
+                        restoreSettings = restoreSettings,
+                        restoreTasks = restoreTasks,
+                        replaceTasks = replaceTasks,
+                        activateImportedVpnAfterGrant = recoveryVpnActivationRequested,
+                    )
+                } else {
+                    result = RestoreResult.Error(
+                        "Restore completed, but the backup summary is no longer available.",
+                    )
+                }
+                awaitingRecovery = false
+                recoveryVpnActivationRequested = false
+            }
+            awaitingRecovery && restoreUiState is RestoreUiState.Idle -> {
+                awaitingRecovery = false
+                recoveryVpnActivationRequested = false
+                preview = null
+                previewError = "Restore was discarded. Select the backup again to restart import."
+                result = RestoreResult.Error("The interrupted restore was discarded.")
+            }
+        }
     }
 
     fun importBackup(pin: String? = null) {
@@ -276,6 +345,9 @@ fun ImportConfirmScreen(
             is BackupParseResult.Success -> ImportReview(
                 envelope = state.envelope,
                 preview = preview,
+                previewError = previewError,
+                previewLoading = previewLoading,
+                onRetryPreview = { previewRetryNonce++ },
                 replaceTasks = replaceTasks,
                 onReplaceTasksChange = { replaceTasks = it },
                 restoreSettings = restoreSettings,
@@ -322,9 +394,40 @@ fun ImportConfirmScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        "${outcome.summary.tasksImported} task${if (outcome.summary.tasksImported == 1) "" else "s"} added. " +
-                            "${outcome.summary.tasksSkipped} skipped.",
+                        if (outcome.summary.tasksReplaced) {
+                            "The task list was replaced with ${outcome.summary.tasksImported} backup task(s)."
+                        } else if (outcome.summary.tasksImported > 0) {
+                            "${outcome.summary.tasksImported} task${if (outcome.summary.tasksImported == 1) "" else "s"} added; existing tasks were kept."
+                        } else if (outcome.summary.settings && !restoreTasks) {
+                            "Tasks were not imported."
+                        } else {
+                            "No new tasks were added."
+                        },
                     )
+                    if (outcome.summary.settings) {
+                        Text(
+                            if (outcome.summary.settingsFieldsApplied > 0) {
+                                "${outcome.summary.settingsFieldsApplied} portable settings fields applied."
+                            } else {
+                                "No portable settings fields were present; device settings were unchanged."
+                            },
+                        )
+                    } else {
+                        Text("Portable settings were not imported.")
+                    }
+                    if (restoreTasks) {
+                        if (outcome.summary.tasksSkippedExisting > 0) {
+                            Text("${outcome.summary.tasksSkippedExisting} existing task ID(s) were kept.")
+                        }
+                        if (outcome.summary.invalidTasksSkipped > 0) {
+                            Text("${outcome.summary.invalidTasksSkipped} invalid task record(s) were skipped.")
+                        }
+                        if (outcome.summary.tasksMarkedSkipped > 0) {
+                            Text(
+                                "${outcome.summary.tasksMarkedSkipped} past task(s) were added with status Skipped.",
+                            )
+                        }
+                    }
                     if (outcome.summary.warnings.isNotEmpty()) {
                         Text(
                             "Warnings:\n${outcome.summary.warnings.joinToString("\n")}",
@@ -496,6 +599,9 @@ private fun ImportError(message: String, modifier: Modifier, onClose: () -> Unit
 private fun ImportReview(
     envelope: BackupEnvelope,
     preview: RestorePreview?,
+    previewError: String?,
+    previewLoading: Boolean,
+    onRetryPreview: () -> Unit,
     replaceTasks: Boolean,
     onReplaceTasksChange: (Boolean) -> Unit,
     restoreSettings: Boolean,
@@ -536,6 +642,26 @@ private fun ImportReview(
                         "Portable settings overwrite matching fields; fields omitted from the backup stay local. Tasks can be merged or replaced.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+        when {
+            previewLoading -> Text(
+                "Checking the task list and preparing the import preview…",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            previewError != null -> Card {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "Import preview unavailable",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(previewError, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = onRetryPreview) { Text("Retry preview") }
                 }
             }
         }
@@ -656,6 +782,9 @@ private fun ImportReview(
         Button(
             onClick = onImport,
             enabled = !busy &&
+                !previewLoading &&
+                preview != null &&
+                previewError == null &&
                 (restoreSettings || restoreTasks) &&
                 !(replaceTasks && currentFocusActive) &&
                 !(restoreTasks && !replaceTasks && preview?.hasConflicts == true),

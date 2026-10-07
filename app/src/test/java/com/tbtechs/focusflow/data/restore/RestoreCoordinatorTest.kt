@@ -91,6 +91,21 @@ class RestoreCoordinatorTest {
     }
 
     @Test
+    fun previewReportsLocalTaskReadFailureInsteadOfThrowing() = runTest {
+        val state = fixture(this, localTasksFailure = IllegalStateException("Room read failed"))
+        state.coordinator.stage(backup("preview-task"), "backup.json").getOrThrow()
+
+        val preview = state.coordinator.preview(
+            mode = RestoreMode.MERGE,
+            restoreSettings = true,
+            restoreTasks = true,
+        )
+
+        assertTrue(preview.isFailure)
+        assertEquals("Room read failed", preview.exceptionOrNull()?.message)
+    }
+
+    @Test
     fun failedPendingRewriteLeavesPreviousValidatedImportAvailable() = runTest {
         val state = fixture(this)
         state.coordinator.stage(backup("previous"), "previous.json").getOrThrow()
@@ -190,6 +205,7 @@ class RestoreCoordinatorTest {
         pending: FakePendingStore = FakePendingStore(),
         journal: FakeJournalStore = FakeJournalStore(),
         localTasks: List<Task> = emptyList(),
+        localTasksFailure: Exception? = null,
     ): Fixture {
         val actions = RecordingActions()
         val engine = RestoreRecoveryEngine(
@@ -203,7 +219,10 @@ class RestoreCoordinatorTest {
             gate = gate,
             pendingStore = pending,
             journalStore = journal,
-            readLocalTasks = { localTasks },
+            readLocalTasks = {
+                localTasksFailure?.let { throw it }
+                localTasks
+            },
             hasActiveFocusSession = { false },
             recoveryEngine = engine,
             applicationScope = scope,
