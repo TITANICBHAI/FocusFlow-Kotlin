@@ -415,13 +415,13 @@ internal fun ReferenceTaskAction(
 ) {
     Column(
         modifier = Modifier
-            .width(80.dp)
+            .width(72.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(42.dp)
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center,
@@ -430,7 +430,7 @@ internal fun ReferenceTaskAction(
                 imageVector = icon,
                 contentDescription = label,
                 tint = color,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
         Spacer(Modifier.size(4.dp))

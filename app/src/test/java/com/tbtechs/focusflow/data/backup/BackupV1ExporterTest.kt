@@ -58,6 +58,7 @@ class BackupV1ExporterTest {
         val parsed = BackupV1Parser.parse(expected.toString(), now)
         assertTrue(parsed is BackupV1ParseResult.Success)
         val importedEnvelope = (parsed as BackupV1ParseResult.Success).backup.envelope
+        assertEquals(listOf("planning"), importedEnvelope.tasks.single().tags)
 
         val applied = TsSettingsAdapter.applyToSettings(
             current = AppSettings(),
@@ -78,6 +79,10 @@ class BackupV1ExporterTest {
         val actual = Json.parseToJsonElement(reExported).jsonObject
 
         assertEquals(expected, actual)
+        assertEquals(
+            JsonArray(listOf(JsonPrimitive("planning"))),
+            actual["tasks"]!!.jsonArray.single().jsonObject["tags"]!!.jsonArray,
+        )
         assertEquals(
             expected["tasks"]!!.jsonArray.single().jsonObject["reminders"],
             actual["tasks"]!!.jsonArray.single().jsonObject["reminders"],

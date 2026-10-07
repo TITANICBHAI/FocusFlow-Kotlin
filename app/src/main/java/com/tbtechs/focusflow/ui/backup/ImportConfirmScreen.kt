@@ -28,9 +28,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -420,6 +420,9 @@ fun ImportConfirmScreen(
                         "This backup removes one or more protection entries or turns off Focus Mirror. " +
                             "Enter your Defense PIN to continue.",
                     )
+                    if (busy) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                    }
                     OutlinedTextField(
                         value = defensePin,
                         onValueChange = {
@@ -465,9 +468,13 @@ fun ImportConfirmScreen(
 
 @Composable
 private fun LoadingImport(modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        CircularProgressIndicator()
-        Text("Reading backup…", modifier = Modifier.padding(top = 12.dp))
+    Column(
+        modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text("Reading backup…", modifier = Modifier.padding(bottom = 12.dp))
+        LinearProgressIndicator(Modifier.fillMaxWidth(0.8f))
     }
 }
 
@@ -643,6 +650,9 @@ private fun ImportReview(
                 }
             }
         }
+        if (busy) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
         Button(
             onClick = onImport,
             enabled = !busy &&
@@ -651,8 +661,13 @@ private fun ImportReview(
                 !(restoreTasks && !replaceTasks && preview?.hasConflicts == true),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (busy) CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            Text(if (replaceTasks) "Replace tasks" else "Merge & Import")
+            Text(
+                when {
+                    busy -> "Importing…"
+                    replaceTasks -> "Replace tasks"
+                    else -> "Merge & Import"
+                },
+            )
         }
         OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
     }

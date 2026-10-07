@@ -113,6 +113,7 @@ fun QuickAddModal(
     var priority by remember { mutableStateOf("medium") }
     var selectedColor by remember { mutableStateOf("Primary") }
     var tags by remember { mutableStateOf(emptyList<String>()) }
+    var tagDraft by remember { mutableStateOf("") }
     var focusMode by remember { mutableStateOf(false) }
     var useGlobalApps by remember { mutableStateOf(true) }
     var allowedPackages by remember { mutableStateOf("") }
@@ -152,6 +153,7 @@ fun QuickAddModal(
         ) {
             showError = true
         } else {
+            val finalTags = addTaskTagsFromDraft(tags, tagDraft)
             onSave(
                 Task(
                     id = UUID.randomUUID().toString(),
@@ -162,7 +164,7 @@ fun QuickAddModal(
                     durationMinutes = finalDuration,
                     status = "scheduled",
                     priority = priority,
-                    tags = tags,
+                    tags = finalTags,
                     color = savedTaskColor,
                     focusMode = focusMode,
                     focusAllowedPackages = if (!focusMode || useGlobalApps) null else allowedPackages.toPackageList(),
@@ -383,7 +385,12 @@ fun QuickAddModal(
                 }
             }
 
-            TaskTagsEditor(tags = tags, onTagsChange = { tags = it })
+            TaskTagsEditor(
+                tags = tags,
+                draft = tagDraft,
+                onDraftChange = { tagDraft = it },
+                onTagsChange = { tags = it },
+            )
 
             // Focus Mode
             ReferenceToggleCard(

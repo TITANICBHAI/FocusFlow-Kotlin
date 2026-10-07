@@ -121,6 +121,7 @@ fun EditTaskModal(
     var customDurationValue by remember(task.id) { mutableStateOf(task.durationMinutes.toString()) }
     var priority by remember(task.id) { mutableStateOf(task.priority) }
     var tags by remember(task.id) { mutableStateOf(task.tags) }
+    var tagDraft by remember(task.id) { mutableStateOf("") }
     var focusMode by remember(task.id) { mutableStateOf(task.focusMode) }
     var allowedPackages by remember(task.id) {
         mutableStateOf(task.focusAllowedPackages?.joinToString(", ").orEmpty())
@@ -159,6 +160,7 @@ fun EditTaskModal(
         }
 
         val end = start.plusSeconds(finalDuration * 60L)
+        val finalTags = addTaskTagsFromDraft(tags, tagDraft)
         onSave(
             task.copy(
                 title = title.trim(),
@@ -167,7 +169,7 @@ fun EditTaskModal(
                 endTime = end.toString(),
                 durationMinutes = finalDuration,
                 priority = priority,
-                tags = tags,
+                tags = finalTags,
                 reminders = task.reminders,
                 color = savedTaskColor,
                 focusMode = focusMode,
@@ -362,7 +364,12 @@ fun EditTaskModal(
                 }
             }
 
-            TaskTagsEditor(tags = tags, onTagsChange = { tags = it })
+            TaskTagsEditor(
+                tags = tags,
+                draft = tagDraft,
+                onDraftChange = { tagDraft = it },
+                onTagsChange = { tags = it },
+            )
 
             // Focus Mode Toggle
             ReferenceToggleCard(

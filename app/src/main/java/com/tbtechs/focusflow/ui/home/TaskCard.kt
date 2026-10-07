@@ -257,7 +257,7 @@ private fun TaskCardAction(
     val shape = RoundedCornerShape(11.dp)
     Box(
         modifier = Modifier
-            .size(38.dp)
+            .size(36.dp)
             .clip(shape)
             .border(1.dp, tint.copy(alpha = 0.42f), shape)
             .clickable(onClick = onClick)
@@ -268,7 +268,7 @@ private fun TaskCardAction(
             imageVector = imageVector,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(19.dp),
+            modifier = Modifier.size(18.dp),
         )
     }
 }

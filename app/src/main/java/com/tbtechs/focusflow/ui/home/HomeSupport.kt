@@ -146,11 +146,11 @@ internal fun ActiveTaskBanner(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 IconButton(
                     onClick = onComplete,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
                         .background(actionOverlay),
                 ) {
@@ -158,13 +158,13 @@ internal fun ActiveTaskBanner(
                         Icons.Outlined.Check,
                         contentDescription = "Complete",
                         tint = foregroundColor,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
                 IconButton(
                     onClick = onExtend,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
                         .background(actionOverlay),
                 ) {
@@ -172,14 +172,14 @@ internal fun ActiveTaskBanner(
                         Icons.Outlined.Add,
                         contentDescription = "Extend",
                         tint = foregroundColor,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
                 if (!isRunning) {
                     IconButton(
                         onClick = onSkip,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
@@ -187,14 +187,14 @@ internal fun ActiveTaskBanner(
                             Icons.Outlined.Close,
                             contentDescription = "Skip",
                             tint = foregroundColor,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                 } else if (task.focusMode) {
                     IconButton(
                         onClick = onStartFocus,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
@@ -202,7 +202,7 @@ internal fun ActiveTaskBanner(
                             Icons.Outlined.Shield,
                             contentDescription = "Start focus",
                             tint = foregroundColor,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                 }
@@ -215,23 +215,13 @@ internal fun ActiveTaskBanner(
 @Composable
 internal fun TaskTagsEditor(
     tags: List<String>,
+    draft: String,
+    onDraftChange: (String) -> Unit,
     onTagsChange: (List<String>) -> Unit,
 ) {
-    var draft by remember(tags) { mutableStateOf("") }
-
     fun addDraftTags() {
-        val candidates = draft
-            .split(',', '\n')
-            .map { it.trim().removePrefix("#").trim() }
-            .filter(String::isNotBlank)
-        val updated = tags.toMutableList()
-        candidates.forEach { candidate ->
-            if (updated.none { it.equals(candidate, ignoreCase = true) }) {
-                updated += candidate
-            }
-        }
-        onTagsChange(updated)
-        draft = ""
+        onTagsChange(addTaskTagsFromDraft(tags, draft))
+        onDraftChange("")
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -252,7 +242,7 @@ internal fun TaskTagsEditor(
         }
         HomeTextField(
             value = draft,
-            onValueChange = { draft = it },
+            onValueChange = onDraftChange,
             label = "Add a tag",
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { addDraftTags() }),
@@ -263,6 +253,20 @@ internal fun TaskTagsEditor(
             color = RefSecondary,
         )
     }
+}
+
+internal fun addTaskTagsFromDraft(tags: List<String>, draft: String): List<String> {
+    val candidates = draft
+        .split(',', '\n')
+        .map { it.trim().removePrefix("#").trim() }
+        .filter(String::isNotBlank)
+    val updated = tags.toMutableList()
+    candidates.forEach { candidate ->
+        if (updated.none { it.equals(candidate, ignoreCase = true) }) {
+            updated += candidate
+        }
+    }
+    return updated
 }
 
 @Composable
