@@ -249,6 +249,18 @@ class SettingsRepository(
         }
     }
 
+    suspend fun putBoolean(key: String, value: Boolean) {
+        restoreGate.write("SettingsRepository.putBoolean") {
+            prefs.edit().putBoolean(key, value).apply()
+        }
+    }
+
+    suspend fun putInt(key: String, value: Int) {
+        restoreGate.write("SettingsRepository.putInt") {
+            prefs.edit().putInt(key, value).apply()
+        }
+    }
+
     /**
      * Tells native enforcement whether task focus mode is active.
      *

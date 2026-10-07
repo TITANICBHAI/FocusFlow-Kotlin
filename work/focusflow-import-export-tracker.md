@@ -2,7 +2,7 @@
 
 ## Current status
 
-- **Overall:** Batch 1 in progress
+- **Overall:** Batch 2 complete — Batch 1 and Batch 2 verified; Batch 3 not started
 - **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
 - **Scope note:** This tracker organizes the supplied plan; creating it does not authorize implementation. The feature is currently removed from the app.
@@ -32,49 +32,62 @@ Read [`AGENT_PRE_PROMPT.md`](AGENT_PRE_PROMPT.md) and [`focusflow-import-export-
 - Authorization and scope: User explicitly authorized reimplementation according to the saved plan on 2026-10-08. Scope is the supplied `.focusflow` plan, adapted to the current Kotlin source.
 - Baseline repository state: Branch `main`, commit `80bc745`; working tree was clean when checked before Batch 1.
 - Relevant files inspected: `replit.md`; all three `work/` documents; `LegacySettingsPolicy.kt`, `LegacySettingsMigration.kt`, `TsSettingsAdapter.kt`, `RestoreGate.kt`; legacy migration call in `FocusFlowDatabase.kt`; targeted `.focusflow` entry-point search in Settings, navigation, and AndroidManifest files.
-- Conflicts, missing references, or decisions: `removed.zip` is absent. The plan names `TsSettingsAdapter`, but the current object is `LegacySettingsAdapter` in `TsSettingsAdapter.kt`; the current migration still uses the adapter for the legacy database settings blob. No active `.focusflow` UI, route, or manifest entry point was found. Await explicit authorization and agreed implementation scope before app changes.
+- Conflicts, missing references, or decisions: `removed.zip` is absent. The plan names `TsSettingsAdapter`, but the current object is `LegacySettingsAdapter` in `TsSettingsAdapter.kt`; the current migration still uses the adapter for the legacy database settings blob. No active `.focusflow` UI, route, or manifest entry point was found. The user has explicitly authorized Batch 1 and Batch 2; later batches remain out of scope until requested.
 
 ## Batch 1 — Data models and serialization
 
-**Status:** In progress — current-source API review before implementation.
+**Status:** Complete — implementation and local unit tests verified.
 
 **Initial notes**
 
 - `removed.zip` is unavailable; implementation must use the current Kotlin source and preserve existing legacy migration behavior.
-- No app code has been changed in this batch yet.
-- Do not run Android Gradle/build/test commands on Replit. Remote CI or pushing still requires a separate explicit request.
+- At the start of the batch, no app code had been changed. The data models, serializer, portable settings policy, and unit tests have since been added.
+- At Batch 1 start, the project pre-prompt prohibited local tests; it was subsequently revised to allow the configured local test workflow or scripts. Remote CI or pushing still requires a separate explicit request.
+- Current-source API review is complete. `Task` is serializable, while `AppSettings` is not; `LegacySettingsAdapter` is the current adapter object and its recognized fields cover only part of the current `AppSettings` model.
+- Keep the current legacy migration path unchanged. The portable policy will map the adapter's supported aliases, preserve other portable current settings as JSON fields, and exclude the current model's device-local state separately from the legacy migration allowlist.
+- `LegacySettingsPolicy` has a narrower historical TypeScript key list than the current native `AppSettings`; use it as an additional guard without changing its legacy migration behavior.
 
 ## Batch 1 — Data models and serialization
 
 Plan phase: **Phase 1 — Data models and serialization**
 
-- [ ] Implement the versioned envelope and preset-section/summary models.
-- [ ] Implement the portable-settings policy, excluding device-local fields and preserving `focusMirrorVpnEnabled`.
-- [ ] Implement envelope creation, JSON serialization, suggested filenames, and parsing/validation.
-- [ ] Add tests for round-trip behavior, portable/device-local fields, summary values, and invalid `kind`.
+- [x] Implement the versioned envelope and preset-section/summary models.
+- [x] Implement the portable-settings policy, excluding device-local fields and preserving `focusMirrorVpnEnabled`.
+- [x] Implement envelope creation, JSON serialization, suggested filenames, and parsing/validation.
+- [x] Add tests for round-trip behavior, portable/device-local fields, summary values, and invalid `kind`.
 
 **Evidence / notes**
 
-- Changed files:
-- Tests/checks and results:
-- Decisions or blockers:
+- Changed files: `app/src/main/java/com/tbtechs/focusflow/data/backup/BackupEnvelope.kt`, `PortableSettingsPolicy.kt`, and `BackupSerializer.kt`; `app/src/test/java/com/tbtechs/focusflow/data/backup/BackupSerializerTest.kt`.
+- Tests/checks and results: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`, each with 137 tests, 0 failures, 0 errors, and 0 skipped. Both `BackupSerializerTest` and `BackupRestoreEngineTest` are present in each variant's XML reports. Static whitespace checks passed; the committed v1 fixture parses as JSON.
+- Decisions or blockers: The existing migration adapter remains unchanged; it recognizes only a subset of current `AppSettings` fields, so other portable JSON fields are preserved in the envelope but are not mapped by that legacy adapter.
 
 ## Batch 2 — Restore engine and write safety
 
 Plan phase: **Phase 2 — Restore engine**
 
-- [ ] Implement the active Focus Session guard for replace mode.
-- [ ] Route every restore write through the current restore/write gate.
-- [ ] Implement merge behavior using database task IDs and replace behavior with the required confirmation/guard.
-- [ ] Convert past scheduled tasks to skipped and reconcile alarms once after inserts.
-- [ ] Add tests for merge, replace, duplicates, past tasks, active-session protection, and write/reconcile behavior.
+**Status:** Complete — local unit tests passed for both product flavors.
+
+**Initial notes**
+
+- The app module creates one `RestoreGate` and injects it into the settings, task, and alarm repositories; the restore engine must use that same gate.
+- `SettingsRepository` currently exposes a gated `putString` but no typed boolean/integer preference writes; add gated typed methods for the adapter's existing preference values.
+- Filter portability policy keys before mapping through `LegacySettingsAdapter`; its output keys are native preference names, not TypeScript keys for `LegacySettingsPolicy`.
+- The current project pre-prompt allows local unit tests via the configured workflow or scripts; use `bash scripts/test-unit.sh`. Do not start GitHub Actions or push unless separately requested.
+- Restore engine and gated boolean/integer settings writes were added, along with fake-access tests. The configured local test script has now passed for both product flavors.
+
+- [x] Implement the active Focus Session guard for replace mode.
+- [x] Route every restore write through the current restore/write gate.
+- [x] Implement merge behavior using database task IDs and replace behavior with the required confirmation/guard.
+- [x] Convert past scheduled tasks to skipped and reconcile alarms once after inserts.
+- [x] Add tests for merge, replace, duplicates, past tasks, active-session protection, and write/reconcile behavior.
 
 **Evidence / notes**
 
-- Changed files:
-- Tests/checks and results:
-- Data-safety review:
-- Decisions or blockers:
+- Changed files: `app/src/main/java/com/tbtechs/focusflow/data/backup/BackupRestoreEngine.kt`, `app/src/main/java/com/tbtechs/focusflow/data/repository/SettingsRepository.kt`, and `app/src/test/java/com/tbtechs/focusflow/data/backup/BackupRestoreEngineTest.kt`.
+- Tests/checks and results: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`, each with 137 tests, 0 failures, 0 errors, and 0 skipped. XML reports include `BackupRestoreEngineTest` and `BackupSerializerTest` for both flavors. `git diff --check` and equivalent whitespace checks for new files passed.
+- Data-safety review: Replacement checks for an active session before any writes while holding the shared gate; settings are validated before writes; task IDs are read from the database under the gate; all settings/task/alarm mutations use the gate. Replace mode reconciles once even when no future scheduled task was imported, so alarms belonging to deleted tasks can be removed.
+- Decisions or blockers: No blockers remain in Batch 2. No remote CI was requested or run. `LegacySettingsPolicy` is applied to source backup keys before conversion because the adapter's output keys are native preference names. Replace mode reconciles once even without future scheduled imports to clear alarms for deleted tasks.
 
 ## Batch 3 — File I/O and import validation
 
@@ -158,7 +171,7 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 - [ ] Ensure all completed work is ticked and has evidence; leave blocked or unverified work unchecked.
 - [ ] Summarize changed behavior, validation, known limitations, and remaining decisions.
 - [ ] Push or trigger GitHub Actions only if the user explicitly requested it.
-- [ ] Confirm no Gradle/build/test command ran on Replit.
+- [ ] Confirm no unrequested remote CI or push ran, and record any authorized local test/build commands.
 
 **Evidence / notes**
 
@@ -172,3 +185,5 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 |---|---|---|---|
 | 2026-10-08 | Replit Agent | Created this tracker and organized the supplied plan; no feature implementation performed | Feature remains removed. All implementation checkboxes are intentionally unchecked pending explicit authorization. |
 | 2026-10-08 | Replit Agent | Batch 0 current-state review | Read the required docs and current project context. `removed.zip` is missing; current legacy database migration uses `LegacySettingsAdapter`. User authorized implementation according to the saved plan; Batch 1 is now in progress. |
+| 2026-10-08 | Replit Agent | Batch 1 — data models and serialization | Added envelope, portable settings mapping, serialization/validation, and focused tests. At the end of Batch 1 implementation, Android/Gradle tests and remote CI had not been run; a later authorized local test run verified Batch 1 and Batch 2. |
+| 2026-10-08 | Replit Agent | Batch 1 and Batch 2 verification | `bash scripts/test-unit.sh` passed both product-flavor JVM unit-test tasks (137 tests each, no failures/errors/skips). Both backup test classes appear in both XML reports. Remote CI and pushing were not requested or run. |
