@@ -13,8 +13,50 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
+
+/**
+ * Codec for durable restore documents. Version fields must be written even
+ * when they equal their serializer defaults.
+ */
+internal val RestoreStoreJson = Json {
+    ignoreUnknownKeys = false
+    encodeDefaults = true
+}
+
+/**
+ * Decode journal text without Android dependencies so the durable wire format
+ * can be verified in local JVM tests.
+ *
+ * Journals written before defaults were encoded omit `journalVersion`; that
+ * schema is the original v1 schema, so a missing version is accepted as v1.
+ */
+internal fun parseJournalText(text: String): RestoreJournalRead {
+    val root = try {
+        RestoreStoreJson.parseToJsonElement(text) as? JsonObject
+    } catch (error: Exception) {
+        return RestoreJournalRead.Corrupt(
+            error.message ?: "The restore journal could not be read.",
+        )
+    } ?: return RestoreJournalRead.Corrupt("Journal root is not an object.")
+
+    val versionElement = root["journalVersion"]
+    if (versionElement != null) {
+        val version = (versionElement as? JsonPrimitive)?.intOrNull
+        if (version != RestoreJournal.JOURNAL_VERSION) {
+            return RestoreJournalRead.UnknownVersion(version)
+        }
+    }
+
+    return try {
+        RestoreJournalRead.Value(RestoreStoreJson.decodeFromString<RestoreJournal>(text))
+    } catch (error: Exception) {
+        RestoreJournalRead.Corrupt(
+            error.message ?: "The restore journal could not be read.",
+        )
+    }
+}
 
 @Serializable
 data class PendingImportRecord(
@@ -64,7 +106,7 @@ class AtomicPendingImportStore(context: Context) : PendingImportStore {
     private val atomicFile = AtomicFile(
         File(File(context.applicationContext.noBackupFilesDir, "pending-import"), "import.json"),
     )
-    private val json = Json { ignoreUnknownKeys = false }
+    private val json = RestoreStoreJson
 
     override fun exists(): Boolean = atomicFile.baseFile.exists() ||
         File(atomicFile.baseFile.path + ".bak").exists()
@@ -99,7 +141,7 @@ class AtomicRestoreJournalStore(context: Context) : RestoreJournalStore {
     private val journalFile = File(directory, "journal.json")
     private val quarantineFile = File(directory, "journal.quarantine")
     private val atomicFile = AtomicFile(journalFile)
-    private val json = Json { ignoreUnknownKeys = false }
+    private val json = RestoreStoreJson
 
     override fun hasJournal(): Boolean = journalFile.exists() ||
         File(journalFile.path + ".bak").exists()
@@ -109,15 +151,7 @@ class AtomicRestoreJournalStore(context: Context) : RestoreJournalStore {
     override suspend fun read(): RestoreJournalRead = withContext(Dispatchers.IO) {
         if (!hasJournal()) return@withContext RestoreJournalRead.Missing
         try {
-            val text = atomicFile.openRead().use(::readBoundedText)
-            val root = json.parseToJsonElement(text) as? JsonObject
-                ?: return@withContext RestoreJournalRead.Corrupt("Journal root is not an object.")
-            val version = root["journalVersion"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.intOrNull }
-            if (version != RestoreJournal.JOURNAL_VERSION) {
-                return@withContext RestoreJournalRead.UnknownVersion(version)
-            }
-            val journal = json.decodeFromString<RestoreJournal>(text)
-            RestoreJournalRead.Value(journal)
+            parseJournalText(atomicFile.openRead().use(::readBoundedText))
         } catch (error: FileNotFoundException) {
             RestoreJournalRead.Missing
         } catch (error: Exception) {

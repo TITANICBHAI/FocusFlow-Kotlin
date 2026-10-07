@@ -216,7 +216,7 @@ class RestoreRecoveryEngineTest {
     }
 
     @Test
-    fun discardReconcilesAndRetryKeepsGateClosedIfRepairFails() = runTest {
+    fun discardRetriesDerivedStateRepairAndReopensAfterSuccess() = runTest {
         val store = FakeJournalStore(journal = journal(RestorePhase.PLANNED))
         val actions = CountingActions(
             failTaskCalls = 3,
@@ -228,15 +228,56 @@ class RestoreRecoveryEngineTest {
         assertTrue(engine.runAlreadyClosedGate(interrupted = true) is RecoveryRunResult.Blocked)
         val discard = engine.discard()
 
-        assertTrue(discard.isFailure)
+        assertTrue(discard.isSuccess)
         assertFalse(store.hasJournal())
-        assertEquals(RestoreGate.State.RECOVERY_BLOCKED, gate.state.value)
+        assertEquals(2, actions.currentReconcileCalls)
+        assertEquals(RestoreGate.State.OPEN, gate.state.value)
+        assertEquals(RestoreUiState.Idle, engine.state.value)
 
         val retry = engine.retry()
 
-        assertTrue(retry is RecoveryRunResult.NoJournal)
+        assertTrue(retry is RecoveryRunResult.Blocked)
         assertEquals(2, actions.currentReconcileCalls)
         assertEquals(RestoreGate.State.OPEN, gate.state.value)
+    }
+
+    @Test
+    fun discardReopensEvenWhenAllDerivedStateRepairAttemptsFail() = runTest {
+        val store = FakeJournalStore(journal = journal(RestorePhase.PLANNED))
+        val actions = CountingActions(
+            failTaskCalls = 3,
+            failCurrentReconcileCalls = 3,
+        )
+        val gate = RestoreGate(RestoreGate.State.RECOVERING)
+        val engine = engine(gate, store, actions)
+
+        assertTrue(engine.runAlreadyClosedGate(interrupted = true) is RecoveryRunResult.Blocked)
+        val discard = engine.discard()
+
+        assertTrue(discard.isFailure)
+        assertFalse(store.hasJournal())
+        assertEquals(3, actions.currentReconcileCalls)
+        assertEquals(RestoreGate.State.OPEN, gate.state.value)
+        assertEquals(RestoreUiState.Idle, engine.state.value)
+    }
+
+    @Test
+    fun discardStaysBlockedIfJournalArtifactsCannotBeDeleted() = runTest {
+        val store = FakeJournalStore(
+            journal = journal(RestorePhase.PLANNED),
+            failDeleteJournalCalls = 1,
+        )
+        val actions = CountingActions(failTaskCalls = 3)
+        val gate = RestoreGate(RestoreGate.State.RECOVERING)
+        val engine = engine(gate, store, actions)
+
+        assertTrue(engine.runAlreadyClosedGate(interrupted = true) is RecoveryRunResult.Blocked)
+        val discard = engine.discard()
+
+        assertTrue(discard.isFailure)
+        assertTrue(store.hasJournal())
+        assertEquals(0, actions.currentReconcileCalls)
+        assertEquals(RestoreGate.State.RECOVERY_BLOCKED, gate.state.value)
     }
 
     @Test

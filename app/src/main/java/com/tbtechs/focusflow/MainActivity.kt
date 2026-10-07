@@ -699,7 +699,7 @@ private fun FocusFlowRoot(
                                 Text(blocked.message)
                                 if (blocked.unreadableJournal) {
                                     Text(
-                                        "The restore record could not be read. Retry may not succeed.",
+                                        "If retrying does not help, choose Discard to keep your current data.",
                                         modifier = Modifier.padding(top = 8.dp),
                                     )
                                 }
@@ -754,9 +754,15 @@ private fun FocusFlowRoot(
                             scope.launch {
                                 val result = AppModule.restoreCoordinator.discardRecovery()
                                 if (result.isFailure) {
+                                    val reopened =
+                                        AppModule.restoreGate.state.value == RestoreGate.State.OPEN
                                     Toast.makeText(
                                         context,
-                                        "The app reopened, but some derived state could not be refreshed.",
+                                        if (reopened) {
+                                            "The app reopened, but some derived state could not be refreshed."
+                                        } else {
+                                            "The restore could not be discarded. Please try again."
+                                        },
                                         Toast.LENGTH_LONG,
                                     ).show()
                                 }

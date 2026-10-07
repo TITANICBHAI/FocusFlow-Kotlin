@@ -48,7 +48,6 @@ class RestoreRecoveryEngine(
 ) {
     private val _state = MutableStateFlow<RestoreUiState>(RestoreUiState.Idle)
     val state: StateFlow<RestoreUiState> = _state.asStateFlow()
-    private var discardReconciliationPending = false
 
     fun reflectBlockedStartup(unreadableJournal: Boolean) {
         _state.value = RestoreUiState.Blocked(
@@ -168,24 +167,6 @@ class RestoreRecoveryEngine(
                 unreadableJournal = journalStore.hasQuarantine(),
             )
         }
-        if (discardReconciliationPending) {
-            _state.value = RestoreUiState.Running(interrupted = true)
-            return try {
-                actions.reconcileCurrentState()
-                discardReconciliationPending = false
-                gate.reopen()
-                _state.value = RestoreUiState.Idle
-                RecoveryRunResult.NoJournal(pendingImportStore.exists())
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                gate.markRecoveryBlocked()
-                val message =
-                    "The restore was discarded, but current data could not be reconciled. Retry to repair it."
-                _state.value = RestoreUiState.Blocked(message, unreadableJournal = false)
-                RecoveryRunResult.Blocked(message, unreadableJournal = false)
-            }
-        }
         if (journalStore.hasQuarantine()) {
             try {
                 journalStore.restoreQuarantineForRetry()
@@ -216,33 +197,42 @@ class RestoreRecoveryEngine(
         if (gate.state.value != RestoreGate.State.RECOVERY_BLOCKED) {
             return Result.failure(IllegalStateException("Discard is available only when recovery is blocked."))
         }
-        return try {
+
+        // Keep the gate closed unless both durable restore artifacts are gone.
+        try {
             journalStore.deleteJournal()
             journalStore.deleteQuarantine()
-            discardReconciliationPending = true
-            actions.reconcileCurrentState()
-            discardReconciliationPending = false
-            _state.value = RestoreUiState.Idle
-            gate.reopen()
-            Result.success(Unit)
         } catch (cancelled: CancellationException) {
-            if (discardReconciliationPending) {
-                gate.markRecoveryBlocked()
-                _state.value = RestoreUiState.Blocked(
-                    "The restore was discarded, but current data could not be reconciled. Retry to repair it.",
-                    unreadableJournal = false,
-                )
-            }
             throw cancelled
         } catch (error: Exception) {
-            if (discardReconciliationPending) {
-                gate.markRecoveryBlocked()
-                val message =
-                    "The restore was discarded, but current data could not be reconciled. Retry to repair it."
-                _state.value = RestoreUiState.Blocked(message, unreadableJournal = false)
-            }
-            Result.failure(error)
+            return Result.failure(error)
         }
+
+        // Once the user's discard choice is durable, repair derived state with
+        // bounded retries but do not lock the app again if that repair fails.
+        _state.value = RestoreUiState.Running(interrupted = true)
+        var reconcileFailure: Exception? = null
+        try {
+            var attempt = 0
+            var reconciled = false
+            while (attempt < maxAttempts && !reconciled) {
+                attempt += 1
+                try {
+                    actions.reconcileCurrentState()
+                    reconcileFailure = null
+                    reconciled = true
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    reconcileFailure = error
+                    if (attempt < maxAttempts) delay(retryDelayMillis)
+                }
+            }
+        } finally {
+            _state.value = RestoreUiState.Idle
+            gate.reopen()
+        }
+        return reconcileFailure?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 
     private suspend fun advance(
