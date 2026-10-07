@@ -1,10 +1,14 @@
 package com.tbtechs.focusflow.data.restore
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withTimeout
+
+internal const val DEFAULT_RESTORE_RECOVERY_TIMEOUT_MILLIS = 120_000L
 
 sealed interface RestoreUiState {
     data object Idle : RestoreUiState
@@ -45,7 +49,14 @@ class RestoreRecoveryEngine(
     private val actions: RestorePhaseActions,
     private val maxAttempts: Int = 3,
     private val retryDelayMillis: Long = 250,
+    private val recoveryTimeoutMillis: Long = DEFAULT_RESTORE_RECOVERY_TIMEOUT_MILLIS,
 ) {
+    init {
+        require(recoveryTimeoutMillis > 0) {
+            "Restore recovery timeout must be greater than zero."
+        }
+    }
+
     private val _state = MutableStateFlow<RestoreUiState>(RestoreUiState.Idle)
     val state: StateFlow<RestoreUiState> = _state.asStateFlow()
 
@@ -62,10 +73,20 @@ class RestoreRecoveryEngine(
 
     suspend fun runAlreadyClosedGate(interrupted: Boolean): RecoveryRunResult {
         return try {
-            runAlreadyClosedGateInternal(interrupted)
+            withTimeout(recoveryTimeoutMillis) {
+                runAlreadyClosedGateInternal(interrupted)
+            }
+        } catch (_: TimeoutCancellationException) {
+            blockForRecovery(
+                "Restore is taking longer than expected. Retry or discard it to continue.",
+            )
         } catch (cancelled: CancellationException) {
             markBlockedAfterCancellation()
             throw cancelled
+        } catch (_: Exception) {
+            blockForRecovery(
+                "Restore recovery encountered an unexpected error. Retry or discard it to continue.",
+            )
         }
     }
 
@@ -157,6 +178,10 @@ class RestoreRecoveryEngine(
         } catch (cancelled: CancellationException) {
             markBlockedAfterCancellation()
             throw cancelled
+        } catch (_: Exception) {
+            blockForRecovery(
+                "Restore recovery encountered an unexpected error. Retry or discard it to continue.",
+            )
         }
     }
 
@@ -259,11 +284,32 @@ class RestoreRecoveryEngine(
     }
 
     private fun markBlockedAfterCancellation() {
+        if (gate.state.value == RestoreGate.State.OPEN) {
+            _state.value = RestoreUiState.Idle
+            return
+        }
         val unreadable = (_state.value as? RestoreUiState.Blocked)?.unreadableJournal ?: false
         gate.markRecoveryBlocked()
         _state.value = RestoreUiState.Blocked(
             message = "Restore recovery was interrupted. Retry or discard it to continue.",
             unreadableJournal = unreadable,
         )
+    }
+
+    private fun blockForRecovery(message: String): RecoveryRunResult {
+        if (gate.state.value == RestoreGate.State.OPEN) {
+            _state.value = RestoreUiState.Idle
+            return RecoveryRunResult.NoJournal(
+                pendingImportRemains = runCatching { pendingImportStore.exists() }.getOrDefault(false),
+            )
+        }
+
+        val unreadable = runCatching { journalStore.hasQuarantine() }.getOrDefault(false)
+        gate.markRecoveryBlocked()
+        _state.value = RestoreUiState.Blocked(
+            message = message,
+            unreadableJournal = unreadable,
+        )
+        return RecoveryRunResult.Blocked(message, unreadable)
     }
 }

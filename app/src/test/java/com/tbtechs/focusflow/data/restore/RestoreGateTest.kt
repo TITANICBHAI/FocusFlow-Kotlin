@@ -56,4 +56,25 @@ class RestoreGateTest {
         assertFalse(gate.tryBeginRestore())
         assertEquals(RestoreGate.State.RECOVERING, gate.state.value)
     }
+
+    @Test
+    fun restoreReopensGateWhenAnExistingWriterDoesNotDrain() = runTest {
+        val gate = RestoreGate(writerDrainTimeoutMillis = 50)
+        val writerEntered = CompletableDeferred<Unit>()
+        val releaseWriter = CompletableDeferred<Unit>()
+        val existingWriter = launch {
+            gate.write("stalled-existing") {
+                writerEntered.complete(Unit)
+                releaseWriter.await()
+            }
+        }
+        writerEntered.await()
+
+        assertFalse(gate.tryBeginRestore())
+        assertEquals(RestoreGate.State.OPEN, gate.state.value)
+
+        releaseWriter.complete(Unit)
+        existingWriter.join()
+        assertEquals(RestoreGate.State.OPEN, gate.state.value)
+    }
 }

@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.data.restore
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -95,6 +96,48 @@ class RestoreRecoveryEngineTest {
         assertTrue(cancelled)
         assertEquals(1, actions.taskCalls)
         assertEquals(RestorePhase.PLANNED, store.journal?.phase)
+        assertEquals(RestoreGate.State.RECOVERY_BLOCKED, gate.state.value)
+        assertTrue(engine.state.value is RestoreUiState.Blocked)
+    }
+
+    @Test
+    fun hungRecoveryTimesOutIntoRetryOrDiscardState() = runTest {
+        val store = FakeJournalStore(journal = journal(RestorePhase.PLANNED))
+        val actions = CountingActions(suspendTaskPhase = true)
+        val gate = RestoreGate(RestoreGate.State.RECOVERING)
+        val engine = engine(
+            gate = gate,
+            store = store,
+            actions = actions,
+            recoveryTimeoutMillis = 50,
+        )
+
+        val result = engine.runAlreadyClosedGate(interrupted = true)
+
+        assertEquals(
+            RecoveryRunResult.Blocked(
+                "Restore is taking longer than expected. Retry or discard it to continue.",
+                unreadableJournal = false,
+            ),
+            result,
+        )
+        assertEquals(RestoreGate.State.RECOVERY_BLOCKED, gate.state.value)
+        assertEquals(RestorePhase.PLANNED, store.journal?.phase)
+        assertTrue(engine.state.value is RestoreUiState.Blocked)
+    }
+
+    @Test
+    fun unexpectedStartupReadFailureBlocksInsteadOfLeavingSpinner() = runTest {
+        val store = FakeJournalStore(
+            journal = journal(RestorePhase.PLANNED),
+            readFailure = IllegalStateException("injected journal read failure"),
+        )
+        val gate = RestoreGate(RestoreGate.State.RECOVERING)
+        val engine = engine(gate, store, CountingActions())
+
+        val result = engine.runAlreadyClosedGate(interrupted = true)
+
+        assertTrue(result is RecoveryRunResult.Blocked)
         assertEquals(RestoreGate.State.RECOVERY_BLOCKED, gate.state.value)
         assertTrue(engine.state.value is RestoreUiState.Blocked)
     }
@@ -302,12 +345,14 @@ class RestoreRecoveryEngineTest {
         store: FakeJournalStore,
         actions: CountingActions,
         pending: FakePendingStore = FakePendingStore(),
+        recoveryTimeoutMillis: Long = DEFAULT_RESTORE_RECOVERY_TIMEOUT_MILLIS,
     ) = RestoreRecoveryEngine(
         gate = gate,
         journalStore = store,
         pendingImportStore = pending,
         actions = actions,
         retryDelayMillis = 0,
+        recoveryTimeoutMillis = recoveryTimeoutMillis,
     )
 
     private fun journal(
@@ -336,6 +381,7 @@ class RestoreRecoveryEngineTest {
         var failReconcileCalls: Int = 0,
         var failPersistCalls: Int = 0,
         var failCurrentReconcileCalls: Int = 0,
+        var suspendTaskPhase: Boolean = false,
         private val events: MutableList<String>? = null,
     ) : RestorePhaseActions {
         var taskCalls = 0
@@ -348,6 +394,7 @@ class RestoreRecoveryEngineTest {
         override suspend fun applyTasks(plan: RestorePlan) {
             taskCalls++
             events?.add("tasks")
+            if (suspendTaskPhase) awaitCancellation()
             if (cancelTaskPhase) {
                 cancelTaskPhase = false
                 throw CancellationException("injected task phase cancellation")
@@ -423,6 +470,7 @@ class RestoreRecoveryEngineTest {
         private var readResult: RestoreJournalRead? = null,
         var failNextPhaseTransition: Boolean = false,
         var failDeleteJournalCalls: Int = 0,
+        var readFailure: Exception? = null,
     ) : RestoreJournalStore {
         private var quarantined = false
         private val writesByPhase = mutableMapOf<RestorePhase, Int>()
@@ -434,8 +482,10 @@ class RestoreRecoveryEngineTest {
         override fun hasJournal() = journal != null
         override fun hasQuarantine() = quarantined
 
-        override suspend fun read(): RestoreJournalRead =
-            readResult ?: journal?.let(RestoreJournalRead::Value) ?: RestoreJournalRead.Missing
+        override suspend fun read(): RestoreJournalRead {
+            readFailure?.let { throw it }
+            return readResult ?: journal?.let(RestoreJournalRead::Value) ?: RestoreJournalRead.Missing
+        }
 
         override suspend fun write(journal: RestoreJournal) {
             writeCount++
