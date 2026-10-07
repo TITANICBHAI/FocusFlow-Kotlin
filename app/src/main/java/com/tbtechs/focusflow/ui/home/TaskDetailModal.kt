@@ -151,6 +151,16 @@ fun TaskDetailModal(
                     color = priorityColor(task.priority),
                 )
 
+                if (task.tags.isNotEmpty()) {
+                    ReferenceSectionLabel("TAGS")
+                    Text(
+                        task.tags.joinToString(" ") { "#$it" },
+                        fontSize = 15.scaledSp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = RefText,
+                    )
+                }
+
                 ReferenceSectionLabel("STATUS")
                 Text(
                     task.status.replaceFirstChar(Char::titlecase),

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -72,7 +74,11 @@ fun TaskCard(
 ) {
     val complete = task.status == "completed"
     val closed = complete || task.status == "skipped"
-    val accent = if (isActive && !closed) RefBlue else taskAccent(task.color)
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val activeBlue = if (isLightTheme) Color(0xFF1D4ED8) else RefBlue
+    val completeGreen = if (isLightTheme) Color(0xFF047857) else RefGreen
+    val extendAmber = if (isLightTheme) Color(0xFFB45309) else RefAmber
+    val accent = if (isActive && !closed) activeBlue else taskAccent(task.color)
     var nowMs by remember(task.id) { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(task.id, closed) {
@@ -153,27 +159,14 @@ fun TaskCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         task.tags.forEach { tag ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(7.dp))
-                                    .background(DarkSurfaceVariant)
-                                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                            ) {
-                                Text(
-                                    text = "#$tag",
-                                    fontSize = 10.scaledSp,
-                                    color = DarkTextSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                            TaskTagChip(tag = tag, fontSizeSp = 11)
                         }
                     }
                 }
 
                 if (closed) {
                     val skipped = task.status == "skipped"
-                    val statusColor = if (skipped) DarkTextSecondary else Color(0xFF34D399)
+                    val statusColor = if (skipped) DarkTextSecondary else completeGreen
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
@@ -209,7 +202,7 @@ fun TaskCard(
                                 modifier = Modifier
                                     .fillMaxWidth(task.progressAt(nowMs))
                                     .fillMaxHeight()
-                                    .background(RefBlue),
+                                    .background(activeBlue),
                             )
                         }
                     }
@@ -231,13 +224,13 @@ fun TaskCard(
                         TaskCardAction(
                             imageVector = Icons.Outlined.Check,
                             contentDescription = "Complete task",
-                            tint = RefGreen,
+                            tint = completeGreen,
                             onClick = { onComplete(task.id) },
                         )
                         TaskCardAction(
                             imageVector = Icons.Outlined.Alarm,
                             contentDescription = "Extend task",
-                            tint = RefAmber,
+                            tint = extendAmber,
                             onClick = { onExtend(task) },
                         )
                     } else {

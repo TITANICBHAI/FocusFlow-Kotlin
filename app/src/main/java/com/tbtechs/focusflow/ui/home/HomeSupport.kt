@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,9 @@ import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
+import com.tbtechs.focusflow.ui.theme.InfoBorder
+import com.tbtechs.focusflow.ui.theme.InfoSurface
+import com.tbtechs.focusflow.ui.theme.InfoText
 import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 /**
@@ -76,9 +80,15 @@ internal fun ActiveTaskBanner(
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val isRunning = task.isRunningNow()
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val bannerShape = RoundedCornerShape(22.dp)
-    val bannerColor = if (isRunning) BrandPrimary else RefAmber
-    val whiteOverlay = Color.White.copy(alpha = 0.18f)
+    val bannerColor = when {
+        isRunning && isLightTheme -> com.tbtechs.focusflow.ui.theme.BrandPrimaryHover
+        isRunning -> BrandPrimary
+        else -> RefAmber
+    }
+    val foregroundColor = if (!isRunning && isLightTheme) Color(0xFF422006) else Color.White
+    val actionOverlay = foregroundColor.copy(alpha = if (!isRunning && isLightTheme) 0.12f else 0.18f)
 
     Box(
         modifier = Modifier
@@ -86,7 +96,7 @@ internal fun ActiveTaskBanner(
             .padding(horizontal = dimensions.screenPadding, vertical = 8.dp)
             .clip(bannerShape)
             .background(bannerColor)
-            .border(1.dp, Color.White.copy(alpha = 0.24f), bannerShape)
+            .border(1.dp, foregroundColor.copy(alpha = 0.24f), bannerShape)
             .clickable(onClick = onOpen)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
@@ -98,14 +108,14 @@ internal fun ActiveTaskBanner(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(whiteOverlay)
+                        .background(actionOverlay)
                         .padding(horizontal = 8.dp, vertical = 3.dp),
                 ) {
                     Text(
                         if (isRunning) "NOW" else "TIME'S UP",
                         fontSize = 10.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = foregroundColor,
                         letterSpacing = 0.8.scaledSp,
                     )
                 }
@@ -115,7 +125,7 @@ internal fun ActiveTaskBanner(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(Color.White),
+                            .background(foregroundColor),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -123,7 +133,7 @@ internal fun ActiveTaskBanner(
                         modifier = Modifier.weight(1f),
                         fontSize = 15.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = foregroundColor,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
@@ -132,7 +142,7 @@ internal fun ActiveTaskBanner(
                     if (isRunning) "Until ${task.endTime.asLocalTime()}"
                     else "Ended ${task.endTime.asLocalTime()} · pick one",
                     fontSize = 12.scaledSp,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = foregroundColor.copy(alpha = 0.88f),
                 )
             }
 
@@ -142,12 +152,12 @@ internal fun ActiveTaskBanner(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(whiteOverlay),
+                        .background(actionOverlay),
                 ) {
                     Icon(
                         Icons.Outlined.Check,
                         contentDescription = "Complete",
-                        tint = Color.White,
+                        tint = foregroundColor,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -156,12 +166,12 @@ internal fun ActiveTaskBanner(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(whiteOverlay),
+                        .background(actionOverlay),
                 ) {
                     Icon(
                         Icons.Outlined.Add,
                         contentDescription = "Extend",
-                        tint = Color.White,
+                        tint = foregroundColor,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -171,12 +181,12 @@ internal fun ActiveTaskBanner(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(whiteOverlay),
+                            .background(actionOverlay),
                     ) {
                         Icon(
                             Icons.Outlined.Close,
                             contentDescription = "Skip",
-                            tint = Color.White,
+                            tint = foregroundColor,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -186,12 +196,12 @@ internal fun ActiveTaskBanner(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(whiteOverlay),
+                            .background(actionOverlay),
                     ) {
                         Icon(
                             Icons.Outlined.Shield,
                             contentDescription = "Start focus",
-                            tint = Color.White,
+                            tint = foregroundColor,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -232,23 +242,11 @@ internal fun TaskTagsEditor(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 tags.forEach { tag ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(RefCard)
-                            .border(1.dp, RefBorder, RoundedCornerShape(8.dp))
-                            .clickable(
-                                onClickLabel = "Remove tag $tag",
-                                onClick = { onTagsChange(tags.filterNot { it == tag }) },
-                            )
-                            .padding(horizontal = 9.dp, vertical = 5.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("#$tag", fontSize = 12.scaledSp, color = RefSecondary)
-                            Spacer(Modifier.width(4.dp))
-                            Text("×", fontSize = 14.scaledSp, color = RefMuted)
-                        }
-                    }
+                    TaskTagChip(
+                        tag = tag,
+                        fontSizeSp = 13,
+                        onRemove = { onTagsChange(tags.filterNot { it == tag }) },
+                    )
                 }
             }
         }
@@ -264,6 +262,62 @@ internal fun TaskTagsEditor(
             fontSize = 12.scaledSp,
             color = RefSecondary,
         )
+    }
+}
+
+@Composable
+internal fun TaskTagChip(
+    tag: String,
+    fontSizeSp: Int = 11,
+    onRemove: (() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    val trailingSurface = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+        Color(0xFFC7D2FE)
+    } else {
+        Color(0xFF3D4380)
+    }
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(InfoSurface)
+            .border(1.dp, InfoBorder, shape)
+            .then(
+                if (onRemove == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable(
+                        onClickLabel = "Remove tag $tag",
+                        onClick = onRemove,
+                    )
+                },
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "#$tag",
+            fontSize = fontSizeSp.scaledSp,
+            color = InfoText,
+            maxLines = 1,
+        )
+        if (onRemove != null) {
+            Spacer(Modifier.width(5.dp))
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(trailingSurface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = null,
+                    tint = InfoText,
+                    modifier = Modifier.size(10.dp),
+                )
+            }
+        }
     }
 }
 
