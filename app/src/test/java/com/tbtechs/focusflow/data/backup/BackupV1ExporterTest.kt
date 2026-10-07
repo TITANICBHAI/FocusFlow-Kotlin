@@ -119,6 +119,33 @@ class BackupV1ExporterTest {
         assertTrue(error?.message.orEmpty().contains("updatedAt"))
     }
 
+    @Test
+    fun exportRejectsTagsOutsideTheImportLimits() {
+        val invalidTagArrays = listOf(
+            JsonArray(
+                List(BackupJsonLimits.MAX_TAGS_PER_TASK + 1) { JsonPrimitive("tag-$it") },
+            ),
+            JsonArray(
+                listOf(JsonPrimitive("x".repeat(BackupJsonLimits.MAX_TAG_CHARS + 1))),
+            ),
+        )
+
+        invalidTagArrays.forEach { tags ->
+            val invalid = JsonObject(sampleTask().toMutableMap().apply { put("tags", tags) })
+            val error = runCatching {
+                BackupV1Exporter.buildBackupJson(
+                    settings = TsSettingsAdapter.toWireSettings(sampleSettings()),
+                    tasks = listOf(invalid),
+                    exportedAt = now,
+                    exportedAtHuman = exportedAtHuman,
+                )
+            }.exceptionOrNull()
+
+            assertTrue(error is IllegalStateException)
+            assertTrue(error?.message.orEmpty().contains("tag", ignoreCase = true))
+        }
+    }
+
     private fun sampleSettings() = AppSettings(
         darkModeEnabled = false,
         alwaysBlockPackages = listOf("com.example.blocked"),

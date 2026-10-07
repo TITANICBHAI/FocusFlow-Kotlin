@@ -7,10 +7,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -19,8 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,38 +86,44 @@ fun InAppNoticeStrip(
                 .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .widthIn(max = 440.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFF0F172A))
                     .border(1.dp, Color(0xFF334155), RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (icon == null) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = tint,
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = tint,
-                        modifier = Modifier.size(18.dp),
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (icon != null) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = tint,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.size(10.dp))
+                    }
+                    Text(
+                        text = currentNotice.message,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 13.scaledSp,
+                        color = Color.White,
+                        lineHeight = 18.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.size(10.dp))
-                Text(
-                    text = currentNotice.message,
-                    fontSize = 13.scaledSp,
-                    color = Color.White,
-                    lineHeight = 18.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (icon == null) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp),
+                        color = tint,
+                        trackColor = tint.copy(alpha = 0.2f),
+                    )
+                }
             }
         }
     }

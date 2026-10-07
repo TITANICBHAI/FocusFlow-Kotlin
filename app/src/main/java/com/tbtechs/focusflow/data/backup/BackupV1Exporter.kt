@@ -80,6 +80,24 @@ object BackupV1Exporter {
 
     private fun canonicalizeTask(task: JsonObject): JsonObject {
         val fields = task.toMutableMap()
+        val tags = when (val rawTags = task["tags"]) {
+            null -> JsonArray(emptyList())
+            is JsonArray -> rawTags
+            else -> error("Task export contains invalid tags.")
+        }
+        if (tags.size > BackupJsonLimits.MAX_TAGS_PER_TASK) {
+            error("Task export exceeds the maximum tag count.")
+        }
+        tags.forEach { value ->
+            val tag = (value as? JsonPrimitive)
+                ?.takeIf { it.isString }
+                ?.content
+                ?: error("Task export contains a non-string tag.")
+            if (tag.length > BackupJsonLimits.MAX_TAG_CHARS) {
+                error("Task export contains a tag exceeding the character limit.")
+            }
+        }
+        fields["tags"] = tags
         taskTimestampFields.forEach { field ->
             val raw = (task[field] as? JsonPrimitive)
                 ?.takeIf { it.isString }

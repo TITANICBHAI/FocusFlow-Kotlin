@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import androidx.compose.ui.unit.Dp
+import com.tbtechs.focusflow.data.backup.BackupJsonLimits
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
@@ -150,7 +151,7 @@ internal fun ActiveTaskBanner(
                 IconButton(
                     onClick = onComplete,
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(30.dp)
                         .clip(CircleShape)
                         .background(actionOverlay),
                 ) {
@@ -158,13 +159,13 @@ internal fun ActiveTaskBanner(
                         Icons.Outlined.Check,
                         contentDescription = "Complete",
                         tint = foregroundColor,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(15.dp),
                     )
                 }
                 IconButton(
                     onClick = onExtend,
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(30.dp)
                         .clip(CircleShape)
                         .background(actionOverlay),
                 ) {
@@ -172,14 +173,14 @@ internal fun ActiveTaskBanner(
                         Icons.Outlined.Add,
                         contentDescription = "Extend",
                         tint = foregroundColor,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(15.dp),
                     )
                 }
                 if (!isRunning) {
                     IconButton(
                         onClick = onSkip,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(30.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
@@ -187,14 +188,14 @@ internal fun ActiveTaskBanner(
                             Icons.Outlined.Close,
                             contentDescription = "Skip",
                             tint = foregroundColor,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(15.dp),
                         )
                     }
                 } else if (task.focusMode) {
                     IconButton(
                         onClick = onStartFocus,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(30.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
@@ -202,7 +203,7 @@ internal fun ActiveTaskBanner(
                             Icons.Outlined.Shield,
                             contentDescription = "Start focus",
                             tint = foregroundColor,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(15.dp),
                         )
                     }
                 }
@@ -219,9 +220,16 @@ internal fun TaskTagsEditor(
     onDraftChange: (String) -> Unit,
     onTagsChange: (List<String>) -> Unit,
 ) {
+    var tagError by remember(tags) { mutableStateOf<String?>(null) }
+
     fun addDraftTags() {
-        onTagsChange(addTaskTagsFromDraft(tags, draft))
-        onDraftChange("")
+        try {
+            onTagsChange(addTaskTagsFromDraft(tags, draft))
+            onDraftChange("")
+            tagError = null
+        } catch (error: IllegalArgumentException) {
+            tagError = error.message ?: "This tag cannot be added."
+        }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -242,15 +250,18 @@ internal fun TaskTagsEditor(
         }
         HomeTextField(
             value = draft,
-            onValueChange = onDraftChange,
+            onValueChange = {
+                onDraftChange(it)
+                tagError = null
+            },
             label = "Add a tag",
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { addDraftTags() }),
         )
         Text(
-            "Press return to add. Separate multiple tags with commas.",
+            tagError ?: "Press return to add. Separate multiple tags with commas.",
             fontSize = 12.scaledSp,
-            color = RefSecondary,
+            color = if (tagError == null) RefSecondary else MaterialTheme.colorScheme.error,
         )
     }
 }
@@ -263,6 +274,12 @@ internal fun addTaskTagsFromDraft(tags: List<String>, draft: String): List<Strin
     val updated = tags.toMutableList()
     candidates.forEach { candidate ->
         if (updated.none { it.equals(candidate, ignoreCase = true) }) {
+            require(candidate.length <= BackupJsonLimits.MAX_TAG_CHARS) {
+                "Tags must be ${BackupJsonLimits.MAX_TAG_CHARS} characters or fewer."
+            }
+            require(updated.size < BackupJsonLimits.MAX_TAGS_PER_TASK) {
+                "A task can have at most ${BackupJsonLimits.MAX_TAGS_PER_TASK} tags."
+            }
             updated += candidate
         }
     }
