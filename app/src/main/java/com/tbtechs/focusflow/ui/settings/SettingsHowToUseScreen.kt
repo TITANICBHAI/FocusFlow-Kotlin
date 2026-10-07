@@ -157,6 +157,7 @@ private val GUARDED_ADJUSTMENT_GUIDE = listOf(
     ),
     GuideSection(
         title = "Protection changes",
+        icon = Icons.Outlined.Security,
         iconBg = Color(0xFF450A0A),
         iconTint = Color(0xFFF87171),
         steps = listOf(

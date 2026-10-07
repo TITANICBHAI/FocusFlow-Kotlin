@@ -72,6 +72,21 @@ object LegacySettingsAdapter {
         "onboardingComplete",
         "privacyAccepted",
     )
+    private val profileFields = setOf(
+        "name",
+        "occupation",
+        "dailyGoalHours",
+        "wakeUpTime",
+        "sleepTime",
+        "focusGoals",
+        "chronotype",
+        "focusSessionLength",
+        "breakStyle",
+        "distractionTriggers",
+        "motivationStyle",
+        "weeklyReviewDay",
+    )
+
     /**
      * Validates legacy settings before mapping them to native preference
      * values. Invalid fields are omitted, while unsupported protection modes
