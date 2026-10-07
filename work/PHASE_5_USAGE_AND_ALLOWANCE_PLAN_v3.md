@@ -2,7 +2,7 @@
 
 For the coding agent · FocusFlow Android · supported range **Android 10 (API 29) up to the latest (Android 17 / API 37 at time of writing)** · 6 Oct 2026
 
-**This replaces v1 and v2.** Phases 0-4 and the health card are already implemented.
+**This replaces v1 and v2.** Source implementation for Phases 0-4 and the health card is present, but Phase 3 build/test/device verification and Phase 4 runtime/device/API verification remain incomplete. Do not treat source implementation as full verification; see `BATCH_TRACKER.md`.
 
 ---
 
@@ -44,6 +44,8 @@ Open items (defaults apply if not answered):
 
 ### 3.1 Rules
 
+Current project configuration, verified in `app/build.gradle.kts`: `minSdk = 29`, `compileSdk = 35`, `targetSdk = 35`. API 36/37 checks below are runtime smoke tests; this phase does not implicitly change `compileSdk`. Android 15/target-35 requirements are already applicable and must not be described as a future pre-upgrade gate. Any work on those requirements stays separately scoped.
+
 1. **minSdk 29.** All event types the pipeline needs exist natively: `ACTIVITY_RESUMED/PAUSED/STOPPED` and `DEVICE_STARTUP/SHUTDOWN` from API 29; `SCREEN_INTERACTIVE/NON_INTERACTIVE` and `KEYGUARD_SHOWN/HIDDEN` from API 28 (docs). `MOVE_TO_FOREGROUND/BACKGROUND` are deprecated since API 29 (docs). **Delete the `MOVE_TO_*` branches and the SDK-version checks around them.**
 2. **The pipeline is pure and has no SDK checks.** It receives normalized events. All API-level handling lives in the thin adapter on top of `UsageStatsRepository`.
 3. **Adapter must handle:**
@@ -65,7 +67,7 @@ Open items (defaults apply if not answered):
 | 12 (31) | FGS cannot start from the background (target 31+); **FGS notification delayed about 10 s unless it has action buttons or `FOREGROUND_SERVICE_IMMEDIATE`**; **notification trampolines banned** (docs) | `ensureRunning` is called only from the visible activity, in try/catch (code). **Idle card has no actions** (code). **`NotificationActionReceiver` calls `startActivity()`** (code) | Set the immediate behavior on the idle card. Trampoline fix: see section 8 (needs `targetSdk`) |
 | 13 (33) | `POST_NOTIFICATIONS` runtime permission; **users can dismiss the FGS notification by default** (docs); restricted settings block accessibility etc. for sideloaded installs (secondary) | Permission declared (code); restricted-settings recovery screens exist (code) | Re-post the current card from `ensureRunning()` so a dismissed card returns |
 | 14 (34) | FGS type + matching permission required when targeting 34 (docs); full-screen intent default only for calling/alarm apps (docs) | Types and permissions declared, `specialUse` subtype set (code); FSI check and settings link exist (code) | None. Re-test on 14 |
-| 15 (35) | `dataSync` services time out after 6 h per 24 h; `BOOT_COMPLETED` cannot start `dataSync` (target 35+) | `dataSync\|specialUse`; no `onTimeout`; `BootReceiver` starts it (code) | **Parked. Must be done before `targetSdk` 35** (section 9) |
+| 15 (35) | `dataSync` services time out after 6 h per 24 h; `BOOT_COMPLETED` cannot start `dataSync` (target 35+) | Current `targetSdk = 35`; service/boot path noted in source | Current target-35 compliance needs separate review; it is not a future pre-upgrade gate and is not Phase 5 scope. |
 | 16 (36) | Job runtime quota applies to jobs running with a foreground service (docs) | WorkManager workers exist (code) | Low risk; watch for skipped jobs |
 | 17 (37) | Stricter memory limits for notification custom views (target 37+); optional accessibility text-change types (docs) | No custom notification views found; the widget uses RemoteViews (code) | Nothing now |
 
@@ -81,7 +83,7 @@ Test on emulator images plus at least one physical phone. Minimum set, chosen wh
 | 31 | Background FGS start, 10 s card delay, trampoline, PendingIntent immutability |
 | 33 | Notification permission, dismissible card, restricted settings (sideloaded install) |
 | 34 | FGS types, full-screen intent permission |
-| 35 | `dataSync` timeout and boot restriction (once you target 35) |
+| 35 | `dataSync` timeout and boot restriction (the app currently targets 35) |
 | 36 / 37 | Smoke test: service survives, card shows, allowance and Stats numbers sane |
 
 On each: foreground service starts at app open and after reboot; card appears (and returns after dismissal on 33+); allowance blocks at the right moment; Stats totals are plausible; locked-boot case does not crash or reset usage.
@@ -122,7 +124,7 @@ Nudge also shows the enforcement pattern to keep: re-read the budget on a clock 
 2. **The big files must shrink.** Net line count of `AppBlockerAccessibilityService.kt` and `ForegroundTaskService.kt` goes down in every step that touches them. Report the numbers.
 3. **Label every step** behavior-preserving or behavior-changing.
 4. **No new prefs keys** unless justified; no new polling loops.
-5. Blocking logic, VPN, keyword blocker and the foreground-service type stay untouched. Android 15 / targetSdk 35 work stays parked (section 9).
+5. Blocking logic, VPN, keyword blocker and the foreground-service type stay untouched. Target-35 Android 15 behavior is already applicable because the current target is 35; track any required compliance work separately and do not expand Phase 5 to include it (section 9).
 6. Every behavior-changing step updates the user-facing copy.
 
 ## 7. Steps (each its own PR; the app must build and behave at the end of each)
@@ -130,7 +132,7 @@ Nudge also shows the enforcement pattern to keep: re-read the budget on a clock 
 ### 5.0 Verify and measure (read-only plus device testing)
 
 - Add the Lint `NewApi` CI gate (3.1 rule 8) and run it on the current code first; report findings.
-- Map every writer and reader of `daily_allowance_used`, `daily_app_usage`, `app_sessions` (include `BackgroundFetchWorker`, `SettingsRepository`, `LauncherActivity`, the detectors).
+- Map every writer and reader of `daily_allowance_used`, `daily_app_usage`, `app_sessions` (include `BackgroundFetchWorker`, `SettingsRepository`, `LauncherActivity`, backup/export, and the detectors). The current in-app V1 backup/export contains settings and task records, not Room usage history; document rollups as local-only for that export rather than expanding backup scope.
 - **Device matrix** (3.3 versions). For each case compare: the new pipeline output, the current accessibility meter, the current Stats card, and Digital Wellbeing:
   - Screen off while an app is open (do `PAUSED`/`STOPPED` arrive?).
   - Leaving an app via home, recents and a notification.
@@ -174,18 +176,18 @@ Build `ForegroundSpanTracker` plus the thin event adapter over `UsageStatsReposi
 
 ### 5.6 Cleanup
 
-Remove dead code (`MOVE_TO_*` branches, retired `AppUsageAndSessionTracker` accumulation if fully replaced), the shadow log and obsolete keys (with a note on upgrade behavior). Switch the usage-access check to `unsafeCheckOpNoThrow`. Re-run the 5.0 matrix on every version in 3.3. Report line counts for every touched and new file.
+Remove dead code (`MOVE_TO_*` branches, retired `AppUsageAndSessionTracker` accumulation if fully replaced) only in files already in Phase 5 scope; leave unrelated VPN, keyword-blocking, notification and enforcement code untouched. Remove the shadow log and obsolete keys (with a note on upgrade behavior). Switch the usage-access check to `unsafeCheckOpNoThrow`. Re-run the 5.0 matrix on every version in 3.3. Report line counts for every touched and new file.
 
 ## 8. Small fixes found while rechecking (separate PRs, not part of Phase 5)
 
-1. **Notification trampoline.** `NotificationActionReceiver` stores the action and then calls `startActivity()`. On Android 12+ apps targeting 31 or higher cannot start an activity from a receiver after a notification tap or action-button tap (docs), so Done / +15m / +30m / Skip would not replay until the user opens the app. **I still need your `targetSdk`.** Fix: apply the stored action inside the receiver through the same gate and repository, or make the buttons open the activity directly.
+1. **Notification trampoline.** `NotificationActionReceiver` stores the action and then calls `startActivity()`. On Android 12+ apps targeting 31 or higher cannot start an activity from a receiver after a notification tap or action-button tap (docs), so Done / +15m / +30m / Skip may not replay until the user opens the app. The app currently targets 35, so treat this as a current separate compliance concern, not an unknown-target question or Phase 5 work. Any fix needs separate scope approval.
 2. **Idle card delay.** Set the immediate foreground-service behavior on the idle card (it has no action buttons, so Android 12+ may show it about 10 s late).
 3. **Dismissed card.** On Android 13+ users can dismiss the card by default (docs; I earlier said 14, that was wrong). Re-post the current card from `ensureRunning()`.
 4. **Health card first draw.** `EnforcementHealth.UNKNOWN` counts as needs-attention, so the first card after each service start may flash "Needs attention". Treat unknown as neutral for the first draw.
 
 ## 9. Parked (not part of this phase)
 
-- Foreground-service type change, `onTimeout`, the Android 15 boot restriction, targetSdk 35 and anything above API 35. **Gate: do this before `targetSdk` 35.** A real-world reference: ActivityWatch's Android app changed its background service from `dataSync` to `specialUse`, starting the service with the special-use type on Android 14+ and keeping an older fallback for earlier versions (pull request 190 in `ActivityWatch/aw-android`; I read the description, not the code; license not checked, so read only).
+- Foreground-service type change, `onTimeout`, Android 15 boot behavior, and Android 16/17 target changes are outside Phase 5. The app already targets 35, so any target-35 compliance concern is current and must not be described as a pre-upgrade gate. Track and authorize that work separately; do not change the service type or boot behavior in Phase 5. A service with several types must satisfy the rules of **all** of them (docs), so `dataSync|specialUse` inherits `dataSync` limits. Reference: ActivityWatch's Android app moved its background service from `dataSync` to `specialUse`, starting the service with the special-use type on Android 14+ and keeping an older fallback for earlier versions (pull request 190 in `ActivityWatch/aw-android`; I read the description, not the code; license not checked, so read only).
 - In-app off switch for the background service.
 - Shared "what is enforced right now" state object.
 - Anything about the VPN notification.

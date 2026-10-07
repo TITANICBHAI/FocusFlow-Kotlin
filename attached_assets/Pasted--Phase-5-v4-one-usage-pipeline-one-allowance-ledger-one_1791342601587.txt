@@ -2,7 +2,7 @@
 
 For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maximum = the latest Android (API 37 at time of writing)** · 6 Oct 2026
 
-**This replaces v1, v2 and v3.** Phases 0-4 and the health card are already implemented.
+**This is the v4 review draft, intended to replace v1, v2 and v3 after the remaining review points are resolved.** Source implementations for Phases 0-4 and the health card are present, but Phase 3 build/test/device verification and Phase 4 runtime/device/API verification remain incomplete (see `../work/BATCH_TRACKER.md`). Do not treat "implemented" as "fully verified."
 
 ---
 
@@ -17,7 +17,7 @@ For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maxi
 
 ## 1. What changed in v4
 
-1. **Minimum-version mismatch resolved (section 2).** The owner's range is Android 10 to latest. The code still carries **51 version checks in 19 files that were written for older minimums** (below API 29), and the upload contains no Gradle or `uses-sdk` entry, so the real `minSdk` is unverified.
+1. **Minimum-version mismatch resolved (section 2).** The owner's range is Android 10 to latest. Current Gradle values have been verified as `minSdk = 29`, `compileSdk = 35`, and `targetSdk = 35`. The attached plan's inventory reports 51 checks in 19 files at or below API 29; verify that inventory during 5.0 and treat it as an audit list, not authorization to edit every listed subsystem.
 2. **Room rollups defined (section 6).** Rollups go into **new tables**, never into the existing ones. The existing `app_sessions` table has no unique key, so a naive rollup would duplicate rows. Existing history is never rewritten.
 3. **Allowance behavior when usage data is stale or unavailable defined (section 7).** Three data states, an estimator, reconcile rules, and one open decision.
 4. **Primary Stats screen and all affected detectors covered (section 8).** The primary Stats tab is `ArchivedStatsScreen` (Today / Yesterday / Week / All Time), not the screen earlier plans assumed. The 3-month view is currently unreachable. 7 of 11 detectors are affected.
@@ -26,25 +26,25 @@ For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maxi
 
 ### 2.1 Contract
 
-- **Runs correctly on every Android release from 10 (API 29) up to the latest.** `minSdk = 29`. No `maxSdk` cap.
-- **Running on the latest is not the same as targeting it.** `compileSdk` follows the newest stable SDK. `targetSdk` is raised stepwise, and each raise needs the behavior-change review in section 3.2. Raising it to 35 is gated on the parked foreground-service work (section 10) and on the notification-trampoline fix (section 9).
+- **Minimum supported release:** Android 10 (API 29); no `maxSdk` cap. The current app configuration is `minSdk = 29`, `compileSdk = 35`, `targetSdk = 35` (`app/build.gradle.kts`).
+- **Running on the latest is not the same as targeting it.** The plan's API 37 rows are runtime coverage goals; the current compile SDK remains 35 and this phase does not silently upgrade it. Target SDK 35 is already configured, so Android 15/target-35 behavior is a current compliance/release concern, not a gate that must be completed before a future target-35 upgrade. Keep that separate work out of Phase 5 unless the owner explicitly expands scope.
 - **Rooted devices and any root requirement: out of scope.**
 
 ### 2.2 The mismatch (code)
 
 | Item | Finding |
 |---|---|
-| Declared minimum | **Unknown.** No Gradle files or `uses-sdk` in the upload. |
-| Version checks written for older minimums | **51 checks in 19 files** test thresholds at or below API 29 (LOLLIPOP, M, N, O, O_MR1, P, Q). With `minSdk = 29` every `>=` check is always true and every `<` check is dead code. |
+| Current Gradle values | `minSdk = 29`, `compileSdk = 35`, `targetSdk = 35` in `app/build.gradle.kts` (verified in the project; the earlier plan upload did not include Gradle files). |
+| Candidate version-check inventory | The plan's scan reports **51 checks in 19 files** at or below API 29 (LOLLIPOP, M, N, O, O_MR1, P, Q). Recheck these in Phase 5.0. Their theoretical dead-code status does not authorize broad cleanup outside this phase's scope. |
 | Biggest files affected | `AppBlockerAccessibilityService.kt` (10), `ForegroundTaskService.kt` (8), `UsageStatsRepository.kt` (5), `TaskAlarmActivity.kt` (4) |
-| Other files | `NetworkBlockerVpnService`, `TaskAlarmReconcileWorker`, `BootReceiver`, `BlockOverlayActivity`, `LauncherActivity`, `AversiveActionsManager`, `VpnRecoveryNotifier`, `TemptationLogManager`, `PermissionSupport`, `ReminderChainScheduler`, `NotificationChannels`, `AlarmCapabilitySnapshot`, `ForegroundServiceController`, `LauncherController`, `VpnRepository` (1-2 each) |
+| Other inventoried files | Includes `NetworkBlockerVpnService`, `VpnRepository`, and other platform/notification files. This is an audit inventory only; VPN, keyword-blocking, notification, and unrelated enforcement code remain untouched by Phase 5. |
 | Checks that stay | Checks for R (30), S (31), TIRAMISU (33), 34 and VANILLA_ICE_CREAM (35) are live and must stay. |
 | Reference projects | Nudge and Device-Watch target minSdk 26, so their code has pre-29 fallbacks we do **not** need. Do not port those. |
 
 ### 2.3 Resolution
 
-- **5.0a:** confirm the Gradle `minSdk`. If it is below 29, raise it to 29. The owner has already decided Android 10 is the floor.
-- **5.7 (behavior-preserving PR):** collapse every check at or below API 29 to its always-true branch, using the inventory above. Read each one: several are compound conditions (for example `SDK_INT >= N && ...` in `VpnRecoveryNotifier`, `SDK_INT < M || permission check` in `PermissionSupport`, `theme != GLASSY || SDK_INT < O_MR1` in `LauncherActivity`). Keep the non-version part of each condition. This removes lines from the big files, which the ground rules require.
+- **5.0a:** record the verified values (`minSdk = 29`, `compileSdk = 35`, `targetSdk = 35`). No minimum-SDK change is currently needed. API 36/37 entries are runtime smoke tests, not a promise that this phase raises `compileSdk`.
+- **5.7 (behavior-preserving PR):** remove only dead branches directly tied to usage-event handling in files Phase 5 already changes (`UsageStatsRepository`, `ForegroundTaskService`, and `AppBlockerAccessibilityService`, as applicable). Preserve non-version terms in compound conditions and unrelated branches even within those files. Do not clean up the full 19-file inventory: VPN, keyword-blocking, notification, and unrelated enforcement files remain out of scope; any global compatibility cleanup needs separate owner approval.
 - Remove the `MOVE_TO_FOREGROUND/BACKGROUND` branches (deprecated in API 29, docs) in `UsageStatsRepository`, `ForegroundTaskService` and `AppBlockerAccessibilityService`.
 - **New code must contain no checks at or below API 29.** The pipeline is pure and has no SDK checks at all.
 
@@ -73,7 +73,7 @@ For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maxi
 | 12 (31) | FGS cannot start from the background (target 31+); **FGS notification delayed about 10 s unless it has action buttons or `FOREGROUND_SERVICE_IMMEDIATE`**; **notification trampolines banned** (docs) | `ensureRunning` is called only from the visible activity, in try/catch (code). **Idle card has no actions** (code). **`NotificationActionReceiver` calls `startActivity()`** (code) | Section 9 |
 | 13 (33) | `POST_NOTIFICATIONS` runtime permission; **users can dismiss the FGS notification by default** (docs); restricted settings for sideloaded installs (secondary) | Permission declared and restricted-settings recovery screens exist (code) | Re-post the card from `ensureRunning()` |
 | 14 (34) | FGS type and matching permission required when targeting 34; full-screen intent default only for calling/alarm apps (docs) | Types, permissions and `specialUse` subtype declared; full-screen-intent check and settings link exist (code) | None. Re-test on 14 |
-| 15 (35) | `dataSync` times out after 6 h per 24 h; `BOOT_COMPLETED` cannot start `dataSync` (target 35+) | `dataSync\|specialUse`, no `onTimeout`, `BootReceiver` starts it (code) | **Parked. Gate before `targetSdk` 35** (section 10) |
+| 15 (35) | `dataSync` times out after 6 h per 24 h; `BOOT_COMPLETED` cannot start `dataSync` (target 35+) | Current `targetSdk = 35`; service/boot path noted in source | Current target-35 compliance needs separate review; it is not a future pre-upgrade gate and is not Phase 5 scope. |
 | 16 (36) | Job quota applies to jobs running with an FGS (docs) | WorkManager workers exist (code) | Low risk |
 | 17 (37) | Stricter memory limits for notification custom views (target 37+); optional accessibility text-change types (docs) | No custom notification views found (code) | Nothing now |
 
@@ -89,7 +89,7 @@ Emulator images plus at least one physical phone. Minimum set, chosen where beha
 | 31 | Background FGS start, 10 s card delay, trampoline, PendingIntent immutability |
 | 33 | Notification permission, dismissible card, restricted settings (sideloaded install) |
 | 34 | FGS types, full-screen intent permission |
-| 35 | `dataSync` timeout and boot restriction (once you target 35) |
+| 35 | `dataSync` timeout and boot restriction (the app currently targets 35) |
 | 36 / 37 | Smoke test: service survives, card shows, allowance and Stats numbers sane |
 
 On each: service starts at app open and after reboot; card appears and returns after dismissal (33+); allowance blocks at the right moment; Stats totals are plausible; a locked-boot read does not crash or reset usage.
@@ -148,7 +148,7 @@ Implement as one pure, JVM-testable class (suggested name `ForegroundSpanTracker
 
 - The existing tables are **not altered**. The migration only creates tables and indexes.
 - Add the migration test with Room's migration test helper: build a version-6 database containing rows in `daily_app_usage` and `app_sessions` (and the legacy `user_version = 0` path), migrate, and assert every old row is unchanged. Commit the exported schema JSON for version 7.
-- **(verify)** whether backup/export includes the Room usage tables. If it does, the new tables must be included too (rollups for old days cannot be recomputed). If it does not, document that.
+- Current in-app V1 backup/export serializes settings and task records; it does not include Room usage-history tables. Document usage rollups as local-only/not restored by that export. Do not expand backup format or migration scope in Phase 5.
 
 ### 6.3 Idempotent writes
 
@@ -279,7 +279,7 @@ At cutover the rollups only hold the few recent days the OS still has, so every 
 
 ## 9. Small fixes found while rechecking (separate PRs, not part of Phase 5)
 
-1. **Notification trampoline.** `NotificationActionReceiver` stores the action and then calls `startActivity()`. On Android 12+ apps targeting 31 or higher cannot start an activity from a receiver after a notification tap or action-button tap (docs). Done / +15m / +30m / Skip would not replay until the user opens the app. **Needs the owner's `targetSdk`.** Fix: apply the stored action inside the receiver through the same gate and repository, or make the buttons open the activity directly.
+1. **Notification trampoline.** `NotificationActionReceiver` stores the action and then calls `startActivity()`. On Android 12+ apps targeting 31 or higher cannot start an activity from a receiver after a notification tap or action-button tap (docs). Done / +15m / +30m / Skip may not replay until the user opens the app. The app currently targets 35, so treat this as a current separate compliance concern, not an unknown-target question or Phase 5 work. Any fix needs separate scope approval.
 2. **Idle card delay.** Set the immediate foreground-service behavior on the idle card (no action buttons, so Android 12+ may show it about 10 s late).
 3. **Dismissed card.** On Android 13+ users can dismiss the card by default (docs; I earlier said 14, that was wrong). Re-post the current card from `ensureRunning()`.
 4. **Health card first draw.** `EnforcementHealth.UNKNOWN` counts as needs-attention, so the first card after each service start may flash "Needs attention". Treat unknown as neutral for the first draw.
@@ -287,7 +287,7 @@ At cutover the rollups only hold the few recent days the OS still has, so every 
 
 ## 10. Parked (not part of this phase)
 
-- Foreground-service type change, `onTimeout`, the Android 15 boot restriction, targetSdk 35 and anything above API 35. **Gate: do this before `targetSdk` 35.** A service with several types must satisfy the rules of **all** of them (docs), so `dataSync|specialUse` inherits `dataSync` limits. Reference: ActivityWatch's Android app moved its background service from `dataSync` to `specialUse`, starting it with the special-use type on Android 14+ and keeping a fallback for earlier versions (pull request 190 in `ActivityWatch/aw-android`; I read the description, not the code; license not checked, so read only).
+- Foreground-service type change, `onTimeout`, Android 15 boot behavior, and Android 16/17 target changes are outside Phase 5. The app already targets 35, so any target-35 compliance concern is current and must not be described as a pre-upgrade gate. Track and authorize that work separately; do not change the service type or boot behavior in Phase 5. A service with several types must satisfy the rules of **all** of them (docs), so `dataSync|specialUse` inherits `dataSync` limits. Reference: ActivityWatch's Android app moved its background service from `dataSync` to `specialUse`, starting the service with the special-use type on Android 14+ and keeping a fallback for earlier versions (pull request 190 in `ActivityWatch/aw-android`; I read the description, not the code; license not checked, so read only).
 - In-app off switch for the background service.
 - Shared "what is enforced right now" state object.
 - Anything about the VPN notification.
@@ -296,7 +296,7 @@ At cutover the rollups only hold the few recent days the OS still has, so every 
 
 ### 5.0 Verify and measure (read-only plus device testing)
 
-- **5.0a SDK floor:** confirm Gradle `minSdk`, `compileSdk` and `targetSdk`; report them. Raise `minSdk` to 29 if lower.
+- **5.0a SDK baseline:** current values are already verified: `minSdk = 29`, `compileSdk = 35`, `targetSdk = 35`. Record them in the implementation log; do not change SDK values as an implied part of Phase 5.
 - Add the Lint `NewApi` CI gate (3.1 rule 8) and run it on the current code; report findings.
 - Map every writer and reader of `daily_allowance_used`, `daily_app_usage`, `app_sessions` (include `BackgroundFetchWorker`, `SettingsRepository`, `LauncherActivity`, backup/export, the detectors, `DayRatingRepository`).
 - Map when `FindingDetectionRunner.runAll` runs and how `FindingRepository.submit` deduplicates.
@@ -348,7 +348,7 @@ Run the seven detectors against recorded data on both sides of the seam. Confirm
 
 ### 5.7 Version-gate cleanup and final cleanup (behavior-preserving)
 
-Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow log and obsolete keys (with a note on upgrade behavior). Switch the usage-access check to `unsafeCheckOpNoThrow`. Re-run the 5.0 matrix on every version in 3.3. Report line counts for every touched and new file.
+Remove only dead version branches directly tied to usage-event handling in the in-scope files identified in 2.3. Preserve unrelated branches even inside those files. Do not collapse checks across all 19 files; VPN, keyword-blocking, notification, and unrelated enforcement code remain untouched. Remove dead phase-specific code, the shadow log and obsolete keys (with a note on upgrade behavior). Switch the usage-access check to `unsafeCheckOpNoThrow`. Re-run the 5.0 matrix on every version in 3.3. Report line counts for every touched and new file.
 
 ## 12. Ground rules
 
@@ -357,7 +357,7 @@ Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow lo
 3. **Label every step** behavior-preserving or behavior-changing.
 4. **No new prefs keys.** The only new stored field is `confirmedAtMs` inside the existing allowance JSON. New Room tables only as in 6.2.
 5. **No new polling loops.**
-6. Blocking logic, VPN, keyword blocker and the foreground-service type stay untouched. Android 15 / targetSdk 35 work stays parked.
+6. Blocking logic, VPN, keyword blocker and the foreground-service type stay untouched. Target-35 Android 15 behavior is already applicable because the current target is 35; track any required compliance work separately and do not expand Phase 5 to include it.
 7. Every behavior-changing step updates the user-facing copy and the release notes.
 
 ## 13. What can go wrong
@@ -375,7 +375,7 @@ Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow lo
 
 ## 14. Review gates (definition of done)
 
-- `minSdk` is 29 in Gradle; zero version checks at or below API 29 remain; Lint `NewApi` is clean in CI.
+- `minSdk` remains 29; the SDK baseline is recorded; no new below-minimum branches are introduced in the pipeline. Dead checks are removed only in in-scope files; out-of-scope VPN and enforcement files are not subject to a global-zero-check gate. Lint `NewApi` is clean in CI.
 - Every step builds and runs on its own and is labelled preserving or changing.
 - The accessibility file and `ForegroundTaskService.kt` are smaller than before; no new file over 300 lines.
 - One class interprets platform event types; one owner of the allowance JSON; one merged read model for history.

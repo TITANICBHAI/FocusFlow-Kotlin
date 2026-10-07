@@ -160,7 +160,7 @@ Evidence: User's decision in chat; scheduled-task notification remains a separat
 ## Batch 5 — Phase 5: usage and allowance pipeline
 
 **Status:** Not started  
-**Gate:** Deferred; do not begin without explicit owner approval. The authoritative scope is [Phase 5 v3](PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3.md), which replaces the earlier allowance handoff proposal.
+**Gate:** Deferred; do not begin without explicit owner approval. The current work-folder plan remains [Phase 5 v3](PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3.md). A v4 review draft is in `attached_assets/Pasted--Phase-5-v4-one-usage-pipeline-one-allowance-ledger-one_1791342601587.txt`; it is not yet promoted into `work/` because review points 1–3 remain open.
 
 - [x] Record the owner's decision: defer Phase 5 until later; this is not implementation authorization.
 - [ ] Follow v3 Phase 5.0: verify the compatibility contract, current data writers/readers, and device behavior before implementation.
@@ -173,14 +173,14 @@ Evidence: User's decision in chat; scheduled-task notification remains a separat
 ### Decision record
 
 **Q4: Allowance refactor — now, later, or never?**  
-Owner decision (2026-10-05): Later; Phase 5 remains deferred. The replacement scope is the linked v3 usage-and-allowance plan.
-Evidence: User's decision in chat; the implementation plan now points to the authoritative v3 replacement. This decision does not authorize implementation.
+Owner decision (2026-10-05): Later; Phase 5 remains deferred. The replacement scope is the linked v3 usage-and-allowance plan until the v4 review is complete and the owner explicitly reopens implementation.
+Evidence: User's decision in chat; the current work-folder plan is v3. This decision does not authorize implementation.
 
 ### Batch 5 work log
 
 | Date | Status / work performed | Files inspected or changed | Commands and checks | Findings / evidence / blockers |
 |---|---|---|---|---|
-|  |  |  |  |  |
+| 2026-10-07 | Corrected plan points 4–5 only; implementation remains deferred | `work/PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v3.md`, `attached_assets/Pasted--Phase-5-v4-one-usage-pipeline-one-allowance-ledger-one_1791342601587.txt`, `app/build.gradle.kts`, current Phase 3/4 tracker entries | Read current SDK configuration and existing Phase 3/4 verification records; `git -c core.whitespace=cr-at-eol diff --check` passed; no app code changed | Both plan texts now record `minSdk 29` / `compileSdk 35` / `targetSdk 35`, correct the already-active target-35 wording, limit Phase 5 version cleanup so VPN/keyword/enforcement scope stays untouched, document the in-app V1 export's lack of Room usage history, and distinguish source implementation from incomplete runtime/build verification. Review points 1–3 remain open. The v4 draft is not yet promoted to `work/` or implementation authorization. |
 
 ## Batch 6 — final verification and handoff
 
@@ -208,4 +208,4 @@ Evidence: User's decision in chat; the implementation plan now points to the aut
 |---|---|---|---|
 | Phase 3 health state | Implementation is present; build/test/device verification has not run because JDK, Android SDK, and device are unavailable | Revisit when JDK, Android SDK, and device verification are available | Blocked |
 | Phase 4 duplicate-during-break check | Source path guarded; runtime reproduction and test remain blocked by absent Android tooling/device | Verify on an Android device/API before closing Batch 4 | Blocked |
-| Phase 5 usage and allowance pipeline | Owner deferred it until later; v3 is the authoritative scope | Owner reopens the work | Deferred |
+| Phase 5 usage and allowance pipeline | Owner deferred it until later; v3 remains the work-folder authority while v4 review points 1–3 are unresolved | Owner reopens the work and promotes an approved plan | Deferred |
