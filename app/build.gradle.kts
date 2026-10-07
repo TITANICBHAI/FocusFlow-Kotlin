@@ -27,6 +27,18 @@ android {
         }
     }
 
+    flavorDimensions += "brand"
+    productFlavors {
+        create("production") {
+            dimension = "brand"
+            applicationId = "com.tbtechs.focusflow"
+        }
+        create("tbtechsdev") {
+            dimension = "brand"
+            applicationId = "com.tbtechsdev.focusflow"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

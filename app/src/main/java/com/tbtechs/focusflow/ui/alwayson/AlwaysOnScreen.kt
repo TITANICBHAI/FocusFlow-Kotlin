@@ -124,7 +124,6 @@ private val systemNeverBlock = setOf(
     "com.samsung.android.wallet",
     "com.samsung.android.samsungpay",
     "com.google.android.apps.walletnfcrel",
-    "com.tbtechs.focusflow",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -169,9 +168,12 @@ fun AlwaysOnScreen(
         installedAppsState.error,
         selected,
         vpnSelected,
+        context.packageName,
     ) {
         val catalogPackages = installedAppsState.apps.mapTo(mutableSetOf()) { it.packageName }
-        val installed = installedAppsState.apps.filterNot { it.packageName in systemNeverBlock }
+        val installed = installedAppsState.apps.filterNot {
+            it.packageName in systemNeverBlock || it.packageName == context.packageName
+        }
         val missing = if (installedAppsState.loading) {
             emptyList()
         } else {

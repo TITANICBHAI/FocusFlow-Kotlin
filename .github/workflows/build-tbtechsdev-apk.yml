@@ -1,18 +1,18 @@
-name: Build Native Kotlin APK
+name: Build tbtechsdev APK
 
 on:
-  workflow_dispatch:
+  push:
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-native-kotlin-apk-${{ github.ref }}
+  group: build-tbtechsdev-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Assemble production debug APK
+    name: Test and assemble tbtechsdev debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -34,18 +34,18 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run production unit tests and assemble APK
+      - name: Run tbtechsdev unit tests and assemble APK
         run: |
           chmod +x ./gradlew
           ./gradlew \
-            :app:testProductionDebugUnitTest \
-            :app:assembleProductionDebug \
+            :app:testTbtechsdevDebugUnitTest \
+            :app:assembleTbtechsdevDebug \
             --no-daemon --stacktrace
 
-      - name: Upload production debug APK
+      - name: Upload tbtechsdev debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: focusflow-native-debug-apk
-          path: app/build/outputs/apk/production/debug/app-production-debug.apk
+          name: focusflow-tbtechsdev-debug-apk
+          path: app/build/outputs/apk/tbtechsdev/debug/app-tbtechsdev-debug.apk
           if-no-files-found: error
           retention-days: 14

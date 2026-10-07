@@ -9,7 +9,7 @@ FOCUSFLOW_SKIP_APK_BUILD="${FOCUSFLOW_SKIP_APK_BUILD:-0}"
 case "$FOCUSFLOW_SKIP_APK_BUILD" in
   0|false|no|"")
     SKIP_APK_BUILD=0
-    GRADLE_TASKS=(":app:assembleDebug" "$@")
+    GRADLE_TASKS=(":app:assembleProductionDebug" "$@")
     ;;
   1|true|yes)
     SKIP_APK_BUILD=1
@@ -289,7 +289,7 @@ set -o pipefail
 ./gradlew "${GRADLE_TASKS[@]}" --no-daemon --console=plain --stacktrace
 
 if [[ "$SKIP_APK_BUILD" -eq 0 ]]; then
-  APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+  APK_PATH="app/build/outputs/apk/production/debug/app-production-debug.apk"
   if [[ ! -f "$APK_PATH" ]]; then
     echo "ERROR: Expected APK was not produced at $APK_PATH" >&2
     exit 1

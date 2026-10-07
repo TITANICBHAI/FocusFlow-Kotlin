@@ -6,9 +6,9 @@ echo "== FocusFlow APK build =="
 echo "Started: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
 chmod +x ./gradlew
-./gradlew :app:assembleDebug --no-daemon --console=plain --stacktrace
+./gradlew :app:assembleProductionDebug --no-daemon --console=plain --stacktrace
 
-apk_path="app/build/outputs/apk/debug/app-debug.apk"
+apk_path="app/build/outputs/apk/production/debug/app-production-debug.apk"
 if [[ ! -f "$apk_path" ]]; then
   echo "ERROR: Expected APK was not produced at $apk_path" >&2
   exit 1

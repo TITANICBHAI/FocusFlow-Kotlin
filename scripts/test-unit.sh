@@ -7,4 +7,7 @@ cd "$ROOT_DIR"
 
 echo "== FocusFlow JVM unit tests =="
 export FOCUSFLOW_SKIP_APK_BUILD=1
-exec bash "$ROOT_DIR/scripts/build-apk-with-java.sh" :app:testDebugUnitTest "$@"
+exec bash "$ROOT_DIR/scripts/build-apk-with-java.sh" \
+  :app:testProductionDebugUnitTest \
+  :app:testTbtechsdevDebugUnitTest \
+  "$@"
