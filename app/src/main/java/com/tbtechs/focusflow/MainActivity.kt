@@ -56,6 +56,7 @@ import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.alwayson.VpnPermissionLostBanner
 import com.tbtechs.focusflow.ui.backup.BackupCoordinator
+import com.tbtechs.focusflow.ui.backup.progressDisplayOrNull
 import com.tbtechs.focusflow.ui.common.AchievementCelebrationModal
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
 import com.tbtechs.focusflow.ui.common.ErrorAlertBanner
@@ -639,6 +640,7 @@ private fun FocusFlowRoot(
                     statsViewModel = statsViewModel,
                     vpnRepository = vpnRepository,
                     backupCoordinator = backupCoordinator,
+                    restoreUiState = restoreState,
                     onExportBackup = {
                         exportLauncher.launch(backupCoordinator.createExportIntent())
                     },
@@ -718,6 +720,7 @@ private fun FocusFlowRoot(
                     )
                 }
                 restoreGateState != RestoreGate.State.OPEN -> {
+                    val progress = restoreState.progressDisplayOrNull()
                     Dialog(
                         onDismissRequest = {},
                         properties = DialogProperties(
@@ -731,9 +734,17 @@ private fun FocusFlowRoot(
                         ) {
                             CircularProgressIndicator()
                             Text(
-                                "Finishing restore…",
+                                progress?.message ?: "Starting restore…",
                                 modifier = Modifier.padding(top = 16.dp),
                             )
+                            progress?.step?.let { step ->
+                                Text(
+                                    "Step $step of ${progress.totalSteps}",
+                                    modifier = Modifier.padding(top = 4.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
