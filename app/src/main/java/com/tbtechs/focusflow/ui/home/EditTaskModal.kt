@@ -121,7 +121,6 @@ fun EditTaskModal(
     var customDurationValue by remember(task.id) { mutableStateOf(task.durationMinutes.toString()) }
     var priority by remember(task.id) { mutableStateOf(task.priority) }
     var tags by remember(task.id) { mutableStateOf(task.tags) }
-    var newTag by remember(task.id) { mutableStateOf("") }
     var focusMode by remember(task.id) { mutableStateOf(task.focusMode) }
     var allowedPackages by remember(task.id) {
         mutableStateOf(task.focusAllowedPackages?.joinToString(", ").orEmpty())
@@ -146,12 +145,6 @@ fun EditTaskModal(
     }
     val savedTaskColor = task.color
     val currentTime = runCatching { LocalTime.parse(time) }.getOrDefault(initialTime)
-
-    fun addTag() {
-        val candidate = newTag.trim().removePrefix("#")
-        if (candidate.isNotBlank() && candidate !in tags) tags = tags + candidate
-        newTag = ""
-    }
 
     fun saveTask() {
         val finalDuration = if (customDuration) customDurationValue.toIntOrNull() else duration
@@ -369,45 +362,7 @@ fun EditTaskModal(
                 }
             }
 
-            // Tags
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ReferenceSectionLabel("Tags")
-                if (tags.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        tags.forEach { tag ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(RefCard)
-                                    .border(1.dp, RefBorder, RoundedCornerShape(8.dp))
-                                    .clickable { tags = tags - tag }
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("#$tag", fontSize = 14.scaledSp, color = BrandPrimary, fontWeight = FontWeight.Medium)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("×", fontSize = 16.scaledSp, color = RefMuted)
-                                }
-                            }
-                        }
-                    }
-                }
-                HomeTextField(
-                    value = newTag,
-                    onValueChange = { newTag = it },
-                    label = "Add a tag",
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { addTag() }),
-                )
-                Text(
-                    "Press return to add each tag.",
-                    fontSize = 13.scaledSp,
-                    color = RefSecondary,
-                )
-            }
+            TaskTagsEditor(tags = tags, onTagsChange = { tags = it })
 
             // Focus Mode Toggle
             ReferenceToggleCard(

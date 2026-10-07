@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import androidx.compose.ui.unit.Dp
@@ -72,20 +76,19 @@ internal fun ActiveTaskBanner(
 ) {
     val dimensions = LocalFocusFlowDimensions.current
     val isRunning = task.isRunningNow()
-    val borderColor = if (isRunning) Color.White.copy(alpha = 0.35f) else Color(0xFFEF4444).copy(alpha = 0.4f)
-    val badgeBg = if (isRunning) Color.White.copy(alpha = 0.16f) else Color(0xFFEF4444).copy(alpha = 0.15f)
-    val badgeColor = if (isRunning) Color.White else Color(0xFFF87171)
-    val bannerColor = if (isRunning) BrandPrimary else DarkCard
+    val bannerShape = RoundedCornerShape(22.dp)
+    val bannerColor = if (isRunning) BrandPrimary else RefAmber
+    val whiteOverlay = Color.White.copy(alpha = 0.18f)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = dimensions.screenPadding, vertical = 8.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .clip(bannerShape)
             .background(bannerColor)
-            .border(1.dp, borderColor, MaterialTheme.shapes.medium)
+            .border(1.dp, Color.White.copy(alpha = 0.24f), bannerShape)
             .clickable(onClick = onOpen)
-            .padding(14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -95,29 +98,41 @@ internal fun ActiveTaskBanner(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(badgeBg)
+                        .background(whiteOverlay)
                         .padding(horizontal = 8.dp, vertical = 3.dp),
                 ) {
                     Text(
                         if (isRunning) "NOW" else "TIME'S UP",
                         fontSize = 10.scaledSp,
                         fontWeight = FontWeight.Bold,
-                        color = badgeColor,
+                        color = Color.White,
                         letterSpacing = 0.8.scaledSp,
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    task.title,
-                    fontSize = 15.scaledSp,
-                    fontWeight = FontWeight.Bold,
-                        color = if (isRunning) Color.White else DarkTextPrimary,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        task.title,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 15.scaledSp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     if (isRunning) "Until ${task.endTime.asLocalTime()}"
                     else "Ended ${task.endTime.asLocalTime()} · pick one",
                     fontSize = 12.scaledSp,
-                    color = if (isRunning) Color.White.copy(alpha = 0.82f) else DarkTextSecondary,
+                    color = Color.White.copy(alpha = 0.85f),
                 )
             }
 
@@ -126,13 +141,13 @@ internal fun ActiveTaskBanner(
                     onClick = onComplete,
                     modifier = Modifier
                         .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF10B981).copy(alpha = 0.15f)),
+                        .clip(CircleShape)
+                        .background(whiteOverlay),
                 ) {
                     Icon(
                         Icons.Outlined.Check,
                         contentDescription = "Complete",
-                        tint = Color(0xFF34D399),
+                        tint = Color.White,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -140,13 +155,13 @@ internal fun ActiveTaskBanner(
                     onClick = onExtend,
                     modifier = Modifier
                         .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(DarkSurfaceVariant),
+                        .clip(CircleShape)
+                        .background(whiteOverlay),
                 ) {
                     Icon(
                         Icons.Outlined.Add,
                         contentDescription = "Extend",
-                        tint = BrandPrimary,
+                        tint = Color.White,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -155,13 +170,13 @@ internal fun ActiveTaskBanner(
                         onClick = onSkip,
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(DarkSurfaceVariant),
+                            .clip(CircleShape)
+                            .background(whiteOverlay),
                     ) {
                         Icon(
                             Icons.Outlined.Close,
                             contentDescription = "Skip",
-                            tint = Color(0xFFF87171),
+                            tint = Color.White,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -170,19 +185,85 @@ internal fun ActiveTaskBanner(
                         onClick = onStartFocus,
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(BrandPrimary.copy(alpha = 0.15f)),
+                            .clip(CircleShape)
+                            .background(whiteOverlay),
                     ) {
                         Icon(
                             Icons.Outlined.Shield,
                             contentDescription = "Start focus",
-                            tint = BrandPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(18.dp),
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun TaskTagsEditor(
+    tags: List<String>,
+    onTagsChange: (List<String>) -> Unit,
+) {
+    var draft by remember(tags) { mutableStateOf("") }
+
+    fun addDraftTags() {
+        val candidates = draft
+            .split(',', '\n')
+            .map { it.trim().removePrefix("#").trim() }
+            .filter(String::isNotBlank)
+        val updated = tags.toMutableList()
+        candidates.forEach { candidate ->
+            if (updated.none { it.equals(candidate, ignoreCase = true) }) {
+                updated += candidate
+            }
+        }
+        onTagsChange(updated)
+        draft = ""
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ReferenceSectionLabel("Tags")
+        if (tags.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                tags.forEach { tag ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(RefCard)
+                            .border(1.dp, RefBorder, RoundedCornerShape(8.dp))
+                            .clickable(
+                                onClickLabel = "Remove tag $tag",
+                                onClick = { onTagsChange(tags.filterNot { it == tag }) },
+                            )
+                            .padding(horizontal = 9.dp, vertical = 5.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("#$tag", fontSize = 12.scaledSp, color = RefSecondary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("×", fontSize = 14.scaledSp, color = RefMuted)
+                        }
+                    }
+                }
+            }
+        }
+        HomeTextField(
+            value = draft,
+            onValueChange = { draft = it },
+            label = "Add a tag",
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { addDraftTags() }),
+        )
+        Text(
+            "Press return to add. Separate multiple tags with commas.",
+            fontSize = 12.scaledSp,
+            color = RefSecondary,
+        )
     }
 }
 

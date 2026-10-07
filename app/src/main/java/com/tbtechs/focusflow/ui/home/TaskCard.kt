@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,9 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -35,12 +40,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.data.model.Task
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkCard
+import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
 import com.tbtechs.focusflow.ui.theme.DarkTextMuted
 import com.tbtechs.focusflow.ui.theme.DarkTextPrimary
 import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
@@ -53,6 +60,7 @@ import java.time.format.DateTimeFormatter
 /**
  * Redesigned TaskCard for Screenshots 6c & 6f.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TaskCard(
     task: Task,
@@ -64,7 +72,7 @@ fun TaskCard(
 ) {
     val complete = task.status == "completed"
     val closed = complete || task.status == "skipped"
-    val accent = taskAccent(task.color)
+    val accent = if (isActive && !closed) RefBlue else taskAccent(task.color)
     var nowMs by remember(task.id) { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(task.id, closed) {
@@ -101,7 +109,7 @@ fun TaskCard(
                 modifier = Modifier
                     .weight(1f)
                     .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -112,33 +120,12 @@ fun TaskCard(
                         fontSize = 15.scaledSp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (closed) DarkTextMuted else DarkTextPrimary,
+                        textDecoration = if (complete) TextDecoration.LineThrough else TextDecoration.None,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    if (closed) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (task.status == "skipped") {
-                                        DarkTextMuted.copy(alpha = 0.16f)
-                                    } else {
-                                        Color(0xFF34D399).copy(alpha = 0.14f)
-                                    },
-                                )
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = if (task.status == "skipped") "Skipped" else "Completed",
-                                fontSize = 11.scaledSp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (task.status == "skipped") DarkTextSecondary else Color(0xFF34D399),
-                            )
-                        }
-                        Spacer(Modifier.width(6.dp))
-                    }
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
@@ -160,7 +147,72 @@ fun TaskCard(
                     color = DarkTextSecondary,
                 )
 
-                if (!closed) {
+                if (task.tags.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        task.tags.forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(DarkSurfaceVariant)
+                                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    text = "#$tag",
+                                    fontSize = 10.scaledSp,
+                                    color = DarkTextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (closed) {
+                    val skipped = task.status == "skipped"
+                    val statusColor = if (skipped) DarkTextSecondary else Color(0xFF34D399)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(15.dp)
+                                .clip(CircleShape)
+                                .background(statusColor.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = if (skipped) Icons.Outlined.Close else Icons.Outlined.Check,
+                                contentDescription = null,
+                                tint = statusColor,
+                                modifier = Modifier.size(10.dp),
+                            )
+                        }
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            text = if (skipped) "Skipped" else "Completed",
+                            fontSize = 11.scaledSp,
+                            color = statusColor,
+                        )
+                    }
+                } else {
+                    if (isActive) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(CircleShape)
+                                .background(DarkSurfaceVariant),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(task.progressAt(nowMs))
+                                    .fillMaxHeight()
+                                    .background(RefBlue),
+                            )
+                        }
+                    }
                     Text(
                         text = if (isActive) task.timeRemainingLabel(nowMs) else task.timeUntilStartLabel(nowMs),
                         fontSize = 11.scaledSp,
@@ -171,26 +223,60 @@ fun TaskCard(
             }
 
             if (!closed) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 12.dp, top = 12.dp, bottom = 12.dp)
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .border(1.dp, RefBorder, RoundedCornerShape(10.dp))
-                        .clickable {
-                            if (isActive) onComplete(task.id) else onSkip(task.id)
-                        },
-                    contentAlignment = Alignment.Center,
+                Column(
+                    modifier = Modifier.padding(end = 12.dp, top = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Icon(
-                        imageVector = if (isActive) Icons.Outlined.Check else Icons.Outlined.SkipNext,
-                        contentDescription = if (isActive) "Complete task" else "Skip task",
-                        tint = if (isActive) Color.White else DarkTextSecondary,
-                        modifier = Modifier.size(18.dp),
-                    )
+                    if (isActive) {
+                        TaskCardAction(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = "Complete task",
+                            tint = RefGreen,
+                            onClick = { onComplete(task.id) },
+                        )
+                        TaskCardAction(
+                            imageVector = Icons.Outlined.Alarm,
+                            contentDescription = "Extend task",
+                            tint = RefAmber,
+                            onClick = { onExtend(task) },
+                        )
+                    } else {
+                        TaskCardAction(
+                            imageVector = Icons.Outlined.SkipNext,
+                            contentDescription = "Skip task",
+                            tint = DarkTextSecondary,
+                            onClick = { onSkip(task.id) },
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TaskCardAction(
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(11.dp)
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(shape)
+            .border(1.dp, tint.copy(alpha = 0.42f), shape)
+            .clickable(onClick = onClick)
+            .semantics { role = Role.Button },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(19.dp),
+        )
     }
 }
 
@@ -229,6 +315,12 @@ private fun Task.timeRemainingLabel(nowMs: Long): String = runCatching {
     val minutes = Duration.ofMillis(Instant.parse(endTime).toEpochMilli() - nowMs).toMinutes()
     if (minutes < 0) "Overdue by ${-minutes}m" else "${minutes}m remaining"
 }.getOrDefault("")
+
+private fun Task.progressAt(nowMs: Long): Float = runCatching {
+    val start = Instant.parse(startTime).toEpochMilli()
+    val end = Instant.parse(endTime).toEpochMilli()
+    if (end <= start) 0f else ((nowMs - start).toFloat() / (end - start)).coerceIn(0f, 1f)
+}.getOrDefault(0f)
 
 private fun Task.timeUntilStartLabel(nowMs: Long): String = runCatching {
     val minutes = Duration.ofMillis(Instant.parse(startTime).toEpochMilli() - nowMs).toMinutes()

@@ -112,7 +112,7 @@ fun QuickAddModal(
     var customDurationValue by remember { mutableStateOf("") }
     var priority by remember { mutableStateOf("medium") }
     var selectedColor by remember { mutableStateOf("Primary") }
-    var tags by remember { mutableStateOf("") }
+    var tags by remember { mutableStateOf(emptyList<String>()) }
     var focusMode by remember { mutableStateOf(false) }
     var useGlobalApps by remember { mutableStateOf(true) }
     var allowedPackages by remember { mutableStateOf("") }
@@ -162,7 +162,7 @@ fun QuickAddModal(
                     durationMinutes = finalDuration,
                     status = "scheduled",
                     priority = priority,
-                    tags = tags.split(',').map(String::trim).filter(String::isNotBlank),
+                    tags = tags,
                     color = savedTaskColor,
                     focusMode = focusMode,
                     focusAllowedPackages = if (!focusMode || useGlobalApps) null else allowedPackages.toPackageList(),
@@ -383,9 +383,7 @@ fun QuickAddModal(
                 }
             }
 
-            // Tags
-            ReferenceSectionLabel("Tags (comma separated)")
-            HomeTextField(tags, { tags = it }, "Tags (comma separated, e.g. work, design)")
+            TaskTagsEditor(tags = tags, onTagsChange = { tags = it })
 
             // Focus Mode
             ReferenceToggleCard(
