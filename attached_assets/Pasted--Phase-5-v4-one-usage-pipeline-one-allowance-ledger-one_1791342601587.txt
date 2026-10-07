@@ -1,0 +1,386 @@
+# Phase 5 (v4): one usage pipeline, one allowance ledger, one Stats source, Android 10 to latest
+
+For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maximum = the latest Android (API 37 at time of writing)** · 6 Oct 2026
+
+**This replaces v1, v2 and v3.** Phases 0-4 and the health card are already implemented.
+
+---
+
+## 0. How to read this
+
+- **Decided** = the owner chose it. **Revised** = I changed my own earlier recommendation. **Open** = needs a quick owner answer; a default is given so work is not blocked.
+- **(code)** = verified by reading our source. **(docs)** = verified in official Android documentation. **(secondary)** = non-official source. **(verify)** = not verified; confirm in Phase 5.0.
+- No code is given on purpose. Class names are suggestions.
+- **Rooted phones and root-requiring approaches are out of scope.** Nothing here needs root or Shizuku.
+- **Licenses.** Nudge and Device-Watch are GPL. Learn the rules from them; **do not copy their code**. Write our own implementation and tests from section 5.
+- **No rewrite.** Reuse `UsageStatsRepository` as the OS adapter, keep the existing Room tables, the allowance UI and our exact-expiry timer.
+
+## 1. What changed in v4
+
+1. **Minimum-version mismatch resolved (section 2).** The owner's range is Android 10 to latest. The code still carries **51 version checks in 19 files that were written for older minimums** (below API 29), and the upload contains no Gradle or `uses-sdk` entry, so the real `minSdk` is unverified.
+2. **Room rollups defined (section 6).** Rollups go into **new tables**, never into the existing ones. The existing `app_sessions` table has no unique key, so a naive rollup would duplicate rows. Existing history is never rewritten.
+3. **Allowance behavior when usage data is stale or unavailable defined (section 7).** Three data states, an estimator, reconcile rules, and one open decision.
+4. **Primary Stats screen and all affected detectors covered (section 8).** The primary Stats tab is `ArchivedStatsScreen` (Today / Yesterday / Week / All Time), not the screen earlier plans assumed. The 3-month view is currently unreachable. 7 of 11 detectors are affected.
+
+## 2. Supported range and the version-gate mismatch
+
+### 2.1 Contract
+
+- **Runs correctly on every Android release from 10 (API 29) up to the latest.** `minSdk = 29`. No `maxSdk` cap.
+- **Running on the latest is not the same as targeting it.** `compileSdk` follows the newest stable SDK. `targetSdk` is raised stepwise, and each raise needs the behavior-change review in section 3.2. Raising it to 35 is gated on the parked foreground-service work (section 10) and on the notification-trampoline fix (section 9).
+- **Rooted devices and any root requirement: out of scope.**
+
+### 2.2 The mismatch (code)
+
+| Item | Finding |
+|---|---|
+| Declared minimum | **Unknown.** No Gradle files or `uses-sdk` in the upload. |
+| Version checks written for older minimums | **51 checks in 19 files** test thresholds at or below API 29 (LOLLIPOP, M, N, O, O_MR1, P, Q). With `minSdk = 29` every `>=` check is always true and every `<` check is dead code. |
+| Biggest files affected | `AppBlockerAccessibilityService.kt` (10), `ForegroundTaskService.kt` (8), `UsageStatsRepository.kt` (5), `TaskAlarmActivity.kt` (4) |
+| Other files | `NetworkBlockerVpnService`, `TaskAlarmReconcileWorker`, `BootReceiver`, `BlockOverlayActivity`, `LauncherActivity`, `AversiveActionsManager`, `VpnRecoveryNotifier`, `TemptationLogManager`, `PermissionSupport`, `ReminderChainScheduler`, `NotificationChannels`, `AlarmCapabilitySnapshot`, `ForegroundServiceController`, `LauncherController`, `VpnRepository` (1-2 each) |
+| Checks that stay | Checks for R (30), S (31), TIRAMISU (33), 34 and VANILLA_ICE_CREAM (35) are live and must stay. |
+| Reference projects | Nudge and Device-Watch target minSdk 26, so their code has pre-29 fallbacks we do **not** need. Do not port those. |
+
+### 2.3 Resolution
+
+- **5.0a:** confirm the Gradle `minSdk`. If it is below 29, raise it to 29. The owner has already decided Android 10 is the floor.
+- **5.7 (behavior-preserving PR):** collapse every check at or below API 29 to its always-true branch, using the inventory above. Read each one: several are compound conditions (for example `SDK_INT >= N && ...` in `VpnRecoveryNotifier`, `SDK_INT < M || permission check` in `PermissionSupport`, `theme != GLASSY || SDK_INT < O_MR1` in `LauncherActivity`). Keep the non-version part of each condition. This removes lines from the big files, which the ground rules require.
+- Remove the `MOVE_TO_FOREGROUND/BACKGROUND` branches (deprecated in API 29, docs) in `UsageStatsRepository`, `ForegroundTaskService` and `AppBlockerAccessibilityService`.
+- **New code must contain no checks at or below API 29.** The pipeline is pure and has no SDK checks at all.
+
+## 3. Compatibility contract (Android 10 to latest)
+
+### 3.1 Rules
+
+1. **Event types** the pipeline needs exist natively on API 29: `ACTIVITY_RESUMED/PAUSED/STOPPED` and `DEVICE_STARTUP/SHUTDOWN` (API 29); `SCREEN_INTERACTIVE/NON_INTERACTIVE` and `KEYGUARD_SHOWN/HIDDEN` (API 28) (docs).
+2. **The pipeline is pure.** API-level handling lives only in the thin adapter over `UsageStatsRepository`.
+3. **The adapter must handle:**
+   - `queryEvents` returning **null** before the first unlock after boot (Android 11+, docs). Treat as "unknown", never as zero usage. Our current code does not handle this.
+   - `SecurityException` when usage access is revoked.
+   - The system keeping events **only for a few days** (docs). Never assume older data exists.
+4. **Do not use `UsageEventsQuery`** (API 35+, docs) without a version check. It is optional.
+5. **Usage-access check:** use `unsafeCheckOpNoThrow` (API 29+). Our code uses the deprecated `checkOpNoThrow`.
+6. **Day boundaries:** calendar arithmetic (DST days are 23 or 25 hours).
+7. **Binder calls off the main thread.** Enforcement reads in-memory state.
+8. **CI gate:** Android Lint `NewApi` must pass in CI. Nudge documents a crash on older versions that no JVM test and no single device caught; lint did.
+
+### 3.2 Per-version table
+
+| Android | Rule | Our status | Action |
+|---|---|---|---|
+| 10 (29) | Events above exist; `foregroundServiceType` attribute introduced (docs); no notification permission | Pre-29 checks and `MOVE_TO_*` branches still present (code) | Section 2 |
+| 11 (30) | `queryEvents` returns null while locked (docs); package visibility | `QUERY_ALL_PACKAGES` declared (code); null not handled (code) | Rule 3. Store policy for `QUERY_ALL_PACKAGES` **(verify if publishing on Google Play)** |
+| 12 (31) | FGS cannot start from the background (target 31+); **FGS notification delayed about 10 s unless it has action buttons or `FOREGROUND_SERVICE_IMMEDIATE`**; **notification trampolines banned** (docs) | `ensureRunning` is called only from the visible activity, in try/catch (code). **Idle card has no actions** (code). **`NotificationActionReceiver` calls `startActivity()`** (code) | Section 9 |
+| 13 (33) | `POST_NOTIFICATIONS` runtime permission; **users can dismiss the FGS notification by default** (docs); restricted settings for sideloaded installs (secondary) | Permission declared and restricted-settings recovery screens exist (code) | Re-post the card from `ensureRunning()` |
+| 14 (34) | FGS type and matching permission required when targeting 34; full-screen intent default only for calling/alarm apps (docs) | Types, permissions and `specialUse` subtype declared; full-screen-intent check and settings link exist (code) | None. Re-test on 14 |
+| 15 (35) | `dataSync` times out after 6 h per 24 h; `BOOT_COMPLETED` cannot start `dataSync` (target 35+) | `dataSync\|specialUse`, no `onTimeout`, `BootReceiver` starts it (code) | **Parked. Gate before `targetSdk` 35** (section 10) |
+| 16 (36) | Job quota applies to jobs running with an FGS (docs) | WorkManager workers exist (code) | Low risk |
+| 17 (37) | Stricter memory limits for notification custom views (target 37+); optional accessibility text-change types (docs) | No custom notification views found (code) | Nothing now |
+
+I found nothing in the Android 16 and 17 behavior-change pages I could retrieve that affects usage events, the foreground service or our accessibility service. That is a limit of what I read.
+
+### 3.3 What to test on which version
+
+Emulator images plus at least one physical phone. Minimum set, chosen where behavior changes:
+
+| API | Why |
+|---|---|
+| 29 | Baseline: events, no notification permission, minSdk behavior |
+| 31 | Background FGS start, 10 s card delay, trampoline, PendingIntent immutability |
+| 33 | Notification permission, dismissible card, restricted settings (sideloaded install) |
+| 34 | FGS types, full-screen intent permission |
+| 35 | `dataSync` timeout and boot restriction (once you target 35) |
+| 36 / 37 | Smoke test: service survives, card shows, allowance and Stats numbers sane |
+
+On each: service starts at app open and after reboot; card appears and returns after dismissal (33+); allowance blocks at the right moment; Stats totals are plausible; a locked-boot read does not crash or reset usage.
+
+## 4. Decisions
+
+| # | Decision | Status |
+|---|---|---|
+| D1 | Allowance counts usage **all day**, not only during blocks. | Decided |
+| D2 | **One pure foreground-span pipeline over `UsageEvents`** measures time for allowance, Stats and findings. Accessibility detects/enforces and times the exact expiry; it does not produce the number. | Revised in v2 |
+| D3 | Stats reads the pipeline for recent days and **Room rollups** for history. `queryUsageStats(INTERVAL_*)` buckets are removed. | Revised in v2 |
+| D4 | The OS keeps events only a few days (docs). History lives in Room rollups written while events still exist. | Adopted |
+| D5 | Rollups go into **new additive tables**. Existing `daily_app_usage` and `app_sessions` are never rewritten. | Adopted (v4) |
+| D6 | Reads of history go through one **merged read model** that picks **one source per date**. Sources are never summed. | Adopted (v4) |
+
+Open items (defaults apply if not answered):
+
+- **O1. Interval-mode window start.** Default: starts at the first open of the app regardless of block state.
+- **O2. What counts as an "open".** Default: every new foreground span of the package after another real app or the home screen. A short bridge only for a small allow-list of system dialog packages (permission controller, the system chooser): A → dialog → A within a few seconds is one open. No generic debounce.
+- **O3. Replace the 60 s polling sync** with a tick that runs only while an allowance app is in the foreground (default 30 s, like Nudge) plus recompute on app open, service start and day rollover.
+- **O4. Allowance when usage data is unavailable for a long time** (section 7.5). Default: **keep estimating, do not lock the user out**.
+- **O5. Launch count shown on Stats and used by streak detection.** Default: the pipeline's span starts (same rule as O2). Today's Stats card uses a 30 s debounce, so displayed launch counts will change. Say so in release notes.
+- **O6. Detector continuity across the source seam** (section 8.4). Default: **strict**, one source per evaluated window. Relax later only if the shadow-period comparison shows the sources agree within a tolerance the owner sets.
+
+## 5. The pipeline rules (from Nudge and Device-Watch, confirmed by the docs)
+
+Implement as one pure, JVM-testable class (suggested name `ForegroundSpanTracker`), fed events in time order and emitting non-overlapping `[start, end)` spans per package:
+
+1. **One foreground package at a time.** A `RESUMED` for a different package closes the open span at that instant.
+2. **Everything that ends the foreground ends the span:** `PAUSED`; `STOPPED` as a backstop; `SCREEN_NON_INTERACTIVE`; `KEYGUARD_SHOWN`; `DEVICE_SHUTDOWN` (docs: treat shutdown as all activities stopped; no explicit `STOPPED` events are generated).
+3. **Match `STOPPED` to the activity.** Moving inside an app emits `A paused, B resumed, A stopped`; a package-wide stop would close B's new span. Nudge matches the exact activity class; Device-Watch keeps a set of open classes per package. Start with the simpler; choose in 5.0.
+4. **Cap the inferred tail.** An open span only has an observed start. Extended to "now" it is capped (Nudge: 4 h). Measured spans are never capped.
+5. **Filter spans, never the stream.** Feed every event (including our own package and launchers); drop packages afterwards.
+6. **One query pass over the window**; spans split at day boundaries.
+7. **One place interprets platform event types.** Weekly bars, hourly bars, launches, sessions and allowance all read the same pipeline. (Nudge fixed disagreeing numbers, a day showing "17 hours before lunchtime", by collapsing four copies of the pairing loop.)
+8. **Opens/launches** = a package's span starts after being closed (O2). Look back before the window start so an app already open at the start is counted from the start only (we already clip this way).
+9. **Launchers and our own package** are excluded from totals and rankings at span level.
+10. **Null or `SecurityException` means "unknown", not zero.** Keep the last known value.
+
+## 6. Room rollups: no duplicates, history preserved
+
+### 6.1 What exists (code)
+
+- `daily_app_usage`: primary key `(date, package_name)`. The live writer does read-modify-write accumulation (`addForegroundTime`, `incrementLaunchCount`); the generic `upsert` is **REPLACE**.
+- `app_sessions`: auto-generated id, **no unique key**; inserts use IGNORE, which never fires because the id is generated. Inserting derived sessions would **duplicate** existing ones.
+- Retention: both tables are pruned with `deleteOlderThan` (90 days).
+- Database version is **6**, `exportSchema = true`, with explicit migrations 0→1 through 5→6 and no destructive fallback found in the code. The database descends from an older hybrid app that left `user_version = 0`, handled by `prepareLegacyDatabase`.
+
+### 6.2 New tables (additive migration 6 → 7)
+
+| Table | Key | Purpose |
+|---|---|---|
+| `usage_rollup_day` | `(date)` | One row per day: status `PARTIAL` or `COMPLETE`, coverage start/end (ms), `pipeline_version`, `computed_at`, total foreground ms (sanity check) |
+| `usage_rollup_app_day` | `(date, package_name)` | Same shape as the legacy row so detectors can reuse it: app name, category, foreground ms, hourly ms (same 24-value format), launch count, session count, first start, last used |
+| `usage_rollup_session` | `(package_name, started_at)` | One row per span; end, duration, local date. Needed by the session-based detectors |
+
+- The existing tables are **not altered**. The migration only creates tables and indexes.
+- Add the migration test with Room's migration test helper: build a version-6 database containing rows in `daily_app_usage` and `app_sessions` (and the legacy `user_version = 0` path), migrate, and assert every old row is unchanged. Commit the exported schema JSON for version 7.
+- **(verify)** whether backup/export includes the Room usage tables. If it does, the new tables must be included too (rollups for old days cannot be recomputed). If it does not, document that.
+
+### 6.3 Idempotent writes
+
+- One writer, one mutex, **one transaction per date**: delete that date's rows in the three new tables, insert the recomputed rows. Running it twice with the same events gives the same rows.
+- A `COMPLETE` day is **never downgraded**. If events for that day have aged out, skip it. A `pipeline_version` bump may recompute a day only if its events still exist.
+- **Day complete** = the day is over and the earliest available event is at or before the start of that day (the 5.0 retention measurement defines the probe). The oldest available day is normally `PARTIAL`.
+- Today is never stored as `COMPLETE`; it is computed live and cached as `PARTIAL`.
+- Triggers: app open, service start, day rollover, and Stats open. Work per run is bounded by the few days the OS keeps.
+- App name and category use the same helpers as the current tracker (`resolveAppName`, `resolveCategory`) so rows stay comparable.
+
+### 6.4 Merged read model (one source per date)
+
+Add one repository (suggested `UsageHistoryRepository`) that returns the **same row types the detectors and Stats already use**:
+
+- For each date: use the rollup if its day row is `COMPLETE` at the current `pipeline_version`; otherwise use the legacy rows for that date if any exist; otherwise a `PARTIAL` rollup, marked partial.
+- **Never sum two sources for the same date.** This is what prevents double counting, together with the primary keys and the single writer.
+- It also returns `sourceByDate` and the **seam date** (the first date served from rollups), for section 8.4 and for the coverage notice.
+- Methods mirror the existing DAO reads: daily usage range, session stats by day, first session each day, raw sessions per package.
+
+### 6.5 Legacy writer lifecycle
+
+- **Shadow period (5.3):** the old accessibility-fed writer keeps writing the legacy tables unchanged; the new writer writes only the new tables. No cross-writes. Both sources exist for the same days, which allows the comparison.
+- **Cutover (5.5):** stop the old writer's Room writes. Keep reading legacy rows through the read model. Keep the 90-day prune for both table sets.
+- **Rollback:** switching the read model back to legacy-only is a one-line change, because nothing legacy was modified.
+
+## 7. Allowance when usage data is stale or unavailable
+
+### 7.1 Inputs
+
+- **Last confirmed reading:** the value and the time of the last successful pipeline read for the package (kept in the ledger).
+- **Live signal:** accessibility knows which package is in the foreground and when that session started.
+- The only new stored field is `confirmedAtMs` in the existing allowance JSON (additive; older readers ignore it). No new prefs keys.
+
+### 7.2 States
+
+| State | Meaning | Default thresholds |
+|---|---|---|
+| **FRESH** | Last successful read is recent | Within 2 ticks (about 60 s) while an allowance app is in the foreground |
+| **STALE** | Reads are late or failing transiently (exception, timeout, null before the first unlock, slow query) | Older than the FRESH window, usage permission still granted |
+| **UNAVAILABLE** | Usage access revoked, or no successful read since boot for longer than a grace period after unlock | Permission denied, or no read for 5 minutes after unlock (tune in 5.0) |
+
+### 7.3 Estimate (used in STALE and UNAVAILABLE)
+
+- **Time budget:** `estimated used = last confirmed value + live time since max(last confirmed time, current foreground session start)`, counted only while accessibility reports the allowance app in the foreground. Never negative; never above the day length.
+- **Count:** `last confirmed count + number of new foreground session starts` seen by accessibility since the last confirmation (same O2 rule).
+- **Interval:** the persisted window start decides expiry by wall clock; used time follows the time-budget estimate inside the window.
+- **Day rollover:** the day key comes from the clock. A new day starts at zero and takes a baseline at the first successful read.
+
+### 7.4 Reconcile when data returns
+
+- The pipeline value **replaces** the estimate. Estimates are never added to it.
+- The value never goes below the last **confirmed** value for that day (usage cannot decrease).
+- If the estimate had already blocked an app and the pipeline value is lower, the app unblocks. Log the difference. Accept it: estimates are only a bridge.
+- The exact-expiry timer is re-seeded from the new baseline.
+
+### 7.5 Enforcement behavior
+
+| Situation | Behavior |
+|---|---|
+| FRESH | Normal enforcement from the pipeline value |
+| STALE | Keep enforcing using the estimate. Retry reads with backoff. Do not fail open and do not lock out |
+| UNAVAILABLE | **Default (O4): same as STALE, keep estimating.** The health card already shows "Needs attention" when usage access is missing |
+| UNAVAILABLE, alternative | After a grace period treat the allowance as exhausted until data returns (fail closed), or treat it as unlimited (fail open). Not recommended: fail closed punishes the user for an OS hiccup, fail open lets revoking the permission bypass the limit |
+| Accessibility also down | No live signal and no pipeline: enforcement is already limited; the health card is the only signal |
+| Boot, before first unlock | State is UNAVAILABLE-transient; allowance apps cannot be opened before unlock anyway. Keep the last value and read once after unlock |
+| Device clock or day change during staleness | Day key from the clock; baseline at the next successful read |
+
+### 7.6 What the user sees and what we log
+
+- Launcher allowance card: when not FRESH, show the value with an "about" marker (copy to confirm) instead of a precise number.
+- Stats: the coverage notice (section 8.2) covers missing days; no per-minute staleness UI.
+- Debug logs: state transitions and the estimate-versus-confirmed delta on reconcile. No usage content beyond package names already used.
+
+### 7.7 Tests
+
+Pure tests for the state reducer and estimator: transitions, null and exception inputs, permission revoke and restore, boot-before-unlock, estimate then reconcile (higher and lower), monotonic-per-day rule, midnight during STALE, interval expiry by clock.
+
+## 8. Stats surfaces and detectors
+
+### 8.1 Surface inventory (code)
+
+| Surface | Today | Change |
+|---|---|---|
+| **Primary Stats tab = `ArchivedStatsScreen`** (windows Today / Yesterday / Week / All Time) | **Observed Device Time** card (not shown for All Time): total minutes, "Focus / observed" ratio, top 5 apps with "minutes · launches", and for Week a per-day chart | Details below |
+| Same card, data flow | Needs `getUsageSummary` (events) **and** `getHourlyUsageSummary` (`INTERVAL_BEST`): `buildPhoneUsageMetrics` returns nothing without the hourly part, so **the whole card disappears if the hourly read fails**. Week additionally runs **7 per-day `getUsageSummary` calls**, 9 event scans per Week load | One pass from `DeviceUsageSource`; split by day and hour inside the pipeline; the card no longer depends on a second API |
+| Same card, caption | "Android app foreground time, FocusFlow home-screen time excluded" | Keep the definition; the pipeline excludes launchers and our package at span level. Document that launchers are also excluded |
+| Same card, third metric | **Hard-coded `0` "Blocked attempts"** | Bug found while reading. Fix in a separate PR, not part of this phase |
+| `UsageAccessCard` on the primary screen | Shows permission state | Keep; extend with the coverage notice (section 8.2) |
+| **Extra view** (`StatsInsightsExperience`, opened from the primary screen) | Shares the same view model and snapshot: insight cards, day-rating bar, `FindingsSection`, `DataHealthNotice` | Reads through the merged read model |
+| **3-month window** | `CurrentStatsScreen` has no caller and the Extra view hides the tab, so it is **currently unreachable** (as far as I can find). It still has a permission gate, `hasUsableStats`, and `ThreeMonthRules` (night pattern, phone peak) that read `phoneUsage.byHour` | Keep compiling and add it to the test matrix so it works when re-exposed. No new work |
+| `PhoneUsageSummary.kt` | No caller found | Delete only if 5.0 confirms |
+| Day-rating chips | `DayRatingRepository.getRatableDates` treats a day as rateable if `daily_app_usage` has rows | Read through the merged read model |
+| Data-health counts | `dataHealthDayCount = max(usageDays, taskDays)`, from `countDistinctDates()` | Count dates through the merged read model |
+| Insight rules | `WeeklyRules`, `YesterdayRules`, `StatsParityCards` use **blocking** peak hours; only `ThreeMonthRules` uses phone usage | No change except the 3-month note above |
+
+### 8.2 Primary-screen behavior after the change
+
+- Today / Yesterday / Week values come from the pipeline (live events) and, for fully rolled-up days, the rollups.
+- The card shows even when only some hours or days are available. It marks partial coverage using the existing `DataHealthNotice` style (days from rollups, days live, days missing). No new notice type.
+- Week chart: per-day totals from the single pass (one pipeline run split by local day), including the dynamic and fixed week modes.
+- Launch counts follow O5. Totals will change versus today wherever the old code over-counted open spans.
+- No usage permission: same as today (the card is hidden and `UsageAccessCard` explains it).
+
+### 8.3 Detector inventory (code)
+
+`FindingDetectionRunner.runAll` runs 11 detectors. **Four are unaffected** (they read tasks or focus sessions): post-failure cascade, session sweet spot, estimation drift, day-of-week outlier. **Seven read the usage tables:**
+
+| Detector | Reads | Window and thresholds | What the change touches |
+|---|---|---|---|
+| Morning hijack | first session each day (`MIN(started_at)` per local date), categories | 14 days; at least 7 days; social/entertainment app is first on at least 65% of days | "First session" must use the same exclusions (launchers, our package, system UI) and the same session start definition |
+| Variable reward loop | per-day session stats, raw sessions per candidate package | 21 days; at least 10 days; at least 5 sessions/day; mean at most 4 min; variation at least 0.9 | **Very sensitive to the session definition** (merging brief interruptions, minimum length, screen-off splitting) |
+| Infinite session design | same, plus categories (skips utility) | 14+ days; mean over 5 min; standard deviation over 20 min; max over 3× mean | The tail cap and screen-off closing will remove artificially long sessions, so **some findings will disappear (expected)** |
+| Escalating capture | daily rows (`foreground_ms`) | 28 days; at least 4 days in each of 4 weeks; strictly rising; week 1 over 5 min; growth at least 40% | Needs 28 days of continuous, single-definition data |
+| Substitution | same weekly averages | down 30% or more, up 30% or more, combined shift under 15% | Same |
+| Streak lock-in | rows with `launch_count > 0`, categories social/entertainment/communication | 14 days; at least 90% of days; at least 3 low-rated days | **Launch definition** (O5) and "row exists" semantics: legacy rows can exist with launches but zero time |
+| Allowance suggestion | daily rows, ratings | 30 days; social/entertainment; at least 5 high-rated and 3 low-rated days; suggestion = high-day average × 1.1 rounded to 5 min | The suggested limit now means **all-day use** (D1), matching enforcement. Must not average days from two sources |
+
+### 8.4 Source seam rules for detectors (O6)
+
+At cutover the rollups only hold the few recent days the OS still has, so every usage detector would otherwise average **two different definitions** of the same quantity and could invent a trend at the seam.
+
+- The read model (6.4) tells each detector which source each date came from.
+- **Default (strict):** a detector evaluates only a window whose days all come from one source. If the post-seam days are too few for its minimum, it returns "not enough consistent data yet" instead of mixing. Trend detectors (escalating capture, substitution, streak lock-in, allowance suggestion) can therefore stay silent for up to about four weeks after cutover. Distribution detectors (variable reward, infinite session, morning hijack) need raw sessions from one source across the window.
+- **Optional relaxation:** use the shadow period (5.3) to compare both sources on the same days. If per-app daily totals agree within a tolerance the owner sets, allow mixing for detectors whose inputs are totals (not session shapes).
+- **Fingerprints:** findings are deduplicated by an evidence fingerprint that includes sample size and a quantized metric. After cutover the same pattern may produce a new fingerprint and be shown again. Check `FindingRepository.submit` behavior in 5.0 and keep fingerprint inputs unchanged.
+- Add pure tests per detector for: single-source window passes; mixed window is refused; post-seam-only window with enough days passes.
+- **(verify)** when `runAll` is triggered, so detector runs and rollup runs do not race. Run detectors after the rollup pass.
+
+## 9. Small fixes found while rechecking (separate PRs, not part of Phase 5)
+
+1. **Notification trampoline.** `NotificationActionReceiver` stores the action and then calls `startActivity()`. On Android 12+ apps targeting 31 or higher cannot start an activity from a receiver after a notification tap or action-button tap (docs). Done / +15m / +30m / Skip would not replay until the user opens the app. **Needs the owner's `targetSdk`.** Fix: apply the stored action inside the receiver through the same gate and repository, or make the buttons open the activity directly.
+2. **Idle card delay.** Set the immediate foreground-service behavior on the idle card (no action buttons, so Android 12+ may show it about 10 s late).
+3. **Dismissed card.** On Android 13+ users can dismiss the card by default (docs; I earlier said 14, that was wrong). Re-post the current card from `ensureRunning()`.
+4. **Health card first draw.** `EnforcementHealth.UNKNOWN` counts as needs-attention, so the first card after each service start may flash "Needs attention". Treat unknown as neutral for the first draw.
+5. **Stats card:** the hard-coded `0` "Blocked attempts" metric (section 8.1).
+
+## 10. Parked (not part of this phase)
+
+- Foreground-service type change, `onTimeout`, the Android 15 boot restriction, targetSdk 35 and anything above API 35. **Gate: do this before `targetSdk` 35.** A service with several types must satisfy the rules of **all** of them (docs), so `dataSync|specialUse` inherits `dataSync` limits. Reference: ActivityWatch's Android app moved its background service from `dataSync` to `specialUse`, starting it with the special-use type on Android 14+ and keeping a fallback for earlier versions (pull request 190 in `ActivityWatch/aw-android`; I read the description, not the code; license not checked, so read only).
+- In-app off switch for the background service.
+- Shared "what is enforced right now" state object.
+- Anything about the VPN notification.
+
+## 11. Steps (each its own PR; the app must build and behave at the end of each)
+
+### 5.0 Verify and measure (read-only plus device testing)
+
+- **5.0a SDK floor:** confirm Gradle `minSdk`, `compileSdk` and `targetSdk`; report them. Raise `minSdk` to 29 if lower.
+- Add the Lint `NewApi` CI gate (3.1 rule 8) and run it on the current code; report findings.
+- Map every writer and reader of `daily_allowance_used`, `daily_app_usage`, `app_sessions` (include `BackgroundFetchWorker`, `SettingsRepository`, `LauncherActivity`, backup/export, the detectors, `DayRatingRepository`).
+- Map when `FindingDetectionRunner.runAll` runs and how `FindingRepository.submit` deduplicates.
+- **Device matrix** (3.3 versions). For each case compare: new pipeline output, current accessibility meter, current Stats card, and Digital Wellbeing:
+  - Screen off while an app is open (do `PAUSED`/`STOPPED` arrive?).
+  - Leaving an app via home, recents and a notification.
+  - Multi-activity apps; split-screen; picture-in-picture (Android 10 and later may keep several visible activities resumed **(verify)**).
+  - **Keyboard open while typing, and pulling the notification shade, in an allowance app: does either create a foreground change or an extra open?**
+  - Permission dialog and share sheet over an allowance app (decides the O2 allow-list).
+  - Reboot mid-session, including a locked-boot read (null handling); midnight rollover; a DST day if possible.
+- **Event latency**, **retention** (earliest event on each device), and **`queryEvents` cost** at the chosen tick on a low-end device.
+- Stats Today in the afternoon (hourly distribution) and Week (9 event scans) on the current code.
+- Report measured differences; the owner sets the tolerance.
+
+### 5.1 Characterization and pipeline tests (behavior-preserving)
+
+JVM test source set (add if missing). Pin current pure behavior you will move or delete. Pipeline tests for every rule in section 5: missing `PAUSED`, `STOPPED` only, screen-off, keyguard, shutdown/startup, midnight crossing, DST day, duplicate and out-of-order `RESUMED`, app already open at window start, tail cap, null/unknown input. Allowance state tests (7.7). Read-model tests (6.4). DAO tests for rollup idempotency (run twice, same rows; downgrade refused).
+
+### 5.2 `AllowanceLedger` (behavior-preserving)
+
+Sole owner of the `daily_allowance_used` JSON schema, the lock, day/window rollover, the remaining/exhausted math and the new `confirmedAtMs`. Replace the four read-side copies (`isAllowanceAvailable`, the unlock calculation, `isFallbackBlocked`, `LauncherActivity.loadAllowanceCardData`), `SettingsRepository`'s access and the launcher card. Read the **existing JSON as is**. In-memory cache with write-behind. Fix the contradictory comments.
+
+### 5.3 Pipeline and rollup tables in shadow mode (behavior-preserving)
+
+- Build `ForegroundSpanTracker` and the thin adapter (null / `SecurityException` handling; no SDK checks inside the pipeline).
+- Add migration 6 → 7 and the rollup writer (6.2, 6.3), writing only the new tables.
+- Add the merged read model (6.4) but keep it serving legacy only.
+- Run the pipeline alongside the old logic with a debug-only comparison log for at least 7 days. Record per-app daily differences (used for O6).
+
+### 5.4 Allowance cutover (behavior-changing: D1, D2)
+
+- Readings come from the pipeline, **independent of block state**. Enforcement stays gated on focus/standalone/always-on; only the number stops being gated.
+- Implement the state machine and estimator (section 7). While an allowance app is in the foreground: baseline from the pipeline, exact-expiry timer seeded from it, tick re-read (O3).
+- Delete: the accessibility accumulator and checkpoint code, `ACTIVE_SESSION_*` and handoff bookkeeping, `reconcileCountAllowances`, and the service's 60 s allowance sync. At cutover take the larger of the stored value and the pipeline value for today so nobody's usage resets mid-day.
+- Apply O1 and O2.
+- **Copy:** update `DailyAllowanceModal`, `DailyAllowanceDefenseDialog` and the launcher card to say it counts all usage today, not just during blocks, and show the "about" marker when not FRESH.
+
+### 5.5 Stats, rollups and detectors cutover (behavior-changing: D3, D5, D6)
+
+- `DeviceUsageSource` (one pass) feeds `AnalyticsProcessor`: summary, hourly and per-day Week values. Remove the `INTERVAL_BEST` path and the 7 per-day scans. Decouple the card from the hourly read (8.1).
+- Switch the merged read model to rollups-first (6.4). Stop the legacy Room writer (6.5).
+- Update the readers: detectors (via `FindingDetectionRunner`), `DayRatingRepository.getRatableDates`, `dataHealthDayCount`. Apply the seam rules (8.4) and their tests.
+- Extend `DataHealthNotice` for coverage. Check the dormant 3-month path still builds and its rules still work with the new `byHour` source.
+- Delete `PhoneUsageSummary.kt` only if 5.0 confirms it is unused.
+
+### 5.6 Allowance suggestion and detector verification
+
+Run the seven detectors against recorded data on both sides of the seam. Confirm: no findings from mixed windows, expected disappearance of inflated "infinite session" findings, no duplicate findings from changed fingerprints, and that the suggested allowance matches enforcement units.
+
+### 5.7 Version-gate cleanup and final cleanup (behavior-preserving)
+
+Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow log and obsolete keys (with a note on upgrade behavior). Switch the usage-access check to `unsafeCheckOpNoThrow`. Re-run the 5.0 matrix on every version in 3.3. Report line counts for every touched and new file.
+
+## 12. Ground rules
+
+1. **No god files.** One responsibility per new file, aim under about 250 lines, justify over 300. Pure logic separated from Android calls and JVM-tested.
+2. **The big files must shrink.** Net line count of `AppBlockerAccessibilityService.kt` and `ForegroundTaskService.kt` goes down in every step that touches them. Report the numbers.
+3. **Label every step** behavior-preserving or behavior-changing.
+4. **No new prefs keys.** The only new stored field is `confirmedAtMs` inside the existing allowance JSON. New Room tables only as in 6.2.
+5. **No new polling loops.**
+6. Blocking logic, VPN, keyword blocker and the foreground-service type stay untouched. Android 15 / targetSdk 35 work stays parked.
+7. Every behavior-changing step updates the user-facing copy and the release notes.
+
+## 13. What can go wrong
+
+- **Duplicates in Room:** prevented by new tables, primary keys, one writer, one transaction per date, and one source per date. Test it.
+- **Silent history loss:** the migration must not touch existing tables; the migration test is mandatory.
+- **Detector silence after cutover:** expected for up to about four weeks under the strict seam rule (O6). Tell the owner before release.
+- **Findings reappearing** after fingerprint changes (8.4).
+- **Locked boot:** null from `queryEvents` must never reset usage to zero.
+- **Split-screen / multi-resume:** "one foreground package" credits only the last resumed app. Document it; decide from 5.0.
+- **Event delivery delay:** keep the exact-expiry timer and the tick.
+- **Retention:** if neither the app nor the service runs for longer than the OS keeps events, history for those days is lost. The always-on service plus the rollup at day rollover is the mitigation.
+- **Time travel:** changing the device clock moves the day boundary. Check whether current behavior is intended. Out of scope.
+- **Numbers users will see change:** Stats totals, launch counts and some findings change once inflated spans disappear. Say so in release notes.
+
+## 14. Review gates (definition of done)
+
+- `minSdk` is 29 in Gradle; zero version checks at or below API 29 remain; Lint `NewApi` is clean in CI.
+- Every step builds and runs on its own and is labelled preserving or changing.
+- The accessibility file and `ForegroundTaskService.kt` are smaller than before; no new file over 300 lines.
+- One class interprets platform event types; one owner of the allowance JSON; one merged read model for history.
+- The migration test passes and old rows are byte-for-byte unchanged after upgrade.
+- Rollup writes are idempotent and never downgrade a complete day.
+- The allowance state machine and estimator tests pass; behavior in STALE and UNAVAILABLE matches section 7.5.
+- The primary Stats screen, Extra view and the dormant 3-month path all build and show sane numbers; all seven usage detectors have seam tests.
+- The 5.0 matrix is re-run on every version in 3.3 with measured deltas reported.
