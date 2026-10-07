@@ -1,0 +1,226 @@
+diff -ru orig/MainActivity.kt ff/MainActivity.kt
+--- orig/MainActivity.kt	2026-10-07 03:22:41.887945174 +0000
++++ ff/MainActivity.kt	2026-10-07 03:22:41.954057449 +0000
+@@ -699,7 +699,7 @@
+                                 Text(blocked.message)
+                                 if (blocked.unreadableJournal) {
+                                     Text(
+-                                        "The restore record could not be read. Retry may not succeed.",
++                                        "If retrying does not help, choose Discard to keep your current data.",
+                                         modifier = Modifier.padding(top = 8.dp),
+                                     )
+                                 }
+@@ -754,9 +754,15 @@
+                             scope.launch {
+                                 val result = AppModule.restoreCoordinator.discardRecovery()
+                                 if (result.isFailure) {
++                                    val reopened =
++                                        AppModule.restoreGate.state.value == RestoreGate.State.OPEN
+                                     Toast.makeText(
+                                         context,
+-                                        "The app reopened, but some derived state could not be refreshed.",
++                                        if (reopened) {
++                                            "The app reopened, but some derived state could not be refreshed."
++                                        } else {
++                                            "The restore could not be discarded. Please try again."
++                                        },
+                                         Toast.LENGTH_LONG,
+                                     ).show()
+                                 }
+diff -ru orig/data/restore/RestoreRecoveryEngine.kt ff/data/restore/RestoreRecoveryEngine.kt
+--- orig/data/restore/RestoreRecoveryEngine.kt	2026-10-07 03:22:41.882436858 +0000
++++ ff/data/restore/RestoreRecoveryEngine.kt	2026-10-07 03:22:41.953428292 +0000
+@@ -48,7 +48,6 @@
+ ) {
+     private val _state = MutableStateFlow<RestoreUiState>(RestoreUiState.Idle)
+     val state: StateFlow<RestoreUiState> = _state.asStateFlow()
+-    private var discardReconciliationPending = false
+ 
+     fun reflectBlockedStartup(unreadableJournal: Boolean) {
+         _state.value = RestoreUiState.Blocked(
+@@ -168,24 +167,6 @@
+                 unreadableJournal = journalStore.hasQuarantine(),
+             )
+         }
+-        if (discardReconciliationPending) {
+-            _state.value = RestoreUiState.Running(interrupted = true)
+-            return try {
+-                actions.reconcileCurrentState()
+-                discardReconciliationPending = false
+-                gate.reopen()
+-                _state.value = RestoreUiState.Idle
+-                RecoveryRunResult.NoJournal(pendingImportStore.exists())
+-            } catch (cancelled: CancellationException) {
+-                throw cancelled
+-            } catch (_: Exception) {
+-                gate.markRecoveryBlocked()
+-                val message =
+-                    "The restore was discarded, but current data could not be reconciled. Retry to repair it."
+-                _state.value = RestoreUiState.Blocked(message, unreadableJournal = false)
+-                RecoveryRunResult.Blocked(message, unreadableJournal = false)
+-            }
+-        }
+         if (journalStore.hasQuarantine()) {
+             try {
+                 journalStore.restoreQuarantineForRetry()
+@@ -212,37 +193,46 @@
+         return runAlreadyClosedGate(interrupted = true)
+     }
+ 
++    /**
++     * Explicit user escape hatch. Once the journal artifacts are deleted the user's
++     * decision is durable, so from that point the app must always reopen: derived
++     * state is repaired best-effort (bounded retries, same as a restore run) and any
++     * remaining failure is reported to the caller instead of re-locking the app.
++     * Alarms are also re-reconciled by the normal activity start/resume path.
++     */
+     suspend fun discard(): Result<Unit> {
+         if (gate.state.value != RestoreGate.State.RECOVERY_BLOCKED) {
+             return Result.failure(IllegalStateException("Discard is available only when recovery is blocked."))
+         }
+-        return try {
++        try {
+             journalStore.deleteJournal()
+             journalStore.deleteQuarantine()
+-            discardReconciliationPending = true
+-            actions.reconcileCurrentState()
+-            discardReconciliationPending = false
+-            _state.value = RestoreUiState.Idle
+-            gate.reopen()
+-            Result.success(Unit)
+         } catch (cancelled: CancellationException) {
+-            if (discardReconciliationPending) {
+-                gate.markRecoveryBlocked()
+-                _state.value = RestoreUiState.Blocked(
+-                    "The restore was discarded, but current data could not be reconciled. Retry to repair it.",
+-                    unreadableJournal = false,
+-                )
+-            }
+             throw cancelled
+         } catch (error: Exception) {
+-            if (discardReconciliationPending) {
+-                gate.markRecoveryBlocked()
+-                val message =
+-                    "The restore was discarded, but current data could not be reconciled. Retry to repair it."
+-                _state.value = RestoreUiState.Blocked(message, unreadableJournal = false)
++            // Artifacts may still exist, so stay blocked and let the user try again.
++            return Result.failure(error)
++        }
++
++        var reconcileFailure: Exception? = null
++        var attempt = 0
++        while (attempt < maxAttempts) {
++            attempt += 1
++            try {
++                actions.reconcileCurrentState()
++                reconcileFailure = null
++                break
++            } catch (cancelled: CancellationException) {
++                throw cancelled
++            } catch (error: Exception) {
++                reconcileFailure = error
++                if (attempt < maxAttempts) delay(retryDelayMillis)
+             }
+-            Result.failure(error)
+         }
++
++        _state.value = RestoreUiState.Idle
++        gate.reopen()
++        return reconcileFailure?.let { Result.failure(it) } ?: Result.success(Unit)
+     }
+ 
+     private suspend fun advance(
+diff -ru orig/data/restore/RestoreStores.kt ff/data/restore/RestoreStores.kt
+--- orig/data/restore/RestoreStores.kt	2026-10-07 03:22:41.882457354 +0000
++++ ff/data/restore/RestoreStores.kt	2026-10-07 03:22:41.952953831 +0000
+@@ -13,6 +13,7 @@
+ import kotlinx.serialization.encodeToString
+ import kotlinx.serialization.json.Json
+ import kotlinx.serialization.json.JsonObject
++import kotlinx.serialization.json.JsonPrimitive
+ import kotlinx.serialization.json.intOrNull
+ import kotlinx.serialization.json.jsonObject
+ 
+@@ -29,6 +30,47 @@
+     }
+ }
+ 
++/**
++ * Codec for the durable restore documents.
++ *
++ * `encodeDefaults = true` is required: kotlinx.serialization omits properties that
++ * equal their default value, so without it `journalVersion` (default = current
++ * version) is never written, and the reader's explicit version check sees `null`.
++ * Version tags on durable files must always be written explicitly.
++ */
++internal val RestoreStoreJson = Json {
++    ignoreUnknownKeys = false
++    encodeDefaults = true
++}
++
++/**
++ * Pure (Android-free, JVM-testable) journal decoder.
++ *
++ * A missing `journalVersion` means the file was written by a build that did not
++ * encode defaults; that schema is identical to version 1, so it is accepted.
++ * A present-but-different version is rejected as [RestoreJournalRead.UnknownVersion].
++ */
++internal fun parseJournalText(text: String): RestoreJournalRead {
++    val root = try {
++        RestoreStoreJson.parseToJsonElement(text) as? JsonObject
++    } catch (error: IllegalArgumentException) {
++        null
++    } ?: return RestoreJournalRead.Corrupt("Journal root is not an object.")
++
++    val versionElement = root["journalVersion"]
++    if (versionElement != null) {
++        val version = (versionElement as? JsonPrimitive)?.intOrNull
++        if (version != RestoreJournal.JOURNAL_VERSION) {
++            return RestoreJournalRead.UnknownVersion(version)
++        }
++    }
++    return try {
++        RestoreJournalRead.Value(RestoreStoreJson.decodeFromString<RestoreJournal>(text))
++    } catch (error: IllegalArgumentException) {
++        RestoreJournalRead.Corrupt(error.message ?: "The restore journal could not be read.")
++    }
++}
++
+ sealed interface PendingImportRead {
+     data object Missing : PendingImportRead
+     data class Value(val record: PendingImportRecord) : PendingImportRead
+@@ -64,7 +106,7 @@
+     private val atomicFile = AtomicFile(
+         File(File(context.applicationContext.noBackupFilesDir, "pending-import"), "import.json"),
+     )
+-    private val json = Json { ignoreUnknownKeys = false }
++    private val json = RestoreStoreJson
+ 
+     override fun exists(): Boolean = atomicFile.baseFile.exists() ||
+         File(atomicFile.baseFile.path + ".bak").exists()
+@@ -99,7 +141,7 @@
+     private val journalFile = File(directory, "journal.json")
+     private val quarantineFile = File(directory, "journal.quarantine")
+     private val atomicFile = AtomicFile(journalFile)
+-    private val json = Json { ignoreUnknownKeys = false }
++    private val json = RestoreStoreJson
+ 
+     override fun hasJournal(): Boolean = journalFile.exists() ||
+         File(journalFile.path + ".bak").exists()
+@@ -109,15 +151,7 @@
+     override suspend fun read(): RestoreJournalRead = withContext(Dispatchers.IO) {
+         if (!hasJournal()) return@withContext RestoreJournalRead.Missing
+         try {
+-            val text = atomicFile.openRead().use(::readBoundedText)
+-            val root = json.parseToJsonElement(text) as? JsonObject
+-                ?: return@withContext RestoreJournalRead.Corrupt("Journal root is not an object.")
+-            val version = root["journalVersion"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.intOrNull }
+-            if (version != RestoreJournal.JOURNAL_VERSION) {
+-                return@withContext RestoreJournalRead.UnknownVersion(version)
+-            }
+-            val journal = json.decodeFromString<RestoreJournal>(text)
+-            RestoreJournalRead.Value(journal)
++            parseJournalText(atomicFile.openRead().use(::readBoundedText))
+         } catch (error: FileNotFoundException) {
+             RestoreJournalRead.Missing
+         } catch (error: Exception) {
