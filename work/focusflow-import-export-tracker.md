@@ -2,7 +2,7 @@
 
 ## Current status
 
-- **Overall:** Batches 1–6 complete and locally verified; Batch 7 remains pending
+- **Overall:** Batches 1–6 complete and locally verified; Batch 7 in progress
 - **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
 - **Scope note:** Implementation is batch-specific. Batch 6 is complete; later acceptance/stability work remains pending.
@@ -187,6 +187,14 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 - Local environment side effect: The post-test Python XML-report summary added `python-base-3.13` to `.replit`. The validated replacement flow restored the tracked baseline; the final `.replit` diff is empty, and the temporary restore file was absent after replacement.
 
 ## Batch 7 — Acceptance and stability
+
+**Status:** In progress.
+
+**Initial notes — started 2026-10-08**
+
+- The working tree is clean at audit start. Batch 6 is recorded complete; this batch is limited to Section 8 acceptance verification, no-touch review, and recording evidence or gaps.
+- The existing device-test limitation (`adb` unavailable) may prevent interactive SAF and Compose verification; confirm tooling and distinguish code/test evidence from device-only checks.
+- Reconcile acceptance against current source and test reports rather than relying on earlier summaries. Do not push or start GitHub Actions unless explicitly requested.
 
 - [ ] Reconcile each item in section 8 of the plan against implementation and evidence.
 - [ ] Verify export content and cancellation behavior.
