@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.data.repository.BackupEnvelope
 import com.tbtechs.focusflow.data.repository.BackupParseResult
+import com.tbtechs.focusflow.data.repository.ImportSummary
 import com.tbtechs.focusflow.data.repository.RestoreResult
 import com.tbtechs.focusflow.data.restore.RestorePreview
 import com.tbtechs.focusflow.data.restore.RestoreUiState
@@ -393,41 +394,7 @@ fun ImportConfirmScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        if (outcome.summary.tasksReplaced) {
-                            "The task list was replaced with ${outcome.summary.tasksImported} backup task(s)."
-                        } else if (outcome.summary.tasksImported > 0) {
-                            "${outcome.summary.tasksImported} task${if (outcome.summary.tasksImported == 1) "" else "s"} added; existing tasks were kept."
-                        } else if (outcome.summary.settings && !restoreTasks) {
-                            "Tasks were not imported."
-                        } else {
-                            "No new tasks were added."
-                        },
-                    )
-                    if (outcome.summary.settings) {
-                        Text(
-                            if (outcome.summary.settingsFieldsApplied > 0) {
-                                "${outcome.summary.settingsFieldsApplied} portable settings fields applied."
-                            } else {
-                                "No portable settings fields were present; device settings were unchanged."
-                            },
-                        )
-                    } else {
-                        Text("Portable settings were not imported.")
-                    }
-                    if (restoreTasks) {
-                        if (outcome.summary.tasksSkippedExisting > 0) {
-                            Text("${outcome.summary.tasksSkippedExisting} existing task ID(s) were kept.")
-                        }
-                        if (outcome.summary.invalidTasksSkipped > 0) {
-                            Text("${outcome.summary.invalidTasksSkipped} invalid task record(s) were skipped.")
-                        }
-                        if (outcome.summary.tasksMarkedSkipped > 0) {
-                            Text(
-                                "${outcome.summary.tasksMarkedSkipped} past task(s) were added with status Skipped.",
-                            )
-                        }
-                    }
+                    ImportSummaryDetails(outcome.summary, restoreTasks)
                     if (outcome.summary.warnings.isNotEmpty()) {
                         Text(
                             "Warnings:\n${outcome.summary.warnings.joinToString("\n")}",
@@ -592,6 +559,48 @@ private fun ImportError(message: String, modifier: Modifier, onClose: () -> Unit
         Text("Import unavailable", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 12.dp))
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
         OutlinedButton(onClick = onClose, modifier = Modifier.padding(top = 16.dp)) { Text("Close") }
+    }
+}
+
+@Composable
+internal fun ImportSummaryDetails(
+    summary: ImportSummary,
+    restoreTasks: Boolean,
+) {
+    Text(
+        if (summary.tasksReplaced) {
+            "The task list was replaced with ${summary.tasksImported} backup task(s)."
+        } else if (summary.tasksImported > 0) {
+            "${summary.tasksImported} task${if (summary.tasksImported == 1) "" else "s"} added; existing tasks were kept."
+        } else if (summary.settings && !restoreTasks) {
+            "Tasks were not imported."
+        } else {
+            "No new tasks were added."
+        },
+    )
+    if (summary.settings) {
+        Text(
+            if (summary.settingsFieldsApplied > 0) {
+                "${summary.settingsFieldsApplied} portable settings fields applied."
+            } else {
+                "No portable settings fields were present; device settings were unchanged."
+            },
+        )
+    } else {
+        Text("Portable settings were not imported.")
+    }
+    if (restoreTasks) {
+        if (summary.tasksSkippedExisting > 0) {
+            Text("${summary.tasksSkippedExisting} existing task ID(s) were kept.")
+        }
+        if (summary.invalidTasksSkipped > 0) {
+            Text("${summary.invalidTasksSkipped} invalid task record(s) were skipped.")
+        }
+        if (summary.tasksMarkedSkipped > 0) {
+            Text(
+                "${summary.tasksMarkedSkipped} past task(s) were added with status Skipped.",
+            )
+        }
     }
 }
 
