@@ -61,6 +61,7 @@ import com.tbtechs.focusflow.ui.active.ActiveScreen
 import com.tbtechs.focusflow.ui.alwayson.AlwaysOnScreen
 import com.tbtechs.focusflow.ui.backup.BackupCoordinator
 import com.tbtechs.focusflow.ui.backup.ImportConfirmScreen
+import com.tbtechs.focusflow.data.restore.RestoreUiState
 import com.tbtechs.focusflow.ui.common.ErrorBoundary
 import com.tbtechs.focusflow.ui.common.SideMenu
 import com.tbtechs.focusflow.ui.defense.DefenseScreen
@@ -111,6 +112,7 @@ fun FocusFlowNavGraph(
     onImportBackup: (Boolean) -> Unit = {},
     pendingImportGeneration: Int = 0,
     initialReplaceTasks: Boolean = false,
+    restoreUiState: RestoreUiState = RestoreUiState.Idle,
     onImportFinished: () -> Unit = {},
     onImportCancelled: () -> Unit = {},
     onImportProgressChanged: (Boolean) -> Unit = {},
@@ -496,6 +498,7 @@ fun FocusFlowNavGraph(
                             pendingGeneration = pendingImportGeneration,
                             backupCoordinator = backupCoordinator
                                 ?: error("Backup coordinator is required for import confirmation."),
+                            restoreUiState = restoreUiState,
                             currentFocusActive = focusSessionViewModel.focusSession.value?.isActive == true,
                             initialReplaceTasks = initialReplaceTasks,
                             onBack = onImportCancelled,

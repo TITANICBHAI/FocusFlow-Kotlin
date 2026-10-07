@@ -649,7 +649,12 @@ fun SettingsScreen(
             titleContentColor = DarkTextPrimary,
             textContentColor = DarkTextSecondary,
             title = { Text("Restore from backup", fontWeight = FontWeight.Bold) },
-            text = { Text("Pick how to merge the backup into this device.") },
+            text = {
+                Text(
+                    "Choose how to handle tasks. On the next screen, you can also choose " +
+                        "whether to import portable settings.",
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -662,7 +667,7 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                     shape = RoundedCornerShape(8.dp),
-                ) { Text("Add tasks") }
+                ) { Text("Merge tasks") }
             },
             dismissButton = {
                 Row {
@@ -677,7 +682,7 @@ fun SettingsScreen(
                             onImportBackup(true)
                         }
                     }) {
-                        Text("Replace everything", color = Color(0xFFEF4444))
+                        Text("Replace tasks", color = Color(0xFFEF4444))
                     }
                 }
             },

@@ -192,12 +192,14 @@ class BackupManager(
         val summary = ImportSummary(
             tasksSkipped = envelope.invalidTaskCount,
             warnings = envelope.warnings.toMutableList(),
+            invalidTasksSkipped = envelope.invalidTaskCount,
         )
 
         try {
             if (callbacks.restoreSettings) {
                 callbacks.updateSettings(envelope.settings)
                 summary.settings = true
+                summary.settingsFieldsApplied = envelope.settings.length()
             }
         } catch (error: Exception) {
             summary.warnings += "Settings could not be restored: $error"
@@ -216,6 +218,7 @@ class BackupManager(
         }
 
         if (callbacks.restoreTasks && callbacks.replaceTasks) {
+            summary.tasksReplaced = true
             existingTasks.forEach { task ->
                 runCatching { callbacks.deleteTask(task.optString("id")) }
             }
@@ -239,6 +242,7 @@ class BackupManager(
             val taskId = rawTask.optString("id")
             if (!importedIds.add(taskId)) {
                 summary.tasksSkipped++
+                summary.tasksSkippedExisting++
                 continue
             }
 
@@ -251,6 +255,7 @@ class BackupManager(
                 if (isPastScheduledTask) {
                     imported.put("status", "skipped")
                     imported.put("updatedAt", formatIso(clock.instant()))
+                    summary.tasksMarkedSkipped++
                 }
 
                 callbacks.addTask(imported, true)
@@ -347,6 +352,11 @@ data class ImportSummary(
     var tasksSkipped: Int = 0,
     val warnings: MutableList<String> = mutableListOf(),
     val protectionCategories: List<ImportedProtectionCategory> = emptyList(),
+    var tasksReplaced: Boolean = false,
+    var tasksMarkedSkipped: Int = 0,
+    var tasksSkippedExisting: Int = 0,
+    var invalidTasksSkipped: Int = 0,
+    var settingsFieldsApplied: Int = 0,
 )
 
 data class ImportedProtectionCategory(

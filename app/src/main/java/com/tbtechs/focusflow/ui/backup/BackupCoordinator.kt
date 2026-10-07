@@ -215,9 +215,6 @@ class BackupCoordinator(
                 RestoreResult.Error(admission.message)
             is RestoreAdmissionResult.Finished -> {
                 val warnings = loaded.backup.record.warnings.toMutableList().apply {
-                    if (admission.counts.downgradedToSkipped > 0) {
-                        add("${admission.counts.downgradedToSkipped} past tasks were marked skipped.")
-                    }
                 }
                 if (
                     VpnImportPolicy.shouldActivateImportedVpnBlock(
@@ -259,6 +256,11 @@ class BackupCoordinator(
                             admission.counts.identicalDuplicates,
                         warnings = warnings,
                         protectionCategories = protectionCategories,
+                        tasksReplaced = replaceTasks && restoreTasks,
+                        tasksMarkedSkipped = admission.counts.downgradedToSkipped,
+                        tasksSkippedExisting = admission.counts.identicalDuplicates,
+                        invalidTasksSkipped = admission.counts.invalidTasks,
+                        settingsFieldsApplied = admission.counts.settingsKeys,
                     ),
                 )
             }

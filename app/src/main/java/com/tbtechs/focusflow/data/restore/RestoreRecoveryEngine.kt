@@ -12,7 +12,11 @@ internal const val DEFAULT_RESTORE_RECOVERY_TIMEOUT_MILLIS = 120_000L
 
 sealed interface RestoreUiState {
     data object Idle : RestoreUiState
-    data class Running(val interrupted: Boolean) : RestoreUiState
+    data class Running(
+        val interrupted: Boolean,
+        val phase: RestorePhase? = null,
+        val refreshingAfterDiscard: Boolean = false,
+    ) : RestoreUiState
     data class Blocked(
         val message: String,
         val unreadableJournal: Boolean,
@@ -115,6 +119,10 @@ class RestoreRecoveryEngine(
         var pendingImportCleared = false
         var terminalResultPersisted = false
         while (true) {
+            _state.value = RestoreUiState.Running(
+                interrupted = interrupted,
+                phase = journal.phase,
+            )
             try {
                 if (!pendingImportCleared) {
                     // The journal is authoritative whenever both durable files
@@ -235,7 +243,10 @@ class RestoreRecoveryEngine(
 
         // Once the user's discard choice is durable, repair derived state with
         // bounded retries but do not lock the app again if that repair fails.
-        _state.value = RestoreUiState.Running(interrupted = true)
+        _state.value = RestoreUiState.Running(
+            interrupted = true,
+            refreshingAfterDiscard = true,
+        )
         var reconcileFailure: Exception? = null
         try {
             var attempt = 0
