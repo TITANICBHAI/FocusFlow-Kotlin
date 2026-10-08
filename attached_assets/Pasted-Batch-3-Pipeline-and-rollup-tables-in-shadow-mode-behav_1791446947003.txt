@@ -1,0 +1,75 @@
+Batch 3 — Pipeline and rollup tables in shadow mode (behavior-preserving)
+Status: NOT STARTED
+Started:
+Completed:
+
+Tasks
+ForegroundSpanTracker
+
+ Pure class with no Android imports: fed events in time order, emits [start, end) sessions.
+ Implements all rules from section 5 of v6. Replicates existing tracker's midnight behavior: session on start date, full duration, time clipped via splitIntoHourlySegments.
+ Null and SecurityException from the adapter produce "unknown", not zero.
+ No SDK version checks inside the class.
+ Thin adapter over UsageStatsRepository handles all platform API calls.
+Migration 6 → 7
+
+ Creates usage_pipeline_state, usage_rollup_day, usage_rollup_app_day, usage_rollup_session (section 6.2).
+ usage_pipeline_state seeded with cutover_date = null.
+ Migration test: build a v6 DB with rows in daily_app_usage and app_sessions, migrate, assert every old row is byte-for-byte unchanged.
+ Exported schema JSON for version 7 committed.
+Rollup writer
+
+ Writes completed past days only — never today.
+ One writer, one mutex, one transaction per date: delete then insert.
+ COMPLETE day never downgraded.
+ Triggers: app open, service start, day rollover, Stats open.
+Merged read model
+
+ UsageHistoryRepository (or equivalent) implemented.
+ Shadow mode: all reads return legacy for every date; rollup tables never served.
+Pipeline tests (introduced here because ForegroundSpanTracker is introduced here)
+
+ Missing ACTIVITY_PAUSED — session closed by the next RESUMED.
+ ACTIVITY_STOPPED only — session closed by stop event.
+ Screen off (SCREEN_NON_INTERACTIVE) — open session closed.
+ Keyguard shown — open session closed.
+ DEVICE_SHUTDOWN — all open sessions closed; no explicit STOPPED events needed.
+ Startup — sessions begin from DEVICE_STARTUP.
+ Midnight crossing — one session row, clipped daily time on each day, session count 1 on start day and 0 on the next.
+ DST day (23 h and 25 h) — boundary is calendar arithmetic, not 86 400 000 ms.
+ Duplicate and out-of-order ACTIVITY_RESUMED — no duplicate open sessions.
+ App already open at window start — clipped to window start only.
+ Tail cap — open session capped at 4 h; measured session never capped.
+ Null from queryEvents — last known value kept, not zero.
+ SecurityException — same as null.
+Read-model precedence tests (introduced here because the read model is introduced here; section 6.5)
+
+ Test 1: shadow mode — every date including today from legacy; rollup tables untouched.
+ Test 2: cutover — today in Group A is live; no rollup row exists for today after repeated loads.
+ Test 3: cutover — detectors exclude today; rating eligibility includes today when live pipeline has a session.
+ Test 4: date < cutoverDate with a complete shadow rollup and legacy rows — legacy wins in both groups.
+ Test 5: date >= cutoverDate with legacy rows and no rollup — pipeline wins; legacy ignored.
+ Test 6: yesterday not yet rolled up — on-demand result equals the rollup written later.
+ Test 7: invariance — live(D) at 23:59 equals rollup(D) written after midnight for the same event log.
+ Test 8: PARTIAL day — Group A shows it with flag; Group B treats it as missing.
+ Test 9: events unavailable for today — Group A shows unknown, not zero.
+ Test 10: rollback — cutoverDate set to null returns legacy for all dates.
+ Test 11: property test — no date served from two sources for any combination of mode, date and row presence.
+ Test 12: seam predicate start < cutoverDate <= end including boundary dates.
+ Test 13: midnight — one session row on D (30 min), 10 min daily on D, 20 min on D+1, session count 1 on D and 0 on D+1.
+ Test 14: day D rolled up while a session that started on D is still open — D stays PARTIAL, then COMPLETE after close, no duplicate session row.
+Rollup DAO tests (introduced here because the DAO is introduced here)
+
+ Idempotency: run the writer twice with the same events, assert identical rows.
+ Downgrade refused: a COMPLETE day is not overwritten.
+ Today never written: after any number of writer calls, no rollup row exists for today's date.
+ Delete-then-insert per date: no two rows for the same (date, package_name).
+Shadow comparison
+
+ Debug-only comparison log running alongside the old logic for at least 7 days.
+ Per-app daily differences recorded in Notes for O6 decision.
+ No behavior change: existing allowance, Stats, and detector output identical to before.
+Notes
+Evidence
+Failures and blockers
+Decisions

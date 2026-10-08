@@ -6,6 +6,8 @@ import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
+import com.tbtechs.focusflow.enforcement.AllowanceLedger
+import com.tbtechs.focusflow.enforcement.AllowanceLedgerProvider
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
 import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
@@ -131,7 +133,6 @@ class SettingsRepository(
         private const val KEY_LEGACY_VPN_PACKAGES = "always_on_vpn_packages"
         private const val KEY_VPN_PACKAGES_MIGRATION_COMPLETE = "always_on_vpn_packages_migrated"
 
-        private const val KEY_DAILY_ALLOWANCE_USED = "daily_allowance_used"
         private const val KEY_DAILY_ALLOWANCE_CONFIG = "daily_allowance_config"
         private const val KEY_RECURRING_BLOCK_SCHEDULES = "recurring_block_schedules"
         private const val KEY_USER_GREYOUT_WINDOWS = "user_greyout_windows"
@@ -201,6 +202,7 @@ class SettingsRepository(
     }
 
     private val appContext = context.applicationContext
+    private val allowanceLedger by lazy { AllowanceLedgerProvider.get(appContext) }
 
     private val prefs: SharedPreferences
         get() = appContext.getSharedPreferences(
@@ -1189,14 +1191,22 @@ class SettingsRepository(
     suspend fun getLong(key: String): Long = prefs.getLong(key, 0L)
 
     suspend fun getAllowanceSnapshot(): AllowanceSnapshot =
-        synchronized(AppBlockerAccessibilityService.ALLOWANCE_USAGE_LOCK) {
-            val usageJson = prefs.getString(KEY_DAILY_ALLOWANCE_USED, null)
+        allowanceLedger.withLock {
+            val usage = allowanceLedger.snapshot()
             AllowanceSnapshot(
-                usageJson = usageJson,
+                usageJson = usage.usageJson,
                 configJson = prefs.getString(KEY_DAILY_ALLOWANCE_CONFIG, null),
                 activeSessionPackage = prefs.getString(KEY_ACTIVE_SESSION_PACKAGE, null),
                 activeSessionEndMs = prefs.getLong(KEY_ACTIVE_SESSION_END_MS, 0L),
-                usageByPackage = parseAllowanceUsage(usageJson),
+                usageByPackage = usage.usageByPackage.mapValues { (_, record) ->
+                    AllowanceUsage(
+                        mode = record.mode,
+                        date = record.date,
+                        count = record.count,
+                        windowStartMs = record.windowStartMs,
+                        usedMs = record.usedMs,
+                    )
+                },
             )
         }
 
@@ -1355,31 +1365,7 @@ class SettingsRepository(
     }
 
     suspend fun resetDailyAllowanceUsage(packageName: String?) {
-        synchronized(AppBlockerAccessibilityService.ALLOWANCE_USAGE_LOCK) {
-            val editor = prefs.edit()
-            if (packageName == null) {
-                editor.putString(AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_USED, "{}")
-            } else {
-                val usedJson = prefs.getString(
-                    AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_USED,
-                    "{}",
-                ) ?: "{}"
-                try {
-                    val obj = JSONObject(usedJson)
-                    obj.remove(packageName)
-                    editor.putString(
-                        AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_USED,
-                        obj.toString(),
-                    )
-                } catch (_: Exception) {
-                    editor.putString(
-                        AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_USED,
-                        "{}",
-                    )
-                }
-            }
-            editor.apply()
-        }
+        allowanceLedger.reset(packageName)
     }
 
     private fun requestVpnSync() = requestVpnSyncAction(appContext)
@@ -1398,28 +1384,6 @@ class SettingsRepository(
             Log.e(TAG, "[NATIVE_PREFS_COMMIT_FAILED] $operation")
             throw IllegalStateException("PREFS_WRITE_FAILED: $operation commit() returned false")
         }
-    }
-
-    private fun parseAllowanceUsage(raw: String?): Map<String, AllowanceUsage> {
-        if (raw.isNullOrBlank()) return emptyMap()
-        return runCatching {
-            val root = JSONObject(raw)
-            buildMap {
-                root.keys().forEach { packageName ->
-                    val value = root.optJSONObject(packageName) ?: return@forEach
-                    put(
-                        packageName,
-                        AllowanceUsage(
-                            mode = value.optString("mode").takeIf(String::isNotBlank),
-                            date = value.optString("date").takeIf(String::isNotBlank),
-                            count = value.optInt("count", 0).coerceAtLeast(0),
-                            windowStartMs = value.optLong("windowStartMs", 0L).coerceAtLeast(0L),
-                            usedMs = value.optLong("usedMs", 0L).coerceAtLeast(0L),
-                        ),
-                    )
-                }
-            }
-        }.getOrDefault(emptyMap())
     }
 
     private fun requireValidSessionPin(pinHash: String?, message: String) {

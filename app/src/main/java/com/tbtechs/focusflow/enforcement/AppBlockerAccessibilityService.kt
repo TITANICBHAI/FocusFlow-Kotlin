@@ -88,7 +88,7 @@ import org.json.JSONArray
  *   standalone_blocked_packages  String   — JSON array of packages to always block
  *   standalone_block_until_ms    Long     — standalone block expiry epoch ms
  *   daily_allowance_packages     String   — JSON array of packages with once-per-day allowance
- *   daily_allowance_used         String   — JSON object {pkg: "YYYY-MM-DD"} last-used dates
+ *   daily_allowance_used         String   — allowance accounting state
  */
 class AppBlockerAccessibilityService : AccessibilityService() {
 
@@ -103,7 +103,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         const val PREF_DAILY_ALLOWANCE_CONFIG = "daily_allowance_config"   // rich JSON config (new)
         const val PREF_DAILY_ALLOWANCE_PKGS  = "daily_allowance_packages"  // legacy — no longer written
-        const val PREF_DAILY_ALLOWANCE_USED  = "daily_allowance_used"
 
         // Active allowance session coordination shared with ForegroundTaskService.
         // The checkpoint timestamp doubles as a heartbeat. A stale signal must not
@@ -115,7 +114,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         const val PREF_USAGE_STATS_SYNC = "daily_allowance_usage_stats_sync"
         const val ACTION_ALLOWANCE_CONFIG_CHANGED =
             "com.tbtechs.focusflow.ACTION_ALLOWANCE_CONFIG_CHANGED"
-        val ALLOWANCE_USAGE_LOCK = Any()
         const val ACTIVE_SESSION_CHECKPOINT_INTERVAL_MS = 15_000L
         const val FOREGROUND_RECOVERY_LOOKBACK_MS = 60_000L
         // UsageEvents around a local-day boundary can be delivered with a small
@@ -467,6 +465,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     )
 
     private lateinit var prefs: SharedPreferences
+    private val allowanceLedger by lazy { AllowanceLedgerProvider.get(this) }
     private var lastBlockedPkg: String? = null
     private var lastBlockedAtMs: Long = 0L
 
@@ -910,29 +909,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                             return
                         }
 
-                        val pkgUsed = loadUsedObject().optJSONObject(pkg)
                         val remainingMs = when (entry.mode) {
-                            "time_budget" -> {
-                                val today = todayDateString()
-                                val usedDate = pkgUsed?.optString("date", "") ?: ""
-                                val usedMs = if (usedDate == today) {
-                                    pkgUsed?.optLong("usedMs", 0L) ?: 0L
-                                } else {
-                                    0L
-                                }
-                                (entry.budgetMs - usedMs).coerceAtLeast(0L)
-                            }
-                            "interval" -> {
-                                val windowStartMs = pkgUsed?.optLong("windowStartMs", 0L) ?: 0L
-                                val windowExpired = windowStartMs <= 0L ||
-                                    now > windowStartMs + entry.windowMs
-                                val usedMs = if (windowExpired) {
-                                    0L
-                                } else {
-                                    pkgUsed?.optLong("usedMs", 0L) ?: 0L
-                                }
-                                (entry.intervalMs - usedMs).coerceAtLeast(0L)
-                            }
+                            "time_budget", "interval" -> readAllowance(pkg, entry, now).remaining
                             else -> 0L
                         }
                         if (remainingMs <= 0L) {
@@ -2377,11 +2355,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     //   interval    — N minutes allowed per rolling Y-hour window. Window resets
     //                 automatically when it expires; usage is tracked per window.
     //
-    // Usage state is stored in SharedPrefs key PREF_DAILY_ALLOWANCE_USED as a
-    // JSON object keyed by package name:
-    //   count:       { mode, date, count }
-    //   time_budget: { mode, date, usedMs }
-    //   interval:    { mode, windowStartMs, usedMs }
+    // AllowanceLedger owns the usage JSON schema, lock, rollover, and calculations.
 
     /**
      * Restores only the active-session identity and the already durable
@@ -2436,7 +2410,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             }
         }
 
-        synchronized(ALLOWANCE_USAGE_LOCK) {
+        allowanceLedger.withLock {
             prefs.edit()
                 .remove("timed_session_pkg")
                 .remove("timed_session_open_at_ms")
@@ -2529,29 +2503,14 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         if (observedCounts.isEmpty()) return
         val today = todayDateString()
-        synchronized(ALLOWANCE_USAGE_LOCK) {
-            val allUsed = loadUsedObject()
-            var changed = false
-            for ((pkg, observedCount) in observedCounts) {
-                val pkgUsed = allUsed.optJSONObject(pkg) ?: org.json.JSONObject()
-                val storedDate = pkgUsed.optString("date", "")
-                val storedCount = if (storedDate == today) pkgUsed.optInt("count", 0) else 0
-                if (observedCount > storedCount) {
-                    pkgUsed.put("mode", "count")
-                    pkgUsed.put("date", today)
-                    pkgUsed.put("count", observedCount)
-                    allUsed.put(pkg, pkgUsed)
-                    changed = true
-                }
-            }
-            if (changed) {
-                prefs.edit().putString(PREF_DAILY_ALLOWANCE_USED, allUsed.toString()).apply()
-            }
+        val updates = observedCounts.map { (pkg, count) ->
+            AllowanceCountUpdate(pkg, count)
         }
+        allowanceLedger.raiseCountUsage(today, updates, System.currentTimeMillis())
     }
 
     private fun persistActiveSessionSignal(pkg: String, openAtMs: Long, sessionEndMs: Long) {
-        synchronized(ALLOWANCE_USAGE_LOCK) {
+        allowanceLedger.withLock {
             // A new foreground session must not inherit a UsageStats handoff marker
             // from an earlier session of the same package.
             val syncJson = loadUsageStatsSyncObject().apply { remove(pkg) }
@@ -2566,7 +2525,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun clearActiveSessionSignal() {
-        synchronized(ALLOWANCE_USAGE_LOCK) {
+        allowanceLedger.withLock {
             handler.removeCallbacks(allowanceCheckpointRunnable)
             val activePkg = prefs.getString(PREF_ACTIVE_SESSION_PKG, null)
             val syncJson = loadUsageStatsSyncObject().apply {
@@ -2620,7 +2579,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val entry = findAllowanceEntry(pkg) ?: return
         val now = System.currentTimeMillis()
         if (entry.mode == "time_budget" || entry.mode == "interval") {
-            synchronized(ALLOWANCE_USAGE_LOCK) {
+            allowanceLedger.withLock {
                 /*
                  * ForegroundTaskService may have written an absolute UsageStats
                  * total while this service heartbeat was stale. Resume from
@@ -2646,7 +2605,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 )
             }
         } else {
-            synchronized(ALLOWANCE_USAGE_LOCK) {
+            allowanceLedger.withLock {
                 prefs.edit()
                     .putLong(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, now)
                     .apply()
@@ -2705,31 +2664,30 @@ class AppBlockerAccessibilityService : AccessibilityService() {
      */
     private fun isAllowanceAvailable(pkg: String, entry: AllowanceEntry): Boolean {
         val now = System.currentTimeMillis()
-        val allUsed = loadUsedObject()
-        val pkgUsed = allUsed.optJSONObject(pkg)
-
         return when (entry.mode) {
-            "count" -> {
-                val today = todayDateString()
-                val usedDate = pkgUsed?.optString("date", "") ?: ""
-                val count = if (usedDate == today) pkgUsed?.optInt("count", 0) ?: 0 else 0
-                count < entry.countPerDay
-            }
-            "time_budget" -> {
-                val today = todayDateString()
-                val usedDate = pkgUsed?.optString("date", "") ?: ""
-                val usedMs = if (usedDate == today) pkgUsed?.optLong("usedMs", 0L) ?: 0L else 0L
-                usedMs < entry.budgetMs
-            }
-            "interval" -> {
-                val windowStartMs = pkgUsed?.optLong("windowStartMs", 0L) ?: 0L
-                if (now > windowStartMs + entry.windowMs) return true // new window
-                val usedMs = pkgUsed?.optLong("usedMs", 0L) ?: 0L
-                usedMs < entry.intervalMs
-            }
+            "count", "time_budget", "interval" ->
+                !readAllowance(pkg, entry, now).exhausted
             else -> false
         }
     }
+
+    private fun readAllowance(
+        pkg: String,
+        entry: AllowanceEntry,
+        nowMs: Long = System.currentTimeMillis(),
+    ): AllowanceReadResult = allowanceLedger.readAllowance(
+        packageName = pkg,
+        mode = entry.mode,
+        today = todayDateString(),
+        nowMs = nowMs,
+        limit = when (entry.mode) {
+            "count" -> entry.countPerDay.toLong()
+            "time_budget" -> entry.budgetMs
+            "interval" -> entry.intervalMs
+            else -> 0L
+        },
+        windowMs = entry.windowMs,
+    )
 
     /**
      * Records that the app was just opened within its allowance.
@@ -2739,51 +2697,20 @@ class AppBlockerAccessibilityService : AccessibilityService() {
      * @return sessionEndMs — the epoch ms when this session expires (0 for count mode).
      */
     private fun recordAllowanceOpen(pkg: String, entry: AllowanceEntry): Long {
-        return synchronized(ALLOWANCE_USAGE_LOCK) {
-            val now = System.currentTimeMillis()
-            val allUsed = loadUsedObject()
-            val pkgUsed = allUsed.optJSONObject(pkg) ?: org.json.JSONObject()
-
-            val sessionEndMs: Long
-            when (entry.mode) {
-            "count" -> {
-                val today = todayDateString()
-                val usedDate = pkgUsed.optString("date", "")
-                val prevCount = if (usedDate == today) pkgUsed.optInt("count", 0) else 0
-                pkgUsed.put("mode", "count")
-                pkgUsed.put("date", today)
-                pkgUsed.put("count", prevCount + 1)
-                sessionEndMs = 0L
-            }
-            "time_budget" -> {
-                val today = todayDateString()
-                val usedDate = pkgUsed.optString("date", "")
-                val prevUsedMs = if (usedDate == today) pkgUsed.optLong("usedMs", 0L) else 0L
-                val remainingMs = (entry.budgetMs - prevUsedMs).coerceAtLeast(0L)
-                sessionEndMs = now + remainingMs
-                pkgUsed.put("mode", "time_budget")
-                pkgUsed.put("date", today)
-                pkgUsed.put("usedMs", prevUsedMs) // updated when session ends via accumulateTimedUsage
-            }
-            "interval" -> {
-                val windowStartMs = pkgUsed.optLong("windowStartMs", 0L)
-                val windowExpired = now > windowStartMs + entry.windowMs
-                val effectiveWindowStart = if (windowExpired) now else windowStartMs
-                val prevUsedMs = if (windowExpired) 0L else pkgUsed.optLong("usedMs", 0L)
-                val remainingMs = (entry.intervalMs - prevUsedMs).coerceAtLeast(0L)
-                sessionEndMs = now + remainingMs
-                pkgUsed.put("mode", "interval")
-                pkgUsed.put("date", todayDateString())
-                pkgUsed.put("windowStartMs", effectiveWindowStart)
-                pkgUsed.put("usedMs", prevUsedMs) // updated when session ends
-            }
-            else -> sessionEndMs = 0L
-            }
-
-            allUsed.put(pkg, pkgUsed)
-            prefs.edit().putString(PREF_DAILY_ALLOWANCE_USED, allUsed.toString()).apply()
-            sessionEndMs
-        }
+        val now = System.currentTimeMillis()
+        return allowanceLedger.recordOpen(
+            packageName = pkg,
+            mode = entry.mode,
+            today = todayDateString(),
+            nowMs = now,
+            limit = when (entry.mode) {
+                "count" -> entry.countPerDay.toLong()
+                "time_budget" -> entry.budgetMs
+                "interval" -> entry.intervalMs
+                else -> 0L
+            },
+            windowMs = entry.windowMs,
+        )
     }
 
     /**
@@ -2803,61 +2730,28 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         checkpointAtMs: Long? = null,
         usageStatsSyncJson: String? = null,
     ) {
-        synchronized(ALLOWANCE_USAGE_LOCK) {
+        allowanceLedger.withLock {
             val now = System.currentTimeMillis()
             val elapsed = (now - openedAtMs).coerceAtLeast(0L)
-            if (elapsed == 0L && checkpointAtMs == null && usageStatsSyncJson == null) return
-
-            val allUsed = loadUsedObject()
-            val pkgUsed = allUsed.optJSONObject(pkg) ?: org.json.JSONObject()
-
-            when (entry.mode) {
-            "time_budget" -> {
-                val today      = todayDateString()
-                val midnightMs = getMidnightMs()
-
-                if (openedAtMs < midnightMs) {
-                    // The session started before today's midnight (service was killed and
-                    // restarted after midnight, or the timer was delayed by Doze).
-                    // Only charge the portion of elapsed time that falls within today —
-                    // yesterday's budget period is already closed.
-                    val elapsedToday = (now - midnightMs).coerceAtLeast(0L)
-                    pkgUsed.put("date",   today)
-                    pkgUsed.put("usedMs", elapsedToday.coerceAtMost(entry.budgetMs))
-                } else {
-                    val usedDate   = pkgUsed.optString("date", "")
-                    val prevUsedMs = if (usedDate == today) pkgUsed.optLong("usedMs", 0L) else 0L
-                    pkgUsed.put("date",   today)
-                    pkgUsed.put("usedMs", (prevUsedMs + elapsed).coerceAtMost(entry.budgetMs))
-                }
-            }
-            "interval" -> {
-                val windowStartMs = pkgUsed.optLong("windowStartMs", 0L)
-                val windowEndMs   = windowStartMs + entry.windowMs
-
-                if (windowStartMs > 0L && now > windowEndMs) {
-                    // The rolling window expired while the session was open.
-                    // Only charge the portion of elapsed time up to the window boundary —
-                    // time after the window expired is free (the next open gets a fresh window).
-                    val elapsedInWindow = (windowEndMs - openedAtMs).coerceAtLeast(0L)
-                    val prevUsedMs      = pkgUsed.optLong("usedMs", 0L)
-                    pkgUsed.put("usedMs", (prevUsedMs + elapsedInWindow).coerceAtMost(entry.intervalMs))
-                } else {
-                    val prevUsedMs = pkgUsed.optLong("usedMs", 0L)
-                    pkgUsed.put("usedMs", (prevUsedMs + elapsed).coerceAtMost(entry.intervalMs))
-                }
-            }
+            if (elapsed == 0L && checkpointAtMs == null && usageStatsSyncJson == null) {
+                return@withLock
             }
 
+            if (entry.mode == "time_budget" || entry.mode == "interval") {
+                allowanceLedger.accumulateTimedUsage(
+                    packageName = pkg,
+                    mode = entry.mode,
+                    today = todayDateString(),
+                    openedAtMs = openedAtMs,
+                    nowMs = now,
+                    midnightMs = getMidnightMs(),
+                    limitMs = if (entry.mode == "time_budget") entry.budgetMs else entry.intervalMs,
+                    windowMs = entry.windowMs,
+                )
+            }
             val editor = prefs.edit()
-            if (elapsed > 0L) {
-                allUsed.put(pkg, pkgUsed)
-                editor.putString(PREF_DAILY_ALLOWANCE_USED, allUsed.toString())
-            }
             checkpointAtMs?.let { editor.putLong(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, it) }
-            usageStatsSyncJson?.let {
-                editor.putString(PREF_USAGE_STATS_SYNC, it)
-            }
+            usageStatsSyncJson?.let { editor.putString(PREF_USAGE_STATS_SYNC, it) }
             editor.apply()
         }
     }
@@ -2945,11 +2839,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             return false
         }
         return true
-    }
-
-    private fun loadUsedObject(): org.json.JSONObject {
-        val json = prefs.getString(PREF_DAILY_ALLOWANCE_USED, "{}") ?: "{}"
-        return try { org.json.JSONObject(json) } catch (_: Exception) { org.json.JSONObject() }
     }
 
     private fun loadUsageStatsSyncObject(): org.json.JSONObject {
@@ -3637,31 +3526,19 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
     /** Describes the exact quota that prevented an allowance app from opening. */
     private fun allowanceExhaustedReason(pkg: String, entry: AllowanceEntry): String {
-        val used = loadUsedObject().optJSONObject(pkg)
+        val usage = readAllowance(pkg, entry)
         return when (entry.mode) {
             "count" -> {
-                val today = todayDateString()
-                val usedCount = if (used?.optString("date", "") == today) {
-                    used.optInt("count", 0)
-                } else {
-                    0
-                }
+                val usedCount = usage.count
                 "Daily allowance exhausted — $usedCount/${entry.countPerDay} opens used today"
             }
             "time_budget" -> {
-                val today = todayDateString()
-                val usedMs = if (used?.optString("date", "") == today) {
-                    used.optLong("usedMs", 0L)
-                } else {
-                    0L
-                }
-                "Daily allowance exhausted — ${formatAllowanceDuration(usedMs)} of " +
+                "Daily allowance exhausted — ${formatAllowanceDuration(usage.usedMs)} of " +
                     "${formatAllowanceDuration(entry.budgetMs)} used today"
             }
             "interval" -> {
-                val usedMs = used?.optLong("usedMs", 0L) ?: 0L
                 val windowHours = (entry.windowMs / 3_600_000L).coerceAtLeast(1L)
-                "Allowance window exhausted — ${formatAllowanceDuration(usedMs)} of " +
+                "Allowance window exhausted — ${formatAllowanceDuration(usage.usedMs)} of " +
                     "${formatAllowanceDuration(entry.intervalMs)} used in the " +
                     "${windowHours}-hour window"
             }

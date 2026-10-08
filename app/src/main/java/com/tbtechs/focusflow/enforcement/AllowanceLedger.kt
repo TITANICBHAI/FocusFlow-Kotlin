@@ -1,55 +1,8 @@
 package com.tbtechs.focusflow.enforcement
 
-import android.content.Context
-import android.content.SharedPreferences
 import org.json.JSONObject
 
-internal interface AllowanceLedgerStore {
-    fun readUsageJson(): String?
-    fun writeUsageJson(value: String)
-}
-
-data class AllowanceUsageRecord(
-    val mode: String?,
-    val date: String?,
-    val count: Int,
-    val windowStartMs: Long,
-    val usedMs: Long,
-    val confirmedUsedMs: Long,
-    val confirmedCount: Int,
-    val confirmedAtMs: Long,
-    val estimatedExtraMs: Long,
-    val estimatedExtraOpens: Int,
-)
-
-data class AllowanceReadResult(
-    val count: Int,
-    val usedMs: Long,
-    val windowStartMs: Long,
-    val windowExpired: Boolean,
-    val remaining: Long,
-    val exhausted: Boolean,
-)
-
-data class AllowanceLedgerSnapshot(
-    val usageJson: String?,
-    val usageByPackage: Map<String, AllowanceUsageRecord>,
-)
-
-data class AllowanceCountUpdate(val packageName: String, val count: Int)
-
-data class AllowanceTimeUpdate(
-    val packageName: String,
-    val mode: String,
-    val usedMs: Long,
-    val windowStartMs: Long = 0L,
-)
-
-/**
- * Sole owner of the persisted allowance JSON, its process-wide lock, and
- * legacy count/time/window calculations. SharedPreferences apply() keeps disk
- * writes asynchronous while this instance's cache updates synchronously.
- */
+/** Owns the persisted allowance state, process lock/cache, and enforcement math. */
 class AllowanceLedger internal constructor(
     private val store: AllowanceLedgerStore,
 ) {
@@ -65,13 +18,13 @@ class AllowanceLedger internal constructor(
         val keys = root.keys()
         while (keys.hasNext()) {
             val packageName = keys.next()
-            root.optJSONObject(packageName)?.let { usages[packageName] = parseRecord(it) }
+            root.optJSONObject(packageName)?.let { usages[packageName] = AllowanceLedgerJsonCodec.parse(it) }
         }
         AllowanceLedgerSnapshot(cachedJson, usages)
     }
 
     fun usage(packageName: String): AllowanceUsageRecord = withLock {
-        parseRecord(usageObjectLocked().optJSONObject(packageName) ?: JSONObject())
+        AllowanceLedgerJsonCodec.parse(usageObjectLocked().optJSONObject(packageName) ?: JSONObject())
     }
 
     fun readAllowance(
@@ -82,7 +35,9 @@ class AllowanceLedger internal constructor(
         limit: Long,
         windowMs: Long = 0L,
     ): AllowanceReadResult = withLock {
-        val record = parseRecord(usageObjectLocked().optJSONObject(packageName) ?: JSONObject())
+        val record = AllowanceLedgerJsonCodec.parse(
+            usageObjectLocked().optJSONObject(packageName) ?: JSONObject(),
+        )
         val windowExpired = mode == MODE_INTERVAL && nowMs > record.windowStartMs + windowMs
         val count = if (mode == MODE_COUNT && record.date == today) record.count else 0
         val usedMs = when (mode) {
@@ -117,7 +72,7 @@ class AllowanceLedger internal constructor(
     ): Long = withLock {
         val root = usageObjectLocked()
         val json = root.optJSONObject(packageName) ?: JSONObject()
-        val record = parseRecord(json)
+        val record = AllowanceLedgerJsonCodec.parse(json)
         val sameDay = record.date == today
         val windowExpired = mode == MODE_INTERVAL && nowMs > record.windowStartMs + windowMs
         val sessionEndMs: Long
@@ -182,12 +137,14 @@ class AllowanceLedger internal constructor(
         }
         val root = usageObjectLocked()
         val json = root.optJSONObject(packageName) ?: JSONObject()
-        val record = parseRecord(json)
+        val record = AllowanceLedgerJsonCodec.parse(json)
         val sameDay = record.date == today
         val updated = when (mode) {
             MODE_TIME_BUDGET -> {
                 val used = if (openedAtMs < midnightMs) {
-                    (nowMs - midnightMs).coerceAtLeast(0L).coerceAtMost(limitMs)
+                    val elapsedToday =
+                        (nowMs - midnightMs).coerceAtLeast(0L).coerceAtMost(limitMs)
+                    maxOf(if (sameDay) record.usedMs else 0L, elapsedToday)
                 } else {
                     ((if (sameDay) record.usedMs else 0L) + elapsed).coerceAtMost(limitMs)
                 }
@@ -227,7 +184,7 @@ class AllowanceLedger internal constructor(
             var changed = false
             for (update in updates) {
                 val json = root.optJSONObject(update.packageName) ?: JSONObject()
-                val record = parseRecord(json)
+                val record = AllowanceLedgerJsonCodec.parse(json)
                 val current = if (record.date == today) record.count else 0
                 val target = update.count.coerceAtLeast(0)
                 if (target <= current) continue
@@ -256,7 +213,7 @@ class AllowanceLedger internal constructor(
             for (update in updates) {
                 if (update.mode != MODE_TIME_BUDGET && update.mode != MODE_INTERVAL) continue
                 val json = root.optJSONObject(update.packageName) ?: JSONObject()
-                val record = parseRecord(json)
+                val record = AllowanceLedgerJsonCodec.parse(json)
                 val samePeriod = if (update.mode == MODE_TIME_BUDGET) {
                     record.date == today
                 } else {
@@ -305,39 +262,9 @@ class AllowanceLedger internal constructor(
         record: AllowanceUsageRecord,
         persist: Boolean = true,
     ) {
-        json.put("mode", record.mode ?: JSONObject.NULL)
-        json.put("date", record.date ?: JSONObject.NULL)
-        json.put("count", record.count.coerceAtLeast(0))
-        json.put("usedMs", record.usedMs.coerceAtLeast(0L))
-        json.put("windowStartMs", record.windowStartMs.coerceAtLeast(0L))
-        json.put("confirmedUsedMs", record.confirmedUsedMs.coerceAtLeast(0L))
-        json.put("confirmedCount", record.confirmedCount.coerceAtLeast(0))
-        json.put("confirmedAtMs", record.confirmedAtMs.coerceAtLeast(0L))
-        json.put("estimatedExtraMs", record.estimatedExtraMs.coerceAtLeast(0L))
-        json.put("estimatedExtraOpens", record.estimatedExtraOpens.coerceAtLeast(0))
+        AllowanceLedgerJsonCodec.writeInto(json, record)
         root.put(packageName, json)
         if (persist) persistLocked()
-    }
-
-    private fun parseRecord(json: JSONObject): AllowanceUsageRecord {
-        val legacyUsedMs = json.optLong("usedMs", 0L).coerceAtLeast(0L)
-        val legacyCount = json.optInt("count", 0).coerceAtLeast(0)
-        val confirmedUsedMs = json.optLong("confirmedUsedMs", legacyUsedMs).coerceAtLeast(0L)
-        val confirmedCount = json.optInt("confirmedCount", legacyCount).coerceAtLeast(0)
-        val estimatedExtraMs = json.optLong("estimatedExtraMs", 0L).coerceAtLeast(0L)
-        val estimatedExtraOpens = json.optInt("estimatedExtraOpens", 0).coerceAtLeast(0)
-        return AllowanceUsageRecord(
-            mode = json.optString("mode").takeIf(String::isNotBlank),
-            date = json.optString("date").takeIf(String::isNotBlank),
-            count = saturatedAdd(confirmedCount, estimatedExtraOpens),
-            windowStartMs = json.optLong("windowStartMs", 0L).coerceAtLeast(0L),
-            usedMs = saturatedAdd(confirmedUsedMs, estimatedExtraMs),
-            confirmedUsedMs = confirmedUsedMs,
-            confirmedCount = confirmedCount,
-            confirmedAtMs = json.optLong("confirmedAtMs", 0L).coerceAtLeast(0L),
-            estimatedExtraMs = estimatedExtraMs,
-            estimatedExtraOpens = estimatedExtraOpens,
-        )
     }
 
     private fun usageObjectLocked(): JSONObject {
@@ -366,40 +293,7 @@ class AllowanceLedger internal constructor(
         const val MODE_TIME_BUDGET = "time_budget"
         const val MODE_INTERVAL = "interval"
 
-        @Volatile
-        private var instance: AllowanceLedger? = null
-
-        fun getInstance(context: Context): AllowanceLedger {
-            instance?.let { return it }
-            return synchronized(this) {
-                instance ?: AllowanceLedger(
-                    SharedPreferencesAllowanceStore(
-                        context.applicationContext.getSharedPreferences(
-                            PREFS_NAME,
-                            Context.MODE_PRIVATE,
-                        ),
-                    ),
-                ).also { instance = it }
-            }
-        }
-
-        private fun saturatedAdd(left: Long, right: Long): Long =
-            if (Long.MAX_VALUE - left < right) Long.MAX_VALUE else left + right
-
         private fun saturatedAdd(left: Int, right: Int): Int =
             if (Int.MAX_VALUE - left < right) Int.MAX_VALUE else left + right
-    }
-}
-
-private class SharedPreferencesAllowanceStore(
-    private val prefs: SharedPreferences,
-) : AllowanceLedgerStore {
-    override fun readUsageJson(): String? = prefs.getString(
-        AllowanceLedger.PREF_DAILY_ALLOWANCE_USED,
-        null,
-    )
-
-    override fun writeUsageJson(value: String) {
-        prefs.edit().putString(AllowanceLedger.PREF_DAILY_ALLOWANCE_USED, value).apply()
     }
 }

@@ -183,55 +183,86 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 ## Batch 2 — `AllowanceLedger` (behavior-preserving)
 
-**Status:** `IN PROGRESS`
+**Status:** `BLOCKED`
 **Started:** 2026-10-08
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
 
 **New class**
-- [ ] `AllowanceLedger` is the sole owner of the `daily_allowance_used` JSON schema, the lock, day/window rollover, and the remaining/exhausted math.
-- [ ] Stores five new fields from 7.1: `confirmedUsedMs`, `confirmedCount`, `confirmedAtMs`, `estimatedExtraMs`, `estimatedExtraOpens`.
-- [ ] Old JSON (without new fields) reads as `confirmed = usedMs`, `extra = 0`. No data migration.
-- [ ] In-memory cache with write-behind to prefs.
-- [ ] All invariants from 7.1 enforced: `confirmed*` monotonic per day/window; `estimated*` non-negative; effective equals confirmed plus estimated.
+- [x] `AllowanceLedger` is the sole owner of the `daily_allowance_used` JSON schema, the lock, day/window rollover, and the remaining/exhausted math.
+- [x] Stores five new fields from 7.1: `confirmedUsedMs`, `confirmedCount`, `confirmedAtMs`, `estimatedExtraMs`, `estimatedExtraOpens`.
+- [x] Old JSON (without new fields) reads as `confirmed = usedMs`, `extra = 0`. No data migration.
+- [x] In-memory cache with write-behind to prefs.
+- [x] All invariants from 7.1 enforced: `confirmed*` monotonic per day/window; `estimated*` non-negative; effective equals confirmed plus estimated.
 
 **Replace all callers**
-- [ ] `isAllowanceAvailable` in `AppBlockerAccessibilityService` reads through the ledger.
-- [ ] Unlock remaining calculation in `AppBlockerAccessibilityService` reads through the ledger.
-- [ ] `isFallbackBlocked` in `ForegroundTaskService` reads through the ledger.
-- [ ] `LauncherActivity.loadAllowanceCardData` reads through the ledger.
-- [ ] `SettingsRepository` backup and reset access goes through the ledger.
-- [ ] No direct pref read or write of `daily_allowance_used` remains outside the ledger.
+- [x] `isAllowanceAvailable` in `AppBlockerAccessibilityService` reads through the ledger.
+- [x] Unlock remaining calculation in `AppBlockerAccessibilityService` reads through the ledger.
+- [x] `isFallbackBlocked` in `ForegroundTaskService` reads through the ledger.
+- [x] `LauncherActivity.loadAllowanceCardData` reads through the ledger.
+- [x] `SettingsRepository` backup and reset access goes through the ledger.
+- [x] No direct pref read or write of `daily_allowance_used` remains outside the ledger.
 
 **Cleanup**
-- [ ] Contradictory comments about who owns allowance accounting removed and replaced with a single comment pointing to `AllowanceLedger`.
+- [x] Contradictory comments about who owns allowance accounting removed and replaced with a single comment pointing to `AllowanceLedger`.
 
 **Tests added in this batch**
-- [ ] Allowance compatibility/math test: old JSON (no new fields) reads as `confirmed = usedMs`, `extra = 0`; `usedMs` stays the effective value for old readers.
-- [ ] Existing interval/rollover/remaining characterization tests from Batch 1 still pass unchanged.
+- [x] Allowance compatibility/math test: old JSON (no new fields) reads as `confirmed = usedMs`, `extra = 0`; `usedMs` stays the effective value for old readers.
+- [x] Existing interval/rollover/remaining characterization tests from Batch 1 still pass unchanged.
 
 **Verification**
-- [ ] `AppBlockerAccessibilityService.kt` line count lower than before this batch.
-- [ ] `ForegroundTaskService.kt` line count lower than before this batch.
+- [x] `AppBlockerAccessibilityService.kt` line count lower than before this batch.
+- [x] `ForegroundTaskService.kt` line count lower than before this batch.
 - [ ] Manual test: active allowance blocks at the same moment before and after the refactor.
 
 ### Notes
 
 **Batch start (2026-10-08):** Baseline line counts: `AppBlockerAccessibilityService.kt` 4,802; `ForegroundTaskService.kt` 1,627. The `daily_allowance_used` JSON is read and mutated in the accessibility service, and read by the fallback service, launcher, and settings snapshot path. Preserve existing keys and behavior; no CI/APK run is authorized.
 
+**Continuation audit (2026-10-08):** Working tree was clean. `AllowanceLedger.kt` and its persistence/math API already exist, but enforcement, launcher, and settings paths still read or write the JSON directly. Continuing Batch 2 by routing those paths through the ledger; no device verification or GitHub Actions run is authorized.
+
+**Implementation update (2026-10-08):** Replaced direct allowance JSON access in `AppBlockerAccessibilityService`, `ForegroundTaskService`, `LauncherActivity`, and `SettingsRepository` with ledger operations. Added `AllowanceLedgerTest`; updated Batch 1 source assertions to verify delegation while retaining their behavior examples. Extracted the JSON codec, models, provider, and SharedPreferences adapter so every new ledger file stays below 300 lines. Kept confirmed timed usage monotonic for a same-day pre-midnight session.
+
+**Final verification (2026-10-08):** `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. XML reports show 170 tests per flavor, 0 failures and 0 errors; `AllowanceBehaviorCharacterizationTest` passed 4/4 and `AllowanceLedgerTest` passed 8/8 in each. `git diff --check` passed. Final line counts: accessibility service 4,679 (baseline 4,802); foreground service 1,591 (baseline 1,627). New ledger production files are 21–299 lines; new ledger test is 239 lines. No APK build or GitHub Actions run.
+
+**Final device availability check (2026-10-08):** `adb devices -l` returned no attached devices and the Android emulator executable is unavailable. The required active-allowance timing comparison cannot be run here; waiting for a connected device or emulator.
+
 ### Evidence
+
+- **Ledger schema, lock, math, and callers:** `AllowanceLedger.kt`, `AllowanceLedgerJsonCodec.kt`, `AllowanceLedgerModels.kt`, `AllowanceLedgerProvider.kt`, `AllowanceLedgerStore.kt`, `AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `LauncherActivity.kt`, and `SettingsRepository.kt`; `rg` confirmed the key is defined and read/written only in the ledger and its adapter. No `ALLOWANCE_USAGE_LOCK`, `loadUsedObject`, duplicate key, or duplicate parser remains.
+- **Additive state and legacy compatibility:** `AllowanceLedgerJsonCodec.kt` and `AllowanceLedgerTest.kt`; Production and Tbtechsdev each passed the old-JSON, effective-field, clamping, and arithmetic tests; legacy JSON is not rewritten on read.
+- **Cache/write-behind and invariants:** `AllowanceLedger.kt`, `AllowanceLedgerStore.kt`, and `AllowanceLedgerTest.kt`; both flavor suites passed cache, reset, monotonic-update, non-negative estimate, effective-sum, midnight recovery, and rollover cases.
+- **Accessibility availability and unlock remaining:** `AppBlockerAccessibilityService.kt` and `AllowanceBehaviorCharacterizationTest.kt`; both flavor suites passed the interval boundary, daily rollover, remaining, exhausted, and ledger-delegation cases.
+- **Fallback enforcement and UsageStats writes:** `ForegroundTaskService.kt` and `AllowanceBehaviorCharacterizationTest.kt`; both flavor suites passed; fallback checks and sync/expiry writes use the ledger.
+- **Launcher allowance card:** `LauncherActivity.kt` and `AllowanceBehaviorCharacterizationTest.kt`; both flavor suites passed; count, daily time, and interval card reads use the ledger.
+- **Settings backup and reset:** `SettingsRepository.kt`; code inspection confirms snapshot parsing and reset mutation are delegated to the ledger; the common ledger unit tests passed in both flavors.
+- **No direct preference access outside the ledger:** app-source search found only the centralized key plus the launcher preference-change listener; the only matching `SharedPreferences.putString` is the ledger store adapter. Search result and `git diff --check` were clean.
+- **Owner comments:** `AppBlockerAccessibilityService.kt` retains the single ownership note pointing to `AllowanceLedger`; obsolete AccessibilityService-only ownership comments were removed.
+- **Characterization suite:** `AllowanceBehaviorCharacterizationTest.kt`; XML reports show 4/4 passed in each flavor. Behavior examples were retained; source-wiring assertions now check ledger delegation rather than the removed duplicate formulas.
+- **Line-count reduction:** `AppBlockerAccessibilityService.kt` 4,802 → 4,679 and `ForegroundTaskService.kt` 1,627 → 1,591, measured with `wc -l`.
+- **Batch unit tests:** `AllowanceLedgerTest.kt` and both flavor XML reports; 8/8 ledger tests and 4/4 characterization tests passed in Production and Tbtechsdev, within 170 total tests per flavor.
 
 ### Failures and blockers
 
+- First `bash scripts/test-unit.sh` attempt timed out while the bootstrap installed JDK 17, Android SDK packages, and Gradle; Gradle had just started and no test result was produced. Re-run after bootstrap is cached.
+- Second `bash scripts/test-unit.sh` attempt also timed out before tests started; cached JDK/SDK setup completed and Gradle reached resource processing. Re-run asynchronously to capture the full test result.
+- The asynchronous compile reached both flavors and found three invalid `return@Runnable` exits from inside the non-inline ledger-lock lambda in `ForegroundTaskService.scheduleAllowanceExpiry`. Reworked the locked block to return a Boolean and handle cancellation at the Runnable boundary; rerun is required.
+- **Outcome:** The corrected async run passed both variants before the JSON-codec extraction; the final fresh run also passed both variants after the extraction and additional invariant tests (evidence above).
+- **Still open / blocker:** Manual active-allowance timing comparison was not run because no Android device is attached and no emulator executable is available. Leave the manual checkbox open; no device result is claimed.
+
 ### Decisions
+
+- Keep only `AllowanceLedger` as the caller-facing owner; the internal codec only translates its JSON schema, while the provider and SharedPreferences store contain no allowance decisions.
+- Preserve the Batch 1 behavior examples and retarget source assertions from the removed duplicated formulas to the ledger delegation; the old source assertions could not pass after consolidating the implementation.
+- No data migration: old JSON is interpreted lazily as confirmed usage with zero estimate and remains byte-for-byte untouched until an existing write/reset operation.
 
 ---
 
 ## Batch 3 — Pipeline and rollup tables in shadow mode (behavior-preserving)
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`  
+**Started:** 2026-10-08  
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
@@ -302,6 +333,9 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] No behavior change: existing allowance, Stats, and detector output identical to before.
 
 ### Notes
+
+**Batch start (2026-10-08):** User authorized Batch 3 while Batch 2 remains blocked only on its real-device comparison. The existing Batch 2 working-tree changes and supplied Batch 3 note are preserved. This batch must stay shadow-only: no existing read source is switched, no old usage rows are rewritten, and the 7-day comparison cannot be marked complete before observations exist. Batch 0's device measurements are still unavailable; choose and record the `STOPPED` matching strategy before implementing the tracker.
+
 <!-- Shadow comparison results (fill after 7 days): -->
 
 ### Evidence
@@ -555,7 +589,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 |---|---|---|
 | Batch 0 Verify and measure | IN PROGRESS | — |
 | Batch 1 Test infra and characterization | IN PROGRESS | — |
-| Batch 2 `AllowanceLedger` | NOT STARTED | — |
+| Batch 2 `AllowanceLedger` | BLOCKED | — |
 | Batch 3 Shadow pipeline and rollups | NOT STARTED | — |
 | Batch 4 Allowance cutover | NOT STARTED | — |
 | Batch 5 Stats, rollups and detectors cutover | NOT STARTED | — |
@@ -564,6 +598,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Incomplete items and reasons** (reconcile with code before closing)
 - Batch 1 CI execution remains unchecked: the local Production and Tbtechsdev test tasks passed, and both CI workflow configs contain the matching test task, but GitHub Actions were not run because the user did not request APK-building verification.
+- Batch 2 is blocked on its unchecked manual timing comparison: `adb devices -l` was empty and the emulator executable is unavailable.
 
 **Deferred work**
 <!-- Items explicitly moved to a future phase. -->

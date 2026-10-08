@@ -140,6 +140,7 @@ class LauncherActivity : Activity() {
     }
 
     private lateinit var prefs: SharedPreferences
+    private val allowanceLedger by lazy { AllowanceLedgerProvider.get(applicationContext) }
     private val handler = Handler(Looper.getMainLooper())
     private var clockRunnable: Runnable? = null
 
@@ -374,7 +375,7 @@ class LauncherActivity : Activity() {
             key == "task_end_ms" ||
             key == "task_start_ms" ||
             key == "daily_allowance_config" ||
-            key == AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_USED
+            key == AllowanceLedger.PREF_DAILY_ALLOWANCE_USED
         ) {
             runOnUiThread {
                 if (key == PREF_LAUNCHER_THEME || key == PREF_LAUNCHER_WALLPAPER) {
@@ -1665,8 +1666,6 @@ class LauncherActivity : Activity() {
         val configJson = prefs.getString("daily_allowance_config", null) ?: return emptyList()
         if (configJson.isBlank() || configJson == "null") return emptyList()
 
-        val usedJson = prefs.getString(AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_USED, "{}") ?: "{}"
-        val allUsed  = try { org.json.JSONObject(usedJson) } catch (_: Exception) { org.json.JSONObject() }
         val today    = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
             timeZone = java.util.TimeZone.getDefault()
         }.format(Date())
@@ -1679,7 +1678,6 @@ class LauncherActivity : Activity() {
                 val obj = arr.getJSONObject(i)
                 val pkg = obj.optString("packageName", "").takeIf { it.isNotBlank() } ?: continue
                 val mode    = obj.optString("mode", "count")
-                val pkgUsed = allUsed.optJSONObject(pkg)
 
                 val icon  = try { packageManager.getApplicationIcon(pkg) } catch (_: Exception) { null }
                 val label = try {
@@ -1691,8 +1689,13 @@ class LauncherActivity : Activity() {
                 when (mode) {
                     "count" -> {
                         val countPerDay = obj.optInt("countPerDay", 1).coerceAtLeast(1)
-                        val usedDate    = pkgUsed?.optString("date", "") ?: ""
-                        val usedCount   = if (usedDate == today) pkgUsed?.optInt("count", 0) ?: 0 else 0
+                        val usedCount   = allowanceLedger.readAllowance(
+                            packageName = pkg,
+                            mode = mode,
+                            today = today,
+                            nowMs = now,
+                            limit = countPerDay.toLong(),
+                        ).count
                         val remaining   = (countPerDay - usedCount).coerceAtLeast(0)
                         val fraction    = remaining.toFloat() / countPerDay.toFloat()
                         val display     = if (remaining == 0) "no opens left" else "$remaining/$countPerDay opens"
@@ -1700,8 +1703,13 @@ class LauncherActivity : Activity() {
                     }
                     "time_budget" -> {
                         val budgetMs    = obj.optLong("budgetMinutes", 30L) * 60_000L
-                        val usedDate    = pkgUsed?.optString("date", "") ?: ""
-                        val usedMs      = if (usedDate == today) pkgUsed?.optLong("usedMs", 0L) ?: 0L else 0L
+                        val usedMs      = allowanceLedger.readAllowance(
+                            packageName = pkg,
+                            mode = mode,
+                            today = today,
+                            nowMs = now,
+                            limit = budgetMs,
+                        ).usedMs
                         val remainingMs = (budgetMs - usedMs).coerceAtLeast(0L)
                         val fraction    = if (budgetMs > 0L) remainingMs.toFloat() / budgetMs.toFloat() else 0f
                         result.add(AllowanceCardData(pkg, label, icon, usedMs, budgetMs, remainingMs, mode, formatRemainingMs(remainingMs), fraction))
@@ -1709,9 +1717,16 @@ class LauncherActivity : Activity() {
                     "interval" -> {
                         val intervalMs    = obj.optLong("intervalMinutes", 5L) * 60_000L
                         val windowMs      = obj.optLong("intervalHours", 1L) * 3_600_000L
-                        val windowStartMs = pkgUsed?.optLong("windowStartMs", 0L) ?: 0L
-                        val windowExpired = now > windowStartMs + windowMs
-                        val usedMs        = if (windowExpired) 0L else pkgUsed?.optLong("usedMs", 0L) ?: 0L
+                        val usage         = allowanceLedger.readAllowance(
+                            packageName = pkg,
+                            mode = mode,
+                            today = today,
+                            nowMs = now,
+                            limit = intervalMs,
+                            windowMs = windowMs,
+                        )
+                        val windowExpired = usage.windowExpired
+                        val usedMs        = usage.usedMs
                         val remainingMs   = (intervalMs - usedMs).coerceAtLeast(0L)
                         val fraction      = if (intervalMs > 0L) remainingMs.toFloat() / intervalMs.toFloat() else 0f
                         val display       = if (windowExpired) "reset" else formatRemainingMs(remainingMs)

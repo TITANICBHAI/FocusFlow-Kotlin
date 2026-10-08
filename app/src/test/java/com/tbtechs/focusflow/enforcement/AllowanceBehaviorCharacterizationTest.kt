@@ -9,11 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pins the pre-ledger allowance contract without requiring Android service
- * instances. The current calculations are private and duplicated across
- * Android-bound classes, so these tests pair fixed behavior examples with
- * checks that the existing readers still implement the formulas being
- * characterized.
+ * Pins pre-ledger behavior examples while checking that Android-bound readers
+ * now delegate allowance decisions to the shared JVM-testable ledger.
  */
 class AllowanceBehaviorCharacterizationTest {
     private val accessibilitySource by lazy {
@@ -24,6 +21,9 @@ class AllowanceBehaviorCharacterizationTest {
     }
     private val launcherSource by lazy {
         source("enforcement/LauncherActivity.kt")
+    }
+    private val ledgerSource by lazy {
+        source("enforcement/AllowanceLedger.kt")
     }
 
     @Test
@@ -65,13 +65,12 @@ class AllowanceBehaviorCharacterizationTest {
             "\n    private fun formatRemainingMs(",
         )
 
-        assertContains(availability, "now > windowStartMs + entry.windowMs")
-        assertContains(openRecording, "now > windowStartMs + entry.windowMs")
-        assertContains(unlockRemaining, "now > windowStartMs + entry.windowMs")
-        assertContains(unlockRemaining, "(entry.intervalMs - usedMs).coerceAtLeast(0L)")
-        assertContains(fallback, "now <= windowStartMs + windowMs")
-        assertContains(launcher, "now > windowStartMs + windowMs")
-        assertContains(launcher, "(intervalMs - usedMs).coerceAtLeast(0L)")
+        assertContains(availability, "readAllowance(pkg, entry, now).exhausted")
+        assertContains(openRecording, "allowanceLedger.recordOpen(")
+        assertContains(unlockRemaining, "readAllowance(pkg, entry, now).remaining")
+        assertContains(fallback, "allowanceLedger.readAllowance(")
+        assertContains(launcher, "allowanceLedger.readAllowance(")
+        assertContains(ledgerSource, "nowMs > record.windowStartMs + windowMs")
     }
 
     @Test
@@ -105,10 +104,10 @@ class AllowanceBehaviorCharacterizationTest {
             "\n    private fun formatRemainingMs(",
         )
 
-        assertContains(availability, "if (usedDate == today)")
-        assertContains(unlockRemaining, "if (usedDate == today)")
-        assertContains(fallback, "if (usedDate == today)")
-        assertContains(launcher, "if (usedDate == today)")
+        assertContains(availability, "readAllowance(pkg, entry, now)")
+        assertContains(unlockRemaining, "readAllowance(pkg, entry, now).remaining")
+        assertContains(fallback, "allowanceLedger.readAllowance(")
+        assertContains(launcher, "allowanceLedger.readAllowance(")
     }
 
     @Test
@@ -134,18 +133,16 @@ class AllowanceBehaviorCharacterizationTest {
             "\n    private fun formatRemainingMs(",
         )
 
-        assertContains(accessibility, "count < entry.countPerDay")
-        assertContains(accessibility, "usedMs < entry.budgetMs")
-        assertContains(accessibility, "usedMs < entry.intervalMs")
-        assertContains(unlockRemaining, "(entry.budgetMs - usedMs).coerceAtLeast(0L)")
-        assertContains(unlockRemaining, "(entry.intervalMs - usedMs).coerceAtLeast(0L)")
-        assertContains(fallback, "count >= entry.optInt(\"countPerDay\", 1).coerceAtLeast(1)")
-        assertContains(fallback, "if (usedMs >= budgetMs) return true")
-        assertContains(fallback, "if (usedMs >= intervalMs) return true")
+        assertContains(accessibility, "readAllowance(pkg, entry, now).exhausted")
+        assertContains(unlockRemaining, "readAllowance(pkg, entry, now).remaining")
+        assertContains(fallback, "allowanceLedger.readAllowance(")
         assertContains(accessibilitySource, "if (remainingMs <= 0L)")
-        assertContains(launcher, "(countPerDay - usedCount).coerceAtLeast(0)")
-        assertContains(launcher, "(budgetMs - usedMs).coerceAtLeast(0L)")
-        assertContains(launcher, "(intervalMs - usedMs).coerceAtLeast(0L)")
+        assertContains(launcher, "allowanceLedger.readAllowance(")
+        assertContains(
+            ledgerSource,
+            "val remaining = (limit - consumed).coerceAtLeast(0L)",
+        )
+        assertContains(ledgerSource, "consumed >= limit")
 
         listOf(1L, 5L, 5L).forEach { limit ->
             assertEquals(1L, remaining(limit, limit - 1L))
@@ -199,8 +196,8 @@ class AllowanceBehaviorCharacterizationTest {
         assertEquals(1_791_420_000_000L, interval.getLong("windowStartMs"))
         assertEquals(180_000L, interval.getLong("usedMs"))
         assertTrue(
-            accessibilitySource.contains(
-                "const val PREF_DAILY_ALLOWANCE_USED  = \"daily_allowance_used\"",
+            ledgerSource.contains(
+                "const val PREF_DAILY_ALLOWANCE_USED = \"daily_allowance_used\"",
             ),
         )
     }
