@@ -380,8 +380,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 ## Batch 4 — Allowance cutover (behavior-changing: D1, D2, D9)
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`  
+**Started:** 2026-10-08  
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
@@ -446,7 +446,10 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] Test on API 29 and 33.
 
 ### Notes
-<!-- active_session_open_at_ms — kept or removed? Record here. -->
+
+**Batch start (2026-10-08):** The owner explicitly authorized Batch 4. Re-read the Phase 5 contract and tracker, checked the working tree, and inspected the current allowance ledger, accessibility accounting/recovery, foreground-service UsageStats sync/fallback, usage-event pipeline adapter, and allowance UI. The only pre-existing worktree change is the user-supplied Batch 4 prompt. Current source baselines: `AppBlockerAccessibilityService.kt` 4,680 lines; `ForegroundTaskService.kt` 1,591 lines. Batch 0's device matrix is unavailable; use the documented O2 default bridge set and leave device confirmation open. No Android device/emulator is known available from the preceding batch.
+
+**Implementation checkpoint (2026-10-08):** Added the FRESH/STALE/UNAVAILABLE reducer, shared-session measurement with a narrow 3-second bridge for the documented Android permission-controller/intent-resolver packages, monotonic ledger reconciliation, estimates, interval initialization, and capped checkpoint recovery. Added initial pure tests. These are foundations only: the services are not wired to the coordinator yet, no Batch 4 item is verified, and all checkboxes remain open. Midnight clipping and service integration are still being completed.
 
 ### Evidence
 

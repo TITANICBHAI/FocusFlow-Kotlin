@@ -12,7 +12,6 @@ import android.animation.ValueAnimator
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.BroadcastReceiver
@@ -45,6 +44,10 @@ import android.widget.TextView
 import com.tbtechs.focusflow.data.repository.BlockOverlayController
 import com.tbtechs.focusflow.analytics.AppUsageAndSessionTracker
 import com.tbtechs.focusflow.di.AppModule
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 // import com.tbtechs.focusflow.enforcement.BlockOverlayActivity (same package)
 // import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService (same package)
 import org.json.JSONArray
@@ -108,19 +111,11 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         // The checkpoint timestamp doubles as a heartbeat. A stale signal must not
         // block UsageStats recovery forever after an unexpected process death.
         const val PREF_ACTIVE_SESSION_PKG = "active_session_pkg"
-        const val PREF_ACTIVE_SESSION_OPEN_AT_MS = "active_session_open_at_ms"
         const val PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS = "active_session_last_checkpoint_ms"
         const val PREF_ACTIVE_SESSION_END_MS = "active_session_end_ms"
-        const val PREF_USAGE_STATS_SYNC = "daily_allowance_usage_stats_sync"
         const val ACTION_ALLOWANCE_CONFIG_CHANGED =
             "com.tbtechs.focusflow.ACTION_ALLOWANCE_CONFIG_CHANGED"
-        const val ACTIVE_SESSION_CHECKPOINT_INTERVAL_MS = 15_000L
         const val FOREGROUND_RECOVERY_LOOKBACK_MS = 60_000L
-        // UsageEvents around a local-day boundary can be delivered with a small
-        // delay. Include this probe so reconciliation can see an app that was
-        // already foreground immediately before midnight and avoid counting the
-        // continued session as today's launch.
-        const val COUNT_RECONCILIATION_PRE_MIDNIGHT_PROBE_MS = 30_000L
         // ForegroundTaskService syncs every 60 s. Two missed sync windows are
         // enough to distinguish a dead/paused AccessibilityService from normal
         // scheduling jitter without deferring UsageStats recovery forever.
@@ -542,25 +537,27 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     private var timedExpireRunnable: Runnable? = null
     private var screenStateReceiver: BroadcastReceiver? = null
     private lateinit var usageSessionTracker: AppUsageAndSessionTracker
-    private val allowanceCheckpointRunnable: Runnable = object : Runnable {
-        override fun run() {
-            checkpointActiveTimedSession()
-            if (currentTimedPkg != null) {
-                handler.postDelayed(this, ACTIVE_SESSION_CHECKPOINT_INTERVAL_MS)
-            }
-        }
-    }
+    private var allowanceScope: CoroutineScope? = null
+    private var allowanceUsageCoordinator: AllowanceUsageCoordinator? = null
 
     override fun onServiceConnected() {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
-        // Restore the session identity from the last durable checkpoint. The
-        // checkpoint already includes usage up to its timestamp, so do not charge
-        // the entire service-down gap (which could overcharge after an app switch).
+        allowanceScope?.cancel()
+        allowanceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        allowanceUsageCoordinator = AllowanceUsageCoordinator(
+            context = this,
+            prefs = prefs,
+            ledger = allowanceLedger,
+            scope = allowanceScope!!,
+            onReconciled = ::onAllowanceUsageReconciled,
+        )
+        allowanceUsageCoordinator?.onServiceStarted(
+            prefs.getString("current_foreground_pkg", null),
+        )
+        // Restore only the enforcement timer. Usage measurement and restart
+        // recovery are owned by the shared UsageEvents coordinator.
         restoreAllowanceSession()
-        // UsageEvents is used only as a conservative recovery source. Live
-        // AccessibilityService events remain the immediate enforcement authority.
-        reconcileCountAllowances()
         registerScreenStateReceiver()
         recoverForegroundAllowanceSession()
 
@@ -799,12 +796,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         if (entry.mode != "time_budget" && entry.mode != "interval") return
         if (!isAllowanceAvailable(latestPkg, entry)) return
 
+        allowanceUsageCoordinator?.onForegroundPackage(latestPkg, now)
         val sessionEndMs = recordAllowanceOpen(latestPkg, entry)
         currentTimedPkg = latestPkg
         currentTimedOpenAtMs = now
         currentTimedSessionEndMs = sessionEndMs
         persistActiveSessionSignal(latestPkg, now, sessionEndMs)
-        startAllowanceCheckpointLoop()
         if (sessionEndMs > 0L) {
             scheduleTimedExpiry(latestPkg, sessionEndMs)
         }
@@ -863,11 +860,13 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         screenStateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.action == ACTION_ALLOWANCE_CONFIG_CHANGED) {
+                    allowanceUsageCoordinator?.onConfigurationChanged()
                     stopTimedAllowanceTracking()
                     return
                 }
                 when (intent.action) {
                     Intent.ACTION_SCREEN_OFF -> {
+                        allowanceUsageCoordinator?.onScreenOff()
                         if (::usageSessionTracker.isInitialized) {
                             usageSessionTracker.onScreenOff(
                                 nowMs = System.currentTimeMillis(),
@@ -876,8 +875,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                         }
                     }
                     Intent.ACTION_USER_PRESENT -> {
+                        allowanceUsageCoordinator?.onUserPresent()
                         if (::usageSessionTracker.isInitialized) {
                             usageSessionTracker.onUserPresent()
+                        }
+                        prefs.getString("current_foreground_pkg", null)?.let {
+                            allowanceUsageCoordinator?.onForegroundPackage(it)
                         }
                     }
                 }
@@ -888,11 +891,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 when (intent.action) {
                     Intent.ACTION_SCREEN_OFF -> {
                         if (currentTimedOpenAtMs <= 0L) return
-                        accumulateTimedUsage(pkg, entry, currentTimedOpenAtMs)
                         currentTimedOpenAtMs = 0L
                         timedExpireRunnable?.let { handler.removeCallbacks(it) }
                         timedExpireRunnable = null
-                        handler.removeCallbacks(allowanceCheckpointRunnable)
                     }
 
                     Intent.ACTION_USER_PRESENT -> {
@@ -926,7 +927,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                         currentTimedOpenAtMs = now
                         currentTimedSessionEndMs = now + remainingMs
                         persistActiveSessionSignal(pkg, now, currentTimedSessionEndMs)
-                        startAllowanceCheckpointLoop()
                         scheduleTimedExpiry(pkg, currentTimedSessionEndMs)
                     }
                 }
@@ -1011,6 +1011,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         val pkg = ev.packageName?.toString() ?: return
         val cls = ev.className?.toString() ?: ""
+        allowanceUsageCoordinator?.onForegroundPackage(pkg, now)
 
         // Update foreground package tracker so retries can guard against
         // pressing Home when the user has already switched to an allowed app.
@@ -1051,14 +1052,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             }
         }
 
-        // ── Timed allowance: accumulate usage when user switches away ─────────
-        // If the user was in a time-limited allowed app and just switched to a
-        // different app, record elapsed time before continuing with other checks.
+        // ── Enforcement timer: stop this timer when the foreground app changes.
+        // Measurement is independent and is handled above by the shared pipeline.
         if (currentTimedPkg != null && currentTimedPkg != pkg) {
-            val prevEntry = findAllowanceEntry(currentTimedPkg!!)
-            if (prevEntry != null && (prevEntry.mode == "time_budget" || prevEntry.mode == "interval")) {
-                accumulateTimedUsage(currentTimedPkg!!, prevEntry, currentTimedOpenAtMs)
-            }
             clearActiveSessionSignal()
             timedExpireRunnable?.let { handler.removeCallbacks(it) }
             timedExpireRunnable = null
@@ -1511,24 +1507,17 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         // Each app can have its own allowance mode. If the allowance is available,
         // let the app through and start tracking for time-based modes.
         //
-        // CRITICAL: Only call recordAllowanceOpen on the FIRST event per foreground
-        // session (i.e. when currentTimedPkg != pkg). Android fires many accessibility
-        // events per session — recording on every one would:
-        //   • count mode: exhaust opens in seconds instead of per true open
-        //   • timed modes: push sessionEndMs forward on each event so the timer
-        //     never fires, and reset currentTimedOpenAtMs so elapsed time is lost
+        // The coordinator counts app opens and reconciles all usage, whether or
+        // not enforcement is active. This branch only starts an enforcement timer.
         val allowanceEntry = findAllowanceEntry(pkg)
         if (allowanceEntry != null) {
             if (isAllowanceAvailable(pkg, allowanceEntry)) {
                 if (currentTimedPkg != pkg) {
-                    // App is newly in foreground — record this open and start tracking.
+                    // App is newly in an enforced foreground session.
                     val sessionEndMs = recordAllowanceOpen(pkg, allowanceEntry)
                     currentTimedPkg = pkg
                     currentTimedOpenAtMs = System.currentTimeMillis()
                     persistActiveSessionSignal(pkg, currentTimedOpenAtMs, sessionEndMs)
-                    if (allowanceEntry.mode == "time_budget" || allowanceEntry.mode == "interval") {
-                        startAllowanceCheckpointLoop()
-                    }
                     if (allowanceEntry.mode != "count" && sessionEndMs > 0L) {
                         currentTimedSessionEndMs = sessionEndMs
                         scheduleTimedExpiry(pkg, sessionEndMs)
@@ -1574,18 +1563,10 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         if (::usageSessionTracker.isInitialized) {
             usageSessionTracker.destroy()
         }
-        // Flush the active session through the last checkpoint and leave its
-        // identity in SharedPreferences for reconnect recovery. We intentionally
-        // do not charge the entire service-down gap.
-        if (::prefs.isInitialized) {
-            checkpointActiveTimedSession()
-            if (currentTimedPkg != null) {
-                prefs.edit()
-                    .putLong(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, System.currentTimeMillis())
-                    .apply()
-            }
-        }
-        handler.removeCallbacks(allowanceCheckpointRunnable)
+        allowanceUsageCoordinator?.onServiceStopping()
+        allowanceScope?.cancel()
+        allowanceScope = null
+        allowanceUsageCoordinator = null
         timedExpireRunnable?.let { handler.removeCallbacks(it) }
         timedExpireRunnable = null
         currentTimedPkg = null
@@ -1600,6 +1581,10 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        allowanceUsageCoordinator?.onServiceStopping()
+        allowanceScope?.cancel()
+        allowanceScope = null
+        allowanceUsageCoordinator = null
         unregisterScreenStateReceiver()
         super.onDestroy()
     }
@@ -2358,12 +2343,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     //
     // AllowanceLedger owns the usage JSON schema, lock, rollover, and calculations.
 
-    /**
-     * Restores only the active-session identity and the already durable
-     * checkpoint. The time between the checkpoint and reconnect is deliberately
-     * not charged because the user may have switched apps while this service
-     * was unavailable.
-     */
     private fun restoreAllowanceSession() {
         val now = System.currentTimeMillis()
         val savedPkg = prefs.getString(PREF_ACTIVE_SESSION_PKG, null)
@@ -2373,190 +2352,27 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             lastCheckpointMs > 0L &&
             checkpointAgeMs in 0L..ACTIVE_SESSION_SIGNAL_TTL_MS
 
-        if (signalFresh && savedPkg != null) {
-            val entry = findAllowanceEntry(savedPkg)
-            if (entry != null) {
-                currentTimedPkg = savedPkg
-                // Start a new in-memory segment from reconnect time. The prior
-                // segment is represented by the persisted checkpoint.
-                currentTimedOpenAtMs = now
-                currentTimedSessionEndMs = prefs.getLong(PREF_ACTIVE_SESSION_END_MS, 0L)
+        if (!signalFresh || savedPkg == null || !hasActiveEnforcementSession(now)) return
+        val entry = findAllowanceEntry(savedPkg) ?: return
+        if (entry.mode != "time_budget" && entry.mode != "interval") return
 
-                if (entry.mode == "time_budget" || entry.mode == "interval") {
-                    if (currentTimedSessionEndMs > 0L && now >= currentTimedSessionEndMs) {
-                        accumulateTimedUsage(savedPkg, entry, lastCheckpointMs)
-                        clearActiveSessionSignal()
-                        currentTimedPkg = null
-                        currentTimedOpenAtMs = 0L
-                        currentTimedSessionEndMs = 0L
-                    } else {
-                        startAllowanceCheckpointLoop()
-                        if (currentTimedSessionEndMs > 0L) {
-                            scheduleTimedExpiry(savedPkg, currentTimedSessionEndMs)
-                        }
-                    }
-                }
-                return
-            }
-        }
-
-        // One-time compatibility recovery for sessions written by the previous
-        // session-start/gap-charging implementation.
-        val legacyPkg = prefs.getString("timed_session_pkg", null)
-        val legacyOpenAt = prefs.getLong("timed_session_open_at_ms", 0L)
-        if (savedPkg == null && legacyPkg != null && legacyOpenAt > 0L) {
-            val entry = findAllowanceEntry(legacyPkg)
-            if (entry != null && (entry.mode == "time_budget" || entry.mode == "interval")) {
-                accumulateTimedUsage(legacyPkg, entry, legacyOpenAt)
-            }
-        }
-
-        allowanceLedger.withLock {
-            prefs.edit()
-                .remove("timed_session_pkg")
-                .remove("timed_session_open_at_ms")
-                .remove(PREF_ACTIVE_SESSION_PKG)
-                .remove(PREF_ACTIVE_SESSION_OPEN_AT_MS)
-                .remove(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS)
-                .remove(PREF_ACTIVE_SESSION_END_MS)
-                .apply()
-        }
-    }
-
-    /**
-     * Reconciles count allowances upward from UsageEvents after reconnect.
-     * UsageEvents can lag, so it never lowers the immediate AccessibilityService
-     * count. The persisted session identity handles the common restart case where
-     * the same app remains foreground and would otherwise be counted twice.
-     */
-    private fun reconcileCountAllowances() {
-        val configJson = prefs.getString(PREF_DAILY_ALLOWANCE_CONFIG, null) ?: return
-        if (configJson.isBlank() || configJson == "null") return
-
-        val countPackages = mutableSetOf<String>()
-        try {
-            val arr = org.json.JSONArray(configJson)
-            for (i in 0 until arr.length()) {
-                val obj = arr.optJSONObject(i) ?: continue
-                if (obj.optString("mode", "count") == "count") {
-                    val pkg = obj.optString("packageName", "")
-                    if (pkg.isNotBlank()) countPackages += pkg
-                }
-            }
-        } catch (_: Exception) {
-            return
-        }
-        if (countPackages.isEmpty()) return
-
-        val appOps = getSystemService(Context.APP_OPS_SERVICE) as? android.app.AppOpsManager ?: return
-        val mode = appOps.checkOpNoThrow(
-            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-            android.os.Process.myUid(),
-            packageName,
-        )
-        if (mode == android.app.AppOpsManager.MODE_IGNORED ||
-            mode == android.app.AppOpsManager.MODE_ERRORED) return
-
-        val usageManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return
-        val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getDefault()).apply {
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        val midnightMs = calendar.timeInMillis
-        // Include a short pre-midnight probe so a package that was already
-        // foreground across midnight is not mistaken for a new open at 00:00.
-        // Events before midnight establish continuity but never count toward
-        // today's allowance.
-        val queryStart = (midnightMs - COUNT_RECONCILIATION_PRE_MIDNIGHT_PROBE_MS).coerceAtLeast(0L)
-        val events = try {
-            usageManager.queryEvents(queryStart, System.currentTimeMillis())
-        } catch (_: Exception) {
-            return
-        }
-
-        val observedCounts = mutableMapOf<String, Int>()
-        val event = UsageEvents.Event()
-        val foregroundEventType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                UsageEvents.Event.ACTIVITY_RESUMED
-            } else {
-                UsageEvents.Event.MOVE_TO_FOREGROUND
-            }
-        var lastForegroundPackage: String? = null
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            if (event.eventType != foregroundEventType) continue
-            val eventPkg = event.packageName ?: continue
-            if (eventPkg != lastForegroundPackage &&
-                event.timeStamp >= midnightMs &&
-                countPackages.any {
-                    it.equals(eventPkg, ignoreCase = true)
-                }) {
-                val matchingPkg = countPackages.first {
-                    it.equals(eventPkg, ignoreCase = true)
-                }
-                observedCounts[matchingPkg] = (observedCounts[matchingPkg] ?: 0) + 1
-            }
-            lastForegroundPackage = eventPkg
-        }
-
-        if (observedCounts.isEmpty()) return
-        val today = todayDateString()
-        val updates = observedCounts.map { (pkg, count) ->
-            AllowanceCountUpdate(pkg, count)
-        }
-        allowanceLedger.raiseCountUsage(today, updates, System.currentTimeMillis())
+        val sessionEndMs = prefs.getLong(PREF_ACTIVE_SESSION_END_MS, 0L)
+        if (sessionEndMs <= now) return
+        currentTimedPkg = savedPkg
+        currentTimedOpenAtMs = now
+        currentTimedSessionEndMs = sessionEndMs
+        scheduleTimedExpiry(savedPkg, sessionEndMs)
     }
 
     private fun persistActiveSessionSignal(pkg: String, openAtMs: Long, sessionEndMs: Long) {
-        allowanceLedger.withLock {
-            // A new foreground session must not inherit a UsageStats handoff marker
-            // from an earlier session of the same package.
-            val syncJson = loadUsageStatsSyncObject().apply { remove(pkg) }
-            prefs.edit()
-                .putString(PREF_ACTIVE_SESSION_PKG, pkg)
-                .putLong(PREF_ACTIVE_SESSION_OPEN_AT_MS, openAtMs)
-                .putLong(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, openAtMs)
-                .putLong(PREF_ACTIVE_SESSION_END_MS, sessionEndMs)
-                .putString(PREF_USAGE_STATS_SYNC, syncJson.toString())
-                .apply()
-        }
+        allowanceUsageCoordinator?.setActiveSessionEnd(pkg, sessionEndMs)
     }
 
     private fun clearActiveSessionSignal() {
-        allowanceLedger.withLock {
-            handler.removeCallbacks(allowanceCheckpointRunnable)
-            val activePkg = prefs.getString(PREF_ACTIVE_SESSION_PKG, null)
-            val syncJson = loadUsageStatsSyncObject().apply {
-                if (activePkg != null) remove(activePkg)
-            }
-            prefs.edit()
-                .remove(PREF_ACTIVE_SESSION_PKG)
-                .remove(PREF_ACTIVE_SESSION_OPEN_AT_MS)
-                .remove(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS)
-                .remove(PREF_ACTIVE_SESSION_END_MS)
-                .putString(PREF_USAGE_STATS_SYNC, syncJson.toString())
-                .apply()
-        }
+        prefs.edit().remove(PREF_ACTIVE_SESSION_END_MS).apply()
     }
 
-    /**
-     * Stops in-memory timed allowance tracking when every enforcement session
-     * has ended. The final open segment is retained, but no delayed callback
-     * should navigate the user home after protection has ended.
-     */
     private fun stopTimedAllowanceTracking() {
-        currentTimedPkg?.let { pkg ->
-            val entry = findAllowanceEntry(pkg)
-            if (entry != null &&
-                (entry.mode == "time_budget" || entry.mode == "interval") &&
-                currentTimedOpenAtMs > 0L
-            ) {
-                accumulateTimedUsage(pkg, entry, currentTimedOpenAtMs)
-            }
-        }
         clearActiveSessionSignal()
         timedExpireRunnable?.let { handler.removeCallbacks(it) }
         timedExpireRunnable = null
@@ -2565,54 +2381,18 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         currentTimedSessionEndMs = 0L
     }
 
-    private fun startAllowanceCheckpointLoop() {
-        handler.removeCallbacks(allowanceCheckpointRunnable)
-        handler.postDelayed(allowanceCheckpointRunnable, ACTIVE_SESSION_CHECKPOINT_INTERVAL_MS)
-    }
-
-    /**
-     * Commits only the elapsed portion since the previous checkpoint. This makes
-     * the stored value an absolute accumulated total rather than a second timer
-     * layered on top of UsageStats.
-     */
-    private fun checkpointActiveTimedSession() {
-        val pkg = currentTimedPkg ?: return
-        val entry = findAllowanceEntry(pkg) ?: return
-        val now = System.currentTimeMillis()
-        if (entry.mode == "time_budget" || entry.mode == "interval") {
-            allowanceLedger.withLock {
-                /*
-                 * ForegroundTaskService may have written an absolute UsageStats
-                 * total while this service heartbeat was stale. Resume from
-                 * that handoff timestamp instead of adding the already-accounted
-                 * interval a second time.
-                 */
-                val syncJson = loadUsageStatsSyncObject()
-                val syncedAtMs = syncJson.optLong(pkg, 0L)
-                val handoffApplied = syncedAtMs > currentTimedOpenAtMs
-                val effectiveOpenAtMs = if (handoffApplied) {
-                    syncJson.remove(pkg)
-                    currentTimedOpenAtMs = syncedAtMs
-                    currentTimedOpenAtMs
-                } else {
-                    currentTimedOpenAtMs
-                }
-                accumulateTimedUsage(
-                    pkg = pkg,
-                    entry = entry,
-                    openedAtMs = effectiveOpenAtMs,
-                    checkpointAtMs = now,
-                    usageStatsSyncJson = if (handoffApplied) syncJson.toString() else null,
-                )
-            }
-        } else {
-            allowanceLedger.withLock {
-                prefs.edit()
-                    .putLong(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, now)
-                    .apply()
-            }
-        }
-        currentTimedOpenAtMs = now
+    private fun onAllowanceUsageReconciled(pkg: String) {
+        val activePkg = currentTimedPkg ?: return
+        if (!activePkg.equals(pkg, ignoreCase = true) ||
+            currentTimedOpenAtMs <= 0L ||
+            !hasActiveEnforcementSession()
+        ) return
+        val entry = findAllowanceEntry(activePkg) ?: return
+        if (entry.mode != "time_budget" && entry.mode != "interval") return
+        val endMs = System.currentTimeMillis() + readAllowance(activePkg, entry).remaining
+        currentTimedSessionEndMs = endMs
+        persistActiveSessionSignal(activePkg, currentTimedOpenAtMs, endMs)
+        scheduleTimedExpiry(activePkg, endMs)
     }
 
     /**
@@ -2691,70 +2471,14 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     )
 
     /**
-     * Records that the app was just opened within its allowance.
-     * For count mode: increments the open counter.
-     * For timed modes: stores openedAtMs and calculates sessionEndMs.
-     *
-     * @return sessionEndMs — the epoch ms when this session expires (0 for count mode).
+     * Returns the enforcement deadline from the current effective ledger value.
+     * Measurement is owned by AllowanceUsageCoordinator for every foreground
+     * session, including periods when enforcement is inactive.
      */
     private fun recordAllowanceOpen(pkg: String, entry: AllowanceEntry): Long {
+        if (entry.mode == "count") return 0L
         val now = System.currentTimeMillis()
-        return allowanceLedger.recordOpen(
-            packageName = pkg,
-            mode = entry.mode,
-            today = todayDateString(),
-            nowMs = now,
-            limit = when (entry.mode) {
-                "count" -> entry.countPerDay.toLong()
-                "time_budget" -> entry.budgetMs
-                "interval" -> entry.intervalMs
-                else -> 0L
-            },
-            windowMs = entry.windowMs,
-        )
-    }
-
-    /**
-     * Accumulates elapsed usage time for a timed-mode app session.
-     * Called when the user switches away to a different app (or when the session timer fires).
-     *
-     * Fixes applied vs the original:
-     *   • time_budget: correctly handles midnight crossings — only today's portion is charged
-     *     to today's budget; elapsed time before midnight is dropped (yesterday's budget is gone).
-     *   • interval: caps accumulation at the window boundary so time used after a window
-     *     expires mid-session is not charged to the new (not-yet-started) window.
-     */
-    private fun accumulateTimedUsage(
-        pkg: String,
-        entry: AllowanceEntry,
-        openedAtMs: Long,
-        checkpointAtMs: Long? = null,
-        usageStatsSyncJson: String? = null,
-    ) {
-        allowanceLedger.withLock {
-            val now = System.currentTimeMillis()
-            val elapsed = (now - openedAtMs).coerceAtLeast(0L)
-            if (elapsed == 0L && checkpointAtMs == null && usageStatsSyncJson == null) {
-                return@withLock
-            }
-
-            if (entry.mode == "time_budget" || entry.mode == "interval") {
-                allowanceLedger.accumulateTimedUsage(
-                    packageName = pkg,
-                    mode = entry.mode,
-                    today = todayDateString(),
-                    openedAtMs = openedAtMs,
-                    nowMs = now,
-                    midnightMs = getMidnightMs(),
-                    limitMs = if (entry.mode == "time_budget") entry.budgetMs else entry.intervalMs,
-                    windowMs = entry.windowMs,
-                )
-            }
-            val editor = prefs.edit()
-            checkpointAtMs?.let { editor.putLong(PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, it) }
-            usageStatsSyncJson?.let { editor.putString(PREF_USAGE_STATS_SYNC, it) }
-            editor.apply()
-        }
+        return now + readAllowance(pkg, entry, now).remaining
     }
 
     /**
@@ -2763,11 +2487,11 @@ class AppBlockerAccessibilityService : AccessibilityService() {
      */
     private fun scheduleTimedExpiry(pkg: String, sessionEndMs: Long) {
         timedExpireRunnable?.let { handler.removeCallbacks(it) }
-        val scheduledSessionOpenAtMs = prefs.getLong(PREF_ACTIVE_SESSION_OPEN_AT_MS, 0L)
+        val scheduledSessionOpenAtMs = currentTimedOpenAtMs
         fun isScheduledSessionStillCurrent(): Boolean {
             return currentTimedPkg?.equals(pkg, ignoreCase = true) == true &&
                 currentTimedSessionEndMs == sessionEndMs &&
-                prefs.getLong(PREF_ACTIVE_SESSION_OPEN_AT_MS, 0L) == scheduledSessionOpenAtMs
+                currentTimedOpenAtMs == scheduledSessionOpenAtMs
         }
         val delayMs = sessionEndMs - System.currentTimeMillis()
         if (delayMs <= 0L) {
@@ -2775,8 +2499,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             if (!isScheduledSessionStillCurrent()) return
             var shouldGoHome = false
             if (isScheduledSessionStillCurrent()) {
-                val entry = findAllowanceEntry(pkg)
-                if (entry != null) accumulateTimedUsage(pkg, entry, currentTimedOpenAtMs)
                 shouldGoHome = hasActiveEnforcementSession()
                 clearActiveSessionSignal()
                 currentTimedPkg = null
@@ -2799,7 +2521,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             var shouldGoHome = false
             val entry = findAllowanceEntry(pkg)
             if (entry != null && isScheduledSessionStillCurrent()) {
-                accumulateTimedUsage(pkg, entry, currentTimedOpenAtMs)
                 shouldGoHome = hasActiveEnforcementSession()
             }
             if (isScheduledSessionStillCurrent()) {
@@ -2840,11 +2561,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             return false
         }
         return true
-    }
-
-    private fun loadUsageStatsSyncObject(): org.json.JSONObject {
-        val json = prefs.getString(PREF_USAGE_STATS_SYNC, "{}") ?: "{}"
-        return try { org.json.JSONObject(json) } catch (_: Exception) { org.json.JSONObject() }
     }
 
     /** ISO-8601 date string for today in the device's local timezone (e.g. "2025-01-09"). */

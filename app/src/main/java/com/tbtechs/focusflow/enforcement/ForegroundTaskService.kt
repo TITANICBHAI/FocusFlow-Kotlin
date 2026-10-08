@@ -68,20 +68,6 @@ import kotlinx.coroutines.launch
  */
 class ForegroundTaskService : Service() {
 
-    private data class AllowanceExpiry(
-        val pkg: String,
-        val expiryMs: Long,
-        val mode: String,
-        val limitMs: Long,
-        val windowStartMs: Long = 0L,
-        val sessionOpenAtMs: Long = 0L,
-    )
-
-    private data class IntervalUsageSample(
-        val windowStartMs: Long,
-        val usedMs: Long,
-    )
-
     companion object {
         const val CHANNEL_ID        = "focusday_foreground"
         const val CHANNEL_NAME      = "FocusFlow Active Task"
@@ -110,12 +96,6 @@ class ForegroundTaskService : Service() {
 
         /** How often the in-process VPN health check runs (ms). */
         private const val VPN_HEALTH_CHECK_MS = 60_000L
-
-        /**
-         * How often the UsageStats-based allowance sync fires (ms).
-         * Every 60 s is accurate enough for a daily time budget and cheap on battery.
-         */
-        private const val ALLOWANCE_SYNC_MS = 60_000L
 
         /** Notification channel for full-screen block-overlay intent. */
         private const val BLOCK_ALERT_CHANNEL  = "focusday_block_alert"
@@ -291,7 +271,6 @@ class ForegroundTaskService : Service() {
     private val allowanceLedger by lazy { AllowanceLedgerProvider.get(this) }
     private var fallbackLastBlockedPkg: String? = null
     private var fallbackLastBlockedAtMs: Long   = 0L
-    private var allowanceExpiryRunnable: Runnable? = null
     private val todayDateFormatter = java.text.SimpleDateFormat(
         "yyyy-MM-dd",
         java.util.Locale.US,
@@ -320,439 +299,6 @@ class ForegroundTaskService : Service() {
             checkAndHealVpn()
             handler.postDelayed(this, VPN_HEALTH_CHECK_MS)
         }
-    }
-
-    /**
-     * UsageStats-based allowance sync — runs every [ALLOWANCE_SYNC_MS] (60 s).
-     *
-     * Uses Android's UsageStatsManager (PACKAGE_USAGE_STATS permission) and
-     * window-scoped UsageEvents to read the actual foreground time each tracked
-     * app has accumulated in its allowance range.
-     * This is the ground-truth source — it is device-managed, cannot be inflated by
-     * spurious accessibility events, and persists across service kills/reboots.
-     *
-     * Updates `time_budget` entries from midnight and `interval` entries from the
-     * active rolling window. Count mode does not map cleanly onto UsageEvents and
-     * keeps its own event-based tracking.
-     *
-     * The sync is additive — it only raises `usedMs` when UsageStats reports more time
-     * than the current stored value, so a freshly accumulated event-based write is never
-     * overwritten downward by a stale 60-second snapshot.
-     */
-    private val allowanceSyncRunnable = object : Runnable {
-        override fun run() {
-            try { syncAllowanceFromUsageStats() } catch (_: Exception) { /* best-effort */ }
-            handler.postDelayed(this, ALLOWANCE_SYNC_MS)
-        }
-    }
-
-    private fun syncAllowanceFromUsageStats() {
-        val configJson = blockPrefs.getString("daily_allowance_config", null) ?: return
-        if (configJson.isBlank() || configJson == "null") return
-        val now = System.currentTimeMillis()
-
-        // Parse time-based allowance packages. Interval entries keep their
-        // rolling-window metadata so their fallback can query only that window.
-        val timeBudgetPkgs = mutableMapOf<String, Long>()
-        val intervalPkgs = mutableMapOf<String, Pair<Long, Long>>()
-        try {
-            val arr = org.json.JSONArray(configJson)
-            for (i in 0 until arr.length()) {
-                val obj = arr.optJSONObject(i) ?: continue
-                val pkg      = obj.optString("packageName", "")
-                when (obj.optString("mode", "count")) {
-                    "time_budget" -> {
-                        val budgetMs = obj.optInt("budgetMinutes", 30).toLong() * 60_000L
-                        if (pkg.isNotEmpty()) timeBudgetPkgs[pkg] = budgetMs
-                    }
-                    "interval" -> {
-                        val intervalMs = obj.optInt("intervalMinutes", 5).toLong() * 60_000L
-                        val windowMs = obj.optInt("intervalHours", 1).toLong() * 3_600_000L
-                        if (pkg.isNotEmpty()) intervalPkgs[pkg] = intervalMs to windowMs
-                    }
-                }
-            }
-        } catch (_: Exception) { return }
-        if (timeBudgetPkgs.isEmpty() && intervalPkgs.isEmpty()) return
-
-        // Gate on Usage Access permission — AppOps check (mirrors UsageStatsModule)
-        val appOps = getSystemService(Context.APP_OPS_SERVICE) as? android.app.AppOpsManager ?: return
-        val mode   = appOps.checkOpNoThrow(
-            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-            android.os.Process.myUid(), packageName
-        )
-        // MODE_ALLOWED or MODE_DEFAULT (some Samsung OneUI builds) are both acceptable
-        if (mode == android.app.AppOpsManager.MODE_IGNORED ||
-            mode == android.app.AppOpsManager.MODE_ERRORED) return
-
-        val usm = getSystemService(Context.USAGE_STATS_SERVICE)
-            as? android.app.usage.UsageStatsManager ?: return
-
-        // Query from midnight today → now so we only count today's foreground time
-        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getDefault()).apply {
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = cal.timeInMillis
-        val today      = todayDateString()
-
-        var foregroundAllowanceExpiry: AllowanceExpiry? = null
-        val foregroundPkg = getFallbackForegroundPackage()
-        val trackedPackages = (timeBudgetPkgs.keys + intervalPkgs.keys).toSet()
-
-        /*
-         * Capture current interval starts under the same lock used by the merge,
-         * then query UsageEvents outside the lock so the potentially slow system
-         * call does not block allowance writes. Time budgets use the same event
-         * accounting from today's boundary; queryUsageStats(INTERVAL_DAILY) can
-         * return a calendar-day bucket that does not match the allowance handoff.
-         */
-        val intervalWindowStarts = allowanceLedger.withLock {
-            intervalPkgs.mapNotNull { (pkg, config) ->
-                val windowStartMs = allowanceLedger.usage(pkg).windowStartMs
-                if (windowStartMs > 0L && now <= windowStartMs + config.second) {
-                    pkg to windowStartMs
-                } else {
-                    null
-                }
-            }.toMap()
-        }
-        val intervalUsageSamples = intervalWindowStarts.mapValues { (pkg, windowStartMs) ->
-            IntervalUsageSample(
-                windowStartMs = windowStartMs,
-                usedMs = queryIntervalUsageMs(usm, pkg, windowStartMs, now),
-            )
-        }
-
-        /*
-         * The event queries happen before this monitor. Reload the JSON inside
-         * the monitor, then merge and persist it while the other service is
-         * unable to perform its own read-modify-write.
-         */
-        allowanceLedger.withLock {
-            val activeSessionPkg = blockPrefs.getString(
-                AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG,
-                null,
-            )
-            val activeSessionOpenAtMs = blockPrefs.getLong(
-                AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_OPEN_AT_MS,
-                0L,
-            )
-            val usageStatsSync = try {
-                org.json.JSONObject(
-                    blockPrefs.getString(
-                        AppBlockerAccessibilityService.PREF_USAGE_STATS_SYNC,
-                        "{}",
-                    ) ?: "{}",
-                )
-            } catch (_: Exception) {
-                org.json.JSONObject()
-            }
-            var usageStatsSyncChanged = false
-
-            for (pkg in trackedPackages) {
-                // AccessibilityService owns the live session while this signal is
-                // fresh. Its checkpoint is already an absolute accumulated total;
-                // writing UsageStats on top of it would double-count the session.
-                if (hasFreshActiveAllowanceSession(pkg, now)) continue
-                // If the package signal exists but is stale, UsageStats is allowed
-                // to recover it. Record the handoff timestamp so the
-                // AccessibilityService can continue from the absolute total rather
-                // than adding the same stale-heartbeat interval again.
-                val staleActiveSession = activeSessionPkg?.equals(pkg, ignoreCase = true) == true
-
-                val intervalConfig = intervalPkgs[pkg]
-                val limitMs = timeBudgetPkgs[pkg] ?: intervalConfig?.first ?: continue
-                val storedRecord = allowanceLedger.usage(pkg)
-                val windowStartMs = if (intervalConfig != null) {
-                    storedRecord.windowStartMs
-                } else {
-                    0L
-                }
-                if (intervalConfig != null &&
-                    (windowStartMs <= 0L || now > windowStartMs + intervalConfig.second)
-                ) {
-                    continue
-                }
-                val intervalUsageSample = intervalConfig?.let { intervalUsageSamples[pkg] }
-                if (intervalConfig != null &&
-                    intervalUsageSample?.windowStartMs != windowStartMs
-                ) {
-                    // The AccessibilityService opened or reset a different window
-                    // while UsageEvents was being queried. Do not merge an old
-                    // window's total into the new one.
-                    continue
-                }
-
-                val actualMs = if (intervalConfig != null) {
-                    intervalUsageSample?.usedMs ?: 0L
-                } else {
-                    queryUsageEventsForegroundMs(usm, pkg, startOfDay, now)
-                }.coerceAtMost(limitMs)
-
-                val storedMs = if (intervalConfig != null) {
-                    storedRecord.usedMs
-                } else if (storedRecord.date == today) {
-                    storedRecord.usedMs
-                } else {
-                    0L
-                }
-                val effectiveMs = maxOf(actualMs, storedMs)
-                if (pkg.equals(foregroundPkg, ignoreCase = true) && effectiveMs < limitMs) {
-                    foregroundAllowanceExpiry = AllowanceExpiry(
-                        pkg = pkg,
-                        expiryMs = now + limitMs - effectiveMs,
-                        mode = if (intervalConfig != null) "interval" else "time_budget",
-                        limitMs = limitMs,
-                        windowStartMs = windowStartMs,
-                        sessionOpenAtMs = if (staleActiveSession) activeSessionOpenAtMs else 0L,
-                    )
-                }
-
-                // Only raise — never lower — so an event-based write that is more recent
-                // than the last 60-second snapshot is never clobbered.
-                if (actualMs > storedMs) {
-                    allowanceLedger.raiseTimeUsage(
-                        today = today,
-                        updates = listOf(
-                            AllowanceTimeUpdate(
-                                packageName = pkg,
-                                mode = if (intervalConfig != null) {
-                                    AllowanceLedger.MODE_INTERVAL
-                                } else {
-                                    AllowanceLedger.MODE_TIME_BUDGET
-                                },
-                                usedMs = actualMs,
-                                windowStartMs = windowStartMs,
-                            ),
-                        ),
-                        atMs = now,
-                    )
-                    if (staleActiveSession) {
-                        usageStatsSync.put(pkg, now)
-                        usageStatsSyncChanged = true
-                    }
-                }
-            }
-
-            if (usageStatsSyncChanged) {
-                blockPrefs.edit()
-                    .putString(
-                        AppBlockerAccessibilityService.PREF_USAGE_STATS_SYNC,
-                        usageStatsSync.toString(),
-                    )
-                    .apply()
-            }
-        }
-        foregroundAllowanceExpiry?.let { expiry ->
-            if (expiry.mode != "time_budget") {
-                // Interval allowances are enforced by the AccessibilityService
-                // session deadline and must never inherit a time-budget fallback
-                // timer, including a timer left by a previous config/session.
-                allowanceExpiryRunnable?.let { handler.removeCallbacks(it) }
-                allowanceExpiryRunnable = null
-                return@let
-            }
-            val budgetMs = timeBudgetPkgs[expiry.pkg] ?: return@let
-            // AccessibilityService owns a fresh live session. FTS is only a
-            // fallback after that signal becomes stale, and captures the
-            // session identity so a close/reopen cannot inherit this timer.
-            if (!hasFreshActiveAllowanceSession(expiry.pkg, System.currentTimeMillis())) {
-                scheduleAllowanceExpiry(
-                    expiry.pkg,
-                    expiry.expiryMs,
-                    budgetMs,
-                    expiry.sessionOpenAtMs,
-                )
-            } else {
-                allowanceExpiryRunnable?.let { handler.removeCallbacks(it) }
-                allowanceExpiryRunnable = null
-            }
-        } ?: run {
-            allowanceExpiryRunnable?.let { handler.removeCallbacks(it) }
-            allowanceExpiryRunnable = null
-        }
-    }
-
-    /**
-     * Measures foreground time for one package inside its rolling allowance
-     * window. The lookback lets us capture a session that began before the
-     * window boundary; each segment is clipped to [windowStartMs, endMs].
-     */
-    private fun queryIntervalUsageMs(
-        usm: UsageStatsManager,
-        pkg: String,
-        windowStartMs: Long,
-        endMs: Long,
-    ): Long {
-        return queryUsageEventsForegroundMs(usm, pkg, windowStartMs, endMs)
-    }
-
-    /**
-     * Measures foreground time for one package inside an arbitrary allowance
-     * range. The lookback lets us capture a session that began before the range
-     * boundary; each segment is clipped to [rangeStartMs, endMs].
-     *
-     * A few OEMs omit the target package's pause event when another package is
-     * resumed. Processing every foreground event lets that switch close the
-     * target segment instead of charging it through the remainder of the query.
-     */
-    private fun queryUsageEventsForegroundMs(
-        usm: UsageStatsManager,
-        pkg: String,
-        rangeStartMs: Long,
-        endMs: Long,
-    ): Long {
-        if (rangeStartMs <= 0L || endMs <= rangeStartMs) return 0L
-
-        val foregroundType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                UsageEvents.Event.ACTIVITY_RESUMED
-            } else {
-                UsageEvents.Event.MOVE_TO_FOREGROUND
-            }
-        val backgroundType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                UsageEvents.Event.ACTIVITY_PAUSED
-            } else {
-                UsageEvents.Event.MOVE_TO_BACKGROUND
-            }
-        val lookbackMs = maxOf(
-            6L * 60 * 60 * 1000L,
-            endMs - rangeStartMs,
-        )
-        val queryStart = (rangeStartMs - lookbackMs).coerceAtLeast(0L)
-
-        return try {
-            val events = usm.queryEvents(queryStart, endMs)
-            val event = UsageEvents.Event()
-            var segmentStartMs = 0L
-            var windowTotalMs = 0L
-
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                when (event.eventType) {
-                    foregroundType -> {
-                        if (event.packageName.equals(pkg, ignoreCase = true)) {
-                            // Some devices emit duplicate resume events while the
-                            // same activity remains visible. Keep the first start.
-                            if (segmentStartMs == 0L) {
-                                segmentStartMs = event.timeStamp
-                            }
-                        } else if (segmentStartMs > 0L) {
-                            // Treat another package resuming as an app switch even
-                            // when this OEM omitted the target pause event.
-                            windowTotalMs += (
-                                event.timeStamp.coerceAtMost(endMs) -
-                                    segmentStartMs.coerceAtLeast(rangeStartMs)
-                                ).coerceAtLeast(0L)
-                            segmentStartMs = 0L
-                        }
-                    }
-                    backgroundType -> {
-                        if (event.packageName.equals(pkg, ignoreCase = true) &&
-                            segmentStartMs > 0L
-                        ) {
-                            windowTotalMs += (
-                                event.timeStamp.coerceAtMost(endMs) -
-                                    segmentStartMs.coerceAtLeast(rangeStartMs)
-                                ).coerceAtLeast(0L)
-                            segmentStartMs = 0L
-                        }
-                    }
-                }
-            }
-
-            if (segmentStartMs > 0L) {
-                windowTotalMs += (
-                    endMs - segmentStartMs.coerceAtLeast(rangeStartMs)
-                ).coerceAtLeast(0L)
-            }
-            windowTotalMs
-        } catch (_: Exception) {
-            0L
-        }
-    }
-
-    /**
-     * UsageStats is refreshed periodically, but a foreground app should not wait
-     * for the next minute-long refresh once its already-known budget is due.
-     * The callback only promotes the allowance to exhausted after re-checking
-     * that the same app is still foreground, then wakes the normal blocker.
-     */
-    private fun scheduleAllowanceExpiry(
-        pkg: String,
-        expiryMs: Long,
-        budgetMs: Long,
-        sessionOpenAtMs: Long,
-    ) {
-        allowanceExpiryRunnable?.let { handler.removeCallbacks(it) }
-        val delayMs = (expiryMs - System.currentTimeMillis()).coerceAtLeast(0L)
-        val runnable = Runnable {
-            allowanceExpiryRunnable = null
-            if (!pkg.equals(getFallbackForegroundPackage(), ignoreCase = true)) return@Runnable
-            val now = System.currentTimeMillis()
-            val expiryPersisted = allowanceLedger.withLock {
-                // Re-check after acquiring the same lock used by checkpoints:
-                // a fresh heartbeat may have been written after the first check.
-                if (hasFreshActiveAllowanceSession(pkg, now)) return@withLock false
-                // A timer scheduled for an older session must not exhaust a
-                // newly opened session, and a timer from a closed session must
-                // not promote a partial close/reopen handoff to exhaustion.
-                val activeSessionPkg = blockPrefs.getString(
-                    AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG,
-                    null,
-                )
-                val currentSessionOpenAtMs = blockPrefs.getLong(
-                    AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_OPEN_AT_MS,
-                    0L,
-                )
-                if (activeSessionPkg != null) {
-                    if (!activeSessionPkg.equals(pkg, ignoreCase = true) ||
-                        sessionOpenAtMs == 0L ||
-                        currentSessionOpenAtMs != sessionOpenAtMs
-                    ) {
-                        return@withLock false
-                    }
-                } else if (sessionOpenAtMs > 0L) {
-                    return@withLock false
-                }
-                allowanceLedger.raiseTimeUsage(
-                    today = todayDateString(),
-                    updates = listOf(
-                        AllowanceTimeUpdate(
-                            packageName = pkg,
-                            mode = AllowanceLedger.MODE_TIME_BUDGET,
-                            usedMs = budgetMs,
-                        ),
-                    ),
-                    atMs = now,
-                )
-                true
-            }
-            if (!expiryPersisted) return@Runnable
-            handler.post(fallbackPollRunnable)
-        }
-        allowanceExpiryRunnable = runnable
-        handler.postDelayed(runnable, delayMs)
-    }
-
-    private fun hasFreshActiveAllowanceSession(pkg: String, nowMs: Long): Boolean {
-        val activePkg = blockPrefs.getString(
-            AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG,
-            null,
-        ) ?: return false
-        if (!activePkg.equals(pkg, ignoreCase = true)) return false
-
-        val lastCheckpointMs = blockPrefs.getLong(
-            AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS,
-            0L,
-        )
-        val checkpointAgeMs = nowMs - lastCheckpointMs
-        return lastCheckpointMs > 0L &&
-            checkpointAgeMs in 0L..AppBlockerAccessibilityService.ACTIVE_SESSION_SIGNAL_TTL_MS
     }
 
     private val tickRunnable = object : Runnable {
@@ -913,6 +459,12 @@ class ForegroundTaskService : Service() {
         super.onCreate()
         serviceStartMs = System.currentTimeMillis()
         blockPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        AllowanceUsageCoordinator.recoverPersistedCheckpoint(
+            context = this,
+            prefs = blockPrefs,
+            ledger = allowanceLedger,
+            nowMs = serviceStartMs,
+        )
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildIdleNotification())
         accessibilityStateChangeTracker.observe(isAccessibilityServiceEnabled())
@@ -923,9 +475,6 @@ class ForegroundTaskService : Service() {
         // Start the in-process VPN health check. First tick is staggered by
         // half the interval so it doesn't race the AccessibilityService check.
         handler.postDelayed(vpnHealthRunnable, VPN_HEALTH_CHECK_MS / 2)
-        // Start the UsageStats allowance sync. Staggered 10 s to let other
-        // startup work settle first. Runs every 60 s while the service is alive.
-        handler.postDelayed(allowanceSyncRunnable, 10_000L)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -1063,8 +612,6 @@ class ForegroundTaskService : Service() {
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(fallbackPollRunnable)
         handler.removeCallbacks(vpnHealthRunnable)
-        handler.removeCallbacks(allowanceSyncRunnable)
-        allowanceExpiryRunnable?.let { handler.removeCallbacks(it) }
         enforcementHealthRefreshJob?.cancel()
         enforcementHealthScope.cancel()
         WakeLockManager.release()
@@ -1083,8 +630,6 @@ class ForegroundTaskService : Service() {
         nextName     = null
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(breakTickRunnable)
-        allowanceExpiryRunnable?.let { handler.removeCallbacks(it) }
-        allowanceExpiryRunnable = null
         blockPrefs.edit().remove("focus_break_until_ms").apply()
         // Release the wake lock — CPU throttling is fine again when no session is active
         WakeLockManager.release()

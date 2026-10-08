@@ -347,7 +347,7 @@ fun DailyAllowanceModal(
                     ) {
                         Icon(Icons.Outlined.Info, contentDescription = null, tint = SunAmber, modifier = Modifier.size(14.dp))
                         Text(
-                            "Tap an app to enable its allowance. Tap again to expand its mode settings. Long-press to remove.",
+                            "Allowances count all usage today, not just during blocks. Tap an app to enable its allowance, tap again to expand its settings, or long-press to remove it.",
                             fontSize = 11.scaledSp,
                             lineHeight = 16.scaledSp,
                             color = SunAmber,

@@ -133,6 +133,7 @@ class LauncherActivity : Activity() {
         val mode: String,
         val displayText: String,
         val fraction: Float,
+        val approximate: Boolean,
     )
 
     private sealed class DrawerItem {
@@ -1634,20 +1635,22 @@ class LauncherActivity : Activity() {
     }
 
     private fun formatUsedTerse(card: AllowanceCardData): String {
-        return when (card.mode) {
+        val value = when (card.mode) {
             "count" -> "${card.used}/${card.total}"
             else -> if (card.used <= 0L) "<1m" else formatDuration(card.used)
         }
+        return if (card.approximate) "About $value" else value
     }
 
     private fun formatUsedFull(card: AllowanceCardData): String {
-        return when (card.mode) {
+        val value = when (card.mode) {
             "count" -> {
                 val remaining = card.total - card.used
                 if (remaining <= 0L) "no opens left" else "$remaining of ${card.total} opens left"
             }
             else -> "${formatDuration(card.used)} used • ${formatDuration(card.total - card.used)} left"
         }
+        return if (card.approximate) "About $value" else value
     }
 
     private fun formatDuration(ms: Long): String {
@@ -1671,6 +1674,29 @@ class LauncherActivity : Activity() {
         }.format(Date())
         val now      = System.currentTimeMillis()
         val result   = mutableListOf<AllowanceCardData>()
+        val usageAccessGranted = try {
+            val appOps = getSystemService(android.content.Context.APP_OPS_SERVICE)
+                as? android.app.AppOpsManager
+            val accessMode = appOps?.checkOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                packageName,
+            )
+            accessMode != null &&
+                accessMode != android.app.AppOpsManager.MODE_IGNORED &&
+                accessMode != android.app.AppOpsManager.MODE_ERRORED
+        } catch (_: Exception) {
+            false
+        }
+        fun usageIsApproximate(pkg: String): Boolean {
+            val lastReadAt = allowanceLedger.usage(pkg).confirmedAtMs
+            return AllowanceUsageFreshnessReducer.reduce(
+                hasUsageAccess = usageAccessGranted,
+                lastSuccessfulReadAtMs = lastReadAt,
+                unlockedAtMs = now,
+                nowMs = now,
+            ) != AllowanceUsageFreshness.FRESH
+        }
 
         try {
             val arr = org.json.JSONArray(configJson)
@@ -1699,7 +1725,7 @@ class LauncherActivity : Activity() {
                         val remaining   = (countPerDay - usedCount).coerceAtLeast(0)
                         val fraction    = remaining.toFloat() / countPerDay.toFloat()
                         val display     = if (remaining == 0) "no opens left" else "$remaining/$countPerDay opens"
-                        result.add(AllowanceCardData(pkg, label, icon, usedCount.toLong(), countPerDay.toLong(), remaining.toLong(), mode, display, fraction))
+                        result.add(AllowanceCardData(pkg, label, icon, usedCount.toLong(), countPerDay.toLong(), remaining.toLong(), mode, display, fraction, usageIsApproximate(pkg)))
                     }
                     "time_budget" -> {
                         val budgetMs    = obj.optLong("budgetMinutes", 30L) * 60_000L
@@ -1712,7 +1738,7 @@ class LauncherActivity : Activity() {
                         ).usedMs
                         val remainingMs = (budgetMs - usedMs).coerceAtLeast(0L)
                         val fraction    = if (budgetMs > 0L) remainingMs.toFloat() / budgetMs.toFloat() else 0f
-                        result.add(AllowanceCardData(pkg, label, icon, usedMs, budgetMs, remainingMs, mode, formatRemainingMs(remainingMs), fraction))
+                        result.add(AllowanceCardData(pkg, label, icon, usedMs, budgetMs, remainingMs, mode, formatRemainingMs(remainingMs), fraction, usageIsApproximate(pkg)))
                     }
                     "interval" -> {
                         val intervalMs    = obj.optLong("intervalMinutes", 5L) * 60_000L
@@ -1730,7 +1756,7 @@ class LauncherActivity : Activity() {
                         val remainingMs   = (intervalMs - usedMs).coerceAtLeast(0L)
                         val fraction      = if (intervalMs > 0L) remainingMs.toFloat() / intervalMs.toFloat() else 0f
                         val display       = if (windowExpired) "reset" else formatRemainingMs(remainingMs)
-                        result.add(AllowanceCardData(pkg, label, icon, usedMs, intervalMs, remainingMs, mode, display, fraction))
+                        result.add(AllowanceCardData(pkg, label, icon, usedMs, intervalMs, remainingMs, mode, display, fraction, usageIsApproximate(pkg)))
                     }
                 }
             }

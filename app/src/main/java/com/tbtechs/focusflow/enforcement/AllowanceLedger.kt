@@ -27,6 +27,191 @@ class AllowanceLedger internal constructor(
         AllowanceLedgerJsonCodec.parse(usageObjectLocked().optJSONObject(packageName) ?: JSONObject())
     }
 
+    fun ensureIntervalWindowStarted(
+        packageName: String,
+        today: String,
+        nowMs: Long,
+        windowMs: Long,
+    ): Long = withLock {
+        val root = usageObjectLocked()
+        val json = root.optJSONObject(packageName) ?: JSONObject()
+        val record = AllowanceLedgerJsonCodec.parse(json)
+        val isCurrent = record.windowStartMs > 0L &&
+            nowMs <= record.windowStartMs + windowMs
+        if (isCurrent) return@withLock record.windowStartMs
+
+        val startedAt = nowMs.coerceAtLeast(1L)
+        writeRecordLocked(
+            root,
+            packageName,
+            json,
+            record.copy(
+                mode = MODE_INTERVAL,
+                date = today,
+                windowStartMs = startedAt,
+                usedMs = 0L,
+                confirmedUsedMs = 0L,
+                confirmedAtMs = 0L,
+                estimatedExtraMs = 0L,
+            ),
+        )
+        startedAt
+    }
+
+    fun addEstimatedTimeUsage(
+        packageName: String,
+        mode: String,
+        today: String,
+        windowStartMs: Long,
+        deltaMs: Long,
+    ): Boolean = withLock {
+        if (deltaMs <= 0L || (mode != MODE_TIME_BUDGET && mode != MODE_INTERVAL)) {
+            return@withLock false
+        }
+        val root = usageObjectLocked()
+        val json = root.optJSONObject(packageName) ?: JSONObject()
+        val record = AllowanceLedgerJsonCodec.parse(json)
+        val samePeriod = if (mode == MODE_TIME_BUDGET) {
+            record.date == today
+        } else {
+            record.windowStartMs == windowStartMs && windowStartMs > 0L
+        }
+        if (mode == MODE_INTERVAL && !samePeriod) return@withLock false
+
+        val base = if (samePeriod) record else AllowanceLedgerJsonCodec.parse(JSONObject())
+        val extra = saturatedAdd(base.estimatedExtraMs, deltaMs)
+        writeRecordLocked(
+            root,
+            packageName,
+            json,
+            base.copy(
+                mode = mode,
+                date = today,
+                windowStartMs = if (mode == MODE_INTERVAL) windowStartMs else base.windowStartMs,
+                usedMs = saturatedAdd(base.confirmedUsedMs, extra),
+                estimatedExtraMs = extra,
+            ),
+        )
+        true
+    }
+
+    fun addEstimatedOpen(packageName: String, today: String): Boolean = withLock {
+        val root = usageObjectLocked()
+        val json = root.optJSONObject(packageName) ?: JSONObject()
+        val record = AllowanceLedgerJsonCodec.parse(json)
+        val base = if (record.date == today) record else AllowanceLedgerJsonCodec.parse(JSONObject())
+        val extra = saturatedAdd(base.estimatedExtraOpens, 1)
+        writeRecordLocked(
+            root,
+            packageName,
+            json,
+            base.copy(
+                mode = MODE_COUNT,
+                date = today,
+                count = saturatedAdd(base.confirmedCount, extra),
+                estimatedExtraOpens = extra,
+            ),
+        )
+        true
+    }
+
+    fun recoverCheckpointTime(
+        packageName: String,
+        mode: String,
+        today: String,
+        windowStartMs: Long,
+        elapsedMs: Long,
+        maximumRecoveryMs: Long,
+    ): Long = withLock {
+        val recoveredMs = elapsedMs.coerceAtLeast(0L).coerceAtMost(maximumRecoveryMs)
+        if (recoveredMs == 0L) return@withLock 0L
+        if (
+            addEstimatedTimeUsage(
+                packageName = packageName,
+                mode = mode,
+                today = today,
+                windowStartMs = windowStartMs,
+                deltaMs = recoveredMs,
+            )
+        ) {
+            recoveredMs
+        } else {
+            0L
+        }
+    }
+
+    fun reconcileTimeUsage(
+        packageName: String,
+        mode: String,
+        today: String,
+        windowStartMs: Long,
+        usedMs: Long,
+        atMs: Long,
+    ): Boolean = withLock {
+        if (mode != MODE_TIME_BUDGET && mode != MODE_INTERVAL) return@withLock false
+        val root = usageObjectLocked()
+        val json = root.optJSONObject(packageName) ?: JSONObject()
+        val record = AllowanceLedgerJsonCodec.parse(json)
+        val samePeriod = if (mode == MODE_TIME_BUDGET) {
+            record.date == today
+        } else {
+            record.windowStartMs == windowStartMs && windowStartMs > 0L
+        }
+        val priorConfirmed = if (samePeriod) record.confirmedUsedMs else 0L
+        val priorEffective = if (samePeriod && record.confirmedAtMs <= 0L) {
+            record.usedMs
+        } else {
+            0L
+        }
+        val confirmed = maxOf(priorConfirmed, priorEffective, usedMs.coerceAtLeast(0L))
+        writeRecordLocked(
+            root,
+            packageName,
+            json,
+            record.copy(
+                mode = mode,
+                date = today,
+                windowStartMs = if (mode == MODE_INTERVAL) windowStartMs else record.windowStartMs,
+                usedMs = confirmed,
+                confirmedUsedMs = confirmed,
+                confirmedAtMs = maxOf(if (samePeriod) record.confirmedAtMs else 0L, atMs),
+                estimatedExtraMs = 0L,
+            ),
+        )
+        true
+    }
+
+    fun reconcileCountUsage(
+        packageName: String,
+        today: String,
+        count: Int,
+        atMs: Long,
+    ): Boolean = withLock {
+        val root = usageObjectLocked()
+        val json = root.optJSONObject(packageName) ?: JSONObject()
+        val record = AllowanceLedgerJsonCodec.parse(json)
+        val sameDay = record.date == today
+        val confirmed = maxOf(
+            if (sameDay) record.confirmedCount else 0,
+            if (sameDay) record.count else 0,
+            count.coerceAtLeast(0),
+        )
+        writeRecordLocked(
+            root,
+            packageName,
+            json,
+            record.copy(
+                mode = MODE_COUNT,
+                date = today,
+                count = confirmed,
+                confirmedCount = confirmed,
+                confirmedAtMs = maxOf(if (sameDay) record.confirmedAtMs else 0L, atMs),
+                estimatedExtraOpens = 0,
+            ),
+        )
+        true
+    }
+
     fun readAllowance(
         packageName: String,
         mode: String,
@@ -288,6 +473,7 @@ class AllowanceLedger internal constructor(
     companion object {
         const val PREFS_NAME = "focusday_prefs"
         const val PREF_DAILY_ALLOWANCE_USED = "daily_allowance_used"
+        const val MAX_ESTIMATED_SEGMENT_MS = 4L * 60 * 60 * 1_000L
 
         const val MODE_COUNT = "count"
         const val MODE_TIME_BUDGET = "time_budget"
@@ -295,5 +481,8 @@ class AllowanceLedger internal constructor(
 
         private fun saturatedAdd(left: Int, right: Int): Int =
             if (Int.MAX_VALUE - left < right) Int.MAX_VALUE else left + right
+
+        private fun saturatedAdd(left: Long, right: Long): Long =
+            if (Long.MAX_VALUE - left < right) Long.MAX_VALUE else left + right
     }
 }
