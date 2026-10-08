@@ -40,24 +40,24 @@ No other document is needed. All plan references below are to sections of v6.
 
 ## Batch 5.0 — Verify and measure
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
-**Completed:** <!-- YYYY-MM-DD -->
+**Status:** `IN PROGRESS`
+**Started:** 2026-10-08
+**Completed:** —
 
 ### Tasks
 
 **SDK floor (5.0a)**
-- [ ] Read `minSdk`, `compileSdk`, `targetSdk` from Gradle and record them below.
-- [ ] If `minSdk` < 29, raise it to 29 and verify the project still builds.
-- [ ] Add the Lint `NewApi` CI gate and run it on the current code; record all findings below.
+- [x] Read `minSdk`, `compileSdk`, `targetSdk` from Gradle and record them below.
+- [x] If `minSdk` < 29, raise it to 29 and verify the project still builds.
+- [x] Add the Lint `NewApi` CI gate and run it on the current code; record all findings below.
 
 **Writer/reader maps**
-- [ ] Map every writer and reader of `daily_allowance_used` (prefs key). Include `AppBlockerAccessibilityService`, `ForegroundTaskService`, `LauncherActivity`, `SettingsRepository`, backup/export, and anything else found. Record the map in `Notes`.
-- [ ] Map every writer and reader of `daily_app_usage` and `app_sessions` (Room). Include `BackgroundFetchWorker`, `AppUsageAndSessionTracker`, `DayRatingRepository`, `StatsViewModel`, detectors, and anything else found.
-- [ ] Map when `FindingDetectionRunner.runAll` is triggered (confirm it is `BackgroundFetchWorker.kt:138`).
-- [ ] Document exactly how `FindingRepository.submit` deduplicates (confirm the `(detectionType, subjectPackage)` + `evidenceFingerprint` path).
-- [ ] Record how the existing tracker dates a midnight-crossing session (confirm `epochMsToLocalDate(sessionStartWall)`).
-- [ ] Record exactly which code reads each of the four `ACTIVE_SESSION_*` keys and `daily_allowance_usage_stats_sync`, in both `AppBlockerAccessibilityService` and `ForegroundTaskService`.
+- [x] Map every writer and reader of `daily_allowance_used` (prefs key). Include `AppBlockerAccessibilityService`, `ForegroundTaskService`, `LauncherActivity`, `SettingsRepository`, backup/export, and anything else found. Record the map in `Notes`.
+- [x] Map every writer and reader of `daily_app_usage` and `app_sessions` (Room). Include `BackgroundFetchWorker`, `AppUsageAndSessionTracker`, `DayRatingRepository`, `StatsViewModel`, detectors, and anything else found.
+- [x] Map when `FindingDetectionRunner.runAll` is triggered (confirm it is `BackgroundFetchWorker.kt:138`).
+- [x] Document exactly how `FindingRepository.submit` deduplicates (confirm the `(detectionType, subjectPackage)` + `evidenceFingerprint` path).
+- [x] Record how the existing tracker dates a midnight-crossing session (confirm `epochMsToLocalDate(sessionStartWall)`).
+- [x] Record exactly which code reads each of the four `ACTIVE_SESSION_*` keys and `daily_allowance_usage_stats_sync`, in both `AppBlockerAccessibilityService` and `ForegroundTaskService`.
 
 **Device matrix** — run on API 29, 31, 33, 34, and the latest available (section 3.3)  
 For each case: record the device/API, what each source reported, and the diff.
@@ -83,35 +83,51 @@ For each case: record the device/API, what each source reported, and the diff.
 - [ ] Report all diffs between sources to the owner. Owner sets the acceptable tolerance. Record the tolerance here before proceeding.
 
 ### Notes
-<!-- SDK versions found: -->
-<!-- Writer/reader maps: -->
-<!-- Lint NewApi findings: -->
-<!-- O2 bridge allow-list decision: -->
-<!-- Tick interval chosen: -->
-<!-- Retention window measured: -->
-<!-- Owner-set tolerance: -->
+
+- SDK versions found: `minSdk = 29`, `compileSdk = 35`, `targetSdk = 35`; the minimum already meets the plan, so no SDK-floor change was needed.
+- `daily_allowance_used`: `AppBlockerAccessibilityService` reads/writes the JSON; `ForegroundTaskService` reads/writes it during allowance synchronization/fallback; `LauncherActivity` reads it for allowance-card data; `SettingsRepository` handles its settings snapshot/restore/reset paths. The portable backup envelope does not contain usage counters.
+- Room usage tables: `AppUsageAndSessionTracker` writes `daily_app_usage` and `app_sessions`; `DailyAppUsageDao` and `AppSessionDao` expose the rows; `FindingDetectionRunner`, `DayRatingRepository`, and `StatsViewModel` read them; `BackgroundFetchWorker` prunes rows older than 90 days. The portable backup does not include these Room tables.
+- `FindingDetectionRunner.runAll()` is guarded as a once-daily pass in `BackgroundFetchWorker.runDailyFindingDetection()`. `FindingRepository.submit()` looks up by detection type and subject package; active findings with changed fingerprints are resurfaced, identical fingerprints are not reinserted, intentional findings obey suppression/fingerprint rules, and resolved findings go through cooldown handling.
+- Legacy session rows use the local date of the session start and retain the full duration; hourly/daily usage is clipped at calendar boundaries. Closed session rows shorter than 1 second or longer than 4 hours are rejected, even though daily time continues to accumulate.
+- Session markers: `active_session_pkg` is read/written by the accessibility service and read by `ForegroundTaskService`; `active_session_open_at_ms` is managed by the accessibility service and read by `ForegroundTaskService` for interval fallback; `active_session_last_checkpoint_ms` is managed by the accessibility service and read by `ForegroundTaskService` for signal freshness; `active_session_end_ms` is written/read by the accessibility service and read through `SettingsRepository` restore state. `daily_allowance_usage_stats_sync` is written by both services and read by the accessibility service and `ForegroundTaskService`.
+- NewApi lint is configured as an error with abort-on-error and included in both flavor workflows. Local production and tbtechsdev lint reports say “No issues found”; GitHub Actions were not run.
+- O2 dialog/share-sheet allow-list is not decided; the event latency, retention window, query cost, and owner-set tolerance still require device evidence. Tick interval remains undecided.
 
 ### Evidence
-<!-- Item: [checkbox text] | Files: — | Verification: — | Result: — -->
+
+- Read SDK versions | Files: `app/build.gradle.kts` | Verification: inspected Gradle configuration | Result: `minSdk 29`, `compileSdk 35`, `targetSdk 35`; no floor change required.
+- Conditional SDK-floor task | Files: `app/build.gradle.kts` | Verification: compared `minSdk` with plan floor 29 | Result: condition was false; no Gradle edit or build caused by a floor change was needed.
+- NewApi lint gate | Files: `app/build.gradle.kts`, `.github/workflows/build-native-kotlin-apk.yml`, `.github/workflows/build-tbtechsdev-apk.yml` | Verification: inspected local lint reports for both flavors, dated 2026-10-08 | Result: both reports say “No issues found”; the CI workflow configuration exists, but neither GitHub workflow was run.
+- Allowance JSON map | Files: `AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `LauncherActivity.kt`, `SettingsRepository.kt`, backup sources | Verification: current-source search and inspection of the allowance readers/writers and backup path | Result: readers/writers and portable-backup exclusion recorded in Notes.
+- Room usage map | Files: `AppUsageAndSessionTracker.kt`, both usage DAOs, `FindingDetectionRunner.kt`, `DayRatingRepository.kt`, `StatsViewModel.kt`, `BackgroundFetchWorker.kt`, backup sources | Verification: current-source search and inspection | Result: writer, readers, 90-day pruning, and backup exclusion recorded in Notes.
+- Detector invocation and deduplication | Files: `BackgroundFetchWorker.kt`, `FindingDetectionRunner.kt`, `FindingRepository.kt` | Verification: inspected daily-run guard, `runAll()` call, and `submit()` branches | Result: invocation and fingerprint/cooldown behavior recorded in Notes.
+- Legacy session date | Files: `AppUsageAndSessionTracker.kt` | Verification: inspected session close and hourly-segmentation code | Result: session row date comes from its start; duration is stored whole if within the legacy 1-second-to-4-hour bounds; usage segments are clipped.
+- Session/sync-key map | Files: `AppBlockerAccessibilityService.kt`, `ForegroundTaskService.kt`, `SettingsRepository.kt` | Verification: searched every marker and sync-key reference in current Kotlin sources | Result: reads/writes and the interval fallback dependency are recorded in Notes.
+- Local JVM tests | Files: `scripts/test-unit.sh`, `app/build/test-results/testProductionDebugUnitTest/*.xml`, `app/build/test-results/testTbtechsdevDebugUnitTest/*.xml` | Verification: inspected persisted JUnit XML reports dated 2026-10-08 | Result: each flavor has 36 suites and 158 tests, with 0 failures, 0 errors, and 0 skipped tests.
 
 ### Failures and blockers
-<!-- None yet -->
+
+- Initial local NewApi lint attempt (`FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:lintProductionDebug :app:lintTbtechsdevDebug`) timed out during `:app:kspProductionDebugKotlin` before either lint task reported a result. Later persisted reports for both lint tasks show no issues; keep this failed attempt in the history.
+- Device matrix and performance measurements remain blocked: no emulator or physical test device is available in this workspace. Screen/event behavior, event latency, retention, query cost, and actual Stats output have not been measured.
+- No GitHub Actions or APK build was run.
 
 ### Decisions
-<!-- None yet -->
+
+- The owner chose to keep the planned order for the blocked device checks, then explicitly authorized starting Batch 5.1 while those checks remained open. Batch 5.0 therefore remains incomplete; the device evidence has not been waived.
+- No owner-set tolerance or O2 bridge allow-list has been established.
 
 ---
 
 ## Batch 5.1 — Characterization and pipeline tests
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
-**Completed:** <!-- YYYY-MM-DD -->
+**Status:** `BLOCKED`
+**Started:** 2026-10-08
+**Completed:** —
 
 ### Tasks
 
 **Test infrastructure**
-- [ ] Add a JVM test source set if one does not exist.
+- [x] Add a JVM test source set if one does not exist.
 
 **Pin current behavior before any cutover**
 - [ ] Tests that pin interval-window math as it exists today (start, expiry, remaining).
@@ -177,11 +193,22 @@ For each case: record the device/API, what each source reported, and the diff.
 
 ### Notes
 
+- The standard `app/src/test` source set and required JUnit, coroutine-test, JSON, and Room-testing dependencies already exist; no infrastructure edit was needed.
+- Current source has no `ForegroundSpanTracker`, `DeviceUsageSource`, read model/`cutoverDate`, `AllowanceLedger`, rollup entities/DAO, or detector-seam implementation. The plan assigns the allowance ledger to 5.2 and the pipeline/read model/rollups to 5.3.
+- No Batch 5.1 app-code or test edits have been made. Do not silently pull 5.2/5.3 implementation into this behavior-preserving test batch.
+
 ### Evidence
+
+- JVM test source set | Files: `app/src/test/`, `app/build.gradle.kts` | Verification: counted existing test files and inspected test dependencies | Result: source set exists with 39 test files; JUnit, coroutine-test, JSON, and Room-testing dependencies are present, so no setup change was needed.
 
 ### Failures and blockers
 
+- Blocked before app-code/test edits: the requested suites need production targets scheduled for 5.2/5.3. No authorization to move those implementations into 5.1 has been given.
+- Tracker validation initially flagged trailing whitespace in newly added status lines; it was removed and the final `git diff --check` passed. No app-code check was run for 5.1.
+
 ### Decisions
+
+- Preserve the plan’s phase boundaries unless the owner explicitly changes scope. Keep all suites requiring the absent production components unchecked until their implementation is authorized and available.
 
 ---
 
@@ -509,8 +536,8 @@ For each case: record the device/API, what each source reported, and the diff.
 
 | Batch | Status | Completed |
 |---|---|---|
-| 5.0 Verify and measure | NOT STARTED | — |
-| 5.1 Characterization and pipeline tests | NOT STARTED | — |
+| 5.0 Verify and measure | IN PROGRESS | — |
+| 5.1 Characterization and pipeline tests | BLOCKED | — |
 | 5.2 `AllowanceLedger` | NOT STARTED | — |
 | 5.3 Shadow pipeline and rollups | NOT STARTED | — |
 | 5.4 Allowance cutover | NOT STARTED | — |
