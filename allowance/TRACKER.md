@@ -553,6 +553,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Continuation audit (2026-10-08):** The owner explicitly resumed Batch 5. Current checkout is `2114f33` on `main`, aligned with `origin/main`; only the supplied instruction files were untracked at the start. Source review confirmed the pipeline-backed Stats source, Group B read-model wiring, completed-day detector ranges, legacy-writer stabilization gate, and rollup-before-detector ordering. Added missing midnight-session coverage for all seven detector windows, phone-usage builder tests for summary-only and hourly-only snapshots, a pre-cutover substitution-output equivalence test, and a task-only rating-date test. Fixed two production compilation defects found during verification. Both local flavor suites now pass; device-only checks remain open.
 
+**Owner-requested completion audit (2026-10-08):** The current checkout has no tracked worktree changes and is one commit ahead of `origin/main`. Rechecked the Batch 5 production wiring and tests. The Stats one-pass source, completed-day detector windows, read-model seams, rating/data-health dates, and rollup-before-detector ordering are present. Found one plan gap: detector history did not fall back to complete on-demand pipeline dates when a post-cutover rollup was missing or partial, despite the Group B precedence contract. Also found the legacy detector branch did not apply the repository's completed-day clamp to app-day rows when called with an end date of today. Implementing both fixes and focused coverage; device/API-matrix checks cannot be confirmed until Android devices or emulators are available.
+
 <!-- Stabilization window end date: -->
 
 ### Evidence

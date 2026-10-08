@@ -33,6 +33,12 @@ data class DeviceStatsRollupDay(
     val appDays: List<UsageHistoryAppDay>,
 )
 
+data class OnDemandDetectorUsage(
+    val completeDates: Set<String>,
+    val appDays: List<AppUsageRangeRow>,
+    val sessions: List<AppSessionEntity>,
+)
+
 /**
  * Central store boundary for legacy and pipeline history. Default pipeline
  * methods keep pure legacy test stores small; Room supplies the rollup reads.
@@ -50,6 +56,10 @@ interface UsageHistoryStore {
         rollupDays(startDate, endDate).flatMap { rollupAppDays(it.date) }
     suspend fun rollupSessions(startDate: String, endDate: String): List<UsageRollupSessionEntity> =
         emptyList()
+    suspend fun onDemandDetectorUsage(
+        startDate: String,
+        endDate: String,
+    ): OnDemandDetectorUsage? = null
     suspend fun liveHasSessionToday(date: String): Boolean = false
     suspend fun onDemandUsageDates(startDate: String, endDate: String): Set<String> = emptySet()
     suspend fun setCutoverDateIfShadowMature(
@@ -114,7 +124,7 @@ class UsageHistoryRepository(
         if (UsageHistorySourcePolicy.crossesSeam(startDate, completedEndDate, cutoverDate)) return null
         if (cutoverDate == null || completedEndDate < cutoverDate) {
             return DetectorUsageHistory(
-                appDays = store.legacyAppDays(startDate, endDate).map { row ->
+                appDays = store.legacyAppDays(startDate, completedEndDate).map { row ->
                     AppUsageRangeRow(
                         packageName = row.packageName,
                         appName = row.appName,
@@ -135,6 +145,16 @@ class UsageHistoryRepository(
             .filter { it.status == UsageRollupDayEntity.COMPLETE }
             .map { it.date }
             .toSet()
+        val onDemand = if (
+            generateSequence(LocalDate.parse(startDate)) { it.plusDays(1) }
+                .takeWhile { it.toString() <= completedEndDate }
+                .any { it.toString() !in completeDates }
+        ) {
+            store.onDemandDetectorUsage(startDate, completedEndDate)
+        } else {
+            null
+        }
+        val onDemandDates = onDemand?.completeDates.orEmpty() - completeDates
         val appDays = store.rollupAppDays(startDate, completedEndDate)
             .filter { it.date in completeDates }
             .map { row ->
@@ -148,7 +168,7 @@ class UsageHistoryRepository(
                     launchCount = row.launchCount,
                     lastUsedAt = row.lastUsedAtMs,
                 )
-            }
+            } + onDemand?.appDays.orEmpty().filter { it.date in onDemandDates }
         val sessions = store.rollupSessions(startDate, completedEndDate)
             .filter { it.localDate in completeDates }
             .map { row ->
@@ -160,7 +180,7 @@ class UsageHistoryRepository(
                     durationMs = row.durationMs,
                     localDate = row.localDate,
                 )
-            }
+            } + onDemand?.sessions.orEmpty().filter { it.localDate in onDemandDates }
         val names = appDays.associate { it.packageName to it.appName }
         return DetectorUsageHistory(
             appDays = appDays,
@@ -307,6 +327,12 @@ class RoomUsageHistoryStore(
     private val liveTracker = ForegroundSpanTracker(
         excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + packageName,
     )
+    private val detectorUsageReader = OnDemandDetectorUsageReader(
+        eventSource = eventSource,
+        packageName = packageName,
+        resolveAppName = { UsageAppMetadata.resolveAppName(context, it) },
+        resolveCategory = { UsageAppMetadata.resolveCategory(context, it) },
+    )
 
     override suspend fun legacyAppDays(
         startDate: String,
@@ -349,6 +375,11 @@ class RoomUsageHistoryStore(
         startDate: String,
         endDate: String,
     ): List<UsageRollupSessionEntity> = usageRollupDao.getSessions(startDate, endDate)
+
+    override suspend fun onDemandDetectorUsage(
+        startDate: String,
+        endDate: String,
+    ): OnDemandDetectorUsage? = detectorUsageReader.read(startDate, endDate)
 
     override suspend fun setCutoverDateIfShadowMature(
         cutoverDate: String,
