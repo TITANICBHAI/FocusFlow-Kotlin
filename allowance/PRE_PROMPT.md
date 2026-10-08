@@ -19,6 +19,7 @@ Then read the current project instructions, inspect the relevant current source,
 - Respect the plan's no-touch list unless the user explicitly changes the scope.
 - Treat task replacement and any other deletion of user data as destructive. Keep replacement disabled by default, preserve explicit confirmation and required safety guards, and do not perform destructive actions without the user's authorization.
 - Run Gradle tests, or Android tests(leave apk building out of these two and no apk building on replit) on Replit by using the current workflow or scripts under `scripts/`. If verification is needed, use GitHub Actions only when the user explicitly requests APK-building verification. Otherwise state clearly that those checks were not run.
+- You shall run test for only one flavour (meaning the production one's test only) becauses they are fundamentally same thing and hence even if run the same test twice but with diff flavour equals to same results.
 - Do not push to GitHub or start, poll, or monitor GitHub Actions unless the user explicitly asks.
 - Do not expose, copy into files, or print secrets or credentials.
 - The plan is the implementation contract, not authorization by itself. Do not begin app-code implementation until the user explicitly authorizes it. If the requested scope or authorization is unclear, stop before changing app code and ask.

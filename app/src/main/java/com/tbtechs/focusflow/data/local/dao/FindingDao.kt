@@ -22,6 +22,35 @@ interface FindingDao {
     """)
     suspend fun getActiveFindings(): List<FindingEntity>
 
+    @Query("""
+        UPDATE findings SET state = CASE
+            WHEN (
+                SELECT response FROM finding_acknowledgements
+                WHERE finding_id = findings.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) = 'aware' THEN 'aware'
+            ELSE 'seen'
+        END
+        WHERE state = 'detected'
+          AND COALESCE((
+              SELECT response FROM finding_acknowledgements
+              WHERE finding_id = findings.id
+              ORDER BY created_at DESC, id DESC
+              LIMIT 1
+          ), '') != 'intentional'
+          AND (
+              seen_at IS NOT NULL
+              OR (
+                  SELECT response FROM finding_acknowledgements
+                  WHERE finding_id = findings.id
+                  ORDER BY created_at DESC, id DESC
+                  LIMIT 1
+              ) = 'aware'
+          )
+    """)
+    suspend fun restorePreviouslySeenFindings()
+
     @Query("SELECT * FROM findings WHERE state = 'detected' ORDER BY first_detected_at DESC LIMIT 1")
     suspend fun getMostRecentDetected(): FindingEntity?
 
@@ -57,6 +86,23 @@ interface FindingDao {
     """)
     suspend fun resurface(
         id: String,
+        fingerprint: String,
+        evidenceJson: String,
+        headline: String,
+        body: String,
+        evidenceLine: String,
+        now: String,
+    )
+
+    @Query("""
+        UPDATE findings SET state = :state,
+        evidence_fingerprint = :fingerprint, evidence_json = :evidenceJson,
+        headline = :headline, body = :body, evidence_line = :evidenceLine,
+        last_updated_at = :now WHERE id = :id
+    """)
+    suspend fun updateEvidenceInPlace(
+        id: String,
+        state: String,
         fingerprint: String,
         evidenceJson: String,
         headline: String,

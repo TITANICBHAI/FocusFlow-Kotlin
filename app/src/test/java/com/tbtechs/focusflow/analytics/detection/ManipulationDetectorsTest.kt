@@ -7,6 +7,8 @@ import com.tbtechs.focusflow.data.local.entity.AppSessionEntity
 import com.tbtechs.focusflow.data.local.entity.DayRatingEntity
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -71,6 +73,172 @@ class ManipulationDetectorsTest {
                 mapOf("video" to "utility"),
             ),
         )
+    }
+
+    @Test
+    fun inflatedSixHourSessionFindingDisappearsWhenPipelineSplitsObservedForeground() {
+        val firstDay = LocalDate.of(2026, 7, 1)
+        val sixHourStart = firstDay.atTime(23, 50).toInstant(ZoneOffset.UTC)
+        val oldSessions = buildList {
+            add(datedSession("video", sixHourStart, 6 * 60 * 60_000L))
+            (1..13).forEach { dayOffset ->
+                add(
+                    datedSession(
+                        "video",
+                        firstDay.plusDays(dayOffset.toLong()).atTime(9, 0)
+                            .toInstant(ZoneOffset.UTC),
+                        60_000L,
+                    ),
+                )
+            }
+        }
+        val pipelineSessions = buildList {
+            repeat(12) { part ->
+                add(
+                    datedSession(
+                        "video",
+                        sixHourStart.plusSeconds(part * 30 * 60L),
+                        30 * 60_000L,
+                    ),
+                )
+            }
+            (1..13).forEach { dayOffset ->
+                add(
+                    datedSession(
+                        "video",
+                        firstDay.plusDays(dayOffset.toLong()).atTime(8, 0)
+                            .toInstant(ZoneOffset.UTC),
+                        60_000L,
+                    ),
+                )
+            }
+        }
+        val categories = mapOf("video" to "entertainment")
+        val appNames = mapOf("video" to "Video")
+
+        val oldFinding = detectInfiniteSessionDesign(
+            dailyStats = sessionStatsFrom(oldSessions),
+            rawSessionsByPackage = mapOf("video" to oldSessions),
+            appNames = appNames,
+            categories = categories,
+        )
+        val pipelineFinding = detectInfiniteSessionDesign(
+            dailyStats = sessionStatsFrom(pipelineSessions),
+            rawSessionsByPackage = mapOf("video" to pipelineSessions),
+            appNames = appNames,
+            categories = categories,
+        )
+
+        assertNotNull("The old six-hour row reproduces the inflated finding", oldFinding)
+        assertEquals(373 * 60_000L, oldSessions.sumOf { it.durationMs })
+        assertEquals(oldSessions.sumOf { it.durationMs }, pipelineSessions.sumOf { it.durationMs })
+        assertEquals(14, sessionStatsFrom(pipelineSessions).size)
+        assertNull("Observed shorter sessions no longer meet the infinite-session rule", pipelineFinding)
+    }
+
+    @Test
+    fun midnightSessionIsAttributedOnceInMorningVariableAndInfiniteDetectors() {
+        val startDate = LocalDate.of(2026, 8, 1)
+        val nextDate = startDate.plusDays(1)
+        val midnightStart = startDate.atTime(23, 50).toInstant(ZoneOffset.UTC)
+        val midnightEndMs = midnightStart.toEpochMilli() + 30 * 60_000L
+        val morningSessions = buildList {
+            add(datedSession("social", midnightStart, 30 * 60_000L))
+            (1..6).forEach { dayOffset ->
+                val date = startDate.plusDays(dayOffset.toLong())
+                add(
+                    datedSession(
+                        if (dayOffset == 1) "calendar" else "social",
+                        date.atTime(7, 0).toInstant(ZoneOffset.UTC),
+                        60_000L,
+                    ),
+                )
+            }
+        }
+        val firstSessions = morningSessions.groupBy { it.localDate }
+            .map { (date, rows) ->
+                val first = rows.minBy { it.startedAt }
+                FirstSessionRow(date, first.packageName, first.appName, first.startedAt)
+            }
+            .sortedBy { it.localDate }
+        val morning = detectMorningHijack(
+            firstSessions,
+            mapOf("social" to "social", "calendar" to "utility"),
+        )
+
+        val variableSessions = buildList {
+            (0 until 10).forEach { dayOffset ->
+                val date = startDate.plusDays(dayOffset.toLong())
+                repeat(5) { sessionIndex ->
+                    val isMidnightSession = dayOffset == 0 && sessionIndex == 4
+                    add(
+                        datedSession(
+                            "variable",
+                            if (isMidnightSession) {
+                                midnightStart
+                            } else {
+                                date.atTime(7, sessionIndex * 10).toInstant(ZoneOffset.UTC)
+                            },
+                            if (isMidnightSession) 30 * 60_000L else 60_000L,
+                        ),
+                    )
+                }
+            }
+        }
+        val variable = detectVariableRewardLoop(
+            dailyStats = sessionStatsFrom(variableSessions),
+            rawSessionsByPackage = mapOf("variable" to variableSessions),
+            appNames = mapOf("variable" to "Variable"),
+        )
+
+        val infiniteSessions = buildList {
+            (1..13).forEach { dayOffset ->
+                add(
+                    datedSession(
+                        "video",
+                        startDate.plusDays(dayOffset.toLong()).atTime(8, 0)
+                            .toInstant(ZoneOffset.UTC),
+                        60_000L,
+                    ),
+                )
+            }
+            (1..10).forEach { dayOffset ->
+                add(
+                    datedSession(
+                        "video",
+                        startDate.plusDays(dayOffset.toLong()).atTime(10, 0)
+                            .toInstant(ZoneOffset.UTC),
+                        60_000L,
+                    ),
+                )
+            }
+            add(datedSession("video", midnightStart, 6 * 60 * 60_000L))
+        }
+        val infinite = detectInfiniteSessionDesign(
+            dailyStats = sessionStatsFrom(infiniteSessions),
+            rawSessionsByPackage = mapOf("video" to infiniteSessions),
+            appNames = mapOf("video" to "Video"),
+            categories = mapOf("video" to "entertainment"),
+        )
+
+        assertTrue(midnightEndMs > nextDate.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
+        assertEquals(startDate.toString(), morningSessions.first().localDate)
+        assertEquals(7, firstSessions.size)
+        assertNotNull(morning)
+        assertEquals(6, morning!!.qualifyingDates.size)
+        assertFalse(nextDate.toString() in morning.qualifyingDates)
+        assertEquals(50, variableSessions.size)
+        assertEquals(50, sessionStatsFrom(variableSessions).sumOf { it.sessionCount })
+        assertNotNull(variable)
+        assertTrue(variable!!.evidenceLine.contains("50 sessions"))
+        assertEquals(24, infiniteSessions.size)
+        assertEquals(24, sessionStatsFrom(infiniteSessions).sumOf { it.sessionCount })
+        assertEquals(
+            startDate.toString(),
+            infiniteSessions.single { it.durationMs == 6 * 60 * 60_000L }.localDate,
+        )
+        assertNotNull(infinite)
+        assertTrue(infinite!!.evidenceLine.contains("24 sessions"))
     }
 
     @Test
@@ -208,9 +376,9 @@ class ManipulationDetectorsTest {
     }
 
     @Test
-    fun allowanceSuggestionUsesRatedDaysEligibilityThresholdsAndStrongestGap() {
+    fun allowanceSuggestionUsesCompletedAllDayUsageForManualLimitCalculation() {
         val today = LocalDate.of(2026, 6, 28)
-        val ratedDays = (0..7).map { today.minusDays(it.toLong()) }
+        val ratedDays = (1..8).map { today.minusDays(it.toLong()) }
         val ratings = ratedDays.mapIndexed { index, date ->
             rating(date, if (index < 5) 8 else 3)
         }
@@ -310,6 +478,36 @@ class ManipulationDetectorsTest {
             durationMs = durationMs,
             localDate = "2026-01-01",
         )
+
+    private fun datedSession(
+        packageName: String,
+        startedAt: Instant,
+        durationMs: Long,
+    ) = AppSessionEntity(
+        id = startedAt.toEpochMilli(),
+        packageName = packageName,
+        appName = packageName,
+        startedAt = startedAt.toEpochMilli(),
+        endedAt = startedAt.toEpochMilli() + durationMs,
+        durationMs = durationMs,
+        localDate = startedAt.atZone(ZoneOffset.UTC).toLocalDate().toString(),
+    )
+
+    private fun sessionStatsFrom(sessions: List<AppSessionEntity>): List<SessionStatRow> =
+        sessions.groupBy { it.packageName to it.localDate }
+            .map { (key, rows) ->
+                val durations = rows.map { it.durationMs }
+                SessionStatRow(
+                    packageName = key.first,
+                    localDate = key.second,
+                    sessionCount = durations.size,
+                    avgDurationMs = durations.average(),
+                    minDurationMs = durations.min(),
+                    maxDurationMs = durations.max(),
+                    totalMs = durations.sum(),
+                )
+            }
+            .sortedBy { it.localDate }
 
     private fun usageRow(
         packageName: String,

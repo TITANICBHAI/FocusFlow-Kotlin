@@ -121,6 +121,7 @@ On each: service starts at app open and after reboot; card appears and returns a
 | D7 | **Today is never stored.** It is always the live pipeline. | **New in v5** |
 | D8 | **A session is never split.** One row per `(package, started_at)`, attributed to its start date. Daily time and hourly buckets are clipped across days. | **New in v5** |
 | D9 | The allowance ledger keeps a **confirmed value, an accumulated estimate and a live-session marker**. | **New in v5** |
+| D10 | A changed evidence fingerprint updates the existing finding quietly, preserving seen/aware state for persisted and future findings. Intentional-suppression deadlines and resolved-finding cooldowns remain unchanged. | **Decided 2026-10-08** |
 
 Open items (defaults apply if not answered):
 
@@ -393,7 +394,8 @@ At cutover the rollups only hold the few recent days the OS still has, so a dete
 - A window **crosses the seam** when `start < cutoverDate <= end` (6.4). Detectors compute this from the read model, not from guesses.
 - **Default (strict):** a detector evaluates only windows that do not cross the seam. A window entirely after the seam needs enough pipeline days for its minimum; otherwise the detector returns "not enough consistent data yet". Trend detectors (escalating capture, substitution, streak lock-in, allowance suggestion) can stay silent for up to about four weeks after cutover. A window entirely before the seam is legacy and unchanged.
 - **Optional relaxation (O6):** use the shadow period (Batch 3) to compare both sources on the same completed days. If per-app daily totals agree within a tolerance the owner sets, allow mixing for detectors whose inputs are totals (not session shapes).
-- **Fingerprints:** findings are deduplicated by an evidence fingerprint that includes sample size and a quantized metric. After cutover the same pattern may produce a new fingerprint and be shown again. Check `FindingRepository.submit` behavior in Batch 0 and keep fingerprint inputs unchanged.
+- **Fingerprints:** findings are deduplicated by an evidence fingerprint that includes sample size and a quantized metric. Keep fingerprint inputs unchanged. If an existing non-resolved finding gets a different fingerprint, update its evidence on the same record without resetting its detected/seen/aware state or inserting another row. For rows resurfaced by the old behavior, restore seen/aware state from `seen_at` or the latest acknowledgement before returning active findings. Do not restore rows whose latest acknowledgement was intentional; their 60-day suppression deadline remains authoritative. Resolved-finding cooldowns also remain unchanged. This applies to existing database rows and future submissions.
+- **Release-note draft for the next app version:** “Findings you’ve already seen update quietly when their evidence changes, instead of reappearing just because the evidence fingerprint changed.”
 - Pure tests per detector: a window before the seam passes; a window after the seam with enough days passes; a window crossing the seam is refused; today is excluded; a midnight-crossing session is counted once.
 - **(verify)** when `runAll` is triggered, so detector runs and rollup runs do not race. Run detectors after the rollup pass.
 
@@ -485,7 +487,7 @@ Tests added in this batch: detector seam tests (8.4) — five tests per detector
 
 ### Batch 6 — Allowance suggestion and detector verification
 
-Run the seven detectors against recorded data on both sides of the seam. Confirm: no findings from windows that cross the seam, expected disappearance of inflated "infinite session" findings, no duplicate findings from changed fingerprints, a midnight-crossing session counted once, and that the suggested allowance matches enforcement units.
+Run the seven detectors against recorded data on both sides of the seam. Confirm: no findings from windows that cross the seam, expected disappearance of inflated "infinite session" findings, quiet in-place updates for changed fingerprints without re-showing seen/aware findings, a midnight-crossing session counted once, and that the suggested allowance matches enforcement units.
 
 ### Batch 7 — Version-gate cleanup and final cleanup (behavior-preserving)
 
@@ -510,7 +512,7 @@ Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow lo
 - **Lost estimate on restart:** bounded by the checkpoint interval and the 2× restart cap (7.3). The pipeline corrects it on the next read.
 - **Estimate over- or under-count:** corrected at reconcile; the confirmed value never decreases (7.4).
 - **Detector silence after cutover:** expected for up to about four weeks under the strict seam rule (O6). Tell the owner before release.
-- **Findings reappearing** after fingerprint changes (8.4).
+- **Finding state recovery after older fingerprint resurfaces** (8.4): use persisted `seen_at` and latest acknowledgement; do not override an active intentional deadline.
 - **Rollback after the stabilization window** leaves a legacy gap (6.6).
 - **Locked boot:** null from `queryEvents` must never reset usage to zero.
 - **Split-screen / multi-resume:** "one foreground package" credits only the last resumed app. Document it; decide from Batch 0.

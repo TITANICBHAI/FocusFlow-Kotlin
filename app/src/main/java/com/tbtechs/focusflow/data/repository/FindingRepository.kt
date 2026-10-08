@@ -19,7 +19,11 @@ class FindingRepository(
     }
 
     suspend fun getActiveFindings(): List<FindingEntity> =
-        runCatching { findingDao.getActiveFindings() }.getOrDefault(emptyList())
+        runCatching {
+            findingDao.restorePreviouslySeenFindings()
+            findingDao.getActiveFindings()
+        }.onFailure { Log.e(TAG, "getActiveFindings failed", it) }
+            .getOrDefault(emptyList())
 
     suspend fun submit(finding: FindingEntity): Boolean = runCatching {
         val existing = findingDao.getExisting(finding.detectionType, finding.subjectPackage)
@@ -41,7 +45,11 @@ class FindingRepository(
             existing.state == "resolved" -> insertIfCooldownElapsed(finding)
             else -> {
                 if (existing.evidenceFingerprint != finding.evidenceFingerprint) {
-                    resurface(existing.id, finding)
+                    updateEvidenceInPlace(
+                        id = existing.id,
+                        state = stateAfterFingerprintChange(existing),
+                        finding = finding,
+                    )
                 }
                 false
             }
@@ -122,6 +130,35 @@ class FindingRepository(
             evidenceLine = finding.evidenceLine,
             now = now(),
         )
+    }
+
+    private suspend fun updateEvidenceInPlace(
+        id: String,
+        state: String,
+        finding: FindingEntity,
+    ) {
+        findingDao.updateEvidenceInPlace(
+            id = id,
+            state = state,
+            fingerprint = finding.evidenceFingerprint,
+            evidenceJson = finding.evidenceJson,
+            headline = finding.headline,
+            body = finding.body,
+            evidenceLine = finding.evidenceLine,
+            now = now(),
+        )
+    }
+
+    private suspend fun stateAfterFingerprintChange(existing: FindingEntity): String {
+        if (existing.state != "detected") return existing.state
+
+        val latestResponse = ackDao.getForFinding(existing.id).firstOrNull()?.response
+        return when {
+            latestResponse == "intentional" -> "detected"
+            latestResponse == "aware" -> "aware"
+            existing.seenAt != null -> "seen"
+            else -> "detected"
+        }
     }
 
     private fun now(): String = Instant.now().toString()
