@@ -93,6 +93,96 @@ class AllowanceUsageAccumulatorTest {
         assertEquals(20 * MINUTE_MS, usage.usedMs)
     }
 
+    @Test
+    fun segmentEstimatesOnlyTimeAfterTheLastSuccessfulRead() {
+        val ledger = AllowanceLedger(MemoryStore())
+        val sessionStart = day.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val confirmedAt = sessionStart + 5 * MINUTE_MS
+        ledger.reconcileTimeUsage(
+            packageName = "pkg",
+            mode = AllowanceLedger.MODE_TIME_BUDGET,
+            today = "2026-10-08",
+            windowStartMs = 0L,
+            usedMs = 5 * MINUTE_MS,
+            atMs = confirmedAt,
+        )
+        val accumulator = AllowanceUsageAccumulator(ledger, zone)
+
+        accumulator.start(sessionStart, confirmedAt)
+        accumulator.finish(target, confirmedAt + 30_000L)
+
+        assertEquals(30_000L, ledger.usage("pkg").estimatedExtraMs)
+        assertEquals(5 * MINUTE_MS + 30_000L, ledger.usage("pkg").usedMs)
+    }
+
+    @Test
+    fun estimatesSurviveFreshSegmentsAndRemainMonotonicAcrossHigherLowerAndEqualReads() {
+        val ledger = AllowanceLedger(MemoryStore())
+        val start = day.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        ledger.reconcileTimeUsage(
+            packageName = "pkg",
+            mode = AllowanceLedger.MODE_TIME_BUDGET,
+            today = "2026-10-08",
+            windowStartMs = 0L,
+            usedMs = 10 * MINUTE_MS,
+            atMs = start,
+        )
+        val accumulator = AllowanceUsageAccumulator(ledger, zone)
+        accumulator.start(start, start)
+        accumulator.successfulRead(start)
+        accumulator.finish(target, start + 30_000L)
+
+        assertEquals(AllowanceUsageFreshness.FRESH, AllowanceUsageFreshnessReducer.reduce(
+            hasUsageAccess = true,
+            lastSuccessfulReadAtMs = start,
+            unlockedAtMs = start,
+            nowMs = start + 30_000L,
+        ))
+        assertEquals(30_000L, ledger.usage("pkg").estimatedExtraMs)
+
+        ledger.reconcileTimeUsage(
+            "pkg", AllowanceLedger.MODE_TIME_BUDGET, "2026-10-08", 0L,
+            12 * MINUTE_MS, start + MINUTE_MS,
+        )
+        assertEquals(12 * MINUTE_MS, ledger.usage("pkg").confirmedUsedMs)
+        assertEquals(0L, ledger.usage("pkg").estimatedExtraMs)
+
+        ledger.addEstimatedTimeUsage(
+            "pkg", AllowanceLedger.MODE_TIME_BUDGET, "2026-10-08", 0L, 5_000L,
+        )
+        ledger.reconcileTimeUsage(
+            "pkg", AllowanceLedger.MODE_TIME_BUDGET, "2026-10-08", 0L,
+            11 * MINUTE_MS, start + 2 * MINUTE_MS,
+        )
+        assertEquals(12 * MINUTE_MS, ledger.usage("pkg").confirmedUsedMs)
+        assertEquals(0L, ledger.usage("pkg").estimatedExtraMs)
+
+        ledger.addEstimatedTimeUsage(
+            "pkg", AllowanceLedger.MODE_TIME_BUDGET, "2026-10-08", 0L, 5_000L,
+        )
+        ledger.reconcileTimeUsage(
+            "pkg", AllowanceLedger.MODE_TIME_BUDGET, "2026-10-08", 0L,
+            12 * MINUTE_MS, start + 3 * MINUTE_MS,
+        )
+        assertEquals(12 * MINUTE_MS, ledger.usage("pkg").confirmedUsedMs)
+        assertEquals(0L, ledger.usage("pkg").estimatedExtraMs)
+        assertEquals(12 * MINUTE_MS, ledger.usage("pkg").usedMs)
+    }
+
+    @Test
+    fun countReconciliationKeepsConfirmedOpensAndResetsEstimatedOpens() {
+        val ledger = AllowanceLedger(MemoryStore())
+        ledger.reconcileCountUsage("pkg", "2026-10-08", count = 2, atMs = 1_000L)
+        ledger.addEstimatedOpen("pkg", "2026-10-08")
+
+        assertEquals(3, ledger.usage("pkg").count)
+        ledger.reconcileCountUsage("pkg", "2026-10-08", count = 1, atMs = 2_000L)
+
+        assertEquals(2, ledger.usage("pkg").confirmedCount)
+        assertEquals(0, ledger.usage("pkg").estimatedExtraOpens)
+        assertEquals(2, ledger.usage("pkg").count)
+    }
+
     private class MemoryStore : AllowanceLedgerStore {
         private var current: String? = null
         val history = mutableListOf<String>()

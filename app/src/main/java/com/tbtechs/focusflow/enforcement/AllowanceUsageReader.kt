@@ -11,6 +11,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 
+private fun createPlatformEventSource(
+    context: Context,
+): suspend (Long, Long) -> UsageEventRead {
+    val source = UsageStatsRepository(context.applicationContext)
+    return { startMs, endMs -> source.readForegroundEvents(startMs, endMs) }
+}
+
 internal data class AllowanceUsageReadOutcome(
     val read: UsageEventRead,
     val activeSessionStartedAtMs: Long? = null,
@@ -19,15 +26,28 @@ internal data class AllowanceUsageReadOutcome(
 
 /** Performs the UsageEvents read and reconciles every configured allowance. */
 internal class AllowanceUsageReader(
-    context: Context,
+    private val readEvents: suspend (Long, Long) -> UsageEventRead,
+    packageName: String,
     private val ledger: AllowanceLedger,
     private val zoneId: ZoneId,
     private val onReconciled: (String) -> Unit,
+    private val readTimeoutMs: Long = READ_TIMEOUT_MS,
 ) {
-    private val appContext = context.applicationContext
-    private val source = UsageStatsRepository(appContext)
+    constructor(
+        context: Context,
+        ledger: AllowanceLedger,
+        zoneId: ZoneId,
+        onReconciled: (String) -> Unit,
+    ) : this(
+        readEvents = createPlatformEventSource(context),
+        packageName = context.applicationContext.packageName,
+        ledger = ledger,
+        zoneId = zoneId,
+        onReconciled = onReconciled,
+    )
+
     private val tracker = ForegroundSpanTracker(
-        excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + appContext.packageName,
+        excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + packageName,
     )
 
     suspend fun readAndReconcile(
@@ -37,8 +57,8 @@ internal class AllowanceUsageReader(
         activePackage: String?,
     ): AllowanceUsageReadOutcome {
         val read = try {
-            withTimeout(READ_TIMEOUT_MS) {
-                source.readForegroundEvents(queryStartMs, nowMs)
+            withTimeout(readTimeoutMs) {
+                readEvents(queryStartMs, nowMs)
             }
         } catch (_: TimeoutCancellationException) {
             UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.EVENTS_UNAVAILABLE)

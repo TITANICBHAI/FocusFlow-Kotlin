@@ -193,7 +193,6 @@ class AllowanceLedger internal constructor(
         val sameDay = record.date == today
         val confirmed = maxOf(
             if (sameDay) record.confirmedCount else 0,
-            if (sameDay) record.count else 0,
             count.coerceAtLeast(0),
         )
         writeRecordLocked(

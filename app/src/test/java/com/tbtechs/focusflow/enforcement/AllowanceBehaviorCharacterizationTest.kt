@@ -47,7 +47,7 @@ class AllowanceBehaviorCharacterizationTest {
         val openRecording = method(
             accessibilitySource,
             "private fun recordAllowanceOpen(",
-            "\n    private fun accumulateTimedUsage(",
+            "\n    private fun scheduleTimedExpiry(",
         )
         val unlockRemaining = between(
             accessibilitySource,
@@ -66,7 +66,7 @@ class AllowanceBehaviorCharacterizationTest {
         )
 
         assertContains(availability, "readAllowance(pkg, entry, now).exhausted")
-        assertContains(openRecording, "allowanceLedger.recordOpen(")
+        assertContains(openRecording, "readAllowance(pkg, entry, now).remaining")
         assertContains(unlockRemaining, "readAllowance(pkg, entry, now).remaining")
         assertContains(fallback, "allowanceLedger.readAllowance(")
         assertContains(launcher, "allowanceLedger.readAllowance(")

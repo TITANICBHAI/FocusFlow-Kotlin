@@ -97,4 +97,24 @@ class AllowanceUsageTimeAccountingTest {
             ).isEmpty(),
         )
     }
+
+    @Test
+    fun absentOrInvalidCheckpointCannotInventRecoveryTime() {
+        assertEquals(
+            0L,
+            AllowanceUsageTimeAccounting.recoverableEnd(
+                checkpointAtMs = 0L,
+                nowMs = 100_000L,
+                maximumRecoveryMs = AllowanceUsageCoordinator.MAX_RECOVERABLE_CHECKPOINT_GAP_MS,
+            ),
+        )
+        assertEquals(
+            1_000L,
+            AllowanceUsageTimeAccounting.recoverableEnd(
+                checkpointAtMs = 1_000L,
+                nowMs = 900L,
+                maximumRecoveryMs = AllowanceUsageCoordinator.MAX_RECOVERABLE_CHECKPOINT_GAP_MS,
+            ),
+        )
+    }
 }

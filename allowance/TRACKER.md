@@ -453,9 +453,17 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Continuation update (2026-10-08):** The current checkout already wires `AllowanceUsageCoordinator` into `AppBlockerAccessibilityService`, routes foreground/screen/configuration/service lifecycle events, retains the three required session keys, removes the polling-sync key from both services, and updates the all-day explanatory copy plus launcher “About” marker. This was verified by source inspection; no tracker checkbox is checked from inspection alone. Identified two accounting defects: a stale checkpoint crossing local midnight could discard the preceding day’s tail, and repeated checkpoints could exceed the four-hour cap for one continuous session. Added a pure calendar-slicing/cap helper and JVM cases; implementation and verification are still in progress.
 
+**Continuation audit (2026-10-08):** The working tree initially contained no tracked modifications; the only untracked file was the user-supplied instruction note. Reconfirmed coordinator wiring, all-day copy, the three retained session keys, and the absence of references to `active_session_open_at_ms` and `daily_allowance_usage_stats_sync`. The production integration exists, but the Batch 4 checklist remains open pending test coverage, local verification, and device-only checks. An initial local test invocation was stopped after the reader test seam was added while the bootstrap was still running; it produced no Gradle test result. A complete final local run is pending.
+
+**Test-gap work (2026-10-08):** The existing reader converts timeouts and exceptions to unknown results but was coupled directly to `Context`/`UsageStatsRepository`, preventing deterministic JVM verification that unknown reads preserve the ledger. Add a narrow injected event-read seam and tests for unknown/failure paths plus reconcile, count, and checkpoint edge cases; do not change read-source or enforcement behavior.
+
+**Failure corrections (2026-10-08):** Count reconciliation now keeps only the prior confirmed count and the new pipeline count; estimates are no longer accidentally promoted to confirmed. Updated the characterization test boundary and assertion to follow the current ledger-backed deadline path. Full rerun pending.
+
 ### Evidence
 
 ### Failures and blockers
+
+- First local Batch 4 verification (`bash scripts/test-unit.sh`) reached the Tbtechsdev suite (216 tests) and failed two tests; Production tests did not run because Gradle stopped at the failing task. `AllowanceUsageAccumulatorTest.countReconciliationKeepsConfirmedOpensAndResetsEstimatedOpens` observed confirmed count 3 instead of 2 because reconciliation promoted the effective count, including estimates. `AllowanceBehaviorCharacterizationTest.intervalWindowUsesStrictExpiryAndClampsRemainingAtItsBoundaries` used a source delimiter for the removed `accumulateTimedUsage` helper. Fixes are applied below; successful rerun evidence is pending.
 
 ### Decisions
 
@@ -628,7 +636,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 | Batch 1 Test infra and characterization | IN PROGRESS | — |
 | Batch 2 `AllowanceLedger` | BLOCKED | — |
 | Batch 3 Shadow pipeline and rollups | IN PROGRESS | — |
-| Batch 4 Allowance cutover | NOT STARTED | — |
+| Batch 4 Allowance cutover | IN PROGRESS | — |
 | Batch 5 Stats, rollups and detectors cutover | NOT STARTED | — |
 | Batch 6 Detector verification | NOT STARTED | — |
 | Batch 7 Cleanup and final matrix | NOT STARTED | — |
