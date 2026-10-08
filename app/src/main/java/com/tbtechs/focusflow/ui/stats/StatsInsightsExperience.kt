@@ -104,6 +104,13 @@ fun StatsInsightsExperience(
                 }
             }
             Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                Text(
+                    "YOUR ACTIVITY",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.2.sp,
+                )
                 Text(screenTitle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkTextPrimary)
                 Text(windowSubtitle(window), fontSize = 13.sp, color = DarkTextSecondary)
             }
@@ -147,70 +154,75 @@ fun StatsInsightsExperience(
             StatsLoadState.Ready -> snapshot?.let { loaded ->
                 LazyColumn(
                     modifier = androidx.compose.ui.Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
                 ) {
                     item {
-                        if (window == ANALYTICS_WEEK) {
-                            weeklyStandout?.let { InsightCardView(it) }
-                        }
-                        DataHealthNotice(loaded)
-                        val isEmpty = loaded.tasks.total == 0 &&
-                            loaded.sessions.total == 0 &&
-                            loaded.blocking.totalAttempts == 0
-                        if (isEmpty) {
-                            EmptyStatsState(window)
-                        } else {
-                            FocusTimeHero(loaded)
-                            insights
-                                .filter {
-                                    it.id != weeklyStandout?.id &&
-                                        (window == ANALYTICS_WEEK || it.id != "WEEKLY_SHOWED_UP")
-                                }
-                                .forEach { InsightCardView(it) }
-                            when (window) {
-                                ANALYTICS_TODAY -> {
-                                    TaskSummary(loaded)
-                                    TaskResultList(
-                                        loaded,
-                                        title = "TODAY'S TASKS",
-                                        emptyMessage = "No tasks were recorded today.",
-                                    )
-                                }
-                                ANALYTICS_ALL_TIME -> {
-                                    AllTimeStats(
-                                        snapshot = loaded,
-                                        lifetime = lifetime,
-                                        earnedAchievementCount = achievements?.earnedIds?.size ?: 0,
-                                    )
-                                    ProductivityHeatmap(loaded)
-                                    TrendChart(loaded)
-                                }
-                                ANALYTICS_WEEK -> {
-                                    ProductivityHeatmap(loaded)
-                                    TaskSummary(loaded)
-                                }
-                                ANALYTICS_YESTERDAY -> {
-                                    TaskResultList(loaded)
-                                }
-                                ANALYTICS_THREE_MONTHS -> {
-                                    TrendChart(loaded)
-                                }
+                        Column(
+                            modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            if (window == ANALYTICS_WEEK) {
+                                weeklyStandout?.let { InsightCardView(it) }
                             }
-                            TemptationStats(loaded, onOpenQuickBlock)
-                        }
-                        if (window != ANALYTICS_THREE_MONTHS) {
-                            achievements?.let { AchievementRow(it) }
-                        }
-                        FindingsSection(
-                            activeFindings = activeFindings,
-                            pendingQuestion = pendingQuestion,
-                            dayCount = statsViewModel.dataHealthDayCount,
-                            ratingCount = statsViewModel.totalRatingCount,
-                            onMarkSeen = statsViewModel::markFindingSeen,
-                            onIntentional = statsViewModel::acknowledgeFindingIntentional,
-                            onAware = statsViewModel::acknowledgeFindingAware,
+                            DataHealthNotice(loaded)
+                            val isEmpty = loaded.tasks.total == 0 &&
+                                loaded.sessions.total == 0 &&
+                                loaded.blocking.totalAttempts == 0
+                            if (isEmpty) {
+                                EmptyStatsState(window)
+                            } else {
+                                FocusTimeHero(loaded)
+                                insights
+                                    .filter {
+                                        it.id != weeklyStandout?.id &&
+                                            (window == ANALYTICS_WEEK || it.id != "WEEKLY_SHOWED_UP")
+                                    }
+                                    .forEach { InsightCardView(it) }
+                                when (window) {
+                                    ANALYTICS_TODAY -> {
+                                        TaskSummary(loaded)
+                                        TaskResultList(
+                                            loaded,
+                                            title = "TODAY'S TASKS",
+                                            emptyMessage = "No tasks were recorded today.",
+                                        )
+                                    }
+                                    ANALYTICS_ALL_TIME -> {
+                                        AllTimeStats(
+                                            snapshot = loaded,
+                                            lifetime = lifetime,
+                                            earnedAchievementCount = achievements?.earnedIds?.size ?: 0,
+                                        )
+                                        ProductivityHeatmap(loaded)
+                                        TrendChart(loaded)
+                                    }
+                                    ANALYTICS_WEEK -> {
+                                        ProductivityHeatmap(loaded)
+                                        TaskSummary(loaded)
+                                    }
+                                    ANALYTICS_YESTERDAY -> {
+                                        TaskResultList(loaded)
+                                    }
+                                    ANALYTICS_THREE_MONTHS -> {
+                                        TrendChart(loaded)
+                                    }
+                                }
+                                TemptationStats(loaded, onOpenQuickBlock)
+                            }
+                            if (window != ANALYTICS_THREE_MONTHS) {
+                                achievements?.let { AchievementRow(it, loaded, lifetime) }
+                            }
+                            FindingsSection(
+                                activeFindings = activeFindings,
+                                pendingQuestion = pendingQuestion,
+                                dayCount = statsViewModel.dataHealthDayCount,
+                                ratingCount = statsViewModel.totalRatingCount,
+                                onMarkSeen = statsViewModel::markFindingSeen,
+                                onIntentional = statsViewModel::acknowledgeFindingIntentional,
+                                onAware = statsViewModel::acknowledgeFindingAware,
                             onAnswerQuestion = statsViewModel::answerClarifyingQuestion,
-                        )
+                            )
+                        }
                     }
                 }
             } ?: LoadingStats()
