@@ -591,8 +591,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 ## Batch 6 — Allowance suggestion and detector verification
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`  
+**Started:** 2026-10-08  
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
@@ -607,6 +607,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] A rising trend that existed only because today's partial row inflated week 4 is no longer detected.
 
 ### Notes
+
+**Batch start (2026-10-08):** The user explicitly authorized Batch 6. Batch 5 remains IN PROGRESS for its unavailable API-device checks; this batch is limited to the eight detector/suggestion verification tasks below. Inspect existing detector contracts and tests first, preserve detector thresholds and evidence-fingerprint inputs, and do not push, start GitHub Actions, or build APKs.
 
 ### Evidence
 
