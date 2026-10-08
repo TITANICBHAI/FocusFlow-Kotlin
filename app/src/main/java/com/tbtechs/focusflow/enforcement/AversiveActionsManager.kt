@@ -97,11 +97,7 @@ object AversiveActionsManager {
                     .getSystemService(Context.WINDOW_SERVICE) as WindowManager
                 windowManager = wm
 
-                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    @Suppress("DEPRECATION")
-                    WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY
+                val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
 
                 val params = WindowManager.LayoutParams(
                     WindowManager.LayoutParams.MATCH_PARENT,
@@ -163,14 +159,7 @@ object AversiveActionsManager {
 
         fun schedulePulse() {
             if (!vibrating) return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(
-                    VibrationEffect.createWaveform(pulsePattern, -1)
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(pulsePattern, -1)
-            }
+            vibrator.vibrate(VibrationEffect.createWaveform(pulsePattern, -1))
             val r = Runnable { schedulePulse() }
             vibrationRunnable = r
             mainHandler.postDelayed(r, 1_800L)

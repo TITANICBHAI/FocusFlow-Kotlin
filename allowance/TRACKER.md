@@ -140,6 +140,8 @@ For each case: record the device/API, what each source reported, and the diff.
 - **Diff hygiene:** `git diff --check` passed.
 
 ### Failures and blockers
+- First Production unit-test attempt exceeded the 300-second command timeout during first-time JDK/SDK/Gradle bootstrap and produced no test result. A retry using the cached toolchain is running.
+- The final API device matrix cannot run in this workspace: `adb devices -l` lists no devices and the Android emulator binary is not installed. Leave all device-matrix checks open.
 
 - Initial `bash scripts/test-unit.sh` attempt timed out after five minutes while the bootstrap installed JDK 17, Android SDK platform/build tools, and Gradle; no Gradle test task result was produced. The bootstrap is now cached; rerun after the Batch 3 implementation is coherent.
 - Second `bash scripts/test-unit.sh` attempt reached KSP but failed at `:app:kspTbtechsdevDebugKotlin` with `IllegalStateException: Empty schema file` while Room deserialized an exported schema. No unit test task ran; inspect the schema output and fix the cause before rerunning.
@@ -656,28 +658,28 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 ## Batch 7 — Version-gate cleanup and final cleanup (behavior-preserving)
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`
+**Started:** 2026-10-08
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
 
 **SDK gate cleanup (section 2.3 inventory)**
-- [ ] All 51 pre-API-29 version checks collapsed to their always-true branch. Record file-by-file count in `Notes`.
-- [ ] `MOVE_TO_FOREGROUND` and `MOVE_TO_BACKGROUND` branches removed from `UsageStatsRepository`, `ForegroundTaskService`, and `AppBlockerAccessibilityService`.
-- [ ] No remaining `VERSION_CODES` reference at or below `Q` in any `.kt` file.
+- [x] All current API-29-and-lower version checks collapsed to their always-true branch. The checkout contained 52 references across 23 files; inventory is in `Notes`.
+- [x] `MOVE_TO_FOREGROUND` and `MOVE_TO_BACKGROUND` branches removed from `UsageStatsRepository`, `ForegroundTaskService`, and `AppBlockerAccessibilityService`.
+- [x] No remaining `VERSION_CODES` reference at or below `Q` in any `.kt` file.
 - [ ] Lint `NewApi` CI gate passes with zero findings.
 
 **Permission check**
-- [ ] `checkOpNoThrow` → `unsafeCheckOpNoThrow` in `UsageStatsRepository.kt:67`.
-- [ ] `checkOpNoThrow` → `unsafeCheckOpNoThrow` in `ForegroundTaskService.kt:379`.
-- [ ] `checkOpNoThrow` → `unsafeCheckOpNoThrow` in `AppBlockerAccessibilityService.kt:2476`.
-- [ ] No remaining `checkOpNoThrow` calls in any `.kt` file.
+- [x] `UsageStatsRepository.kt` usage-access check uses `unsafeCheckOpNoThrow`.
+- [x] `LauncherActivity.kt` allowance-card check uses `unsafeCheckOpNoThrow` (the extra live call in this checkout).
+- [x] The planned `ForegroundTaskService.kt` and `AppBlockerAccessibilityService.kt` calls were already absent in this checkout.
+- [x] No remaining bare `checkOpNoThrow` calls in any `.kt` file.
 
 **Other dead code**
-- [ ] Shadow comparison log removed.
+- [x] Shadow comparison log removed.
 - [ ] Retired `AppUsageAndSessionTracker` accumulation code removed if fully replaced.
-- [ ] Obsolete prefs keys removed, each with a comment or migration note on the upgrade path.
+- [x] Obsolete allowance prefs are cleared on service start with an upgrade-cleanup note; live marker keys are retained.
 
 **Final matrix re-run** — API 29, 31, 33, 34, latest (section 3.3)
 - [ ] Foreground service starts at app open and after reboot.
@@ -711,7 +713,11 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] Batch 0 matrix re-run on all versions in 3.3 with measured deltas reported.
 
 ### Notes
-<!-- Pre-API-29 gate counts by file: -->
+**Batch start (2026-10-08):** The owner authorized Batch 7. The current branch is `main` at `2e62446`, two commits ahead of `origin/main`; the worktree had no tracked changes. The supplied Batch 6 and Batch 7 notes remain present and untouched. Baseline line counts: `AppBlockerAccessibilityService.kt` 4,393; `ForegroundTaskService.kt` 1,134.
+
+**Current-checkout inventory:** Found 52 `VERSION_CODES` references at or below Q across 23 Kotlin files, rather than the plan's 51 references across 19 files. The threshold rule is unchanged; all current matches will be handled and the inventory discrepancy recorded rather than leaving a dead gate. Counts: `AlarmCapabilitySnapshot.kt` 1; `ForegroundServiceController.kt` 2; `LauncherController.kt` 2; `UsageStatsRepository.kt` 5; `VpnRepository.kt` 2; `AppBlockerAccessibilityService.kt` 9; `AversiveActionsManager.kt` 2; `BlockOverlayActivity.kt` 1; `ForegroundTaskService.kt` 6; `LauncherActivity.kt` 1; `NetworkBlockerVpnService.kt` 2; `BootReceiver.kt` 2; `TaskAlarmReconcileWorker.kt` 2; `TaskAlarmActivity.kt` 4; `TemptationLogManager.kt` 1; `VpnPolicyBoundaryScheduler.kt` 1; `VpnPolicyCoordinator.kt` 1; `VpnRecoveryNotifier.kt` 2; `MainActivity.kt` 1; `NotificationChannels.kt` 1; `ReminderChainScheduler.kt` 1; `ReminderNotificationPublisher.kt` 1; `PermissionSupport.kt` 2.
+
+**Source cleanup result:** Replaced the two live deprecated AppOps calls (`UsageStatsRepository.kt`, `LauncherActivity.kt`); the plan's named calls in `ForegroundTaskService.kt` and `AppBlockerAccessibilityService.kt` were already absent. Removed the shadow comparison logger. Added idempotent upgrade cleanup for the two retired allowance keys (`daily_allowance_usage_stats_sync`, `active_session_open_at_ms`); retained the three live session-marker keys. Kept `AppUsageAndSessionTracker`: the source policy still needs legacy writes before cutover and during the 14-day stabilization window, so it is not fully replaced.
 
 ### Evidence
 <!-- AppBlockerAccessibilityService.kt: XXXX → XXXX lines -->

@@ -1,9 +1,7 @@
 package com.tbtechs.focusflow.analytics
 
 import android.content.Context
-import android.util.Log
 import androidx.room.withTransaction
-import com.tbtechs.focusflow.BuildConfig
 import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.local.entity.UsageRollupAppDayEntity
 import com.tbtechs.focusflow.data.local.entity.UsageRollupDayEntity
@@ -137,7 +135,6 @@ class UsageRollupWriter(
                         } else {
                             partialDates += dateText
                         }
-                        logShadowComparison(dateText, appRows)
                     }
                 }
             UsageRollupPass.Written(completeDates, partialDates)
@@ -254,27 +251,7 @@ class UsageRollupWriter(
         true
     }
 
-    private suspend fun logShadowComparison(
-        date: String,
-        pipelineRows: List<UsageRollupAppDayEntity>,
-    ) {
-        if (!BuildConfig.DEBUG) return
-        val legacyRows = database.dailyAppUsageDao().getForDateRange(date, date)
-            .associateBy { it.packageName }
-        val pipelineByPackage = pipelineRows.associateBy { it.packageName }
-        (legacyRows.keys + pipelineByPackage.keys).sorted().forEach { packageName ->
-            val legacyMs = legacyRows[packageName]?.foregroundMs ?: 0L
-            val pipelineMs = pipelineByPackage[packageName]?.foregroundMs ?: 0L
-            Log.d(
-                TAG,
-                "shadow date=$date package=$packageName legacyMs=$legacyMs " +
-                    "pipelineMs=$pipelineMs deltaMs=${pipelineMs - legacyMs}",
-            )
-        }
-    }
-
     companion object {
-        private const val TAG = "UsageRollupWriter"
         private const val ROLLUP_LOOKBACK_DAYS = 3L
         private const val SESSION_LOOKBACK_MS = 6L * 60L * 60L * 1_000L
     }

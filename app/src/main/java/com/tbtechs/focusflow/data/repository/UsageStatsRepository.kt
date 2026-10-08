@@ -51,7 +51,7 @@ data class HourlyUsageSummary(
  * and navigates to relevant OS configuration screens.
  *
  * Named Risk Preserved:
- * Every usage-stats query is strictly guarded by the AppOpsManager.checkOpNoThrow check.
+ * Every usage-stats query is strictly guarded by the AppOpsManager.unsafeCheckOpNoThrow check.
  * Without this guard, a revoked permission would silently return empty or inaccurate data.
  */
 class UsageStatsRepository(private val context: Context) : UsageEventsSource {
@@ -59,7 +59,7 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
     /**
      * Returns whether the PACKAGE_USAGE_STATS (Usage Access) permission has been granted.
      *
-     * Primary check: AppOpsManager.checkOpNoThrow — the standard API.
+     * Primary check: AppOpsManager.unsafeCheckOpNoThrow.
      * Secondary check: try a live query via UsageStatsManager; if results return,
      * the permission is actually granted even if AppOps reports MODE_DEFAULT (seen on Samsung One UI).
      */
@@ -70,7 +70,7 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
     private fun checkUsageAccessPermission(): Boolean {
         return try {
             val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-            val mode = appOps.checkOpNoThrow(
+            val mode = appOps.unsafeCheckOpNoThrow(
                 AppOpsManager.OPSTR_GET_USAGE_STATS,
                 Process.myUid(),
                 context.packageName,
@@ -129,11 +129,7 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
         val now = System.currentTimeMillis()
         val events = usm.queryEvents(now - 10_000L, now)
         val event = UsageEvents.Event()
-        val foregroundType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            UsageEvents.Event.ACTIVITY_RESUMED
-        } else {
-            UsageEvents.Event.MOVE_TO_FOREGROUND
-        }
+        val foregroundType = UsageEvents.Event.ACTIVITY_RESUMED
         var latest: String? = null
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
@@ -162,10 +158,8 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
         val packageManager = context.packageManager
         val ownPackage = context.packageName
 
-        val foregroundType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            UsageEvents.Event.ACTIVITY_RESUMED else UsageEvents.Event.MOVE_TO_FOREGROUND
-        val backgroundType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            UsageEvents.Event.ACTIVITY_PAUSED  else UsageEvents.Event.MOVE_TO_BACKGROUND
+        val foregroundType = UsageEvents.Event.ACTIVITY_RESUMED
+        val backgroundType = UsageEvents.Event.ACTIVITY_PAUSED
 
         // Per-package accumulators
         val fgStartMs    = mutableMapOf<String, Long>()
@@ -430,8 +424,6 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
      * Opens the battery optimization exemption dialog directly for this app.
      */
     suspend fun openBatteryOptimizationSettings() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-
         val launch = { intent: Intent ->
             try {
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -457,12 +449,8 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
      */
     suspend fun isIgnoringBatteryOptimizations(): Boolean {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                pm.isIgnoringBatteryOptimizations(context.packageName)
-            } else {
-                true
-            }
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.isIgnoringBatteryOptimizations(context.packageName)
         } catch (e: Exception) {
             false
         }

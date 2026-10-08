@@ -54,14 +54,15 @@ suspend fun checkPermission(context: Context, id: PermissionId): PermissionStatu
     when (id) {
         PermissionId.ACCESSIBILITY -> if (UsageStatsRepository(context).hasAccessibilityPermission()) PermissionStatus.GRANTED else PermissionStatus.DENIED
         PermissionId.USAGE -> if (UsageStatsRepository(context).hasPermission()) PermissionStatus.GRANTED else PermissionStatus.DENIED
-        PermissionId.BATTERY -> if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-            (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
+        PermissionId.BATTERY -> if (
+            (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .isIgnoringBatteryOptimizations(context.packageName)
         ) PermissionStatus.GRANTED else PermissionStatus.DENIED
         PermissionId.NOTIFICATIONS -> if (NotificationManagerCompat.from(context).areNotificationsEnabled()) PermissionStatus.GRANTED else PermissionStatus.DENIED
         PermissionId.OVERLAY -> if (LauncherController(context).hasOverlayPermission()) PermissionStatus.GRANTED else PermissionStatus.DENIED
         PermissionId.MEDIA -> {
             val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) PermissionStatus.GRANTED else PermissionStatus.DENIED
+            if (context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) PermissionStatus.GRANTED else PermissionStatus.DENIED
         }
         PermissionId.VPN -> if (VpnService.prepare(context) == null) PermissionStatus.GRANTED else PermissionStatus.DENIED
         PermissionId.EXACT_ALARMS -> if (AppModule.alarmRepository.canScheduleExactAlarms()) PermissionStatus.GRANTED else PermissionStatus.DENIED

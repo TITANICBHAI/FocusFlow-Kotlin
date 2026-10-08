@@ -582,11 +582,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             val events = usm.queryEvents(now - lookbackMs, now)
             val event = UsageEvents.Event()
             var foregroundPkg: String? = null
-            val foregroundEventType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                UsageEvents.Event.ACTIVITY_RESUMED
-            } else {
-                UsageEvents.Event.MOVE_TO_FOREGROUND
-            }
+            val foregroundEventType = UsageEvents.Event.ACTIVITY_RESUMED
 
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
@@ -757,11 +753,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             val usm = getSystemService(UsageStatsManager::class.java) ?: return
             val events = usm.queryEvents(now - FOREGROUND_RECOVERY_LOOKBACK_MS, now)
             val event = UsageEvents.Event()
-            val foregroundEventType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                UsageEvents.Event.ACTIVITY_RESUMED
-            } else {
-                UsageEvents.Event.MOVE_TO_FOREGROUND
-            }
+            val foregroundEventType = UsageEvents.Event.ACTIVITY_RESUMED
             var foregroundPkg: String? = null
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
@@ -2788,9 +2780,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     ): Boolean {
         dismissWindowOverlay()   // clear any stale overlay first
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            !Settings.canDrawOverlays(this)
-        ) {
+        if (!Settings.canDrawOverlays(this)) {
             return false
         }
 
@@ -2798,11 +2788,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val density = resources.displayMetrics.density
         fun dp(v: Int): Int = (v * density + 0.5f).toInt()
 
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
+        val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -3384,27 +3370,23 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             val nm = getSystemService(NotificationManager::class.java) ?: return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val ch = NotificationChannel(
-                    BLOCK_ALERT_CHANNEL, "Block Alert", NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    setBypassDnd(true)
-                }
-                nm.createNotificationChannel(ch)
+            val ch = NotificationChannel(
+                BLOCK_ALERT_CHANNEL, "Block Alert", NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setBypassDnd(true)
             }
+            nm.createNotificationChannel(ch)
             val notif = Notification.Builder(
                 this,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) BLOCK_ALERT_CHANNEL else "default"
+                BLOCK_ALERT_CHANNEL
             ).apply {
                 setSmallIcon(android.R.drawable.ic_lock_lock)
                 setContentTitle("\u201C$appName\u201D is blocked")
                 setContentText(if (blockReason.isNotEmpty()) blockReason else "Active during this session.")
                 setFullScreenIntent(pi, true)
                 setAutoCancel(true)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    setVisibility(Notification.VISIBILITY_PUBLIC)
-                }
+                setVisibility(Notification.VISIBILITY_PUBLIC)
             }.build()
             nm.notify(BLOCK_ALERT_NOTIF_ID, notif)
             // Auto-cancel after 2 s — the activity is already on screen by then
@@ -3528,18 +3510,16 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         try {
             val nm = getSystemService(android.app.NotificationManager::class.java) ?: return
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val existing = nm.getNotificationChannel(BLOCK_ALERT_CHANNEL)
-                if (existing == null) {
-                    val ch = android.app.NotificationChannel(
-                        BLOCK_ALERT_CHANNEL, "Block Alert",
-                        android.app.NotificationManager.IMPORTANCE_HIGH
-                    ).apply {
-                        setBypassDnd(true)
-                        lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-                    }
-                    nm.createNotificationChannel(ch)
+            val existing = nm.getNotificationChannel(BLOCK_ALERT_CHANNEL)
+            if (existing == null) {
+                val ch = android.app.NotificationChannel(
+                    BLOCK_ALERT_CHANNEL, "Block Alert",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    setBypassDnd(true)
+                    lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                 }
+                nm.createNotificationChannel(ch)
             }
 
             val tapIntent = android.content.Intent(
@@ -3552,9 +3532,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
 
-            val notif = androidx.core.app.NotificationCompat.Builder(this,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) BLOCK_ALERT_CHANNEL else "default"
-            )
+            val notif = androidx.core.app.NotificationCompat.Builder(this, BLOCK_ALERT_CHANNEL)
                 .setSmallIcon(com.tbtechs.focusflow.R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(text)

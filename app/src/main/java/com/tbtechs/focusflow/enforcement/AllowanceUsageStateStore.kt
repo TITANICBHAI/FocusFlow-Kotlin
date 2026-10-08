@@ -9,6 +9,18 @@ internal class AllowanceUsageStateStore(
     private val prefs: SharedPreferences,
     private val ledger: AllowanceLedger,
 ) {
+    /**
+     * Upgrade cleanup for allowance bookkeeping removed in Batch 4. These values
+     * are no longer read or migrated; current checkpoints use the active-session
+     * marker keys below.
+     */
+    fun clearRetiredPreferenceKeys() {
+        prefs.edit()
+            .remove(LEGACY_USAGE_STATS_SYNC)
+            .remove(LEGACY_ACTIVE_SESSION_OPEN_AT)
+            .apply()
+    }
+
     fun configuredTargets(): List<AllowanceUsageTarget> {
         val raw = prefs.getString(
             AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_CONFIG,
@@ -142,5 +154,7 @@ internal class AllowanceUsageStateStore(
     private companion object {
         const val HOUR_MS = 60 * 60 * 1_000L
         const val TAG = "AllowanceUsage"
+        const val LEGACY_USAGE_STATS_SYNC = "daily_allowance_usage_stats_sync"
+        const val LEGACY_ACTIVE_SESSION_OPEN_AT = "active_session_open_at_ms"
     }
 }

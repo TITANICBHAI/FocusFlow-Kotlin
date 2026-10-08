@@ -11,7 +11,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.os.Build
 import android.os.UserManager
 
 /**
@@ -151,15 +150,10 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private fun startService(context: Context, intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
+        context.startForegroundService(intent)
     }
 
     private fun isUserUnlocked(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
         return context.getSystemService(UserManager::class.java)?.isUserUnlocked == true
     }
 }

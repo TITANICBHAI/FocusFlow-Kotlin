@@ -12,7 +12,6 @@ import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.VpnService
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
@@ -125,7 +124,7 @@ class NetworkBlockerVpnService : VpnService() {
          * must surface the conflict and avoid retry loops.
          */
         fun isAnotherVpnActive(context: Context): Boolean {
-            if (isRunning || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+            if (isRunning) return false
             val connectivity =
                 context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                 ?: return false
@@ -527,18 +526,16 @@ class NetworkBlockerVpnService : VpnService() {
     // ─── Notification ─────────────────────────────────────────────────────────
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "FocusFlow Network Block",
-                NotificationManager.IMPORTANCE_MIN
-            ).apply {
-                description = "Active while FocusFlow is blocking app network access"
-                setShowBadge(false)
-            }
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "FocusFlow Network Block",
+            NotificationManager.IMPORTANCE_MIN
+        ).apply {
+            description = "Active while FocusFlow is blocking app network access"
+            setShowBadge(false)
         }
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .createNotificationChannel(channel)
     }
 
     private fun buildNotification(): Notification {

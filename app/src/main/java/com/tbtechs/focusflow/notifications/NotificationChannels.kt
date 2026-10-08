@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.graphics.Color
-import android.os.Build
 
 /**
  * Channels formerly created by notificationService.ts.
@@ -32,8 +31,6 @@ object NotificationChannels {
     const val RESISTANCE_NAME = "Resistance"
 
     fun createAll(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         val channels = listOf(
             NotificationChannel(
                 TASK_REMINDERS,

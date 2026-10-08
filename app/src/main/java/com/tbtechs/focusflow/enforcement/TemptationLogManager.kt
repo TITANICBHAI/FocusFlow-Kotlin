@@ -151,7 +151,6 @@ object TemptationLogManager {
     // ─── Notification channel ─────────────────────────────────────────────────
 
     fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) != null) return
         val ch = NotificationChannel(

@@ -48,11 +48,7 @@ object ReminderNotificationPublisher {
     }
 
     private fun immutableFlag(): Int =
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_IMMUTABLE
-        } else {
-            0
-        }
+        PendingIntent.FLAG_IMMUTABLE
 
     private const val EXTRA_TASK_ID = "taskId"
 }

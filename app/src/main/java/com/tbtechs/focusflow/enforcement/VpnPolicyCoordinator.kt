@@ -331,11 +331,7 @@ object VpnPolicyCoordinator {
             }
         }
         try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         } catch (e: Exception) {
             // A background start can be rejected before the service gets a
             // chance to record its own failure (for example, by Android's

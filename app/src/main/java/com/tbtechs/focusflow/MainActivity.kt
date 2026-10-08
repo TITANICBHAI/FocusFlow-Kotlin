@@ -399,10 +399,8 @@ private fun FocusFlowRoot(
             } else {
                 android.graphics.Color.rgb(240, 242, 255)
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                window.isStatusBarContrastEnforced = false
-                window.isNavigationBarContrastEnforced = false
-            }
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !settings.darkModeEnabled
                 isAppearanceLightNavigationBars = !settings.darkModeEnabled

@@ -73,13 +73,9 @@ data class AlarmCapabilitySnapshot(
             val powerManager = app.getSystemService(Context.POWER_SERVICE) as? PowerManager
             val keyguardManager = app.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
             val channel = runCatching {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    notificationManager?.getNotificationChannel(
-                        ForegroundTaskService.TASK_ALARM_CHANNEL,
-                    )
-                } else {
-                    null
-                }
+                notificationManager?.getNotificationChannel(
+                    ForegroundTaskService.TASK_ALARM_CHANNEL,
+                )
             }.getOrNull()
             val exactAccess = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                 true

@@ -3,7 +3,6 @@ package com.tbtechs.focusflow.enforcement.receivers
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.UserManager
 import android.util.Log
 import androidx.work.CoroutineWorker
@@ -35,7 +34,6 @@ class TaskAlarmReconcileWorker(
     }
 
     private fun isUserUnlocked(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
         return context.getSystemService(UserManager::class.java)?.isUserUnlocked == true
     }
 
@@ -74,7 +72,6 @@ class TaskAlarmReconcileReceiver : BroadcastReceiver() {
     }
 
     private fun isUserUnlocked(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
         return context.getSystemService(UserManager::class.java)?.isUserUnlocked == true
     }
 }

@@ -179,14 +179,12 @@ class TaskAlarmActivity : Activity() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
             )
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-            // Ask the system to dismiss a non-secure keyguard so the alarm UI
-            // is fully interactive.  No-op if the device has a secure lock.
-            val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            km?.requestDismissKeyguard(this, null)
-        }
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        // Ask the system to dismiss a non-secure keyguard so the alarm UI
+        // is fully interactive. No-op if the device has a secure lock.
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        km?.requestDismissKeyguard(this, null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false)
         } else {
@@ -334,15 +332,11 @@ class TaskAlarmActivity : Activity() {
             ) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION) ?: return
             val rt = RingtoneManager.getRingtone(applicationContext, uri) ?: return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                rt.audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                rt.isLooping = true
-            }
+            rt.audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            rt.isLooping = true
             rt.play()
             ringtone = rt
         } catch (_: Exception) { /* best-effort */ }
@@ -365,12 +359,7 @@ class TaskAlarmActivity : Activity() {
             if (v == null || !v.hasVibrator()) return
             // Pattern: wait 0, vibrate 600, pause 600, vibrate 600, pause 1200 — repeat
             val pattern = longArrayOf(0L, 600L, 600L, 600L, 1200L)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                v.vibrate(VibrationEffect.createWaveform(pattern, 0))
-            } else {
-                @Suppress("DEPRECATION")
-                v.vibrate(pattern, 0)
-            }
+            v.vibrate(VibrationEffect.createWaveform(pattern, 0))
             vibrator = v
         } catch (_: Exception) { /* best-effort */ }
     }

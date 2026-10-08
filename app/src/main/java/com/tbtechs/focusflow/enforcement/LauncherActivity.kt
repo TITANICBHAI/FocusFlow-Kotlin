@@ -1677,7 +1677,7 @@ class LauncherActivity : Activity() {
         val usageAccessGranted = try {
             val appOps = getSystemService(android.content.Context.APP_OPS_SERVICE)
                 as? android.app.AppOpsManager
-            val accessMode = appOps?.checkOpNoThrow(
+            val accessMode = appOps?.unsafeCheckOpNoThrow(
                 android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
                 android.os.Process.myUid(),
                 packageName,
@@ -1826,7 +1826,7 @@ class LauncherActivity : Activity() {
     }
 
     private fun applyWallpaperTint() {
-        if (currentTheme() != LauncherTheme.GLASSY || Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return
+        if (currentTheme() != LauncherTheme.GLASSY) return
         try {
             val colors = WallpaperManager.getInstance(this)
                 .getWallpaperColors(WallpaperManager.FLAG_SYSTEM) ?: return

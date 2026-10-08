@@ -6,7 +6,6 @@ import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.VpnService
 import android.net.wifi.WifiManager
-import android.os.Build
 import com.tbtechs.focusflow.enforcement.NetworkBlockerVpnService
 import com.tbtechs.focusflow.enforcement.VpnPolicyCoordinator
 import com.tbtechs.focusflow.data.restore.RestoreGate
@@ -391,20 +390,12 @@ class VpnRepository(
 
     private fun tryDisableWifiInternal() {
         val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
-            wm.isWifiEnabled = false
-        } else {
-            wm.disconnect()
-        }
+        wm.disconnect()
     }
 
     private fun tryRestoreWifiInternal() {
-        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
-            wm.isWifiEnabled = true
-        }
+        // Restoring Wi-Fi is not supported on API 29+; the old pre-Q toggle
+        // path is unreachable because the app's minimum supported API is 29.
     }
 
     private fun tryDisableMobileDataInternal() {

@@ -60,6 +60,7 @@ internal class AllowanceUsageCoordinator(
 
     fun onServiceStarted(savedForegroundPackage: String?) {
         val now = System.currentTimeMillis()
+        stateStore.clearRetiredPreferenceKeys()
         stateStore.recoverPersistedCheckpoint(now)
         lastSuccessfulReadAtMs = stateStore.configuredTargets().maxOfOrNull { target ->
             ledger.usage(target.packageName).confirmedAtMs

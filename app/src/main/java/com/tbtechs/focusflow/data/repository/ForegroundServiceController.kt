@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
@@ -163,8 +162,6 @@ class ForegroundServiceController(private val context: Context) {
      * launch failures after trying the same fallback sequence.
      */
     suspend fun requestBatteryOptimizationExemption() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-
         try {
             val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
             if (powerManager.isIgnoringBatteryOptimizations(appContext.packageName)) return
@@ -207,11 +204,7 @@ class ForegroundServiceController(private val context: Context) {
     }
 
     private fun startForegroundService(intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            appContext.startForegroundService(intent)
-        } else {
-            appContext.startService(intent)
-        }
+        appContext.startForegroundService(intent)
     }
 
     private fun startServiceCommand(action: String) {

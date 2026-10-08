@@ -9,7 +9,6 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.content.Intent
 import android.content.SharedPreferences
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -111,7 +110,6 @@ class ForegroundTaskService : Service() {
 
         /** The single authoritative definition of the task-end notification channel. */
         fun ensureTaskAlarmChannel(context: Context) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val app = context.applicationContext
             val manager = app.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
                 ?: return
@@ -769,19 +767,17 @@ class ForegroundTaskService : Service() {
     // ─── Notification builders ─────────────────────────────────────────────────
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Keeps FocusFlow running and shows your active task"
-                setShowBadge(false)
-            }
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
-            ensureTaskAlarmChannel(this)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Keeps FocusFlow running and shows your active task"
+            setShowBadge(false)
         }
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(channel)
+        ensureTaskAlarmChannel(this)
     }
 
     /** Routes the in-process fallback tick through the same validation path as AlarmManager. */
@@ -931,11 +927,7 @@ class ForegroundTaskService : Service() {
             val now = System.currentTimeMillis()
             val events = usm.queryEvents(now - 5_000L, now)
             val event = UsageEvents.Event()
-            val foregroundType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                UsageEvents.Event.ACTIVITY_RESUMED
-            } else {
-                UsageEvents.Event.MOVE_TO_FOREGROUND
-            }
+            val foregroundType = UsageEvents.Event.ACTIVITY_RESUMED
             var latest: String? = null
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
@@ -1095,29 +1087,25 @@ class ForegroundTaskService : Service() {
 
         // Ensure the block-alert channel exists
         val nm = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(
-                BLOCK_ALERT_CHANNEL, "Block Alert", NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-                setBypassDnd(true)
-            }
-            nm?.createNotificationChannel(ch)
+        val ch = NotificationChannel(
+            BLOCK_ALERT_CHANNEL, "Block Alert", NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            setBypassDnd(true)
         }
+        nm?.createNotificationChannel(ch)
 
         // Post the full-screen intent notification — system launches the activity
         val notif = android.app.Notification.Builder(
             applicationContext,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) BLOCK_ALERT_CHANNEL else CHANNEL_ID
+            BLOCK_ALERT_CHANNEL
         ).apply {
             setSmallIcon(android.R.drawable.ic_lock_lock)
             setContentTitle("App Blocked")
             setContentText("\u201C$appName\u201D is blocked during this session.")
             setFullScreenIntent(pi, true)
             setAutoCancel(true)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                setVisibility(android.app.Notification.VISIBILITY_PUBLIC)
-            }
+            setVisibility(android.app.Notification.VISIBILITY_PUBLIC)
         }.build()
         nm?.notify(BLOCK_ALERT_NOTIF_ID, notif)
 

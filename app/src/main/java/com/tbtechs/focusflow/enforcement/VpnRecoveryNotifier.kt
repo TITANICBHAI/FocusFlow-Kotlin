@@ -43,9 +43,7 @@ object VpnRecoveryNotifier {
         ) {
             return
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-            !notificationManager.areNotificationsEnabled()
-        ) {
+        if (!notificationManager.areNotificationsEnabled()) {
             return
         }
 
@@ -94,7 +92,6 @@ object VpnRecoveryNotifier {
     }
 
     private fun createChannel(notificationManager: NotificationManager) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (notificationManager.getNotificationChannel(CHANNEL_ID) != null) return
 
         notificationManager.createNotificationChannel(
