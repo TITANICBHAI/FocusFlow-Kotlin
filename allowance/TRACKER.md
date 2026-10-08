@@ -678,7 +678,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Other dead code**
 - [x] Shadow comparison log removed.
-- [ ] Retired `AppUsageAndSessionTracker` accumulation code removed if fully replaced.
+- [x] Confirmed the legacy tracker is still required before cutover and during the 14-day stabilization window; removal is not applicable yet.
 - [x] Obsolete allowance prefs are cleared on service start with an upgrade-cleanup note; live marker keys are retained.
 
 **Final matrix re-run** — API 29, 31, 33, 34, latest (section 3.3)
@@ -689,13 +689,13 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] Locked-boot read does not crash or reset usage to zero.
 
 **Line count report** (record in `Evidence`)
-- [ ] `AppBlockerAccessibilityService.kt`: before → after.
-- [ ] `ForegroundTaskService.kt`: before → after.
+- [x] `AppBlockerAccessibilityService.kt`: before → after.
+- [x] `ForegroundTaskService.kt`: before → after.
 - [ ] Every new file: name and line count.
 - [ ] No new file exceeds 300 lines.
 
 **All review gates met (section 14 of v6)**
-- [ ] `minSdk` = 29; zero `VERSION_CODES` checks at or below `Q`.
+- [x] `minSdk` = 29; zero `VERSION_CODES` checks at or below `Q`.
 - [ ] Lint `NewApi` clean in CI.
 - [ ] Every batch step labelled preserving or changing.
 - [ ] Accessibility file and `ForegroundTaskService.kt` smaller than before every batch.
@@ -719,14 +719,30 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Source cleanup result:** Replaced the two live deprecated AppOps calls (`UsageStatsRepository.kt`, `LauncherActivity.kt`); the plan's named calls in `ForegroundTaskService.kt` and `AppBlockerAccessibilityService.kt` were already absent. Removed the shadow comparison logger. Added idempotent upgrade cleanup for the two retired allowance keys (`daily_allowance_usage_stats_sync`, `active_session_open_at_ms`); retained the three live session-marker keys. Kept `AppUsageAndSessionTracker`: the source policy still needs legacy writes before cutover and during the 14-day stabilization window, so it is not fully replaced.
 
+**Continuation audit (2026-10-08):** Re-read the supplied Batch 7 note and checked the current checkout before resuming. HEAD is `d872912` on `main`, aligned with `origin/main`; the only pre-existing untracked file is the user-supplied Batch 7 note. The checked-in Batch 7 section is `IN PROGRESS`; the summary table incorrectly said `NOT STARTED` and is corrected below. Static searches found no API-29-or-lower `VERSION_CODES` references or SDK comparisons, no `MOVE_TO_FOREGROUND/BACKGROUND`, and no bare `checkOpNoThrow`. Both live usage-access checks use `unsafeCheckOpNoThrow`. The retired allowance keys are cleared from `AllowanceUsageCoordinator.onServiceStarted`. `AppUsageAndSessionTracker` still writes legacy rows while `shouldWriteLegacy` is true (before cutover and for 14 days from cutover), so deleting it now would break the documented stabilization contract.
+
+**Line-count and file-size audit:** The recorded Batch 7 starting counts are 4,393 lines for `AppBlockerAccessibilityService.kt` and 1,134 for `ForegroundTaskService.kt`; current counts are 4,371 and 1,122. Tracker-introduced candidates currently above 300 lines include `AllowanceLedger.kt` (487), `UsageHistoryRepository.kt` (449), `AllowanceUsageCoordinator.kt` (302), `UsageHistorySourcePolicyTest.kt` (340), `UsageDetectorSeamTest.kt` (317), and `FindingDetectionRunnerImpl5Test.kt` (342). The repository history is a single imported/grafted source snapshot, so it cannot independently establish which other files were introduced in each earlier batch. Keep the no-new-file-over-300 review gate open until the tracked additions are reconciled.
+
+**Local verification (2026-10-08):** `:app:lintProductionDebug` and `:app:testProductionDebugUnitTest` both passed through `scripts/build-apk-with-java.sh` with `FOCUSFLOW_SKIP_APK_BUILD=1`. The Production lint report says “No issues found” and contains zero `NewApi` findings. The Production unit suite produced 52 XML class reports: 241 tests, 0 failures, 0 errors, and 0 skipped. This is local verification only; no APK task, GitHub Actions run, or push was started.
+
+**Device-matrix availability:** `adb devices -l` returned no attached devices, and the bootstrapped Android SDK has no emulator binary. The API 29/31/33/34/latest matrix remains unrun.
+
 ### Evidence
-<!-- AppBlockerAccessibilityService.kt: XXXX → XXXX lines -->
-<!-- ForegroundTaskService.kt: XXXX → XXXX lines -->
-<!-- New files: -->
+- `AppBlockerAccessibilityService.kt`: 4,393 → 4,371 lines; `ForegroundTaskService.kt`: 1,134 → 1,122 lines. Counts measured with `wc -l`.
+- Source audit command: `rg` checks for API-29-or-lower version gates, deprecated `MOVE_TO_*`, bare `checkOpNoThrow`, shadow comparison logging, and retired allowance keys. No stale version checks, deprecated event branches, or bare AppOps calls remain; upgrade cleanup is called at coordinator service start.
+- Local Production lint: `app/build/reports/lint-results-productionDebug.txt` reports no issues; XML contains 0 `NewApi` issues. This does not satisfy the separate CI gate.
+- Local Production tests: 52 XML class reports, 241 tests, 0 failures/errors/skips. Commands were limited to `:app:lintProductionDebug` and `:app:testProductionDebugUnitTest`; `FOCUSFLOW_SKIP_APK_BUILD=1`. No APK output directory was created.
+- Device check: the SDK `adb` daemon started but listed no devices; no SDK emulator binary is installed.
+- Legacy writer decision: `AppModule.createAppUsageAndSessionTracker` gates Room writes through `UsageHistoryRepository.shouldWriteLegacy`; `UsageHistorySourcePolicy` keeps this true until 14 days after cutover. The tracker must remain during shadow/stabilization.
+- Phase 5 size reconciliation remains open: see the continuation audit above for files over 300 lines; the imported/grafted history prevents a complete per-batch addition inventory.
 
 ### Failures and blockers
+- Final device matrix is blocked by the absence of attached devices/emulator. GitHub Actions was not run because the workflow also assembles an APK and the project instructions require explicit authorization; CI lint remains unchecked.
+- The new-file inventory and no-new-file-over-300 review gates remain open; see the size audit above.
 
 ### Decisions
+- Retain `AppUsageAndSessionTracker` until legacy writes are no longer needed by the cutover and stabilization policy; do not remove it as dead code.
+- Do not trigger CI to verify the NewApi gate: the workflow also assembles an APK, and the project instruction requires explicit authorization before GitHub Actions or APK builds.
 
 ---
 
@@ -741,7 +757,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 | Batch 4 Allowance cutover | IN PROGRESS | — |
 | Batch 5 Stats, rollups and detectors cutover | IN PROGRESS | — |
 | Batch 6 Detector verification | BLOCKED | — |
-| Batch 7 Cleanup and final matrix | NOT STARTED | — |
+| Batch 7 Cleanup and final matrix | IN PROGRESS | — |
 
 **Incomplete items and reasons** (reconcile with code before closing)
 - Batch 1 CI execution remains unchecked: the local Production and Tbtechsdev test tasks passed, and both CI workflow configs contain the matching test task, but GitHub Actions were not run because the user did not request APK-building verification.
