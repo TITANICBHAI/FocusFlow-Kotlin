@@ -29,12 +29,10 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -84,6 +82,7 @@ import com.tbtechs.focusflow.ui.home.FocusFlowInternalHeader
 import com.tbtechs.focusflow.ui.common.rememberInstalledApps
 import com.tbtechs.focusflow.ui.common.resolve
 import com.tbtechs.focusflow.ui.launcher.AppIcon
+import com.tbtechs.focusflow.ui.navigation.FocusTabIcons
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBackground
 import com.tbtechs.focusflow.ui.theme.DarkBorder
@@ -252,7 +251,7 @@ fun ActiveScreen(
                     title = "Focus Session",
                     status = if (session?.isActive == true) "Active" else "Not active",
                     statusColor = if (session?.isActive == true) Color(0xFF10B981) else DarkTextMuted,
-                    icon = Icons.Outlined.Timer,
+                    icon = FocusTabIcons.Active,
                 ) {
                     if (session?.isActive == true) {
                         Text(

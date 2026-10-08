@@ -31,9 +31,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.StopCircle
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -91,6 +89,7 @@ import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.common.FocusFlowTimerIcon
 import com.tbtechs.focusflow.ui.defense.BlockPresetUi
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockModal
+import com.tbtechs.focusflow.ui.navigation.FocusTabIcons
 import com.tbtechs.focusflow.ui.navigation.RouteTextScaleContext
 import com.tbtechs.focusflow.ui.navigation.Routes
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
@@ -1107,7 +1106,7 @@ private fun TaskFocusPanel(
                         colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                         shape = RoundedCornerShape(12.dp),
                     ) {
-                        Icon(Icons.Outlined.Security, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(FocusTabIcons.Active, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Activate Focus", fontSize = 16.scaledSp, fontWeight = FontWeight.SemiBold)
                     }
