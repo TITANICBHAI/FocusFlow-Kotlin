@@ -9,7 +9,7 @@ For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maxi
 ## 0. How to read this
 
 - **Decided** = the owner chose it. **Revised** = I changed my own earlier recommendation. **Open** = needs a quick owner answer; a default is given so work is not blocked.
-- **(code)** = verified by reading our source. **(docs)** = verified in official Android documentation. **(secondary)** = non-official source. **(verify)** = not verified; confirm in Phase 5.0.
+- **(code)** = verified by reading our source. **(docs)** = verified in official Android documentation. **(secondary)** = non-official source. **(verify)** = not verified; confirm in Phase Batch 0.
 - No code is given on purpose. Class names are suggestions.
 - **Rooted phones and root-requiring approaches are out of scope.** Nothing here needs root or Shizuku.
 - **Licenses.** Nudge and Device-Watch are GPL. Learn the rules from them; **do not copy their code**. Write our own implementation and tests from section 5.
@@ -20,13 +20,13 @@ For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maxi
 v5 introduced three structural fixes (source precedence, durable stale estimate, session identity). This revision corrects eight points found by re-reading the code against v5.
 
 1. **D8 replicates existing tracker behavior, not a new rule (section 5).** `AppUsageAndSessionTracker.closeCurrentSession` already sets `localDate = epochMsToLocalDate(sessionStartWall)` and stores the full `durationMs` (code). The new pipeline must match this, not invent it. v5 presented D8 as a new decision.
-2. **Three live-session keys must be kept in 5.4, not two (7.1).** `ACTIVE_SESSION_END_MS` (`active_session_end_ms`) is read on accessibility reconnect to restore the interval expiry deadline (code, line 2407). Without it interval-mode restore silently fails. v5 said keep only `pkg` and `last_checkpoint_ms`.
-3. **`ACTIVE_SESSION_OPEN_AT_MS` is read by `ForegroundTaskService` too (7.1, 11 step 5.4).** It feeds `sessionOpenAtMs` in the `AllowanceExpiry` for the interval fallback (code, line 454). v5 said "remove it" without flagging this cross-file dependency.
-4. **`PREF_USAGE_STATS_SYNC` is in two files (11 step 5.4).** Both the accessibility service and `ForegroundTaskService` read and write `daily_allowance_usage_stats_sync` (code, lines 461 and 551 of the service). v5 only mentioned the accessibility side.
-5. **`checkOpNoThrow` appears in three files, not two (11 step 5.7).** `UsageStatsRepository.kt:67`, `ForegroundTaskService.kt:379`, `AppBlockerAccessibilityService.kt:2476`. Step 5.7 must fix all three.
-6. **`BackgroundFetchWorker` runs `runAll()` (8.3, 11 step 5.5).** Detectors are called from `BackgroundFetchWorker.kt:138` (code), not from the service or tracker. The rollup write must complete before the worker calls `runAll()` in the same execution. The ordering is now explicit in step 5.5.
+2. **Three live-session keys must be kept in Batch 4, not two (7.1).** `ACTIVE_SESSION_END_MS` (`active_session_end_ms`) is read on accessibility reconnect to restore the interval expiry deadline (code, line 2407). Without it interval-mode restore silently fails. v5 said keep only `pkg` and `last_checkpoint_ms`.
+3. **`ACTIVE_SESSION_OPEN_AT_MS` is read by `ForegroundTaskService` too (7.1, 11 Batch 4).** It feeds `sessionOpenAtMs` in the `AllowanceExpiry` for the interval fallback (code, line 454). v5 said "remove it" without flagging this cross-file dependency.
+4. **`PREF_USAGE_STATS_SYNC` is in two files (section 11, Batch 4).** Both the accessibility service and `ForegroundTaskService` read and write `daily_allowance_usage_stats_sync` (code, lines 461 and 551 of the service). v5 only mentioned the accessibility side.
+5. **`checkOpNoThrow` appears in three files, not two (section 11, Batch 7).** `UsageStatsRepository.kt:67`, `ForegroundTaskService.kt:379`, `AppBlockerAccessibilityService.kt:2476`. Step Batch 7 must fix all three.
+6. **`BackgroundFetchWorker` runs `runAll()` (8.3, 11 Batch 5).** Detectors are called from `BackgroundFetchWorker.kt:138` (code), not from the service or tracker. The rollup write must complete before the worker calls `runAll()` in the same execution. The ordering is now explicit in Batch 5.
 7. **O7 has a concrete fix (section 4, 8.3).** `dateRangeEnd()` in `FindingDetectionRunner` returns `LocalDate.now().format(ISO_DATE)` (code). The fix is one line: change it to `LocalDate.now().minusDays(1).format(ISO_DATE)`. This shifts the week assignment in `computeWeeklyAverages`, shortening week 4 by one day for EscalatingCapture and Substitution.
-8. **`DayRatingRepository.getRatableDates` also reads today (8.1, 11 step 5.5).** It calls `dailyAppUsageDao.getForDateRange(cutoff, todayString)` where `todayString = LocalDate.now()` (code). After cutover it must use the merged read model for today.
+8. **`DayRatingRepository.getRatableDates` also reads today (8.1, 11 Batch 5).** It calls `dailyAppUsageDao.getForDateRange(cutoff, todayString)` where `todayString = LocalDate.now()` (code). After cutover it must use the merged read model for today.
 
 Retained from v5: the fourth rollup table (`usage_pipeline_state`), the sharp `cutoverDate` seam, the durable stale-estimate model, the stabilization window, and the ground rules.
 
@@ -51,8 +51,8 @@ Retained from v5: the fourth rollup table (`usage_pipeline_state`), the sharp `c
 
 ### 2.3 Resolution
 
-- **5.0a:** confirm the Gradle `minSdk`. If it is below 29, raise it to 29. The owner has already decided Android 10 is the floor.
-- **5.7 (behavior-preserving PR):** collapse every check at or below API 29 to its always-true branch, using the inventory above. Read each one: several are compound conditions (for example `SDK_INT >= N && ...` in `VpnRecoveryNotifier`, `SDK_INT < M || permission check` in `PermissionSupport`, `theme != GLASSY || SDK_INT < O_MR1` in `LauncherActivity`). Keep the non-version part of each condition. This removes lines from the big files, which the ground rules require.
+- **Batch 0a:** confirm the Gradle `minSdk`. If it is below 29, raise it to 29. The owner has already decided Android 10 is the floor.
+- **Batch 7 (behavior-preserving PR):** collapse every check at or below API 29 to its always-true branch, using the inventory above. Read each one: several are compound conditions (for example `SDK_INT >= N && ...` in `VpnRecoveryNotifier`, `SDK_INT < M || permission check` in `PermissionSupport`, `theme != GLASSY || SDK_INT < O_MR1` in `LauncherActivity`). Keep the non-version part of each condition. This removes lines from the big files, which the ground rules require.
 - Remove the `MOVE_TO_FOREGROUND/BACKGROUND` branches (deprecated in API 29, docs) in `UsageStatsRepository`, `ForegroundTaskService` and `AppBlockerAccessibilityService`.
 - **New code must contain no checks at or below API 29.** The pipeline is pure and has no SDK checks at all.
 
@@ -133,7 +133,7 @@ Implement as one pure, JVM-testable class (suggested name `ForegroundSpanTracker
 
 1. **One foreground package at a time.** A `RESUMED` for a different package closes the open session at that instant.
 2. **Everything that ends the foreground ends the session:** `PAUSED`; `STOPPED` as a backstop; `SCREEN_NON_INTERACTIVE`; `KEYGUARD_SHOWN`; `DEVICE_SHUTDOWN` (docs: treat shutdown as all activities stopped; no explicit `STOPPED` events are generated).
-3. **Match `STOPPED` to the activity.** Moving inside an app emits `A paused, B resumed, A stopped`; a package-wide stop would close B's new session. Nudge matches the exact activity class; Device-Watch keeps a set of open classes per package. Start with the simpler; choose in 5.0.
+3. **Match `STOPPED` to the activity.** Moving inside an app emits `A paused, B resumed, A stopped`; a package-wide stop would close B's new session. Nudge matches the exact activity class; Device-Watch keeps a set of open classes per package. Start with the simpler; choose in Batch 0.
 4. **Cap the inferred tail.** An open session has only an observed start. Extended to "now" it is capped (Nudge: 4 h). Measured sessions are never capped.
 5. **Filter sessions, never the stream.** Feed every event (including our own package and launchers); drop packages afterwards.
 6. **Sessions are never split, time is clipped.** The existing `AppUsageAndSessionTracker` already does this (code): `closeCurrentSession` sets `localDate = epochMsToLocalDate(sessionStartWall)` and stores the full `durationMs`; `splitIntoHourlySegments` clips time across hour and day boundaries. The new pipeline must replicate the same rules.
@@ -179,7 +179,7 @@ Consequences of D8:
 - **Today is never stored.** No row for the current local date exists in any rollup table. Today is computed live (6.4).
 - A past date D is written by one writer, one mutex, **one transaction per date**: delete D's rows in the three rollup tables, insert the recomputed rows. Running it twice with the same events gives the same rows.
 - D's rows contain: clipped time and hourly buckets for every session overlapping D (including one that started on D-1), and session rows only for sessions that **started** on D. A session that started on D and continues past midnight appears under D when it closes; D's time slice up to midnight is exact either way.
-- **COMPLETE** requires: D is over, the pipeline has no session that started on D still open (an open session older than the 4 h tail cap counts as closed), and the earliest available event is at or before the start of D (the 5.0 retention measurement defines the probe).
+- **COMPLETE** requires: D is over, the pipeline has no session that started on D still open (an open session older than the 4 h tail cap counts as closed), and the earliest available event is at or before the start of D (the Batch 0 retention measurement defines the probe).
 - **PARTIAL** only in two cases: an unresolved carried-over session (resolved on the next run), or events covering only part of the day (retention edge). PARTIAL is never promoted by guesswork.
 - A COMPLETE day is **never downgraded**. If its events have aged out, skip it. A `pipeline_version` bump recomputes a day only if its events still exist.
 - Triggers: app open, service start, day rollover, and Stats open. Work per run is bounded by the few days the OS keeps.
@@ -198,7 +198,7 @@ Consequences of D8:
 | Past, no `COMPLETE` rollup, events still available | On-demand pipeline (same rules), then written to rollups | Flag as partial if a carried-over session is unresolved or events cover part of the day |
 | Past, nothing | Missing | Counted in the coverage notice |
 
-Group A applies from step 5.5. Before that the card keeps its current OS-based code.
+Group A applies from Batch 5. Before that the card keeps its current OS-based code.
 
 **Group B: history consumers** (detectors, rating-chip eligible dates, data-health day counts).
 
@@ -237,8 +237,8 @@ Pure read-model tests (no Android):
 
 ### 6.6 Legacy writer lifecycle and rollback
 
-- **Shadow period (5.3):** the old accessibility-fed writer keeps writing the legacy tables unchanged; the new writer writes only the new tables, for completed days only. No cross-writes.
-- **Cutover (5.5):** set `cutoverDate` to the cutover date. The pipeline computes the whole of that date from events, so the partly written legacy row for that date is ignored.
+- **Shadow period (Batch 3):** the old accessibility-fed writer keeps writing the legacy tables unchanged; the new writer writes only the new tables, for completed days only. No cross-writes.
+- **Cutover (Batch 5):** set `cutoverDate` to the cutover date. The pipeline computes the whole of that date from events, so the partly written legacy row for that date is ignored.
 - **Stabilization (O8):** keep the old writer running for 14 days after cutover. Its rows for `date >= cutoverDate` are never served. After that window, stop it.
 - **Rollback:** within the stabilization window, setting `cutoverDate` to null restores legacy for every date with no gap. After the window, rollback leaves a gap for the days since cutover (legacy has no rows for them). Say so before shipping.
 
@@ -260,14 +260,14 @@ The existing allowance JSON (`daily_allowance_used`, one object per package) sta
 | `estimatedExtraMs` (new) | time budget, interval | Live-measured time **after** `confirmedAtMs`. Reset to 0 at every successful read |
 | `estimatedExtraOpens` (new) | count | New sessions seen **after** `confirmedAtMs`. Reset at every successful read |
 
-Live-session marker: keep **three** of the four existing `ACTIVE_SESSION_*` keys instead of deleting them in 5.4:
+Live-session marker: keep **three** of the four existing `ACTIVE_SESSION_*` keys instead of deleting them in Batch 4:
 - **`active_session_pkg`** — which package is open.
 - **`active_session_last_checkpoint_ms`** — last checkpoint time for the accumulator.
 - **`active_session_end_ms`** — interval-mode session expiry deadline, read by the accessibility restore path on reconnect (code, line 2407). Dropping it silently disables interval recovery.
 
-The fourth key **`active_session_open_at_ms`** is read by `ForegroundTaskService` at line 454 (code) where it feeds `sessionOpenAtMs` in `AllowanceExpiry` for the interval fallback. In 5.4, when the fallback path is replaced by the pipeline, verify nothing else reads it in either file before removing.
+The fourth key **`active_session_open_at_ms`** is read by `ForegroundTaskService` at line 454 (code) where it feeds `sessionOpenAtMs` in `AllowanceExpiry` for the interval fallback. In Batch 4, when the fallback path is replaced by the pipeline, verify nothing else reads it in either file before removing.
 
-The handoff key **`daily_allowance_usage_stats_sync`** is read and written by both `AppBlockerAccessibilityService` and `ForegroundTaskService` (code, lines 461 and 551 of the service). Remove all references in both files in 5.4 when the polling sync is deleted.
+The handoff key **`daily_allowance_usage_stats_sync`** is read and written by both `AppBlockerAccessibilityService` and `ForegroundTaskService` (code, lines 461 and 551 of the service). Remove all references in both files in Batch 4 when the polling sync is deleted.
 
 Invariants (tests assert them): `confirmed*` is monotonic per date or window; `estimated*` is never negative; effective values always equal confirmed plus estimated; a JSON object without the new fields reads as `confirmed = usedMs` (or `count`), `extra = 0`.
 
@@ -277,7 +277,7 @@ Invariants (tests assert them): `confirmed*` is monotonic per date or window; `e
 |---|---|---|
 | **FRESH** | Last successful read is recent | Within 2 ticks (about 60 s) while an allowance app is in the foreground |
 | **STALE** | Reads are late or failing transiently (exception, timeout, null before the first unlock, slow query) | Older than the FRESH window, usage permission still granted |
-| **UNAVAILABLE** | Usage access revoked, or no successful read since boot for longer than a grace period after unlock | Permission denied, or no read for 5 minutes after unlock (tune in 5.0) |
+| **UNAVAILABLE** | Usage access revoked, or no successful read since boot for longer than a grace period after unlock | Permission denied, or no read for 5 minutes after unlock (tune in Batch 0) |
 
 ### 7.3 Accumulation rules (what survives, and when it is written)
 
@@ -348,7 +348,7 @@ Segments that ended before T are not added again (the pipeline covers them if it
 | `UsageAccessCard` on the primary screen | Shows permission state | Keep; extend with the coverage notice (8.2) |
 | **Extra view** (`StatsInsightsExperience`, opened from the primary screen) | Shares the same view model and snapshot: insight cards, day-rating bar, `FindingsSection`, `DataHealthNotice` | Reads through the source rules in 6.4 |
 | **3-month window** | `CurrentStatsScreen` has no caller and the Extra view hides the tab, so it is **currently unreachable** (as far as I can find). It still has a permission gate, `hasUsableStats`, and `ThreeMonthRules` (night pattern, phone peak) that read `phoneUsage.byHour` | Keep compiling and add it to the test matrix so it works when re-exposed. No new work |
-| `PhoneUsageSummary.kt` | No caller found | Delete only if 5.0 confirms |
+| `PhoneUsageSummary.kt` | No caller found | Delete only if Batch 0 confirms |
 | Day-rating chips | `DayRatingRepository.getRatableDates` calls `dailyAppUsageDao.getForDateRange(cutoff, todayString)` including today (code); a day is rateable if usage or task data exists | Group B rules in 6.4; the today row comes from the live pipeline after cutover |
 | Data-health counts | `dataHealthDayCount = max(usageDays, taskDays)`, from `countDistinctDates()` | Group B rules in 6.4 |
 | Insight rules | `WeeklyRules`, `YesterdayRules`, `StatsParityCards` use **blocking** peak hours; only `ThreeMonthRules` uses phone usage | No change except the 3-month note above |
@@ -364,7 +364,7 @@ Segments that ended before T are not added again (the pipeline covers them if it
 
 ### 8.3 Detector inventory (code)
 
-`FindingDetectionRunner.runAll` is called from `BackgroundFetchWorker.kt:138` (code), not from the service or tracker. The rollup write must complete before the worker calls `runAll()` in the same execution; ordering is explicit in step 5.5.
+`FindingDetectionRunner.runAll` is called from `BackgroundFetchWorker.kt:138` (code), not from the service or tracker. The rollup write must complete before the worker calls `runAll()` in the same execution; ordering is explicit in Batch 5.
 
 `FindingDetectionRunner.runAll` runs 11 detectors. **Four are unaffected** (they read tasks or focus sessions): post-failure cascade, session sweet spot, estimation drift, day-of-week outlier. **Seven read the usage tables**, all as Group B consumers, **completed days only** (O7):
 
@@ -386,8 +386,8 @@ At cutover the rollups only hold the few recent days the OS still has, so a dete
 
 - A window **crosses the seam** when `start < cutoverDate <= end` (6.4). Detectors compute this from the read model, not from guesses.
 - **Default (strict):** a detector evaluates only windows that do not cross the seam. A window entirely after the seam needs enough pipeline days for its minimum; otherwise the detector returns "not enough consistent data yet". Trend detectors (escalating capture, substitution, streak lock-in, allowance suggestion) can stay silent for up to about four weeks after cutover. A window entirely before the seam is legacy and unchanged.
-- **Optional relaxation (O6):** use the shadow period (5.3) to compare both sources on the same completed days. If per-app daily totals agree within a tolerance the owner sets, allow mixing for detectors whose inputs are totals (not session shapes).
-- **Fingerprints:** findings are deduplicated by an evidence fingerprint that includes sample size and a quantized metric. After cutover the same pattern may produce a new fingerprint and be shown again. Check `FindingRepository.submit` behavior in 5.0 and keep fingerprint inputs unchanged.
+- **Optional relaxation (O6):** use the shadow period (Batch 3) to compare both sources on the same completed days. If per-app daily totals agree within a tolerance the owner sets, allow mixing for detectors whose inputs are totals (not session shapes).
+- **Fingerprints:** findings are deduplicated by an evidence fingerprint that includes sample size and a quantized metric. After cutover the same pattern may produce a new fingerprint and be shown again. Check `FindingRepository.submit` behavior in Batch 0 and keep fingerprint inputs unchanged.
 - Pure tests per detector: a window before the seam passes; a window after the seam with enough days passes; a window crossing the seam is refused; today is excluded; a midnight-crossing session is counted once.
 - **(verify)** when `runAll` is triggered, so detector runs and rollup runs do not race. Run detectors after the rollup pass.
 
@@ -408,9 +408,9 @@ At cutover the rollups only hold the few recent days the OS still has, so a dete
 
 ## 11. Steps (each its own PR; the app must build and behave at the end of each)
 
-### 5.0 Verify and measure (read-only plus device testing)
+### Batch 0 — Verify and measure (read-only plus device testing)
 
-- **5.0a SDK floor:** confirm Gradle `minSdk`, `compileSdk` and `targetSdk`; report them. Raise `minSdk` to 29 if lower.
+- **Batch 0a SDK floor:** confirm Gradle `minSdk`, `compileSdk` and `targetSdk`; report them. Raise `minSdk` to 29 if lower.
 - Add the Lint `NewApi` CI gate (3.1 rule 8) and run it on the current code; report findings.
 - Map every writer and reader of `daily_allowance_used`, `daily_app_usage`, `app_sessions` (include `BackgroundFetchWorker`, `SettingsRepository`, `LauncherActivity`, backup/export, the detectors, `DayRatingRepository`).
 - Map when `FindingDetectionRunner.runAll` runs and how `FindingRepository.submit` deduplicates.
@@ -426,7 +426,7 @@ At cutover the rollups only hold the few recent days the OS still has, so a dete
 - Stats Today in the afternoon (hourly distribution) and Week (9 event scans) on the current code.
 - Report measured differences; the owner sets the tolerance.
 
-### 5.1 Characterization and pipeline tests (behavior-preserving)
+### Batch 1 — Characterization and pipeline tests (behavior-preserving)
 
 JVM test source set (add if missing). Pin current pure behavior you will move or delete. Write, before any cutover:
 
@@ -436,18 +436,18 @@ JVM test source set (add if missing). Pin current pure behavior you will move or
 - DAO tests for rollup idempotency: run twice, same rows; downgrade refused; today never written; delete-then-insert per date.
 - Detector seam tests (8.4).
 
-### 5.2 `AllowanceLedger` (behavior-preserving)
+### Batch 2 — `AllowanceLedger` (behavior-preserving)
 
 Sole owner of the `daily_allowance_used` JSON schema (including the new fields in 7.1), the lock, day/window rollover, the remaining/exhausted math and the live-session marker. Replace the four read-side copies (`isAllowanceAvailable`, the unlock calculation, `isFallbackBlocked`, `LauncherActivity.loadAllowanceCardData`), `SettingsRepository`'s access and the launcher card. Read the **existing JSON as is**; old objects read as `confirmed = usedMs`, `extra = 0`. In-memory cache with write-behind. Fix the contradictory comments.
 
-### 5.3 Pipeline and rollup tables in shadow mode (behavior-preserving)
+### Batch 3 — Pipeline and rollup tables in shadow mode (behavior-preserving)
 
 - Build `ForegroundSpanTracker` and the thin adapter (null / `SecurityException` handling; no SDK checks inside the pipeline).
 - Add migration 6 → 7 (four tables, `usage_pipeline_state` seeded empty) and the rollup writer (6.2, 6.3). It writes **completed past days only**, never today.
 - Add the merged read model (6.4) and keep it in shadow mode: it serves legacy for every date.
 - Run the pipeline alongside the old logic with a debug-only comparison log for at least 7 days. Record per-app daily differences (used for O6).
 
-### 5.4 Allowance cutover (behavior-changing: D1, D2, D9)
+### Batch 4 — Allowance cutover (behavior-changing: D1, D2, D9)
 
 - Readings come from the pipeline, **independent of block state**. Enforcement stays gated on focus/standalone/always-on; only the number stops being gated.
 - Implement the state machine, the durable model and the accumulate/restart/reconcile rules (section 7). While an allowance app is in the foreground: baseline from the pipeline, exact-expiry timer seeded from the effective value, tick re-read (O3).
@@ -456,29 +456,29 @@ Sole owner of the `daily_allowance_used` JSON schema (including the new fields i
 - Apply O1 and O2.
 - **Copy:** update `DailyAllowanceModal`, `DailyAllowanceDefenseDialog` and the launcher card to say it counts all usage today, not just during blocks, and show the "about" marker when not FRESH.
 
-### 5.5 Stats, rollups and detectors cutover (behavior-changing: D3, D5 to D8)
+### Batch 5 — Stats, rollups and detectors cutover (behavior-changing: D3, D5 to D8)
 
 - `DeviceUsageSource` (one pass, Group A) feeds `AnalyticsProcessor`: summary, hourly and per-day Week values. Remove the `INTERVAL_BEST` path and the 7 per-day scans. Decouple the card from the hourly read (8.1).
 - Set `cutoverDate` to the cutover date in `usage_pipeline_state`. Group B consumers switch to the rules in 6.4: detectors (`dateRangeEnd()` → `LocalDate.now().minusDays(1)`, O7), `DayRatingRepository.getRatableDates` (today row from live pipeline), and `dataHealthDayCount`. Detectors apply the seam rules (8.4).
 - **`BackgroundFetchWorker` ordering:** within the same worker execution, complete the rollup pass first, then call `runAll()`. Add an explicit sequencing comment so a future refactor cannot reorder them.
 - Keep the old Room writer running for the stabilization window (O8), then stop it.
 - Extend `DataHealthNotice` for coverage. Check the dormant 3-month path still builds and its rules still work with the new `byHour` source.
-- Delete `PhoneUsageSummary.kt` only if 5.0 confirms it is unused.
+- Delete `PhoneUsageSummary.kt` only if Batch 0 confirms it is unused.
 
-### 5.6 Allowance suggestion and detector verification
+### Batch 6 — Allowance suggestion and detector verification
 
 Run the seven detectors against recorded data on both sides of the seam. Confirm: no findings from windows that cross the seam, expected disappearance of inflated "infinite session" findings, no duplicate findings from changed fingerprints, a midnight-crossing session counted once, and that the suggested allowance matches enforcement units.
 
-### 5.7 Version-gate cleanup and final cleanup (behavior-preserving)
+### Batch 7 — Version-gate cleanup and final cleanup (behavior-preserving)
 
-Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow log and obsolete keys (with a note on upgrade behavior). Switch `checkOpNoThrow` to `unsafeCheckOpNoThrow` in all three places: `UsageStatsRepository.kt:67`, `ForegroundTaskService.kt:379`, `AppBlockerAccessibilityService.kt:2476`. Re-run the 5.0 matrix on every version in 3.3. Report line counts for every touched and new file.
+Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow log and obsolete keys (with a note on upgrade behavior). Switch `checkOpNoThrow` to `unsafeCheckOpNoThrow` in all three places: `UsageStatsRepository.kt:67`, `ForegroundTaskService.kt:379`, `AppBlockerAccessibilityService.kt:2476`. Re-run the Batch 0 matrix on every version in 3.3. Report line counts for every touched and new file.
 
 ## 12. Ground rules
 
 1. **No god files.** One responsibility per new file, aim under about 250 lines, justify over 300. Pure logic separated from Android calls and JVM-tested.
 2. **The big files must shrink.** Net line count of `AppBlockerAccessibilityService.kt` and `ForegroundTaskService.kt` goes down in every step that touches them. Report the numbers.
 3. **Label every step** behavior-preserving or behavior-changing.
-4. **No new prefs keys.** The five new fields live inside the existing allowance JSON (7.1). New Room tables only as in 6.2. Three existing keys are reused as the live-session marker and interval-restore path: `active_session_pkg`, `active_session_last_checkpoint_ms`, and `active_session_end_ms`. `active_session_open_at_ms` and `daily_allowance_usage_stats_sync` are removed in 5.4 only after confirming no remaining callers in either `AppBlockerAccessibilityService` or `ForegroundTaskService`.
+4. **No new prefs keys.** The five new fields live inside the existing allowance JSON (7.1). New Room tables only as in 6.2. Three existing keys are reused as the live-session marker and interval-restore path: `active_session_pkg`, `active_session_last_checkpoint_ms`, and `active_session_end_ms`. `active_session_open_at_ms` and `daily_allowance_usage_stats_sync` are removed in Batch 4 only after confirming no remaining callers in either `AppBlockerAccessibilityService` or `ForegroundTaskService`.
 5. **No new polling loops.**
 6. **One source per date, always.** No code path may add or average rows from two sources for the same date.
 7. Blocking logic, VPN, keyword blocker and the foreground-service type stay untouched. Android 15 / targetSdk 35 work stays parked.
@@ -495,7 +495,7 @@ Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow lo
 - **Findings reappearing** after fingerprint changes (8.4).
 - **Rollback after the stabilization window** leaves a legacy gap (6.6).
 - **Locked boot:** null from `queryEvents` must never reset usage to zero.
-- **Split-screen / multi-resume:** "one foreground package" credits only the last resumed app. Document it; decide from 5.0.
+- **Split-screen / multi-resume:** "one foreground package" credits only the last resumed app. Document it; decide from Batch 0.
 - **Event delivery delay:** keep the exact-expiry timer and the tick.
 - **Retention:** if neither the app nor the service runs for longer than the OS keeps events, history for those days is lost. The always-on service plus the rollup at day rollover is the mitigation.
 - **Time travel:** changing the device clock moves the day boundary. Check whether current behavior is intended. Out of scope.
@@ -513,4 +513,4 @@ Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow lo
 - All 11 allowance durability tests (7.7) pass; behavior in STALE and UNAVAILABLE matches 7.5.
 - A midnight-crossing session is one session row, one open and clipped daily time, in the pipeline, the rollups and every detector read.
 - The primary Stats screen, Extra view and the dormant 3-month path all build and show sane numbers; all seven usage detectors have seam tests.
-- The 5.0 matrix is re-run on every version in 3.3 with measured deltas reported.
+- The Batch 0 matrix is re-run on every version in 3.3 with measured deltas reported.
