@@ -24,7 +24,7 @@ import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Warning
@@ -183,7 +183,8 @@ fun ImportConfirmScreen(
                 if (replaceTasks) {
                     DestructiveImportWarning()
                 }
-            } ?: run {
+            }
+            if (pendingEnvelope == null && importState != ImportState.Reading) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -449,7 +450,10 @@ private fun ImportWarningCard(
                 tint = iconColor,
                 modifier = Modifier.size(19.dp),
             )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 warnings.forEach { warning ->
                     Text(
                         text = warning,
@@ -559,6 +563,7 @@ private fun DestructiveImportWarning() {
                 modifier = Modifier.size(19.dp),
             )
             Text(
+                modifier = Modifier.weight(1f),
                 text = "This permanently deletes all current tasks. Replacement is blocked " +
                     "while a Focus Session is active.",
                 color = DarkTextPrimary,
@@ -579,7 +584,7 @@ private fun BackupSummaryCard(envelope: BackupEnvelope) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp)) {
             BackupSummaryRow(
-                icon = Icons.Outlined.FormatListBulleted,
+                icon = Icons.Outlined.Description,
                 label = "Tasks",
                 value = envelope.summary.taskCount.toString(),
             )
