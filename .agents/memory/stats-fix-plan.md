@@ -36,3 +36,14 @@ assigning a whole bucket to its start hour produces structurally false charts.
 
 **How to apply:** Sum stored daily hourly arrays across the requested range and
 gate the read by the active analytics window.
+
+Event-history coverage is per local date, not all-or-nothing for a multi-day
+range. If retention truncates the first requested date, later dates after the
+earliest retained event can still be complete; omit only dates without full
+coverage.
+
+**Why:** A partially covered range initially looked wholly incomplete even
+though later full dates had valid coverage.
+
+**How to apply:** Evaluate COMPLETE/PARTIAL coverage independently for each
+local day when merging event-backed detector history with persisted rollups.

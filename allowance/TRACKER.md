@@ -555,9 +555,15 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Owner-requested completion audit (2026-10-08):** The current checkout has no tracked worktree changes and is one commit ahead of `origin/main`. Rechecked the Batch 5 production wiring and tests. The Stats one-pass source, completed-day detector windows, read-model seams, rating/data-health dates, and rollup-before-detector ordering are present. Found one plan gap: detector history did not fall back to complete on-demand pipeline dates when a post-cutover rollup was missing or partial, despite the Group B precedence contract. Also found the legacy detector branch did not apply the repository's completed-day clamp to app-day rows when called with an end date of today. Implementing both fixes and focused coverage; device/API-matrix checks cannot be confirmed until Android devices or emulators are available.
 
+**Audit completion update (2026-10-08):** Added the missing Group B on-demand fallback for fully covered dates without a COMPLETE rollup; COMPLETE rollups remain authoritative, and partial/missing dates stay absent unless on-demand coverage is complete. Clamped legacy detector app-day and session reads to completed dates. Focused tests and both local flavor suites pass. The accessibility service is now 4,393 lines versus the 4,397-line Batch 4 baseline. Batch 5 remains IN PROGRESS because API 29/31/33 device checks are unavailable in this workspace.
+
 <!-- Stabilization window end date: -->
 
 ### Evidence
+
+- **Group B on-demand fallback:** `UsageHistoryRepository.kt`, `OnDemandDetectorUsageReader.kt`, and `AppModule.kt`; `UsageHistoryRepositoryOnDemandTest` verifies COMPLETE rollup precedence, replacement of a PARTIAL date only with complete event coverage, and legacy app-day/session clamping to completed dates. `OnDemandDetectorUsageReaderTest` verifies midnight-crossing attribution and omits only dates truncated by retention. Both flavor test suites passed.
+- **Batch 5 local verification:** `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`; each ran 232 tests with 0 failures and 0 skipped. `FOCUSFLOW_SKIP_APK_BUILD=1`; no APK was built. `git diff --check` passed.
+- **Accessibility-service line count:** `AppBlockerAccessibilityService.kt` is 4,393 lines, down from the recorded 4,397-line Batch 4 baseline.
 
 ### Failures and blockers
 - **Owner-requested verification attempt 1:** `bash scripts/test-unit.sh` timed out after 300 seconds while installing the first-use JDK 17, Android SDK 35 and Gradle toolchain. Gradle had just started, so no source compilation or test result was produced. Toolchain setup is now cached; rerunning the same script in the background.
@@ -567,6 +573,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - **Outcome:** Added a dedicated `UsageHistoryAppDay` fixture for the legacy-source clamp test while retaining `AppUsageRangeRow` for the on-demand detector model. The type mismatch is fixed; rerunning both flavor suites.
 - **Owner-requested verification attempt 4:** Both flavors compiled. `testProductionDebugUnitTest` ran 232 tests and failed only `OnDemandDetectorUsageReaderTest.incompleteRetentionCoverageDoesNotCreateDetectorRows` at line 57; Gradle did not proceed to the Tbtechsdev suite. Investigating the coverage boundary expectation and reader behavior before rerunning.
 - **Outcome:** Confirmed the reader correctly marked the fully covered second date complete while omitting the truncated first date. Updated the test to verify that only the incomplete date is excluded and no usage rows are synthesized; rerunning both flavor suites.
+- **Final successful rerun:** `bash scripts/test-unit.sh` passed both Production and Tbtechsdev unit-test tasks; each ran 232 tests with zero failures or skips. The updated retention-boundary test passed.
+- **Device blocker:** `adb devices -l` returned no connected devices, and the Android emulator executable is unavailable. The Stats Today API 29/33 check and the API 29/31/33 device matrix remain unchecked; no device results are claimed.
 - **Local test attempt 1:** `bash scripts/test-unit.sh` exceeded the 300-second shell limit during first-run JDK/Android SDK/Gradle setup; no test results were produced. Retrying with the bootstrapped tools cached.
 - **Supplied continuation note:** Reports the initial `bash scripts/test-unit.sh` attempt timed out during first-run setup; no Gradle test result was produced. This attempt predates the current verification.
 - **Local test attempt 2:** `bash scripts/test-unit.sh` provisioned JDK 17, Android SDK 35, and Gradle, then both flavor Kotlin compilation tasks failed before tests ran: `DeviceUsageSource.kt:149` called `orEmpty()` on a nullable single row, and `UsageRollupWriter.kt:221` lacked the `UsagePipelineStateEntity` import. Replaced the nullable row conversion with `listOfNotNull` and added the missing entity import; rerun pending.
@@ -682,7 +690,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 | Batch 2 `AllowanceLedger` | BLOCKED | — |
 | Batch 3 Shadow pipeline and rollups | IN PROGRESS | — |
 | Batch 4 Allowance cutover | IN PROGRESS | — |
-| Batch 5 Stats, rollups and detectors cutover | NOT STARTED | — |
+| Batch 5 Stats, rollups and detectors cutover | IN PROGRESS | — |
 | Batch 6 Detector verification | NOT STARTED | — |
 | Batch 7 Cleanup and final matrix | NOT STARTED | — |
 
@@ -690,6 +698,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - Batch 1 CI execution remains unchecked: the local Production and Tbtechsdev test tasks passed, and both CI workflow configs contain the matching test task, but GitHub Actions were not run because the user did not request APK-building verification.
 - Batch 2 is blocked on its unchecked manual timing comparison: `adb devices -l` was empty and the emulator executable is unavailable.
 - Batch 3 remains in progress: migration/writer instrumentation execution, read-model cases 2/6/14, DAO execution checks, preservation of the last known value on null event reads, the device matrix, and the seven-day shadow comparison are still open. The null/`SecurityException`-to-unknown behavior is verified by JVM tests.
+- Batch 5 is implemented and both local flavor suites pass, but remains in progress until Stats Today is checked on API 29/33 and the device matrix is checked on API 29/31/33; no Android device or emulator is available in this workspace.
 
 **Deferred work**
 <!-- Items explicitly moved to a future phase. -->
