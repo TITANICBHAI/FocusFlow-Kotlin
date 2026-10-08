@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -99,112 +100,116 @@ internal fun ActiveTaskBanner(
             .clickable(onClick = onOpen)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(actionOverlay)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                    .weight(1f)
+                    .widthIn(min = 0.dp),
             ) {
-                Text(
-                    if (isRunning) "NOW" else "TIME'S UP",
-                    fontSize = 10.scaledSp,
-                    fontWeight = FontWeight.Bold,
-                    color = foregroundColor,
-                    letterSpacing = 0.8.scaledSp,
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(foregroundColor),
-                )
-                Spacer(Modifier.width(8.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(actionOverlay)
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        if (isRunning) "NOW" else "TIME'S UP",
+                        fontSize = 10.scaledSp,
+                        fontWeight = FontWeight.Bold,
+                        color = foregroundColor,
+                        letterSpacing = 0.8.scaledSp,
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(foregroundColor),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        task.title,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 15.scaledSp,
+                        fontWeight = FontWeight.Bold,
+                        color = foregroundColor,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
-                    task.title,
-                    modifier = Modifier.weight(1f),
-                    fontSize = 15.scaledSp,
-                    fontWeight = FontWeight.Bold,
-                    color = foregroundColor,
+                    if (isRunning) "Until ${task.endTime.asLocalTime()}"
+                    else "Ended ${task.endTime.asLocalTime()} · pick one",
+                    fontSize = 12.scaledSp,
+                    color = foregroundColor.copy(alpha = 0.88f),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                if (isRunning) "Until ${task.endTime.asLocalTime()}"
-                else "Ended ${task.endTime.asLocalTime()} · pick one",
-                fontSize = 12.scaledSp,
-                color = foregroundColor.copy(alpha = 0.88f),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    onClick = onComplete,
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(actionOverlay),
+                ) {
+                    Icon(
+                        Icons.Outlined.Check,
+                        contentDescription = "Complete",
+                        tint = foregroundColor,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+                IconButton(
+                    onClick = onExtend,
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(actionOverlay),
+                ) {
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = "Extend",
+                        tint = foregroundColor,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+                if (!isRunning) {
                     IconButton(
-                        onClick = onComplete,
+                        onClick = onSkip,
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
                         Icon(
-                            Icons.Outlined.Check,
-                            contentDescription = "Complete",
+                            Icons.Outlined.Close,
+                            contentDescription = "Skip",
                             tint = foregroundColor,
                             modifier = Modifier.size(15.dp),
                         )
                     }
+                } else if (task.focusMode) {
                     IconButton(
-                        onClick = onExtend,
+                        onClick = onStartFocus,
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
                         Icon(
-                            Icons.Outlined.Add,
-                            contentDescription = "Extend",
+                            Icons.Outlined.Shield,
+                            contentDescription = "Start focus",
                             tint = foregroundColor,
                             modifier = Modifier.size(15.dp),
                         )
-                    }
-                    if (!isRunning) {
-                        IconButton(
-                            onClick = onSkip,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(actionOverlay),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Skip",
-                                tint = foregroundColor,
-                                modifier = Modifier.size(15.dp),
-                            )
-                        }
-                    } else if (task.focusMode) {
-                        IconButton(
-                            onClick = onStartFocus,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(actionOverlay),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Shield,
-                                contentDescription = "Start focus",
-                                tint = foregroundColor,
-                                modifier = Modifier.size(15.dp),
-                            )
-                        }
                     }
                 }
             }
