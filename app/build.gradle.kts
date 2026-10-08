@@ -79,7 +79,9 @@ android {
     }
 
     lint {
-        abortOnError = false
+        abortOnError = true
+        checkOnly += "NewApi"
+        error += "NewApi"
     }
 }
 

@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash", "python-base-3.13"]
+modules = ["nodejs-20", "web", "bash"]
 
 [nix]
 channel = "stable-25_05"
@@ -22,12 +22,12 @@ args = "Push to GitHub"
 name = "Push to GitHub"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "bash scripts/push-to-github.sh"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "GITHUB_SYNC_COMMIT_MESSAGE='daily allowance started' bash scripts/push-to-github.sh"
 
 [[workflows.workflow]]
 name = "Run Android unit tests"

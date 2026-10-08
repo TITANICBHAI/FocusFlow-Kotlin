@@ -2,8 +2,8 @@
 
 ## Current status
 
-- **Overall:** Documentation setup complete; implementation not started.
-- **Authorization:** This setup request authorizes organizing the plan and creating its working instructions and tracker. App-code implementation still requires explicit user authorization.
+- **Overall:** Phase 5.0 in progress; source audit is complete, lint-gate work is authorized, and device measurements remain open.
+- **Authorization:** The user authorized the full Batch 5.0 scope, including adding and running the NewApi CI gate. This does not authorize later implementation batches or GitHub Actions runs.
 - **Plan authority:** [`PLAN.md`](PLAN.md) is v6 and replaces v1–v5.
 - **Last updated:** 2026-10-08
 
@@ -37,29 +37,46 @@ Read [`PRE_PROMPT.md`](PRE_PROMPT.md), [`PLAN.md`](PLAN.md), and this tracker in
 
 ## Batch 5.0 — Verify and measure
 
-**Status:** Not started — implementation authorization and the planned current-source/device review are pending.
+**Status:** In progress — source review complete; NewApi lint-gate work underway; device/performance measurements remain open.
 
 Plan phase: **5.0 — Verify and measure (read-only plus device testing)**
 
-- [ ] Confirm and report Gradle `minSdk`, `compileSdk`, and `targetSdk`; raise `minSdk` to 29 only if it is lower and implementation is authorized.
+- [x] Confirm and report Gradle `minSdk`, `compileSdk`, and `targetSdk`; raise `minSdk` to 29 only if it is lower and implementation is authorized.
 - [ ] Add/run the Android Lint `NewApi` CI gate as scoped by the plan; record findings.
-- [ ] Map all writers and readers of `daily_allowance_used`, `daily_app_usage`, and `app_sessions`, including the plan's named consumers.
-- [ ] Map `FindingDetectionRunner.runAll` invocation and `FindingRepository.submit` deduplication behavior.
-- [ ] Verify legacy cross-midnight session dating and all `ACTIVE_SESSION_*` key reads/writes.
+- [x] Map all writers and readers of `daily_allowance_used`, `daily_app_usage`, and `app_sessions`, including the plan's named consumers.
+- [x] Map `FindingDetectionRunner.runAll` invocation and `FindingRepository.submit` deduplication behavior.
+- [x] Verify legacy cross-midnight session dating and all `ACTIVE_SESSION_*` key reads/writes.
 - [ ] Run the plan's device matrix for supported Android versions and scenarios where devices/emulators are available.
 - [ ] Measure event latency, event retention, query cost, and current Stats Today/Week behavior.
 - [ ] Record measured differences, unknowns, and owner decisions/tolerances.
 
 **Initial notes**
 
-- No current-source audit or device testing has been performed as part of documentation setup.
+- The initial read-only source audit is complete. The user has now authorized the full Batch 5.0 scope, including the NewApi CI gate. Keep later implementation batches and GitHub Actions runs out of scope.
 - Follow plan sections 2–3, 5.0, 7.1, and 11; record unavailable devices and unverified claims explicitly.
 
 **Evidence / notes**
 
-- Changed files:
+- Changed files for Batch 5.0: `app/build.gradle.kts`, `.github/workflows/build-native-kotlin-apk.yml`, `.github/workflows/build-tbtechsdev-apk.yml`, and `allowance/TRACKER.md`. No app runtime source or tests changed.
 - Exact checks and results:
+  - Read `app/build.gradle.kts`: `minSdk = 29`, `compileSdk = 35`, `targetSdk = 35`; no SDK-floor change is needed.
+  - Searched current Kotlin sources for `daily_allowance_used`, `daily_app_usage`, `app_sessions`, and the active-session/sync keys; inspected the service, DAO, repository, launcher, and tracker paths.
+  - `AppUsageAndSessionTracker` writes launch counts at foreground transitions and clipped daily/hourly time through `DailyAppUsageDao`; closed sessions use their start date and full duration, but durations outside 1 s–4 h are not inserted. The device time path and stored session path therefore have a 4 h boundary to characterize.
+  - `ForegroundTaskService` runs a 60 s UsageStats allowance sync and writes the shared allowance JSON; `AppBlockerAccessibilityService` also reads/writes it and owns the 15 s timed-session checkpoint path. `SettingsRepository` snapshots/parses and can reset it; `LauncherActivity` reads it for allowance cards.
+  - Room is version 6. The existing usage tables are created by migration 5→6; the daily-usage DAO accumulates/replaces rows and both tables are pruned after 90 days in `BackgroundFetchWorker`.
+  - `FindingDetectionRunner.runAll()` is called by the worker's once-daily finding pass. Its date end is today. `FindingRepository.submit()` looks up by detection type and subject; fingerprint changes can resurface an existing active/intentional finding subject to suppression/cooldown rules.
+  - `DayRatingRepository.getRatableDates()` includes today from legacy usage rows. Stats health counts legacy usage dates. `AnalyticsProcessor` reads a summary and an `INTERVAL_BEST` hourly bucket; Week adds seven per-day summaries. The current Week path makes eight `queryEvents` scans plus one `queryUsageStats(INTERVAL_BEST)` query by source inspection, not runtime measurement. The phone-usage metrics builder returns null if the hourly read is unavailable.
+  - `BackupSerializer` includes portable settings and tasks, not Room usage tables. Allowance configuration is portable; allowance usage counters are not part of that envelope.
+  - Android Lint is configured with `abortOnError = false`; no `NewApi` lint gate was found in the inspected Gradle/CI/scripts. Two APK-build workflows exist; neither was run.
+  - Changed lint configuration to run only `NewApi`, treat it as an error, and abort on findings; added the production and tbtechsdev lint tasks to their existing APK workflows.
+  - Local lint verification attempted with `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:lintProductionDebug :app:lintTbtechsdevDebug`. JDK/SDK bootstrap completed, but the command timed out during `:app:kspProductionDebugKotlin`, before either lint task reported a result. No lint report was produced and no Gradle process remained. The lint checklist stays unchecked.
 - Decisions, blockers, and deferred checks:
+  - No tests or device checks were run during the initial source-only review.
+  - No `adb` or emulator executable is available in this workspace, and no physical device was provided. Device-matrix behavior, event latency, OS event-retention edge, query cost, and actual Stats output remain unmeasured.
+  - GitHub Actions were not started, polled, or monitored.
+  - Code inspection confirms the current Stats call pattern, but does not substitute for the requested device comparison against Digital Wellbeing or allowance enforcement. Owner tolerances remain unset.
+  - In `UsageStatsRepository`, `queryEvents` is consumed without a visible null guard; the current summary path can fail rather than distinguish an unavailable event stream from a successful zero result. Device/locked-boot behavior remains unverified.
+  - Current-source mismatch to account for in later planning: the existing session tracker rejects closed session rows over 4 h, while still accumulating daily foreground time; confirm this is the intended legacy baseline before defining pipeline parity.
 
 ## Batch 5.1 — Characterization and pipeline tests
 
@@ -260,3 +277,5 @@ Plan phase: **5.7 — Version-gate cleanup (behavior-preserving)**
 | Date | Scope | Evidence, decisions, blockers, or deferred work |
 |---|---|---|
 | 2026-10-08 | Read plan and set up allowance documentation | Read the supplied v6 plan before moving it. Added the pre-prompt and this phased tracker. No app-code implementation or tests were performed; implementation remains unstarted and requires explicit authorization. |
+| 2026-10-08 | Phase 5.0 read-only source audit | User authorized source review only. Confirmed SDK values, mapped legacy allowance/usage readers and writers, detector invocation/deduplication, session-date behavior, active-session keys, Stats query shape, and backup contents. No app code, CI, tests, or GitHub Actions changed or run. Device measurements and owner tolerances remain open; see Batch 5.0 evidence. |
+| 2026-10-08 | Phase 5.0 NewApi gate | User authorized full Batch 5.0. Added focused NewApi lint configuration and wired both flavor lint tasks into existing GitHub workflows. Local lint attempt timed out during Kotlin/KSP setup before lint results; no GitHub Actions were started. Device checks remain unavailable. |
