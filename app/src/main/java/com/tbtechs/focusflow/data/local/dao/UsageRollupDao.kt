@@ -17,6 +17,20 @@ interface UsageRollupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPipelineState(state: UsagePipelineStateEntity)
 
+    @Query(
+        """
+        UPDATE usage_pipeline_state
+        SET cutover_date = :cutoverDate
+        WHERE id = 1
+          AND cutover_date IS NULL
+          AND shadow_started_on <= :shadowStartedBy
+        """,
+    )
+    suspend fun setCutoverDateIfShadowMature(
+        cutoverDate: String,
+        shadowStartedBy: String,
+    ): Int
+
     @Query("SELECT * FROM usage_rollup_day WHERE date = :date")
     suspend fun getDay(date: String): UsageRollupDayEntity?
 
@@ -31,6 +45,12 @@ interface UsageRollupDao {
 
     @Query("SELECT * FROM usage_rollup_app_day WHERE date = :date ORDER BY foreground_ms DESC")
     suspend fun getAppDays(date: String): List<UsageRollupAppDayEntity>
+
+    @Query(
+        "SELECT * FROM usage_rollup_app_day WHERE date BETWEEN :startDate AND :endDate " +
+            "ORDER BY date, foreground_ms DESC",
+    )
+    suspend fun getAppDays(startDate: String, endDate: String): List<UsageRollupAppDayEntity>
 
     @Query("SELECT * FROM usage_rollup_session WHERE local_date BETWEEN :startDate AND :endDate ORDER BY started_at_ms")
     suspend fun getSessions(startDate: String, endDate: String): List<UsageRollupSessionEntity>

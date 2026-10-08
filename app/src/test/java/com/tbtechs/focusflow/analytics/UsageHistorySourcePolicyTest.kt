@@ -1,6 +1,8 @@
 package com.tbtechs.focusflow.analytics
 
 import com.tbtechs.focusflow.data.local.entity.AppSessionEntity
+import com.tbtechs.focusflow.data.local.entity.UsagePipelineStateEntity
+import com.tbtechs.focusflow.data.local.entity.UsageRollupDayEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -202,6 +204,59 @@ class UsageHistorySourcePolicyTest {
         )
     }
 
+    @Test
+    fun cutoverWaitsForSevenCompleteShadowDaysAndThenKeepsLegacyWriterDuringStabilization() =
+        runBlocking {
+            val state = UsagePipelineStateEntity(
+                cutoverDate = null,
+                pipelineVersion = UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION,
+                shadowStartedOn = "2026-10-01",
+            )
+            val emptyStore = MutableHistoryStore(state)
+            assertTrue(UsageHistoryRepository(emptyStore).shouldWriteLegacy("2026-10-08"))
+            assertEquals(null, emptyStore.state.cutoverDate)
+
+            val completeDays = (1..7).map { day ->
+                UsageRollupDayEntity(
+                    date = "2026-10-${day.toString().padStart(2, '0')}",
+                    status = UsageRollupDayEntity.COMPLETE,
+                    coverageStartMs = null,
+                    coverageEndMs = null,
+                    pipelineVersion = UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION,
+                    computedAtMs = 1L,
+                    totalForegroundMs = 0L,
+                )
+            }
+            val readyStore = MutableHistoryStore(state, completeDays)
+            val repository = UsageHistoryRepository(readyStore)
+            assertTrue(repository.shouldWriteLegacy("2026-10-08"))
+            assertEquals("2026-10-08", readyStore.state.cutoverDate)
+            assertTrue(repository.shouldWriteLegacy("2026-10-21"))
+            assertFalse(repository.shouldWriteLegacy("2026-10-22"))
+        }
+
+    @Test
+    fun groupBReadModelIncludesUsageDatesFromOnDemandEvents() = runBlocking {
+        val store = MutableHistoryStore(
+            state = UsagePipelineStateEntity(
+                cutoverDate = cutover,
+                pipelineVersion = UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION,
+                shadowStartedOn = "2026-09-24",
+            ),
+            onDemandDates = setOf("2026-10-07"),
+        )
+
+        assertEquals(
+            setOf("2026-10-07"),
+            UsageHistoryRepository(store).groupBUsageDates(
+                startDate = cutover,
+                endDate = "2026-10-07",
+                today = today,
+                consumer = UsageHistoryConsumer.DATA_HEALTH,
+            ),
+        )
+    }
+
     private fun source(
         date: String,
         consumer: UsageHistoryConsumer,
@@ -238,6 +293,43 @@ class UsageHistorySourcePolicyTest {
         ): List<AppSessionEntity> {
             legacyReads++
             return emptyList()
+        }
+    }
+
+    private class MutableHistoryStore(
+        var state: UsagePipelineStateEntity,
+        private val rollups: List<UsageRollupDayEntity> = emptyList(),
+        private val onDemandDates: Set<String> = emptySet(),
+    ) : UsageHistoryStore {
+        override suspend fun legacyAppDays(
+            startDate: String,
+            endDate: String,
+        ): List<UsageHistoryAppDay> = emptyList()
+
+        override suspend fun legacySessions(
+            startDate: String,
+            endDate: String,
+        ): List<AppSessionEntity> = emptyList()
+
+        override suspend fun pipelineState(): UsagePipelineStateEntity = state
+
+        override suspend fun rollupDays(
+            startDate: String,
+            endDate: String,
+        ): List<UsageRollupDayEntity> = rollups.filter { it.date in startDate..endDate }
+
+        override suspend fun onDemandUsageDates(
+            startDate: String,
+            endDate: String,
+        ): Set<String> = onDemandDates.filterTo(mutableSetOf()) { it in startDate..endDate }
+
+        override suspend fun setCutoverDateIfShadowMature(
+            cutoverDate: String,
+            shadowStartedBy: String,
+        ): Boolean {
+            if (state.cutoverDate != null || state.shadowStartedOn > shadowStartedBy) return false
+            state = state.copy(cutoverDate = cutoverDate)
+            return true
         }
     }
 

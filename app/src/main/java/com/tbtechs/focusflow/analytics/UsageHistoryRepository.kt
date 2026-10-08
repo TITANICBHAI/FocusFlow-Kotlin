@@ -43,19 +43,26 @@ interface UsageHistoryStore {
     suspend fun pipelineState(): UsagePipelineStateEntity? = null
     suspend fun rollupDays(startDate: String, endDate: String): List<UsageRollupDayEntity> = emptyList()
     suspend fun rollupAppDays(date: String): List<UsageRollupAppDayEntity> = emptyList()
+    suspend fun rollupAppDays(
+        startDate: String,
+        endDate: String,
+    ): List<UsageRollupAppDayEntity> =
+        rollupDays(startDate, endDate).flatMap { rollupAppDays(it.date) }
     suspend fun rollupSessions(startDate: String, endDate: String): List<UsageRollupSessionEntity> =
         emptyList()
     suspend fun liveHasSessionToday(date: String): Boolean = false
+    suspend fun onDemandUsageDates(startDate: String, endDate: String): Set<String> = emptySet()
+    suspend fun setCutoverDateIfShadowMature(
+        cutoverDate: String,
+        shadowStartedBy: String,
+    ): Boolean = false
 }
 
 class UsageHistoryRepository(
     private val store: UsageHistoryStore,
 ) {
     suspend fun shouldWriteLegacy(today: String): Boolean =
-        UsageHistorySourcePolicy.shouldWriteLegacy(
-            cutoverDate = store.pipelineState()?.cutoverDate,
-            today = today,
-        )
+        UsageHistorySourcePolicy.shouldWriteLegacy(cutoverDate = cutoverDate(today), today = today)
 
     suspend fun appDays(startDate: String, endDate: String): List<UsageHistoryAppDay> =
         store.legacyAppDays(startDate, endDate)
@@ -66,11 +73,17 @@ class UsageHistoryRepository(
     suspend fun deviceStatsRollups(
         startDate: String,
         endDate: String,
-    ): Map<String, DeviceStatsRollupDay> =
-        store.rollupDays(startDate, endDate).associate { day ->
+    ): Map<String, DeviceStatsRollupDay> {
+        val days = store.rollupDays(startDate, endDate)
+        val appDaysByDate = if (days.isEmpty()) {
+            emptyMap()
+        } else {
+            store.rollupAppDays(startDate, endDate).groupBy { it.date }
+        }
+        return days.associate { day ->
             day.date to DeviceStatsRollupDay(
                 status = day.status,
-                appDays = store.rollupAppDays(day.date).map { row ->
+                appDays = appDaysByDate[day.date].orEmpty().map { row ->
                     UsageHistoryAppDay(
                         date = row.date,
                         packageName = row.packageName,
@@ -84,6 +97,7 @@ class UsageHistoryRepository(
                 },
             )
         }
+    }
 
     /**
      * Returns one source for a detector window. Seam-crossing windows are
@@ -94,9 +108,11 @@ class UsageHistoryRepository(
         endDate: String,
         today: String,
     ): DetectorUsageHistory? {
-        val cutoverDate = store.pipelineState()?.cutoverDate
-        if (UsageHistorySourcePolicy.crossesSeam(startDate, endDate, cutoverDate)) return null
-        if (cutoverDate == null || endDate < cutoverDate) {
+        val completedEndDate = minOf(endDate, LocalDate.parse(today).minusDays(1).toString())
+        if (completedEndDate < startDate) return null
+        val cutoverDate = cutoverDate(today)
+        if (UsageHistorySourcePolicy.crossesSeam(startDate, completedEndDate, cutoverDate)) return null
+        if (cutoverDate == null || completedEndDate < cutoverDate) {
             return DetectorUsageHistory(
                 appDays = store.legacyAppDays(startDate, endDate).map { row ->
                     AppUsageRangeRow(
@@ -110,18 +126,17 @@ class UsageHistoryRepository(
                         lastUsedAt = row.lastUsedAtMs,
                     )
                 },
-                sessions = store.legacySessions(startDate, endDate),
+                sessions = store.legacySessions(startDate, completedEndDate),
             )
         }
         if (startDate < cutoverDate || startDate >= today) return null
 
-        val completeDates = store.rollupDays(startDate, endDate)
+        val completeDates = store.rollupDays(startDate, completedEndDate)
             .filter { it.status == UsageRollupDayEntity.COMPLETE }
             .map { it.date }
             .toSet()
-        val appDays = completeDates
-            .sorted()
-            .flatMap(store::rollupAppDays)
+        val appDays = store.rollupAppDays(startDate, completedEndDate)
+            .filter { it.date in completeDates }
             .map { row ->
                 AppUsageRangeRow(
                     packageName = row.packageName,
@@ -134,7 +149,7 @@ class UsageHistoryRepository(
                     lastUsedAt = row.lastUsedAtMs,
                 )
             }
-        val sessions = store.rollupSessions(startDate, endDate)
+        val sessions = store.rollupSessions(startDate, completedEndDate)
             .filter { it.localDate in completeDates }
             .map { row ->
                 AppSessionEntity(
@@ -161,7 +176,7 @@ class UsageHistoryRepository(
         today: String,
         consumer: UsageHistoryConsumer,
     ): Set<String> {
-        val cutoverDate = store.pipelineState()?.cutoverDate
+        val cutoverDate = cutoverDate(today)
         val phase = if (cutoverDate == null) {
             UsageHistoryReadPhase.SHADOW
         } else {
@@ -188,6 +203,15 @@ class UsageHistoryRepository(
         } else {
             emptyMap()
         }
+        val onDemandDates = if (
+            cutoverDate != null &&
+            rollupStart != null &&
+            rollupStart <= rollupEnd
+        ) {
+            store.onDemandUsageDates(rollupStart, rollupEnd)
+        } else {
+            emptySet()
+        }
         val liveHasSession = if (today in startDate..endDate && cutoverDate != null) {
             store.liveHasSessionToday(today)
         } else {
@@ -206,13 +230,14 @@ class UsageHistoryRepository(
                         cutoverDate = cutoverDate,
                         consumer = consumer,
                         rollupStatus = rollupDays[date]?.status,
-                        eventsAvailable = false,
+                        eventsAvailable = date in onDemandDates,
                         liveHasSession = liveHasSession,
                     )
                 ) {
                     UsageHistorySource.LEGACY -> date in legacyDates
                     UsageHistorySource.ROLLUP -> true
                     UsageHistorySource.LIVE_PIPELINE -> true
+                    UsageHistorySource.ON_DEMAND_PIPELINE -> date in onDemandDates
                     else -> false
                 }
             }
@@ -238,6 +263,38 @@ class UsageHistoryRepository(
         eventsAvailable = eventsAvailable,
         liveHasSession = liveHasSession,
     )
+
+    private suspend fun cutoverDate(today: String): String? {
+        val state = store.pipelineState() ?: return null
+        state.cutoverDate?.let { return it }
+        val todayDate = LocalDate.parse(today)
+        val shadowStart = runCatching { LocalDate.parse(state.shadowStartedOn) }.getOrNull()
+            ?: return null
+        val eligibleShadowStart = todayDate.minusDays(CUTOVER_SHADOW_DAYS)
+        if (shadowStart.isAfter(eligibleShadowStart)) return null
+        val requiredStart = todayDate.minusDays(CUTOVER_SHADOW_DAYS)
+        if (shadowStart.isAfter(requiredStart)) return null
+        val requiredDates = (0 until CUTOVER_SHADOW_DAYS)
+            .map { requiredStart.plusDays(it).toString() }
+            .toSet()
+        val completeShadowDates = store.rollupDays(
+            startDate = requiredStart.toString(),
+            endDate = todayDate.minusDays(1).toString(),
+        ).filter {
+            it.status == UsageRollupDayEntity.COMPLETE &&
+                it.pipelineVersion == UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION
+        }.map { it.date }.toSet()
+        if (!completeShadowDates.containsAll(requiredDates)) return null
+        store.setCutoverDateIfShadowMature(
+            cutoverDate = today,
+            shadowStartedBy = eligibleShadowStart.toString(),
+        )
+        return store.pipelineState()?.cutoverDate
+    }
+
+    private companion object {
+        const val CUTOVER_SHADOW_DAYS = 7L
+    }
 }
 
 class RoomUsageHistoryStore(
@@ -283,10 +340,55 @@ class RoomUsageHistoryStore(
     override suspend fun rollupAppDays(date: String): List<UsageRollupAppDayEntity> =
         usageRollupDao.getAppDays(date)
 
+    override suspend fun rollupAppDays(
+        startDate: String,
+        endDate: String,
+    ): List<UsageRollupAppDayEntity> = usageRollupDao.getAppDays(startDate, endDate)
+
     override suspend fun rollupSessions(
         startDate: String,
         endDate: String,
     ): List<UsageRollupSessionEntity> = usageRollupDao.getSessions(startDate, endDate)
+
+    override suspend fun setCutoverDateIfShadowMature(
+        cutoverDate: String,
+        shadowStartedBy: String,
+    ): Boolean = usageRollupDao.setCutoverDateIfShadowMature(cutoverDate, shadowStartedBy) > 0
+
+    override suspend fun onDemandUsageDates(
+        startDate: String,
+        endDate: String,
+    ): Set<String> {
+        val zone = ZoneId.systemDefault()
+        val startDateValue = LocalDate.parse(startDate)
+        val endDateValue = LocalDate.parse(endDate)
+        val rangeStartMs = startDateValue.atStartOfDay(zone).toInstant().toEpochMilli()
+        val rangeEndMs = minOf(
+            endDateValue.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
+            System.currentTimeMillis(),
+        )
+        if (rangeStartMs >= rangeEndMs) return emptySet()
+
+        val nowMs = System.currentTimeMillis()
+        val events = eventSource.readForegroundEvents(
+            rangeStartMs - LIVE_SESSION_LOOKBACK_MS,
+            rangeEndMs,
+        ) as? UsageEventRead.Available ?: return emptySet()
+        if (events.events.isEmpty() && events.earliestEventAtMs == null) return emptySet()
+        val sessions = liveTracker.sessions(
+            events = events.events,
+            windowStartMs = rangeStartMs,
+            windowEndMs = rangeEndMs,
+            nowMs = nowMs,
+        )
+        return UsageCalendarAggregator.aggregate(
+            sessions = sessions,
+            rangeStartMs = rangeStartMs,
+            rangeEndMs = rangeEndMs,
+            zoneId = zone,
+        ).filter { it.foregroundMs > 0L || it.launchCount > 0 }
+            .mapTo(mutableSetOf()) { it.date }
+    }
 
     override suspend fun liveHasSessionToday(date: String): Boolean {
         val zone = ZoneId.systemDefault()
@@ -305,5 +407,9 @@ class RoomUsageHistoryStore(
             nowMs = nowMs,
         )
         return sessions.any { it.endedAtMs > dayStart && it.startedAtMs < nowMs }
+    }
+
+    private companion object {
+        const val LIVE_SESSION_LOOKBACK_MS = 6L * 60L * 60L * 1_000L
     }
 }

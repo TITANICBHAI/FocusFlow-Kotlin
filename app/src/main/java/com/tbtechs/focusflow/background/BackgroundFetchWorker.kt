@@ -135,6 +135,17 @@ class BackgroundFetchWorker(
         if (lastDetectionRun == todayForDetection) return
 
         runCatching {
+            // The rollup pass must finish before detectors read the cutover-aware
+            // history, so no detector observes an incomplete day that this run
+            // could have persisted first.
+            when (
+                val pass = com.tbtechs.focusflow.di.AppModule.usageRollupWriter
+                    .writeRecentPastDays()
+            ) {
+                is com.tbtechs.focusflow.analytics.UsageRollupPass.Unknown ->
+                    Log.i(TAG, "Usage rollup unavailable for detection: ${pass.reason}")
+                is com.tbtechs.focusflow.analytics.UsageRollupPass.Written -> Unit
+            }
             com.tbtechs.focusflow.di.AppModule.findingDetectionRunner.runAll()
         }.onSuccess {
             detectionPrefs.edit()

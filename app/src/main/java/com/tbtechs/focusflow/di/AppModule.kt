@@ -23,6 +23,7 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.analytics.AnalyticsProcessor
 import com.tbtechs.focusflow.analytics.AchievementEngine
 import com.tbtechs.focusflow.analytics.InsightEngine
+import com.tbtechs.focusflow.analytics.AppUsageAndSessionTracker
 import com.tbtechs.focusflow.analytics.UsageRollupCoordinator
 import com.tbtechs.focusflow.analytics.UsageRollupWriter
 import com.tbtechs.focusflow.analytics.UsageHistoryRepository
@@ -155,6 +156,16 @@ object AppModule {
 
     lateinit var usageHistoryRepository: UsageHistoryRepository
         private set
+
+    fun createAppUsageAndSessionTracker(context: Context): AppUsageAndSessionTracker =
+        AppUsageAndSessionTracker(
+            context = context,
+            dailyUsageDao = database.dailyAppUsageDao(),
+            sessionDao = database.appSessionDao(),
+            legacyWriteAllowed = {
+                usageHistoryRepository.shouldWriteLegacy(java.time.LocalDate.now().toString())
+            },
+        )
 
     lateinit var analyticsProcessor: AnalyticsProcessor
         private set
@@ -291,6 +302,8 @@ object AppModule {
             deviceUsageSource = DeviceUsageSource(
                 context = app,
                 eventSource = usageStatsRepository,
+                usageHistoryRepository = usageHistoryRepository,
+                rollupWriter = usageRollupWriter,
             ),
         )
         insightEngine = InsightEngine(database.weeklyInsightDao())

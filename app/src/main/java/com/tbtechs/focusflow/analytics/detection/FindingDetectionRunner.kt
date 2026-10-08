@@ -95,9 +95,8 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runMorningHijack() {
-        val start = dateRangeStart(14)
-        val end = dateRangeEnd()
-        val history = detectorHistory(start, end) ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.MORNING_HIJACK)
+        val history = detectorHistory(range.start.toString(), range.end.toString()) ?: return
         val firstSessions = firstSessions(history.sessions)
         if (firstSessions.isEmpty()) return
 
@@ -144,9 +143,8 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runVariableRewardLoop() {
-        val start = dateRangeStart(21)
-        val end = dateRangeEnd()
-        val history = detectorHistory(start, end) ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.VARIABLE_REWARD_LOOP)
+        val history = detectorHistory(range.start.toString(), range.end.toString()) ?: return
         val dailyStats = sessionStats(history.sessions)
         if (dailyStats.isEmpty()) return
 
@@ -165,9 +163,8 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runInfiniteSessionDesign() {
-        val start = dateRangeStart(21)
-        val end = dateRangeEnd()
-        val history = detectorHistory(start, end) ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.INFINITE_SESSION_DESIGN)
+        val history = detectorHistory(range.start.toString(), range.end.toString()) ?: return
         val dailyStats = sessionStats(history.sessions)
         if (dailyStats.isEmpty()) return
 
@@ -190,9 +187,8 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runEscalatingCapture() {
-        val start = dateRangeStart(28)
-        val end = dateRangeEnd()
-        val usageRows = detectorHistory(start, end)?.appDays ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.ESCALATING_CAPTURE)
+        val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
         detectEscalatingCapture(usageRows, LocalDate.now())
@@ -201,20 +197,18 @@ class FindingDetectionRunner(
 
     private suspend fun runStreakLockIn() {
         val windowDays = 14
-        val start = dateRangeStart(windowDays.toLong())
-        val end = dateRangeEnd()
-        val usageRows = detectorHistory(start, end)?.appDays ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.STREAK_LOCK_IN)
+        val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
-        val ratings = dayRatingDao.getForDateRange(start, end)
+        val ratings = dayRatingDao.getForDateRange(range.start.toString(), range.end.toString())
         detectStreakLockIn(usageRows, ratings, windowDays)
             ?.let { findingRepository.submit(it) }
     }
 
     private suspend fun runSubstitution() {
-        val start = dateRangeStart(28)
-        val end = dateRangeEnd()
-        val usageRows = detectorHistory(start, end)?.appDays ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.SUBSTITUTION)
+        val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
         detectSubstitution(usageRows, LocalDate.now())
@@ -222,12 +216,11 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runAllowanceSuggestion() {
-        val start = dateRangeStart(30)
-        val end = dateRangeEnd()
-        val usageRows = detectorHistory(start, end)?.appDays ?: return
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.ALLOWANCE_SUGGESTION)
+        val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
-        val ratings = dayRatingDao.getForDateRange(start, end)
+        val ratings = dayRatingDao.getForDateRange(range.start.toString(), range.end.toString())
         detectAllowanceSuggestion(usageRows, ratings)
             ?.let { findingRepository.submit(it) }
     }

@@ -549,7 +549,7 @@ class AnalyticsProcessor(
         }
 
         val usagePermission = options.usageStatsPermission ?: usageStatsRepository.hasPermission()
-        val deviceUsage = if (usagePermission) {
+        val deviceUsage = if (usagePermission && window != ANALYTICS_ALL_TIME) {
             readSource(
                 {
                     deviceUsageSource.read(
@@ -560,6 +560,10 @@ class AnalyticsProcessor(
                 },
                 null,
             )
+        } else if (usagePermission) {
+            // All Time does not display device usage; avoid an epoch-wide
+            // UsageEvents query for data that no visible card consumes.
+            SourceRead<DeviceUsageSnapshot?>(null, SOURCE_LOADED)
         } else {
             SourceRead<DeviceUsageSnapshot?>(null, SOURCE_UNAVAILABLE)
         }

@@ -204,6 +204,11 @@ fun ArchivedStatsScreen(
                             }
                         }
                         item {
+                            if (window != ANALYTICS_ALL_TIME) {
+                                DataHealthNotice(loaded)
+                            }
+                        }
+                        item {
                             UsageAccessCard(
                                 permission = usagePermission,
                                 onOpenUsageAccessSettings = onOpenUsageAccessSettings,

@@ -566,16 +566,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         // 10 s so we don't run anything during the cold-start window.
         vpnHealthHandler.postDelayed(vpnHealthRunnable, 10_000L)
         startForegroundWatchdog()
-        usageSessionTracker = AppUsageAndSessionTracker(
-            context = this,
-            dailyUsageDao = AppModule.database.dailyAppUsageDao(),
-            sessionDao = AppModule.database.appSessionDao(),
-            legacyWriteAllowed = {
-                AppModule.usageHistoryRepository.shouldWriteLegacy(
-                    java.time.LocalDate.now().toString(),
-                )
-            },
-        )
+        usageSessionTracker = AppModule.createAppUsageAndSessionTracker(this)
         AppModule.usageRollupCoordinator.trigger("service_start")
     }
 

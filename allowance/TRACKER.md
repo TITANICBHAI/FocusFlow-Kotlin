@@ -47,8 +47,8 @@ tests in Batch 5. Duplicate "all X tests pass" requirements have been removed fr
 
 ## Batch 0 — Verify and measure
 
-**Status:** `IN PROGRESS`  
-**Started:** 2026-10-08  
+**Status:** `IN PROGRESS`
+**Started:** 2026-10-08
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
@@ -480,8 +480,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 ## Batch 5 — Stats, rollups and detectors cutover (behavior-changing: D3, D5–D8)
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`
+**Started:** 2026-10-08
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
@@ -529,12 +529,19 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] Test on API 29, 31 and 33.
 
 ### Notes
+**Batch start (2026-10-08):** The user explicitly authorized continuing Batch 5 and supplied the Batch 5 scope note. Re-read the Phase 5 contract and tracker, reviewed the saved Stats/date and GitHub verification constraints, and confirmed the repository is on `main` ahead of `origin/main` by one commit with no tracked worktree changes. This batch is behavior-changing and must preserve the strict per-date source seam; no push, GitHub Actions run, or APK build is authorized. Device/emulator validation availability has not yet been checked.
+
+**Implementation update (2026-10-08):** Connected Stats to a single UsageEvents pass plus per-day COMPLETE/PARTIAL rollup selection; the same pass supplies summary, hourly, and ISO-date daily values, and persists missing past dates without writing today. Group B now resolves legacy, rollup, live-today, and on-demand usage dates; detector windows share one completed-date helper and the repository clamps away today. The worker awaits the rollup writer before detection. Cutover remains gated until seven consecutive past days have COMPLETE current-version rollups and is persisted atomically; legacy writes continue for the 14-day stabilization window. Moved accessibility-service tracker construction into `AppModule` so the touched large service can shrink.
+
+**Audit decisions:** No `INTERVAL_BEST` call remains, and Week has no per-day summary calls; the unreferenced legacy `getUsageSummary` repository API is retained rather than removed. Keep `PhoneUsageSummary.kt` because Batch 0 did not record the required deletion confirmation. A repository consumer, not app startup, attempts the cutover gate so a missing/incomplete shadow period cannot switch sources. Device/emulator tools (`adb`, `emulator`) were not found in PATH; API matrix checks will remain open.
+
 <!-- PhoneUsageSummary.kt deleted? Record here. -->
 <!-- Stabilization window end date: -->
 
 ### Evidence
 
 ### Failures and blockers
+- **Local test attempt 1:** `bash scripts/test-unit.sh` exceeded the 300-second shell limit during first-run JDK/Android SDK/Gradle setup; no test results were produced. Retrying with the bootstrapped tools cached.
 
 ### Decisions
 
