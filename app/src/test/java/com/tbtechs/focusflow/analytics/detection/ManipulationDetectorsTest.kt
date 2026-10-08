@@ -98,8 +98,8 @@ class ManipulationDetectorsTest {
     @Test
     fun escalatingCaptureRequiresFourPopulatedIncreasingWeeks() {
         val today = LocalDate.of(2026, 3, 28)
-        val rows = (0 until 28).map { daysAgo ->
-            val week = 4 - (daysAgo / 7)
+        val rows = (1..28).map { daysAgo ->
+            val week = 4 - ((daysAgo - 1) / 7)
             usageRow(
                 packageName = "capture",
                 date = today.minusDays(daysAgo.toLong()),
@@ -113,6 +113,63 @@ class ManipulationDetectorsTest {
         assertEquals("capture", finding!!.subjectPackage)
         assertTrue(finding.evidenceJson.contains("\"growth_pct\":300"))
         assertNull(computeWeeklyAverages(rows.drop(7), today)["capture"])
+    }
+
+    @Test
+    fun weeklyAveragesUseDMinusSevenThroughYesterdayAndIgnoreToday() {
+        val today = LocalDate.of(2026, 3, 28)
+        val minutesByWeek = mapOf(1 to 10, 2 to 20, 3 to 30, 4 to 40)
+        val rows = (1..28).map { daysAgo ->
+            val week = when (daysAgo) {
+                in 1..7 -> 4
+                in 8..14 -> 3
+                in 15..21 -> 2
+                else -> 1
+            }
+            usageRow(
+                packageName = "capture",
+                date = today.minusDays(daysAgo.toLong()),
+                foregroundMs = minutesByWeek.getValue(week) * 60_000L,
+            )
+        } + usageRow(
+            packageName = "capture",
+            date = today,
+            foregroundMs = 10_000 * 60_000L,
+        )
+
+        val weeks = computeWeeklyAverages(rows, today).getValue("capture")
+
+        assertEquals(10 * 60_000.0, weeks.week1, 0.0)
+        assertEquals(20 * 60_000.0, weeks.week2, 0.0)
+        assertEquals(30 * 60_000.0, weeks.week3, 0.0)
+        assertEquals(40 * 60_000.0, weeks.week4, 0.0)
+    }
+
+    @Test
+    fun escalatingTrendCausedOnlyByTodaysPartialUsageIsNotDetected() {
+        val today = LocalDate.of(2026, 3, 28)
+        val rows = (1..28).map { daysAgo ->
+            val minutes = when (daysAgo) {
+                in 1..7 -> 30
+                in 8..14 -> 30
+                in 15..21 -> 20
+                else -> 10
+            }
+            usageRow(
+                packageName = "capture",
+                date = today.minusDays(daysAgo.toLong()),
+                foregroundMs = minutes * 60_000L,
+            )
+        } + usageRow(
+            packageName = "capture",
+            date = today,
+            foregroundMs = 1_000 * 60_000L,
+        )
+
+        val weeks = computeWeeklyAverages(rows, today).getValue("capture")
+
+        assertEquals(30 * 60_000.0, weeks.week4, 0.0)
+        assertNull(detectEscalatingCapture(rows, today))
     }
 
     @Test
@@ -278,8 +335,8 @@ class ManipulationDetectorsTest {
         weeklyMinutes: List<Int>,
         category: String? = "social",
     ): List<AppUsageRangeRow> =
-        (0 until 28).map { daysAgo ->
-            val weekNumber = 4 - daysAgo / 7
+        (1..28).map { daysAgo ->
+            val weekNumber = 4 - (daysAgo - 1) / 7
             usageRow(
                 packageName = packageName,
                 date = today.minusDays(daysAgo.toLong()),

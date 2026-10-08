@@ -47,17 +47,18 @@ internal data class WeeklyAverages(
 )
 
 /**
- * Buckets usage into four seven-day periods relative to [today], with week 4
- * being most recent. Packages with fewer than four days in any week are
- * excluded so sparse data cannot masquerade as a trend.
+ * Buckets completed-day usage into four seven-day periods relative to [today],
+ * with week 4 covering D-7 through D-1. Packages with fewer than four days in
+ * any week are excluded so sparse data cannot masquerade as a trend.
  */
 internal fun computeWeeklyAverages(
     usageRows: List<AppUsageRangeRow>,
     today: LocalDate,
 ): Map<String, WeeklyAverages> {
     fun weekOf(date: LocalDate): Int {
-        val daysAgo = ChronoUnit.DAYS.between(date, today)
+        val daysAgo = ChronoUnit.DAYS.between(date, today.minusDays(1))
         return when {
+            daysAgo < 0 -> 0
             daysAgo < 7 -> 4
             daysAgo < 14 -> 3
             daysAgo < 21 -> 2
