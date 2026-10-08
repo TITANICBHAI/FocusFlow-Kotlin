@@ -146,7 +146,7 @@ class DeviceUsageSource(
                 UsageHistorySource.PARTIAL_ROLLUP -> selectedRows += rollup?.appDays.orEmpty()
                 UsageHistorySource.LIVE_PIPELINE,
                 UsageHistorySource.ON_DEMAND_PIPELINE -> selectedRows +=
-                    pipelineDays[dateText]?.toHistoryAppDay().orEmpty()
+                    listOfNotNull(pipelineDays[dateText]?.toHistoryAppDay())
                 else -> Unit
             }
             when (coverageStatus) {

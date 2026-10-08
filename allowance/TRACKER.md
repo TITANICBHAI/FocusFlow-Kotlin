@@ -123,6 +123,22 @@ For each case: record the device/API, what each source reported, and the diff.
 
 ### Evidence
 
+- **Single-pass device usage:** `DeviceUsageSource.kt` has one `readForegroundEvents` call per read and derives `summary`, `hourly`, and date-keyed `daily` totals from the same session set; `AnalyticsProcessor.kt` reads one snapshot and passes all three to metrics, including Week. Source audit and both production flavor compilations passed.
+- **Removed Stats usage scans:** Search found no `INTERVAL_BEST` references and no `getUsageSummary` calls in `AnalyticsProcessor.kt`; the former seven per-day Week scans are absent. `UsageStatsRepository.getUsageSummary` remains as an unused legacy API, as allowed by the plan. Both flavors compiled.
+- **Partial metrics:** `AnalyticsProcessorPhoneUsageTest.kt` verifies summary-only and hourly-only snapshots still produce `phoneUsage`; both tests passed in Production and Tbtechsdev.
+- **Cutover persistence:** `UsageHistoryRepository.kt`, `UsageHistorySourcePolicy.kt`, and `UsageRollupDao.kt` persist cutover only after the seven-day complete-shadow gate. `UsageHistorySourcePolicyTest.cutoverWaitsForSevenCompleteShadowDaysAndThenKeepsLegacyWriterDuringStabilization` passed in both flavors.
+- **Completed-day windows and seam selection:** `FindingDetectionRunner.dateRangeEnd()` ends yesterday; `UsageDetectorWindows` also excludes today. `UsageDetectorSeamTest` passed all six cases in both flavors, iterating all seven usage detector windows for legacy, complete-rollup, seam refusal, today exclusion, and midnight attribution.
+- **Pre-cutover output:** `UsageDetectorSeamTest.substitutionOutputIsUnchangedWhenItsWindowIsEntirelyBeforeCutover` compares the detector result from direct legacy rows with the merged repository result; detection type, subject and evidence matched in both flavors.
+- **Merged rating dates:** `DayRatingRepository.kt` unions Group B usage dates with task dates. `DayRatingRatableDatesTest.mergedUsageHistoryKeepsDatesThatHaveTasksButNoUsage` passed in both flavors.
+- **Merged data-health counts:** `StatsViewModel.loadRatingData` counts Group B dates from `UsageHistoryRepository` and combines them with task dates; source inspection confirmed the cutover-aware path.
+- **Worker ordering:** `BackgroundFetchWorker.runDailyFindingDetection` awaits `writeRecentPastDays()` before `FindingDetectionRunner.runAll()` and includes the required ordering comment; source inspection confirmed sequential execution.
+- **Legacy writer/stabilization:** `AppModule.createAppUsageAndSessionTracker` gates old Room writes with `UsageHistoryRepository.shouldWriteLegacy`; the 14-day boundary is covered by `UsageHistorySourcePolicyTest`. The merged repository keeps legacy reads for dates before cutover; source-precedence tests passed in both flavors.
+- **Coverage notice and 3-month path:** `DataHealthNotice.kt` renders complete/partial/missing counts and is used by both `ArchivedStatsScreen.kt` and `StatsInsightsExperience.kt`. Production sources for `ThreeMonthRules` and the `byHour` snapshot path compiled for both flavors.
+- **Unused summary component:** `PhoneUsageSummary.kt` remains because Batch 0 did not verify zero callers; no deletion was made.
+- **Large-file size:** `AppBlockerAccessibilityService.kt` is 4,393 lines versus 4,397 at the end of Batch 4 (4 lines smaller).
+- **Full local verification:** `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`, 227 tests each, zero failures/errors. The script sets `FOCUSFLOW_SKIP_APK_BUILD=1`; no APK build, GitHub Actions run or push occurred.
+- **Diff hygiene:** `git diff --check` passed.
+
 ### Failures and blockers
 
 - Initial `bash scripts/test-unit.sh` attempt timed out after five minutes while the bootstrap installed JDK 17, Android SDK platform/build tools, and Gradle; no Gradle test task result was produced. The bootstrap is now cached; rerun after the Batch 3 implementation is coherent.
@@ -487,45 +503,45 @@ tests each belong to the batch that introduces their production code (Batch 2–
 ### Tasks
 
 **`DeviceUsageSource` (Group A)**
-- [ ] One pipeline pass feeds `AnalyticsProcessor.buildPhoneUsageMetrics`: summary, hourly and per-day Week values.
-- [ ] `INTERVAL_BEST` path removed from `UsageStatsRepository` and `AnalyticsProcessor`.
-- [ ] 7 per-day `getUsageSummary` calls for Week removed.
-- [ ] Observed Device Time card no longer disappears when only one of summary or hourly fails.
+- [x] One pipeline pass feeds `AnalyticsProcessor.buildPhoneUsageMetrics`: summary, hourly and per-day Week values.
+- [x] `INTERVAL_BEST` path removed from `UsageStatsRepository` and `AnalyticsProcessor`.
+- [x] 7 per-day `getUsageSummary` calls for Week removed.
+- [x] Observed Device Time card no longer disappears when only one of summary or hourly fails.
 
 **`cutoverDate` and Group B switch**
-- [ ] `cutoverDate` written to `usage_pipeline_state`.
-- [ ] `FindingDetectionRunner.dateRangeEnd()` changed to `LocalDate.now().minusDays(1)` (O7).
-- [ ] `DayRatingRepository.getRatableDates` uses merged read model for today's row.
-- [ ] `dataHealthDayCount` uses merged read model.
-- [ ] Detectors apply seam rules from 8.4.
+- [x] `cutoverDate` written to `usage_pipeline_state`.
+- [x] `FindingDetectionRunner.dateRangeEnd()` changed to `LocalDate.now().minusDays(1)` (O7).
+- [x] `DayRatingRepository.getRatableDates` uses merged read model for today's row.
+- [x] `dataHealthDayCount` uses merged read model.
+- [x] Detectors apply seam rules from 8.4.
 
 **BackgroundFetchWorker ordering**
-- [ ] In the same worker execution, rollup pass completes before `runAll()` is called.
-- [ ] A comment in `BackgroundFetchWorker` explicitly marks the required ordering.
+- [x] In the same worker execution, rollup pass completes before `runAll()` is called.
+- [x] A comment in `BackgroundFetchWorker` explicitly marks the required ordering.
 
 **Legacy writer**
-- [ ] Old `AppUsageAndSessionTracker` Room writes stopped (or scheduled to stop after stabilization window O8).
-- [ ] Existing legacy rows still readable through the merged read model.
+- [x] Old `AppUsageAndSessionTracker` Room writes stopped (or scheduled to stop after stabilization window O8).
+- [x] Existing legacy rows still readable through the merged read model.
 
 **Stats surfaces**
-- [ ] `DataHealthNotice` extended to report coverage: days complete, days partial, days missing.
-- [ ] Dormant 3-month path still builds and `ThreeMonthRules` works with the new `byHour` source.
-- [ ] `PhoneUsageSummary.kt` deleted only if Batch 0 confirmed zero callers; record outcome here.
+- [x] `DataHealthNotice` extended to report coverage: days complete, days partial, days missing.
+- [x] Dormant 3-month path still builds and `ThreeMonthRules` works with the new `byHour` source.
+- [x] `PhoneUsageSummary.kt` deleted only if Batch 0 confirmed zero callers; record outcome here. **Retained** because Batch 0 did not confirm zero callers.
 
 **Detector seam tests (introduced here because source switching is introduced here)**
-- [ ] A window entirely before `cutoverDate` is evaluated against legacy and passes.
-- [ ] A window entirely after `cutoverDate` with enough days passes.
-- [ ] A window crossing the seam (`start < cutoverDate <= end`) is refused for all seven usage detectors.
-- [ ] Today is excluded from every detector window (O7).
-- [ ] A midnight-crossing session is counted once per detector, on its start date.
+- [x] A window entirely before `cutoverDate` is evaluated against legacy and passes.
+- [x] A window entirely after `cutoverDate` with enough days passes.
+- [x] A window crossing the seam (`start < cutoverDate <= end`) is refused for all seven usage detectors.
+- [x] Today is excluded from every detector window (O7).
+- [x] A midnight-crossing session is counted once per detector, on its start date.
 
 **Verification**
-- [ ] `AppBlockerAccessibilityService.kt` line count lower than before this batch.
-- [ ] All five detector seam tests above pass.
+- [x] `AppBlockerAccessibilityService.kt` line count lower than before this batch.
+- [x] All five detector seam tests above pass.
 - [ ] Stats Today hourly distribution is sane (no midnight pile) on API 29 and 33.
-- [ ] Stats Week populated from a single pipeline pass.
-- [ ] Detector output unchanged for a window entirely before `cutoverDate`.
-- [ ] `DayRatingRepository.getRatableDates` returns same dates as before for a day with task data only.
+- [x] Stats Week populated from a single pipeline pass.
+- [x] Detector output unchanged for a window entirely before `cutoverDate`.
+- [x] `DayRatingRepository.getRatableDates` returns same dates as before for a day with task data only.
 - [ ] Test on API 29, 31 and 33.
 
 ### Notes
@@ -535,13 +551,17 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Audit decisions:** No `INTERVAL_BEST` call remains, and Week has no per-day summary calls; the unreferenced legacy `getUsageSummary` repository API is retained rather than removed. Keep `PhoneUsageSummary.kt` because Batch 0 did not record the required deletion confirmation. A repository consumer, not app startup, attempts the cutover gate so a missing/incomplete shadow period cannot switch sources. Device/emulator tools (`adb`, `emulator`) were not found in PATH; API matrix checks will remain open.
 
-<!-- PhoneUsageSummary.kt deleted? Record here. -->
+**Continuation audit (2026-10-08):** The owner explicitly resumed Batch 5. Current checkout is `2114f33` on `main`, aligned with `origin/main`; only the supplied instruction files were untracked at the start. Source review confirmed the pipeline-backed Stats source, Group B read-model wiring, completed-day detector ranges, legacy-writer stabilization gate, and rollup-before-detector ordering. Added missing midnight-session coverage for all seven detector windows, phone-usage builder tests for summary-only and hourly-only snapshots, a pre-cutover substitution-output equivalence test, and a task-only rating-date test. Fixed two production compilation defects found during verification. Both local flavor suites now pass; device-only checks remain open.
+
 <!-- Stabilization window end date: -->
 
 ### Evidence
 
 ### Failures and blockers
 - **Local test attempt 1:** `bash scripts/test-unit.sh` exceeded the 300-second shell limit during first-run JDK/Android SDK/Gradle setup; no test results were produced. Retrying with the bootstrapped tools cached.
+- **Supplied continuation note:** Reports the initial `bash scripts/test-unit.sh` attempt timed out during first-run setup; no Gradle test result was produced. This attempt predates the current verification.
+- **Local test attempt 2:** `bash scripts/test-unit.sh` provisioned JDK 17, Android SDK 35, and Gradle, then both flavor Kotlin compilation tasks failed before tests ran: `DeviceUsageSource.kt:149` called `orEmpty()` on a nullable single row, and `UsageRollupWriter.kt:221` lacked the `UsagePipelineStateEntity` import. Replaced the nullable row conversion with `listOfNotNull` and added the missing entity import; rerun pending.
+- **Local test attempt 3:** Both flavor production Kotlin compilations passed. `:app:testProductionDebugUnitTest` completed 225 tests with 2 failures: `UsageDetectorSeamTest.everyUsageDetectorUsesLegacyForAWindowEntirelyBeforeCutover` and `FindingDetectionRunnerImpl5Test.dailyRunnerSubmitsSubstitutionAndAllowanceSuggestionFindings`. The Tbtechsdev unit-test task did not run because the Production task failed. Diagnosis: the seam repository reads both legacy tables, while its test expected only one read; the runner fake returned null for the new aggregate session query, triggering the runner's Android `Log.e` path, and the fixture still expected today's rows despite O7. Corrected the read count, fake, fixture data, and expected completed-day range; rerun pending.
 
 ### Decisions
 

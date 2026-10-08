@@ -7,9 +7,12 @@ import com.tbtechs.focusflow.data.local.entity.UsagePipelineStateEntity
 import com.tbtechs.focusflow.data.local.entity.UsageRollupAppDayEntity
 import com.tbtechs.focusflow.data.local.entity.UsageRollupDayEntity
 import com.tbtechs.focusflow.data.local.entity.UsageRollupSessionEntity
+import java.time.ZoneOffset
 import kotlinx.coroutines.runBlocking
+import com.tbtechs.focusflow.analytics.detection.detectSubstitution
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -33,9 +36,72 @@ class UsageDetectorSeamTest {
                     today.toString(),
                 ) != null,
             )
-            assertEquals(1, store.legacyReads)
+            assertEquals(2, store.legacyReads)
             assertEquals(0, store.rollupReads)
         }
+    }
+
+    @Test
+    fun substitutionOutputIsUnchangedWhenItsWindowIsEntirelyBeforeCutover() = runBlocking {
+        val range = UsageDetectorWindows.range(UsageDetectorWindow.SUBSTITUTION, today)
+        val legacyRows = generateSequence(range.start) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(range.end) }
+            .flatMap { date ->
+                val daysAgo = ChronoUnit.DAYS.between(date, today)
+                val downMinutes = if (daysAgo < 7) 15 else 60
+                listOf(
+                    UsageHistoryAppDay(
+                        date = date.toString(),
+                        packageName = "down",
+                        appName = "Down",
+                        category = "social",
+                        foregroundMs = downMinutes * 60_000L,
+                        hourlyMs = "",
+                        launchCount = 1,
+                        lastUsedAtMs = 0L,
+                    ),
+                    UsageHistoryAppDay(
+                        date = date.toString(),
+                        packageName = "up",
+                        appName = "Up",
+                        category = "entertainment",
+                        foregroundMs = (120 - downMinutes) * 60_000L,
+                        hourlyMs = "",
+                        launchCount = 1,
+                        lastUsedAtMs = 0L,
+                    ),
+                )
+            }
+            .toList()
+        val store = TestHistoryStore(
+            cutoverDate = range.end.plusDays(1).toString(),
+            legacyAppDayRows = legacyRows,
+        )
+        val history = UsageHistoryRepository(store).detectorHistory(
+            range.start.toString(),
+            range.end.toString(),
+            today.toString(),
+        ) ?: error("Expected the complete pre-cutover legacy window")
+        val directLegacyInput = legacyRows.map { row ->
+            com.tbtechs.focusflow.data.local.dao.AppUsageRangeRow(
+                packageName = row.packageName,
+                appName = row.appName,
+                category = row.category,
+                date = row.date,
+                foregroundMs = row.foregroundMs,
+                hourlyMs = row.hourlyMs,
+                launchCount = row.launchCount,
+                lastUsedAt = row.lastUsedAtMs,
+            )
+        }
+
+        val expected = detectSubstitution(directLegacyInput, today)
+        val actual = detectSubstitution(history.appDays, today)
+        assertNotNull(expected)
+        assertNotNull(actual)
+        assertEquals(expected?.detectionType, actual?.detectionType)
+        assertEquals(expected?.subjectPackage, actual?.subjectPackage)
+        assertEquals(expected?.evidenceJson, actual?.evidenceJson)
     }
 
     @Test
@@ -107,9 +173,79 @@ class UsageDetectorSeamTest {
         }
     }
 
+    @Test
+    fun everyUsageDetectorCountsMidnightSessionOnceOnItsStartDate() = runBlocking {
+        UsageDetectorWindow.entries.forEach { detector ->
+            val range = UsageDetectorWindows.range(detector, today)
+            val startDate = range.end.minusDays(1)
+            val nextDate = startDate.plusDays(1)
+            val startMs = startDate.atTime(23, 50).toInstant(ZoneOffset.UTC).toEpochMilli()
+            val durationMs = 30L * 60L * 1_000L
+            val store = TestHistoryStore(
+                cutoverDate = range.start.toString(),
+                completeRollups = true,
+                rollupAppDayRows = listOf(
+                    UsageRollupAppDayEntity(
+                        date = startDate.toString(),
+                        packageName = "com.example.target",
+                        appName = "Target",
+                        category = "social",
+                        foregroundMs = 10L * 60L * 1_000L,
+                        hourlyMs = List(24) { if (it == 23) 10L * 60L * 1_000L else 0L }
+                            .joinToString(","),
+                        launchCount = 1,
+                        sessionCount = 1,
+                        firstStartAtMs = startMs,
+                        lastUsedAtMs = startMs + 10L * 60L * 1_000L,
+                    ),
+                    UsageRollupAppDayEntity(
+                        date = nextDate.toString(),
+                        packageName = "com.example.target",
+                        appName = "Target",
+                        category = "social",
+                        foregroundMs = 20L * 60L * 1_000L,
+                        hourlyMs = List(24) { if (it == 0) 20L * 60L * 1_000L else 0L }
+                            .joinToString(","),
+                        launchCount = 0,
+                        sessionCount = 0,
+                        firstStartAtMs = null,
+                        lastUsedAtMs = startMs + durationMs,
+                    ),
+                ),
+                rollupSessionRows = listOf(
+                    UsageRollupSessionEntity(
+                        packageName = "com.example.target",
+                        startedAtMs = startMs,
+                        endedAtMs = startMs + durationMs,
+                        durationMs = durationMs,
+                        localDate = startDate.toString(),
+                    ),
+                ),
+            )
+
+            val history = UsageHistoryRepository(store).detectorHistory(
+                range.start.toString(),
+                range.end.toString(),
+                today.toString(),
+            ) ?: error("Expected complete detector history for $detector")
+
+            assertEquals("Expected one session for $detector", 1, history.sessions.size)
+            assertEquals(startDate.toString(), history.sessions.single().localDate)
+            assertEquals(durationMs, history.sessions.single().durationMs)
+            val appDays = history.appDays.associateBy { it.date }
+            assertEquals(10L * 60L * 1_000L, appDays.getValue(startDate.toString()).foregroundMs)
+            assertEquals(20L * 60L * 1_000L, appDays.getValue(nextDate.toString()).foregroundMs)
+            assertEquals(1, appDays.getValue(startDate.toString()).launchCount)
+            assertEquals(0, appDays.getValue(nextDate.toString()).launchCount)
+        }
+    }
+
     private class TestHistoryStore(
         cutoverDate: String,
         private val completeRollups: Boolean = false,
+        private val legacyAppDayRows: List<UsageHistoryAppDay> = emptyList(),
+        private val rollupAppDayRows: List<UsageRollupAppDayEntity> = emptyList(),
+        private val rollupSessionRows: List<UsageRollupSessionEntity> = emptyList(),
     ) : UsageHistoryStore {
         private val state = UsagePipelineStateEntity(
             cutoverDate = cutoverDate,
@@ -125,7 +261,7 @@ class UsageDetectorSeamTest {
             endDate: String,
         ): List<UsageHistoryAppDay> {
             legacyReads++
-            return emptyList()
+            return legacyAppDayRows.filter { it.date in startDate..endDate }
         }
 
         override suspend fun legacySessions(
@@ -163,11 +299,19 @@ class UsageDetectorSeamTest {
                 .toList()
         }
 
-        override suspend fun rollupAppDays(date: String): List<UsageRollupAppDayEntity> = emptyList()
+        override suspend fun rollupAppDays(date: String): List<UsageRollupAppDayEntity> =
+            rollupAppDayRows.filter { it.date == date }
+
+        override suspend fun rollupAppDays(
+            startDate: String,
+            endDate: String,
+        ): List<UsageRollupAppDayEntity> =
+            rollupAppDayRows.filter { it.date in startDate..endDate }
 
         override suspend fun rollupSessions(
             startDate: String,
             endDate: String,
-        ): List<UsageRollupSessionEntity> = emptyList()
+        ): List<UsageRollupSessionEntity> =
+            rollupSessionRows.filter { it.localDate in startDate..endDate }
     }
 }

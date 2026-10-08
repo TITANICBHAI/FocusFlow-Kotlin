@@ -30,9 +30,8 @@ class FindingDetectionRunnerImpl5Test {
         val usageRows = (0..29).flatMap { daysAgo ->
             val date = today.minusDays(daysAgo.toLong())
             val downMinutes = when (daysAgo) {
-                in 0..4 -> 15
-                in 5..6 -> 50
-                7 -> 42
+                in 0..5 -> 15
+                in 6..7 -> 50
                 in 8..13 -> 42
                 in 14..20 -> 50
                 else -> 60
@@ -42,10 +41,10 @@ class FindingDetectionRunnerImpl5Test {
                 usageRow("up", date, 120 - downMinutes, "entertainment"),
             )
         }
-        val ratings = (0..7).map { daysAgo ->
+        val ratings = (0..8).map { daysAgo ->
             DayRatingEntity(
                 date = today.minusDays(daysAgo.toLong()).toString(),
-                rating = if (daysAgo < 5) 8 else 3,
+                rating = if (daysAgo <= 5) 8 else 3,
                 contextTag = null,
                 note = null,
                 appTags = "[]",
@@ -85,7 +84,8 @@ class FindingDetectionRunnerImpl5Test {
                 when (method.name) {
                     "getFirstSessionEachDay",
                     "getSessionStatsByDay",
-                    "getSessionsForPackageInRange" -> emptyList<Any>()
+                    "getSessionsForPackageInRange",
+                    "getAllSessionsInRange" -> emptyList<Any>()
                     else -> null
                 }
             },
@@ -115,12 +115,14 @@ class FindingDetectionRunnerImpl5Test {
         assertTrue(submitted.any { it.detectionType == "ALLOWANCE_SUGGESTION" })
         assertTrue(
             dailyUsageDao.queriedRanges.any {
-                it.first == today.minusDays(28).toString() && it.second == today.toString()
+                it.first == today.minusDays(28).toString() &&
+                    it.second == today.minusDays(1).toString()
             },
         )
         assertTrue(
             dailyUsageDao.queriedRanges.any {
-                it.first == today.minusDays(30).toString() && it.second == today.toString()
+                it.first == today.minusDays(30).toString() &&
+                    it.second == today.minusDays(1).toString()
             },
         )
     }

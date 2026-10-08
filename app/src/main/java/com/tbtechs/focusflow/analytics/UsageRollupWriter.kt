@@ -8,6 +8,7 @@ import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.data.local.entity.UsageRollupAppDayEntity
 import com.tbtechs.focusflow.data.local.entity.UsageRollupDayEntity
 import com.tbtechs.focusflow.data.local.entity.UsageRollupSessionEntity
+import com.tbtechs.focusflow.data.local.entity.UsagePipelineStateEntity
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
