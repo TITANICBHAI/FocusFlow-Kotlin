@@ -277,6 +277,7 @@ object AppModule {
         usageStatsRepository = UsageStatsRepository(app)
         usageHistoryRepository = UsageHistoryRepository(
             RoomUsageHistoryStore(
+                context = app,
                 dailyAppUsageDao = database.dailyAppUsageDao(),
                 appSessionDao = database.appSessionDao(),
                 usageRollupDao = database.usageRollupDao(),

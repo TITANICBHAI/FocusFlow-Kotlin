@@ -54,7 +54,7 @@ class OnDemandDetectorUsageReaderTest {
     }
 
     @Test
-    fun incompleteRetentionCoverageDoesNotCreateDetectorRows() = runBlocking {
+    fun incompleteRetentionCoverageOmitsOnlyTruncatedDate() = runBlocking {
         val reader = reader(
             UsageEventRead.Available(
                 events = emptyList(),
@@ -65,7 +65,7 @@ class OnDemandDetectorUsageReaderTest {
         val result = reader.read(dayOne.toString(), dayTwo.toString(), nowMs)
 
         assertNotNull(result)
-        assertEquals(emptySet<String>(), result!!.completeDates)
+        assertEquals(setOf(dayTwo.toString()), result!!.completeDates)
         assertEquals(emptyList<com.tbtechs.focusflow.data.local.dao.AppUsageRangeRow>(), result.appDays)
         assertEquals(emptyList<com.tbtechs.focusflow.data.local.entity.AppSessionEntity>(), result.sessions)
     }

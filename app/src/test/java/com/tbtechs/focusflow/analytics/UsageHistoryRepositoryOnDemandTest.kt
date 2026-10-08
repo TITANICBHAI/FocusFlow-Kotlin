@@ -50,7 +50,10 @@ class UsageHistoryRepositoryOnDemandTest {
     fun legacyDetectorReadClampsBothUsageTablesToCompletedDays() = runBlocking {
         val store = TestStore(
             cutoverDate = null,
-            legacyAppDays = listOf(appDay(dayTwo, "yesterday"), appDay(today, "today")),
+            legacyAppDays = listOf(
+                historyAppDay(dayTwo, "yesterday"),
+                historyAppDay(today, "today"),
+            ),
             legacySessions = listOf(session(dayTwo, "yesterday"), session(today, "today")),
         )
 
@@ -161,6 +164,17 @@ class UsageHistoryRepositoryOnDemandTest {
         hourlyMs = "",
         launchCount = 1,
         lastUsedAt = 2L,
+    )
+
+    private fun historyAppDay(date: String, name: String) = UsageHistoryAppDay(
+        date = date,
+        packageName = "com.example.$date",
+        appName = name,
+        category = "social",
+        foregroundMs = 60_000L,
+        hourlyMs = "",
+        launchCount = 1,
+        lastUsedAtMs = 2L,
     )
 
     private fun session(date: String, name: String) = AppSessionEntity(

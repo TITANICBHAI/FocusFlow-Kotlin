@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.analytics
 
+import android.content.Context
 import com.tbtechs.focusflow.data.local.dao.AppSessionDao
 import com.tbtechs.focusflow.data.local.dao.AppUsageRangeRow
 import com.tbtechs.focusflow.data.local.dao.DailyAppUsageDao
@@ -110,8 +111,9 @@ class UsageHistoryRepository(
     }
 
     /**
-     * Returns one source for a detector window. Seam-crossing windows are
-     * refused; after cutover only COMPLETE rollups are eligible.
+     * Returns one source per date for a detector window. Seam-crossing windows
+     * are refused; after cutover COMPLETE rollups win and only fully covered
+     * on-demand pipeline dates can fill rollup gaps.
      */
     suspend fun detectorHistory(
         startDate: String,
@@ -318,6 +320,7 @@ class UsageHistoryRepository(
 }
 
 class RoomUsageHistoryStore(
+    private val context: Context,
     private val dailyAppUsageDao: DailyAppUsageDao,
     private val appSessionDao: AppSessionDao,
     private val usageRollupDao: UsageRollupDao,
