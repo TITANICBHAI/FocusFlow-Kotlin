@@ -146,7 +146,7 @@ fun StandaloneBlockSetupScreen(
                             Icon(
                                 if (active) Icons.Outlined.Lock else Icons.Outlined.Block,
                                 contentDescription = null,
-                                tint = if (active) Color(0xFFF87171) else BrandPrimary,
+                                tint = if (active) Color(0xFFEF4444) else BrandPrimary,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -165,7 +165,7 @@ fun StandaloneBlockSetupScreen(
                                         text = if (active) "BLOCK ACTIVE" else "STANDALONE",
                                         fontSize = 10.scaledSp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (active) Color(0xFFF87171) else BrandPrimary,
+                                        color = if (active) Color(0xFFEF4444) else BrandPrimary,
                                         letterSpacing = 0.8.scaledSp,
                                     )
                                 }
@@ -201,7 +201,7 @@ fun StandaloneBlockSetupScreen(
                                     text = "${remainingMinutes / 60}h ${remainingMinutes % 60}m",
                                     fontSize = 28.scaledSp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFF87171),
+                                    color = Color(0xFFEF4444),
                                 )
                                 Text(
                                     text = "${settings.standaloneBlockPackages.size} app${if (settings.standaloneBlockPackages.size == 1) "" else "s"} blocked until ${DateFormat.getTimeInstance(DateFormat.SHORT).format(settings.standaloneBlockUntilMs)}",

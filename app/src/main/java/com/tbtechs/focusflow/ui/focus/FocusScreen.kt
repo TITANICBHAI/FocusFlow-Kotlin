@@ -1391,13 +1391,13 @@ private fun StandaloneBlockPanel(
 ) {
     val remaining = (settings.standaloneBlockUntilMs - now).coerceAtLeast(0L)
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val blockAccent = if (isLightTheme) Color(0xFFB91C1C) else Color(0xFFF87171)
-    val blockDetailAccent = if (isLightTheme) Color(0xFF7F1D1D) else Color(0xFFFDA4AF)
+    val blockAccent = if (isLightTheme) Color(0xFFB91C1C) else Color(0xFFEF4444)
+    val blockDetailAccent = if (isLightTheme) Color(0xFF7F1D1D) else Color(0xFFEF4444)
     val timerCardSurface = if (isLightTheme) Color(0xFFFFF7F7) else DarkCard
     val timerCardBorder = if (isLightTheme) {
         Color(0xFFFCA5A5)
     } else {
-        Color(0xFFEF4444).copy(alpha = 0.4f)
+        Color(0xFFEF4444).copy(alpha = 0.55f)
     }
 
     LazyColumn(
