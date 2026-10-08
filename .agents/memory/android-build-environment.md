@@ -16,3 +16,9 @@ On a fresh workspace, the first bootstrap-backed run can exceed a short shell ti
 **Why:** The first two test invocations timed out during environment setup and initial Kotlin compilation; a later run with the same code completed successfully.
 
 **How to apply:** For a first-time or partially cached build, run `bash scripts/test-unit.sh` in the background and inspect its final Gradle result rather than retrying immediately or treating the timeout as a code failure.
+
+The bootstrap-installed Android SDK can warn that its package metadata uses SDK XML v4 while the command-line tools only understand through v3. In the observed run, SDK installation completed and both lint and unit-test Gradle tasks passed.
+
+**Why:** The warning appeared during successful API 35 SDK setup and could otherwise be mistaken for a blocking SDK failure.
+
+**How to apply:** Check the Gradle exit code and task results before treating this SDK XML warning as a failure.
