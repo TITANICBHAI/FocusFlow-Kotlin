@@ -350,16 +350,18 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | 2026-10-08 | Replit Agent | Batch 10 — import behavior parity | Made Kotlin task parsing tolerant of malformed individual rows while preserving strict envelope checks; propagated a bounded skip warning through confirmation, retry, and success. Clarified merge/replacement effects and added the settings-field count. Both local variants passed (157 tests each, 0 failures/errors/skips); `git diff --check` passed. Device UI/picker checks remain deferred. No push/Actions. |
 
 ## Batch 11 — Import UI parity
-**Status:** In progress — comparing the complete TS settings entry and import-confirm flow with Kotlin before making UI-only changes.
+**Status:** Kotlin UI implementation and local unit verification complete; device-rendered UI and picker checks remain deferred.
 **Scope**
 - Compare import/export placement within Settings, file review hierarchy, merge/replace choice presentation, warnings, progress, and completion UI across the supplied TS references.
 - Update Kotlin Compose UI to follow the TS hierarchy and compact sizing while preserving the existing platform picker, data summary, confirmation, restore behavior, and safety guards.
 - Do not alter backup format, import semantics, persistence, or unrelated Settings sections.
 **Checklist**
 - [x] Audit both supplied TS UI sources and the current Kotlin Settings/import screen entry paths.
-- [ ] Implement matching Settings placement and import-confirm screen hierarchy/states in Kotlin.
-- [ ] Add/update UI-level tests where supported; run the local Android unit-test script for both flavors.
-- [ ] Reconcile the tracker with actual code, tests, and explicitly deferred device rendering.
+- [x] Implement matching Settings placement and import-confirm screen hierarchy/states in Kotlin.
+- [ ] Add Compose UI tests for default merge and destructive confirmation states; no emulator is available to run instrumentation tests.
+- [x] Run `bash scripts/test-unit.sh` for both product flavors.
+- [ ] Render the changed screen and exercise a real SAF picker on an Android device/emulator; none is available here.
+- [x] Reconcile the tracker with actual code, test reports, no-touch list, and explicitly deferred device rendering.
 **Initial notes**
 - Preserve Batch 9/10 uncommitted changes, both attached ZIPs, and current `.replit`; no push or GitHub Actions without explicit request.
 - Existing Kotlin Settings places Backup & Restore directly after Profile and before Appearance; TS Settings must be located across both supplied extracts before deciding whether this placement matches.
@@ -369,7 +371,7 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 - Reference audit complete: the flat TS Settings places “Backup & Data” after Pomodoro and before Permissions; the TS hybrid Settings omits the entry, but its import route uses the same confirmation layout as the flat screen.
 - Both TS confirmation screens use a centered cloud-download hero, “This file contains” icon rows, an explicit merge/replace choice, a red destructive warning and red replacement action, then an outlined Cancel action. Kotlin currently uses an uncentered title, summary-first layout, a persistent switch label, and a primary-colored Restore action.
 - Kotlin currently places Backup & Restore directly after Profile, so it will move to the TS location between Pomodoro and Permissions. The existing list-based summary, parser warnings, and native document picker remain.
-- Search found no Compose UI test setup or existing `ImportConfirmScreen` tests; local Android tests will compile the changed screen and cover the existing backup ViewModel behavior.
+- Search found no existing `ImportConfirmScreen` tests; local Android tests will compile the changed screen and cover existing backup ViewModel behavior.
 - An initial patch application failed because its hunks were not in file order; it made no source changes. Reapplying with ordered hunks.
 - Settings section moved to match the flat TS position after Pomodoro and before Permissions; changed the rows to cloud upload/download icons and clarified that import opens a file for review. Picker behavior is unchanged; UI build verification is pending.
 - Import confirmation now follows the TS hierarchy: centered cloud-download hero, icon-based summary rows, metadata line, merge/replace choice, red replacement warning/action, and outlined Cancel button. Existing task/settings counts, parser warnings, confirmation default, and session guard are retained; compilation and tests are pending.
@@ -377,4 +379,12 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 - Verification failure: the compiler rejected `Icons.AutoMirrored.Outlined.FormatListBulleted` in both variants. The earlier `Icons.Outlined.FormatListBulleted` compiled but emitted a deprecation warning. Keep the test item open, use a supported non-directional icon, and record the successful rerun; no tests completed on this failed run.
 - Replaced the directional task-list icon with the existing non-directional `Assignment` vector to avoid both the unsupported AutoMirrored reference and the deprecation warning; final rerun is pending.
 - Follow-up test run passed both variants but confirmed `Assignment` also has a directional deprecation warning. Replace it with the existing non-directional `Description` vector and rerun before marking verification complete.
-- The summary task row now uses the existing non-directional `Description` icon; final source/test verification is pending.
+- The summary task row now uses the existing non-directional `Description` icon.
+- Correction: `app/build.gradle.kts` has Compose UI test dependencies, but there are no `ImportConfirmScreen` UI tests. The local script runs JVM unit tasks; instrumentation would need an emulator.
+- Final verification: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. Both XML report sets show 36 suites, 157 tests, 0 failures, 0 errors, and 0 skipped. The final Kotlin compile has no import-screen icon warning; `git diff --check` passed.
+- Final files for this batch: `app/src/main/java/com/tbtechs/focusflow/ui/settings/SettingsScreen.kt`, `app/src/main/java/com/tbtechs/focusflow/ui/backup/ImportConfirmScreen.kt`, and `work/focusflow-import-export-tracker.md`.
+- Resolution history: the AutoMirrored task-list icon failed compilation in both variants; the supported `Assignment` fallback compiled but emitted a deprecation warning. The final `Description` icon compiled cleanly and passed both variants. The failed attempt and intermediate warning remain documented above.
+- No-touch-path diff query returned no files, and `.replit` has no working diff. No UI rendering or picker exercise was possible without an Android device/emulator.
+- No GitHub Actions or push was explicitly requested in this batch.
+
+| 2026-10-08 | Replit Agent | Batch 11 — import UI parity | Moved Backup & Data after Pomodoro and before Permissions, matching the supplied flat TS Settings screen. Rebuilt the import preview hierarchy, dynamic merge/replace copy, destructive warning/red action, summary icons, and outlined Cancel while retaining restore behavior and safety. Both local variants passed (157 tests each, 0 failures/errors/skips); `git diff --check` passed. Compose UI tests and device picker/render checks remain open because no emulator is available. |
