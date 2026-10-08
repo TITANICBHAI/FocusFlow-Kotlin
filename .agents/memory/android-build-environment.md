@@ -11,6 +11,12 @@ For local unit-test runs, use the repository's bootstrap-backed test path so it 
 
 **How to apply:** Check `java`, `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `local.properties` before compiler diagnosis. When running local unit tests, use the bootstrap-backed test workflow; use JDK 17 and keep SDK files outside the repository. If prerequisites cannot be obtained, record the test as blocked rather than failed.
 
+Kotlin Android unit-test compilation in this workspace did not resolve `java.nio.file.Files.readString`, even with JDK 17 provisioned; reading project source from a JVM test worked with `File.readText(Charsets.UTF_8)`.
+
+**Why:** The first source-aware characterization test failed compilation against the Android unit-test classpath despite a working JDK and SDK.
+
+**How to apply:** Prefer `File.readText(Charsets.UTF_8)` over `Files.readString` when a JVM test needs to read checked-in project source files.
+
 On a fresh workspace, the first bootstrap-backed run can exceed a short shell timeout while it downloads and installs JDK, Android SDK packages, Gradle, and compiles Kotlin. A timed-out shell invocation is not evidence of a test failure; after setup, a background run can complete successfully with cached prerequisites.
 
 **Why:** The first two test invocations timed out during environment setup and initial Kotlin compilation; a later run with the same code completed successfully.

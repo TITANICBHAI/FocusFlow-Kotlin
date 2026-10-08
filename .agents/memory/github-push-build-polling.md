@@ -1,10 +1,10 @@
 ---
 name: GitHub push and build polling
-description: The user's rule for pushing project commits and monitoring GitHub Actions.
+description: The user's project rule for GitHub Actions, APK builds, and local Android tests.
 ---
 
-Do not push project changes or start, poll, or monitor GitHub Actions unless the user explicitly asks for that work. A code-change request alone is not permission to continue the push/build/watch loop.
+Do not push project changes or start, poll, or monitor GitHub Actions unless the user explicitly asks. For this Android plan, do not run GitHub Actions or build an APK unless the user explicitly asks for APK building; local Android tests are allowed.
 
-**Why:** the user asked to defer GitHub pushing and build watching until explicitly requested.
+**Why:** the user asked to defer GitHub Actions and APK builds until explicitly requested, while allowing local Android tests.
 
-**How to apply:** Complete code changes without automatically pushing or polling. If the user explicitly requests a push or build check, do only the requested action and stop when it is complete.
+**How to apply:** Complete code changes and local Android tests without automatically pushing, starting/polling Actions, or assembling APKs. If the user explicitly requests APK building, do only the requested action and stop when it is complete.

@@ -131,8 +131,8 @@ For each case: record the device/API, what each source reported, and the diff.
 
 ## Batch 1 — Test infrastructure and characterization (behavior-preserving)
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`
+**Started:** 2026-10-08
 **Completed:** <!-- YYYY-MM-DD -->
 
 **Scope:** Existing behavior only. No new production code. No tests for components that do  
@@ -142,32 +142,49 @@ tests each belong to the batch that introduces their production code (Batch 2–
 ### Tasks
 
 **Test infrastructure**
-- [ ] JVM test source set exists and Gradle can run it.
+- [x] JVM test source set exists and Gradle can run it.
 
 **Characterization — existing allowance math (pins behavior before Batch 2 changes it)**
-- [ ] Interval-window math: start, expiry, remaining, boundary cases.
-- [ ] Day-rollover: existing JSON resets correctly at midnight.
-- [ ] Remaining/exhausted: correct result from the existing four read-side copies.
-- [ ] Backward-compat snapshot: reading the existing `daily_allowance_used` JSON format produces the expected values. This test must continue to pass after Batch 2.
+- [x] Interval-window math: start, expiry, remaining, boundary cases.
+- [x] Day-rollover: existing JSON resets correctly at midnight.
+- [x] Remaining/exhausted: correct result from the existing four read-side copies.
+- [x] Backward-compat snapshot: reading the existing `daily_allowance_used` JSON format produces the expected values. This test must continue to pass after Batch 2.
 
 **Verification**
-- [ ] All four characterization tests pass on the current code with no production changes.
+- [x] All four characterization tests pass on the current code with no production changes.
 - [ ] The test source set runs cleanly in CI.
 
 ### Notes
 
+**Batch start (2026-10-08):** Existing `app/src/test` JVM source set and JUnit dependency are present, and `scripts/test-unit.sh` runs both flavor unit-test tasks through the bootstrap-backed path. Allowance calculations remain private and embedded in Android service/activity classes. Decision: keep production code and dependencies unchanged; characterize the existing implementations with JVM cases plus checks against their current source expressions. Existing `.replit` modification and attached prompt file are unrelated and will be preserved.
+
+**Implementation and verification (2026-10-08):** Added `app/src/test/java/com/tbtechs/focusflow/enforcement/AllowanceBehaviorCharacterizationTest.kt` with four JVM tests: interval expiry/remaining boundaries; stale-day reset behavior; remaining/exhausted behavior across the four existing readers; and a legacy JSON snapshot for count, time-budget, and interval modes. The tests check live source expressions because those readers are private and Android-bound. No production source or dependencies changed. `bash scripts/test-unit.sh` passed both `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`; each variant ran 162 tests with zero failures, and the new test class ran four tests with zero failures in each. The test source set is configured in both GitHub workflow files, but GitHub Actions were not run; the CI execution checkbox remains open.
+
 ### Evidence
+
+- **JVM test source set:** `app/src/test/java/com/tbtechs/focusflow/enforcement/AllowanceBehaviorCharacterizationTest.kt`, `app/build.gradle.kts`, and `scripts/test-unit.sh`; ran `bash scripts/test-unit.sh`, both flavor Gradle test tasks passed.
+- **Interval-window math:** `AllowanceBehaviorCharacterizationTest.kt`; boundary cases before, at, and after expiry plus remaining-time clamps passed in both flavors.
+- **Day rollover:** `AllowanceBehaviorCharacterizationTest.kt`; prior-day JSON values resolve to zero and all four current readers retain date guards; test passed in both flavors.
+- **Remaining/exhausted copies:** `AllowanceBehaviorCharacterizationTest.kt`; source assertions cover `isAllowanceAvailable`, the unlock calculation, `isFallbackBlocked`, and `LauncherActivity.loadAllowanceCardData`; threshold examples passed in both flavors.
+- **Backward-compatible JSON snapshot:** `AllowanceBehaviorCharacterizationTest.kt`; old count, time-budget, and interval fields parsed to their expected values without Phase 2 fields; test passed in both flavors.
+- **Current-code characterization verification:** `app/src/test/java/com/tbtechs/focusflow/enforcement/AllowanceBehaviorCharacterizationTest.kt`; `bash scripts/test-unit.sh` passed both flavors (162 tests each, zero failures; characterization class 4/4 each), with no production-code changes.
 
 ### Failures and blockers
 
+- Initial `bash scripts/test-unit.sh` failed at test compilation: `Files.readString` was unresolved in the Android unit-test classpath. Replaced it with `File.readText(Charsets.UTF_8)`; the corrected run compiled and passed both flavor tasks.
+- Second `bash scripts/test-unit.sh` compiled the tests but had one characterization assertion failure: the remaining-expression excerpt deliberately stopped before the separate exhausted check. Retained the check against the complete AccessibilityService source instead; the third run passed both complete flavor suites with zero failures.
+- `git diff --check` initially reported trailing whitespace on the edited Batch 1 status lines. Removed that whitespace; the final `git diff --check` passed.
+
 ### Decisions
 
+- Keep characterization-only scope: no production helper extraction, Android test framework, or dependency changes. The relevant allowance methods are private and embedded in Android-bound service/activity classes; test examples are paired with source checks against the current formula implementations.
+- GitHub Actions were not triggered. The user explicitly directed that Phase 5 must not start GitHub Actions or build APKs unless they explicitly ask; local Android tests are allowed. Both CI workflows include their respective unit-test tasks, but the CI-execution checkbox remains unchecked.
 ---
 
 ## Batch 2 — `AllowanceLedger` (behavior-preserving)
 
-**Status:** `NOT STARTED`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Status:** `IN PROGRESS`
+**Started:** 2026-10-08
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
@@ -200,6 +217,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 - [ ] Manual test: active allowance blocks at the same moment before and after the refactor.
 
 ### Notes
+
+**Batch start (2026-10-08):** Baseline line counts: `AppBlockerAccessibilityService.kt` 4,802; `ForegroundTaskService.kt` 1,627. The `daily_allowance_used` JSON is read and mutated in the accessibility service, and read by the fallback service, launcher, and settings snapshot path. Preserve existing keys and behavior; no CI/APK run is authorized.
 
 ### Evidence
 
@@ -535,7 +554,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 | Batch | Status | Completed |
 |---|---|---|
 | Batch 0 Verify and measure | IN PROGRESS | — |
-| Batch 1 Test infra and characterization | NOT STARTED | — |
+| Batch 1 Test infra and characterization | IN PROGRESS | — |
 | Batch 2 `AllowanceLedger` | NOT STARTED | — |
 | Batch 3 Shadow pipeline and rollups | NOT STARTED | — |
 | Batch 4 Allowance cutover | NOT STARTED | — |
@@ -544,7 +563,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 | Batch 7 Cleanup and final matrix | NOT STARTED | — |
 
 **Incomplete items and reasons** (reconcile with code before closing)
-<!-- List any unchecked items here with the reason they were left incomplete. -->
+- Batch 1 CI execution remains unchecked: the local Production and Tbtechsdev test tasks passed, and both CI workflow configs contain the matching test task, but GitHub Actions were not run because the user did not request APK-building verification.
 
 **Deferred work**
 <!-- Items explicitly moved to a future phase. -->
