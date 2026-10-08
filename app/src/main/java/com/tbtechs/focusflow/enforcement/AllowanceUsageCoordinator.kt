@@ -5,18 +5,11 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.tbtechs.focusflow.analytics.ForegroundSpanTracker
 import com.tbtechs.focusflow.analytics.UsageEventRead
-import com.tbtechs.focusflow.data.repository.UsageStatsRepository
-import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
-import org.json.JSONArray
 
 /**
  * Reads allowance usage from the shared foreground-event pipeline. Its timer
@@ -29,16 +22,17 @@ internal class AllowanceUsageCoordinator(
     private val scope: CoroutineScope,
     private val onReconciled: (String) -> Unit,
 ) {
-    private val appContext = context.applicationContext
-    private val source = UsageStatsRepository(appContext)
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val tracker = ForegroundSpanTracker(
-        excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + appContext.packageName,
+    private val stateStore = AllowanceUsageStateStore(prefs, ledger)
+    private val reader = AllowanceUsageReader(
+        context = context,
+        ledger = ledger,
+        zoneId = ZoneId.systemDefault(),
+        onReconciled = onReconciled,
     )
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val zoneId = ZoneId.systemDefault()
+    private val accumulator = AllowanceUsageAccumulator(ledger, zoneId)
     private var currentTarget: AllowanceUsageTarget? = null
-    private var segmentCheckpointAtMs = 0L
-    private var segmentDate: String? = null
     private var pendingBridgePackage: String? = null
     private var pendingBridgeAtMs = 0L
     private var lastSuccessfulReadAtMs = 0L
@@ -52,6 +46,7 @@ internal class AllowanceUsageCoordinator(
         override fun run() {
             val target = currentTarget ?: return
             val now = System.currentTimeMillis()
+            freshness = freshness(now)
             checkpointIfStale(target, now)
             refresh("foreground_tick")
             val delay = if (freshness == AllowanceUsageFreshness.FRESH) {
@@ -65,25 +60,24 @@ internal class AllowanceUsageCoordinator(
 
     fun onServiceStarted(savedForegroundPackage: String?) {
         val now = System.currentTimeMillis()
-        recoverPersistedCheckpoint(appContext, prefs, ledger, now)
-        lastSuccessfulReadAtMs = configuredTargets().maxOfOrNull { target ->
+        stateStore.recoverPersistedCheckpoint(now)
+        lastSuccessfulReadAtMs = stateStore.configuredTargets().maxOfOrNull { target ->
             ledger.usage(target.packageName).confirmedAtMs
         } ?: 0L
-        val target = savedForegroundPackage?.let(::targetForPackage)
+        val target = savedForegroundPackage?.let(stateStore::targetForPackage)
         if (target != null) {
             currentTarget = target
-            segmentCheckpointAtMs = now
-            segmentDate = today(now)
+            accumulator.start(now)
             if (target.mode == AllowanceLedger.MODE_INTERVAL) {
                 val start = ledger.ensureIntervalWindowStarted(
                     target.packageName,
-                    today(now),
+                    AllowanceUsageTimeAccounting.localDateKey(now, zoneId),
                     now,
                     target.windowMs,
                 )
                 currentTarget = target.copy(windowStartMs = start)
             }
-            persistMarker(target.packageName, now)
+            stateStore.persistMarker(target.packageName, now)
             scheduleTick()
         }
         refresh("service_start")
@@ -97,13 +91,14 @@ internal class AllowanceUsageCoordinator(
                 pendingBridgePackage = active.packageName
                 pendingBridgeAtMs = atMs
                 currentTarget = null
-                clearMarker(active.packageName)
+                accumulator.clear()
+                stateStore.clearMarker(active.packageName)
                 mainHandler.removeCallbacks(tickRunnable)
             }
             return
         }
 
-        val target = targetForPackage(packageName)
+        val target = stateStore.targetForPackage(packageName)
         val active = currentTarget
         if (active?.packageName.equals(target?.packageName, ignoreCase = true) &&
             active != null && target != null
@@ -112,8 +107,9 @@ internal class AllowanceUsageCoordinator(
         }
         if (active != null) {
             finishSegment(active, atMs)
-            clearMarker(active.packageName)
+            stateStore.clearMarker(active.packageName)
             currentTarget = null
+            accumulator.clear()
             mainHandler.removeCallbacks(tickRunnable)
         }
         if (target == null) {
@@ -128,7 +124,7 @@ internal class AllowanceUsageCoordinator(
             atMs - pendingBridgeAtMs <= AllowanceUsagePipeline.DIALOG_BRIDGE_MAX_MS
         pendingBridgePackage = null
         pendingBridgeAtMs = 0L
-        val currentDay = today(atMs)
+        val currentDay = AllowanceUsageTimeAccounting.localDateKey(atMs, zoneId)
         var nextTarget = target
         if (target.mode == AllowanceLedger.MODE_INTERVAL) {
             val start = ledger.ensureIntervalWindowStarted(
@@ -143,17 +139,17 @@ internal class AllowanceUsageCoordinator(
             ledger.addEstimatedOpen(target.packageName, currentDay)
         }
         currentTarget = nextTarget
-        segmentDate = currentDay
-        segmentCheckpointAtMs = maxOf(atMs, ledger.usage(target.packageName).confirmedAtMs)
-        persistMarker(target.packageName, atMs)
+        accumulator.start(atMs, ledger.usage(target.packageName).confirmedAtMs)
+        stateStore.persistMarker(target.packageName, atMs)
         scheduleTick()
         refresh("allowance_app_open")
     }
 
     fun onScreenOff(atMs: Long = System.currentTimeMillis()) {
         currentTarget?.let { finishSegment(it, atMs) }
-        currentTarget?.let { clearMarker(it.packageName) }
+        currentTarget?.let { stateStore.clearMarker(it.packageName) }
         currentTarget = null
+        accumulator.clear()
         pendingBridgePackage = null
         pendingBridgeAtMs = 0L
         mainHandler.removeCallbacks(tickRunnable)
@@ -166,9 +162,10 @@ internal class AllowanceUsageCoordinator(
     fun onConfigurationChanged(atMs: Long = System.currentTimeMillis()) {
         currentTarget?.let {
             finishSegment(it, atMs)
-            clearMarker(it.packageName)
+            stateStore.clearMarker(it.packageName)
         }
         currentTarget = null
+        accumulator.clear()
         pendingBridgePackage = null
         pendingBridgeAtMs = 0L
         mainHandler.removeCallbacks(tickRunnable)
@@ -178,21 +175,16 @@ internal class AllowanceUsageCoordinator(
     fun onServiceStopping(atMs: Long = System.currentTimeMillis()) {
         currentTarget?.let {
             finishSegment(it, atMs)
-            persistMarker(it.packageName, atMs)
+            stateStore.persistMarker(it.packageName, atMs)
         }
         currentTarget = null
+        accumulator.clear()
         mainHandler.removeCallbacks(tickRunnable)
         readJob?.cancel()
     }
 
     fun setActiveSessionEnd(packageName: String, endAtMs: Long) {
-        if (prefs.getString(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG, null)
-                ?.equals(packageName, ignoreCase = true) == true
-        ) {
-            prefs.edit()
-                .putLong(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_END_MS, endAtMs)
-                .apply()
-        }
+        stateStore.setActiveSessionEnd(packageName, endAtMs)
     }
 
     fun freshness(nowMs: Long = System.currentTimeMillis()): AllowanceUsageFreshness =
@@ -209,7 +201,7 @@ internal class AllowanceUsageCoordinator(
             return
         }
         val now = System.currentTimeMillis()
-        val targets = configuredTargets().map { target ->
+        val targets = stateStore.configuredTargets().map { target ->
             if (target.mode == AllowanceLedger.MODE_INTERVAL) {
                 target.copy(windowStartMs = ledger.usage(target.packageName).windowStartMs)
             } else {
@@ -217,7 +209,7 @@ internal class AllowanceUsageCoordinator(
             }
         }
         if (targets.isEmpty()) return
-        val todayStart = localMidnight(now)
+        val todayStart = AllowanceUsageTimeAccounting.localMidnight(now, zoneId)
         val earliestPeriod = targets.mapNotNull { target ->
             when (target.mode) {
                 AllowanceLedger.MODE_INTERVAL -> target.windowStartMs.takeIf { it > 0L }
@@ -225,19 +217,17 @@ internal class AllowanceUsageCoordinator(
             }
         }.minOrNull() ?: todayStart
         val queryStart = (earliestPeriod - LOOKBACK_MS).coerceAtLeast(0L)
+        val activePackage = currentTarget?.packageName
+        val activeSegmentStartedAtMs = accumulator.segmentStartedAtMs()
         readJob = scope.launch {
-            val read = try {
-                withTimeout(READ_TIMEOUT_MS) {
-                    source.readForegroundEvents(queryStart, now)
-                }
-            } catch (_: TimeoutCancellationException) {
-                UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.EVENTS_UNAVAILABLE)
-            } catch (_: SecurityException) {
-                UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.ACCESS_REVOKED)
-            } catch (_: Exception) {
-                UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.EVENTS_UNAVAILABLE)
-            }
-            val completedAt = System.currentTimeMillis()
+            val outcome = reader.readAndReconcile(
+                targets = targets,
+                queryStartMs = queryStart,
+                nowMs = now,
+                activePackage = activePackage,
+            )
+            val read = outcome.read
+            val completedAt = outcome.completedAtMs
             when (read) {
                 is UsageEventRead.Unknown -> {
                     usageAccessAvailable =
@@ -249,53 +239,31 @@ internal class AllowanceUsageCoordinator(
                         unlockedAtMs = unlockedAtMs,
                         nowMs = completedAt,
                     )
-                    if (newState != freshness) currentTarget?.let { persistMarker(it.packageName, completedAt) }
+                    if (newState != freshness) {
+                        currentTarget?.let {
+                            stateStore.persistMarker(it.packageName, completedAt)
+                        }
+                    }
                     freshness = newState
                     currentTarget?.let { checkpointIfStale(it, completedAt) }
+                    currentTarget?.let {
+                        mainHandler.removeCallbacks(tickRunnable)
+                        mainHandler.postDelayed(tickRunnable, CHECKPOINT_INTERVAL_MS)
+                    }
                     Log.i(TAG, "allowance pipeline state=$freshness reason=$reason")
                 }
                 is UsageEventRead.Available -> {
                     usageAccessAvailable = true
-                    val sessions = tracker.sessions(
-                        events = read.events,
-                        windowStartMs = queryStart,
-                        windowEndMs = now,
-                        nowMs = now,
-                    )
-                    targets.forEach { target ->
-                        val measurement = AllowanceUsagePipeline.measure(
-                            target = target,
-                            sessions = sessions,
-                            todayStartMs = todayStart,
-                            nowMs = now,
-                            zoneId = zoneId,
-                        )
-                        when (target.mode) {
-                            AllowanceLedger.MODE_COUNT -> ledger.reconcileCountUsage(
-                                target.packageName,
-                                today(now),
-                                measurement.count,
-                                completedAt,
-                            )
-                            AllowanceLedger.MODE_TIME_BUDGET,
-                            AllowanceLedger.MODE_INTERVAL -> ledger.reconcileTimeUsage(
-                                packageName = target.packageName,
-                                mode = target.mode,
-                                today = today(now),
-                                windowStartMs = target.windowStartMs,
-                                usedMs = measurement.usedMs,
-                                atMs = completedAt,
-                            )
-                        }
-                        onReconciled(target.packageName)
+                    currentTarget?.takeIf {
+                        it.packageName.equals(activePackage, ignoreCase = true) &&
+                            accumulator.segmentStartedAtMs() == activeSegmentStartedAtMs
+                    }?.let { active ->
+                        outcome.activeSessionStartedAtMs?.let(accumulator::updateSessionStart)
+                        accumulator.successfulRead(completedAt)
+                        stateStore.persistMarker(active.packageName, completedAt)
                     }
                     lastSuccessfulReadAtMs = completedAt
                     freshness = AllowanceUsageFreshness.FRESH
-                    currentTarget?.let { active ->
-                        segmentCheckpointAtMs = completedAt
-                        segmentDate = today(completedAt)
-                        persistMarker(active.packageName, completedAt)
-                    }
                     Log.d(TAG, "allowance pipeline read succeeded reason=$reason")
                 }
             }
@@ -308,119 +276,14 @@ internal class AllowanceUsageCoordinator(
     }
 
     private fun checkpointIfStale(target: AllowanceUsageTarget, nowMs: Long) {
-        if (today(nowMs) != segmentDate) {
-            segmentDate = today(nowMs)
-            segmentCheckpointAtMs = localMidnight(nowMs)
-        }
         val state = freshness(nowMs)
         if (state == AllowanceUsageFreshness.FRESH) return
-        val start = maxOf(
-            segmentCheckpointAtMs,
-            ledger.usage(target.packageName).confirmedAtMs,
-            if (target.mode == AllowanceLedger.MODE_TIME_BUDGET) localMidnight(nowMs) else 0L,
-            if (target.mode == AllowanceLedger.MODE_INTERVAL) target.windowStartMs else 0L,
-        )
-        val capEnd = if (target.mode == AllowanceLedger.MODE_INTERVAL && target.windowStartMs > 0L) {
-            minOf(nowMs, target.windowStartMs + target.windowMs)
-        } else {
-            nowMs
-        }
-        if (target.mode == AllowanceLedger.MODE_TIME_BUDGET ||
-            target.mode == AllowanceLedger.MODE_INTERVAL
-        ) {
-            ledger.addEstimatedTimeUsage(
-                packageName = target.packageName,
-                mode = target.mode,
-                today = today(nowMs),
-                windowStartMs = target.windowStartMs,
-                deltaMs = (capEnd - start).coerceAtLeast(0L)
-                    .coerceAtMost(AllowanceLedger.MAX_ESTIMATED_SEGMENT_MS),
-            )
-        }
-        segmentCheckpointAtMs = nowMs
-        persistMarker(target.packageName, nowMs)
+        accumulator.checkpoint(target, nowMs)
+        stateStore.persistMarker(target.packageName, nowMs)
     }
 
     private fun finishSegment(target: AllowanceUsageTarget, atMs: Long) {
-        val start = maxOf(
-            segmentCheckpointAtMs,
-            ledger.usage(target.packageName).confirmedAtMs,
-            if (target.mode == AllowanceLedger.MODE_TIME_BUDGET) localMidnight(atMs) else 0L,
-            if (target.mode == AllowanceLedger.MODE_INTERVAL) target.windowStartMs else 0L,
-        )
-        val end = if (target.mode == AllowanceLedger.MODE_INTERVAL && target.windowStartMs > 0L) {
-            minOf(atMs, target.windowStartMs + target.windowMs)
-        } else {
-            atMs
-        }
-        if (target.mode == AllowanceLedger.MODE_TIME_BUDGET ||
-            target.mode == AllowanceLedger.MODE_INTERVAL
-        ) {
-            val elapsed = (end - start).coerceAtLeast(0L)
-                .coerceAtMost(AllowanceLedger.MAX_ESTIMATED_SEGMENT_MS)
-            ledger.addEstimatedTimeUsage(
-                packageName = target.packageName,
-                mode = target.mode,
-                today = today(atMs),
-                windowStartMs = target.windowStartMs,
-                deltaMs = elapsed,
-            )
-        }
-        segmentCheckpointAtMs = atMs
-    }
-
-    private fun configuredTargets(): List<AllowanceUsageTarget> {
-        val raw = prefs.getString(AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_CONFIG, null)
-            ?: return emptyList()
-        return try {
-            val entries = JSONArray(raw)
-            buildList {
-                for (index in 0 until entries.length()) {
-                    val item = entries.optJSONObject(index) ?: continue
-                    val pkg = item.optString("packageName", "").takeIf(String::isNotBlank) ?: continue
-                    val mode = item.optString("mode", AllowanceLedger.MODE_COUNT)
-                    when (mode) {
-                        AllowanceLedger.MODE_COUNT ->
-                            add(AllowanceUsageTarget(pkg, mode))
-                        AllowanceLedger.MODE_TIME_BUDGET ->
-                            add(AllowanceUsageTarget(pkg, mode))
-                        AllowanceLedger.MODE_INTERVAL ->
-                            add(
-                                AllowanceUsageTarget(
-                                    packageName = pkg,
-                                    mode = mode,
-                                    windowStartMs = ledger.usage(pkg).windowStartMs,
-                                    windowMs = item.optInt("intervalHours", 1)
-                                        .coerceAtLeast(1).toLong() * HOUR_MS,
-                                ),
-                            )
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun targetForPackage(packageName: String): AllowanceUsageTarget? =
-        configuredTargets().firstOrNull { it.packageName.equals(packageName, ignoreCase = true) }
-
-    private fun persistMarker(packageName: String, atMs: Long) {
-        prefs.edit()
-            .putString(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG, packageName)
-            .putLong(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, atMs)
-            .apply()
-    }
-
-    private fun clearMarker(packageName: String) {
-        if (prefs.getString(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG, null)
-                ?.equals(packageName, ignoreCase = true) != true
-        ) return
-        prefs.edit()
-            .remove(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG)
-            .remove(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS)
-            .remove(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_END_MS)
-            .apply()
+        accumulator.finish(target, atMs)
     }
 
     private fun scheduleTick() {
@@ -428,79 +291,11 @@ internal class AllowanceUsageCoordinator(
         mainHandler.postDelayed(tickRunnable, INITIAL_REFRESH_DELAY_MS)
     }
 
-    private fun localMidnight(atMs: Long): Long =
-        Instant.ofEpochMilli(atMs).atZone(zoneId).toLocalDate().atStartOfDay(zoneId)
-            .toInstant().toEpochMilli()
-
-    private fun today(atMs: Long): String =
-        Instant.ofEpochMilli(atMs).atZone(zoneId).toLocalDate()
-            .format(DateTimeFormatter.ISO_LOCAL_DATE)
-
     companion object {
         const val CHECKPOINT_INTERVAL_MS = 15_000L
         const val MAX_RECOVERABLE_CHECKPOINT_GAP_MS = 2 * CHECKPOINT_INTERVAL_MS
-        const val READ_TIMEOUT_MS = 5_000L
         private const val INITIAL_REFRESH_DELAY_MS = 30_000L
         private const val LOOKBACK_MS = 6 * 60 * 60 * 1_000L
-        private const val HOUR_MS = 60 * 60 * 1_000L
         private const val TAG = "AllowanceUsage"
-
-        fun recoverPersistedCheckpoint(
-            context: Context,
-            prefs: SharedPreferences,
-            ledger: AllowanceLedger,
-            nowMs: Long,
-        ) {
-            val packageName = prefs.getString(
-                AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_PKG,
-                null,
-            ) ?: return
-            val checkpointAtMs = prefs.getLong(
-                AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS,
-                0L,
-            )
-            if (checkpointAtMs <= 0L) return
-            val elapsed = (nowMs - checkpointAtMs).coerceAtLeast(0L)
-            val config = try {
-                val array = JSONArray(
-                    prefs.getString(
-                        AppBlockerAccessibilityService.PREF_DAILY_ALLOWANCE_CONFIG,
-                        "[]",
-                    ) ?: "[]",
-                )
-                (0 until array.length())
-                    .mapNotNull { array.optJSONObject(it) }
-                    .firstOrNull {
-                        it.optString("packageName", "").equals(packageName, ignoreCase = true)
-                    }
-            } catch (_: Exception) {
-                null
-            } ?: return
-            val mode = config.optString("mode", AllowanceLedger.MODE_COUNT)
-            if (mode != AllowanceLedger.MODE_TIME_BUDGET && mode != AllowanceLedger.MODE_INTERVAL) {
-                prefs.edit()
-                    .putLong(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, nowMs)
-                    .apply()
-                return
-            }
-            val currentDate = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault())
-                .toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val windowStart = ledger.usage(packageName).windowStartMs
-            val recovered = ledger.recoverCheckpointTime(
-                packageName = packageName,
-                mode = mode,
-                today = currentDate,
-                windowStartMs = windowStart,
-                elapsedMs = elapsed,
-                maximumRecoveryMs = MAX_RECOVERABLE_CHECKPOINT_GAP_MS,
-            )
-            prefs.edit()
-                .putLong(AppBlockerAccessibilityService.PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS, nowMs)
-                .apply()
-            Log.i(
-                TAG,
-                "recovered checkpoint pkg=$packageName gapMs=$elapsed recoveredMs=$recovered",
-            )
-        }
     }
 }

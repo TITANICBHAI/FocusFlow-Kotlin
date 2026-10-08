@@ -451,6 +451,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Implementation checkpoint (2026-10-08):** Added the FRESH/STALE/UNAVAILABLE reducer, shared-session measurement with a narrow 3-second bridge for the documented Android permission-controller/intent-resolver packages, monotonic ledger reconciliation, estimates, interval initialization, and capped checkpoint recovery. Added initial pure tests. These are foundations only: the services are not wired to the coordinator yet, no Batch 4 item is verified, and all checkboxes remain open. Midnight clipping and service integration are still being completed.
 
+**Continuation update (2026-10-08):** The current checkout already wires `AllowanceUsageCoordinator` into `AppBlockerAccessibilityService`, routes foreground/screen/configuration/service lifecycle events, retains the three required session keys, removes the polling-sync key from both services, and updates the all-day explanatory copy plus launcher “About” marker. This was verified by source inspection; no tracker checkbox is checked from inspection alone. Identified two accounting defects: a stale checkpoint crossing local midnight could discard the preceding day’s tail, and repeated checkpoints could exceed the four-hour cap for one continuous session. Added a pure calendar-slicing/cap helper and JVM cases; implementation and verification are still in progress.
+
 ### Evidence
 
 ### Failures and blockers

@@ -459,12 +459,10 @@ class ForegroundTaskService : Service() {
         super.onCreate()
         serviceStartMs = System.currentTimeMillis()
         blockPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        AllowanceUsageCoordinator.recoverPersistedCheckpoint(
-            context = this,
+        AllowanceUsageStateStore(
             prefs = blockPrefs,
             ledger = allowanceLedger,
-            nowMs = serviceStartMs,
-        )
+        ).recoverPersistedCheckpoint(serviceStartMs)
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildIdleNotification())
         accessibilityStateChangeTracker.observe(isAccessibilityServiceEnabled())
