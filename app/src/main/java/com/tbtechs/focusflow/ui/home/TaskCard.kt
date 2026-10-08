@@ -263,18 +263,24 @@ private fun TaskCardAction(
     Box(
         modifier = Modifier
             .size(36.dp)
-            .clip(shape)
-            .border(1.dp, tint.copy(alpha = 0.42f), shape)
             .clickable(onClick = onClick)
             .semantics { role = Role.Button },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = imageVector,
-            contentDescription = contentDescription,
-            tint = tint,
-            modifier = Modifier.size(18.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(shape)
+                .border(1.dp, tint.copy(alpha = 0.42f), shape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = imageVector,
+                contentDescription = contentDescription,
+                tint = tint,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
