@@ -60,6 +60,7 @@ data class AnalyticsSourceData(
     val usageSummary: UsageSummary? = null,
     val usageHourly: HourlyUsageSummary? = null,
     val usageDaily: List<UsageDaySummary> = emptyList(),
+    val usageCoverage: AnalyticsSnapshot.UsageCoverage? = null,
     val health: AnalyticsSnapshot.SourceHealth? = null,
 )
 
@@ -404,8 +405,10 @@ private fun buildPhoneUsageMetrics(
     usageHourly: HourlyUsageSummary?,
     usageDaily: List<UsageDaySummary>,
     range: AnalyticsRange,
+    usageCoverage: AnalyticsSnapshot.UsageCoverage?,
 ): AnalyticsSnapshot.PhoneUsage? {
-    val milliseconds = usageHourly?.foregroundMillisecondsByHour ?: return null
+    if (usageSummary == null && usageHourly == null && usageDaily.isEmpty()) return null
+    val milliseconds = usageHourly?.foregroundMillisecondsByHour ?: emptyList()
     val byHour = emptyHourBuckets().mapValues { 0.0 }.toMutableMap()
     (0..23).forEach { hour ->
         val value = milliseconds.getOrNull(hour) ?: 0L
@@ -431,6 +434,7 @@ private fun buildPhoneUsageMetrics(
         totalMinutes = usageSummary?.totalMinutes ?: byHour.values.sum().roundToInt(),
         observedMinutesByDayOfWeek = usageDaily.associate { it.dayOfWeek to it.totalMinutes.toDouble() },
         observedMinutesByDate = usageDaily.associate { it.date to it.totalMinutes.toDouble() },
+        coverage = usageCoverage,
     )
 }
 
@@ -459,7 +463,13 @@ fun createAnalyticsSnapshot(
             if (window == ANALYTICS_THREE_MONTHS) 12 else 2,
         ),
         sourceHealth = source.health,
-        phoneUsage = buildPhoneUsageMetrics(source.usageSummary, source.usageHourly, source.usageDaily, range),
+        phoneUsage = buildPhoneUsageMetrics(
+            source.usageSummary,
+            source.usageHourly,
+            source.usageDaily,
+            range,
+            source.usageCoverage,
+        ),
     )
 }
 
@@ -503,6 +513,7 @@ class AnalyticsProcessor(
     private val focusSessionRepository: FocusSessionRepository,
     private val greyoutRepository: GreyoutRepository,
     private val usageStatsRepository: UsageStatsRepository,
+    private val deviceUsageSource: DeviceUsageSource,
 ) {
     suspend fun hasUsageStatsPermission(): Boolean = usageStatsRepository.hasPermission()
 
@@ -538,53 +549,23 @@ class AnalyticsProcessor(
         }
 
         val usagePermission = options.usageStatsPermission ?: usageStatsRepository.hasPermission()
-        val usageReads = if (usagePermission) {
-            coroutineScope {
-                val summary = async { readSource({ usageStatsRepository.getUsageSummary(range.start.toInstant().toEpochMilli(), range.end.toInstant().toEpochMilli()) }, null) }
-                val hourly = async { readSource({ usageStatsRepository.getHourlyUsageSummary(range.start.toInstant().toEpochMilli(), range.end.toInstant().toEpochMilli()) }, null) }
-                summary.await() to hourly.await()
-            }
+        val deviceUsage = if (usagePermission) {
+            readSource(
+                {
+                    deviceUsageSource.read(
+                        rangeStartMs = range.start.toInstant().toEpochMilli(),
+                        rangeEndMs = range.end.toInstant().toEpochMilli(),
+                        nowMs = options.now.toInstant().toEpochMilli(),
+                    )
+                },
+                null,
+            )
         } else {
-            SourceRead<UsageSummary?>(null, SOURCE_UNAVAILABLE) to
-                SourceRead<HourlyUsageSummary?>(null, SOURCE_UNAVAILABLE)
+            SourceRead<DeviceUsageSnapshot?>(null, SOURCE_UNAVAILABLE)
         }
-        val usageDaily = if (usagePermission && window == ANALYTICS_WEEK) {
-            coroutineScope {
-                (0..6).map { offset ->
-                    async {
-                        val day = range.start.plusDays(offset.toLong())
-                        val dayStart = day.toLocalDate().atStartOfDay(day.zone)
-                        if (dayStart.isAfter(options.now)) {
-                            return@async UsageDaySummary(
-                                date = day.toLocalDate().toString(),
-                                dayOfWeek = day.dayOfWeek.value % 7,
-                                totalMinutes = 0,
-                            )
-                        }
-                        val dayEnd = minOf(
-                            dayStart.plusDays(1).minusNanos(1),
-                            options.now,
-                        )
-                        val result = readSource(
-                            {
-                                usageStatsRepository.getUsageSummary(
-                                    dayStart.toInstant().toEpochMilli(),
-                                    dayEnd.toInstant().toEpochMilli(),
-                                )
-                            },
-                            UsageSummary(totalMinutes = 0, apps = emptyList()),
-                        )
-                        UsageDaySummary(
-                            date = day.toLocalDate().toString(),
-                            dayOfWeek = day.dayOfWeek.value % 7,
-                            totalMinutes = result.value.totalMinutes,
-                        )
-                    }
-                }.map { it.await() }
-            }
-        } else {
-            emptyList()
-        }
+        val usageSummary = deviceUsage.value?.summary
+        val usageHourly = deviceUsage.value?.hourly
+        val usageDaily = deviceUsage.value?.daily.orEmpty()
 
         return coroutineScope {
             // These independent reads intentionally remain concurrent. There are
@@ -639,9 +620,10 @@ class AnalyticsProcessor(
                     weeklyRates = weeklyResult.value,
                     temptations = currentTemptations,
                     previousTemptations = previousTemptations,
-                    usageSummary = usageReads.first.value,
-                    usageHourly = usageReads.second.value,
+                    usageSummary = usageSummary,
+                    usageHourly = usageHourly,
                     usageDaily = usageDaily,
+                    usageCoverage = deviceUsage.value?.coverage,
                     health = AnalyticsSnapshot.SourceHealth(
                         tasks = tasksResult.state,
                         sessions = sessionsResult.state,
@@ -649,8 +631,8 @@ class AnalyticsProcessor(
                         tasksByHour = taskHourResult.state,
                         weeklyRates = weeklyResult.state,
                         temptations = temptationResult.state,
-                        usageSummary = usageReads.first.state,
-                        usageHourly = usageReads.second.state,
+                        usageSummary = deviceUsage.state,
+                        usageHourly = deviceUsage.state,
                     ),
                 ),
                 generatedAt = options.now.toInstant().toString(),

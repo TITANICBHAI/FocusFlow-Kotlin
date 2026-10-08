@@ -23,7 +23,6 @@ import com.tbtechs.focusflow.analytics.UsageEventsSource
 import com.tbtechs.focusflow.enforcement.receivers.FocusDayDeviceAdminReceiver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Calendar
 
 data class AppUsageInfo(
     val packageName: String,
@@ -316,51 +315,6 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
     /** Overload for Double millisecond timestamp compatibility */
     suspend fun getUsageSummary(startMs: Double, endMs: Double): UsageSummary =
         getUsageSummary(startMs.toLong(), endMs.toLong())
-
-    /**
-     * Aggregates raw foreground time into local clock-hour buckets.
-     *
-     * Guarded by AppOps check to ensure revoked permissions fail loudly.
-     */
-    suspend fun getHourlyUsageSummary(startMs: Long, endMs: Long): HourlyUsageSummary {
-        ensureUsageAccessPermission()
-
-        val start = startMs
-        val end = endMs
-        val hourlyMilliseconds = LongArray(24)
-        if (start < end) {
-            val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-            val ownPackage = context.packageName
-            val stats = usageManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_BEST,
-                start,
-                end,
-            ) ?: emptyList()
-
-            for (stat in stats) {
-                if (stat.packageName == ownPackage) continue
-                val foregroundMs = stat.totalTimeInForeground
-                if (foregroundMs <= 0L) continue
-
-                val calendar = Calendar.getInstance().apply {
-                    timeInMillis = stat.firstTimeStamp
-                }
-                val hour = calendar.get(Calendar.HOUR_OF_DAY)
-                if (hour in 0..23) {
-                    hourlyMilliseconds[hour] += foregroundMs
-                }
-            }
-        }
-
-        return HourlyUsageSummary(
-            foregroundMillisecondsByHour = hourlyMilliseconds.toList(),
-            totalForegroundMilliseconds = hourlyMilliseconds.sum(),
-        )
-    }
-
-    /** Overload for Double millisecond timestamp compatibility */
-    suspend fun getHourlyUsageSummary(startMs: Double, endMs: Double): HourlyUsageSummary =
-        getHourlyUsageSummary(startMs.toLong(), endMs.toLong())
 
     /**
      * Opens the Usage Access settings list.

@@ -570,6 +570,11 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             context = this,
             dailyUsageDao = AppModule.database.dailyAppUsageDao(),
             sessionDao = AppModule.database.appSessionDao(),
+            legacyWriteAllowed = {
+                AppModule.usageHistoryRepository.shouldWriteLegacy(
+                    java.time.LocalDate.now().toString(),
+                )
+            },
         )
         AppModule.usageRollupCoordinator.trigger("service_start")
     }

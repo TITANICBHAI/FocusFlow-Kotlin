@@ -23,6 +23,11 @@ enum class UsageHistorySource {
 
 /** Pure source selection contract shared by tests and the future cutover reader. */
 object UsageHistorySourcePolicy {
+    fun shouldWriteLegacy(cutoverDate: String?, today: String): Boolean {
+        if (cutoverDate == null) return true
+        return today < java.time.LocalDate.parse(cutoverDate).plusDays(14).toString()
+    }
+
     fun selectDeviceStats(
         phase: UsageHistoryReadPhase,
         date: String,

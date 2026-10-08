@@ -26,6 +26,7 @@ class AppUsageAndSessionTracker(
     private val context: Context,
     private val dailyUsageDao: DailyAppUsageDao,
     private val sessionDao: AppSessionDao,
+    private val legacyWriteAllowed: suspend () -> Boolean = { true },
 ) {
     private companion object {
         private const val TAG = "UsageSessionTracker"
@@ -67,6 +68,7 @@ class AppUsageAndSessionTracker(
         val appName = resolveAppName(pkg)
         val category = resolveCategory(pkg)
         scope.launch {
+            if (!legacyWriteAllowed()) return@launch
             dailyUsageDao.incrementLaunchCount(
                 date = epochMsToLocalDate(nowMs),
                 packageName = pkg,
@@ -122,6 +124,7 @@ class AppUsageAndSessionTracker(
         val category = resolveCategory(pkg)
         splitIntoHourlySegments(startWall, endWall).forEach { segment ->
             scope.launch {
+                if (!legacyWriteAllowed()) return@launch
                 dailyUsageDao.addForegroundTime(
                     date = segment.date,
                     packageName = pkg,
@@ -142,6 +145,7 @@ class AppUsageAndSessionTracker(
         val durationMs = endWall - sessionStartWall
         if (durationMs !in MIN_SESSION_MS..MAX_SESSION_MS) return
         scope.launch {
+            if (!legacyWriteAllowed()) return@launch
             sessionDao.insert(
                 AppSessionEntity(
                     packageName = pkg,

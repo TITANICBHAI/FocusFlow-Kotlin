@@ -130,7 +130,7 @@ import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
         UsageRollupAppDayEntity::class,
         UsageRollupSessionEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -541,6 +541,17 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS `idx_urs_date_package` " +
                         "ON `usage_rollup_session` (`local_date`, `package_name`)",
                 )
+            }
+        }
+
+        /** Activates pipeline history from the first local day after upgrade. */
+        val MIGRATION_7_8: Migration = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    UPDATE `usage_pipeline_state`
+                    SET `cutover_date` = date('now', 'localtime')
+                    WHERE `id` = 1 AND `cutover_date` IS NULL
+                """.trimIndent())
             }
         }
 

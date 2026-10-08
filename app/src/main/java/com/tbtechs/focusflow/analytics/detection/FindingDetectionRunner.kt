@@ -2,6 +2,9 @@ package com.tbtechs.focusflow.analytics.detection
 
 import android.util.Log
 import com.tbtechs.focusflow.data.local.dao.AppSessionDao
+import com.tbtechs.focusflow.data.local.dao.AppUsageRangeRow
+import com.tbtechs.focusflow.data.local.dao.FirstSessionRow
+import com.tbtechs.focusflow.data.local.dao.SessionStatRow
 import com.tbtechs.focusflow.data.local.dao.DailyAppUsageDao
 import com.tbtechs.focusflow.data.local.dao.DayRatingDao
 import com.tbtechs.focusflow.data.local.dao.FocusSessionDao
@@ -10,6 +13,8 @@ import com.tbtechs.focusflow.data.local.entity.AppSessionEntity
 import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
 import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
+import com.tbtechs.focusflow.analytics.DetectorUsageHistory
+import com.tbtechs.focusflow.analytics.UsageHistoryRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -31,6 +36,7 @@ class FindingDetectionRunner(
     private val appSessionDao: AppSessionDao,
     private val dayRatingDao: DayRatingDao,
     private val clarifyingQuestionRepository: ClarifyingQuestionRepository,
+    private val usageHistoryRepository: UsageHistoryRepository? = null,
 ) {
     private companion object {
         private const val TAG = "FindingDetectionRunner"
@@ -91,11 +97,11 @@ class FindingDetectionRunner(
     private suspend fun runMorningHijack() {
         val start = dateRangeStart(14)
         val end = dateRangeEnd()
-        val firstSessions = appSessionDao.getFirstSessionEachDay(start, end)
+        val history = detectorHistory(start, end) ?: return
+        val firstSessions = firstSessions(history.sessions)
         if (firstSessions.isEmpty()) return
 
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
-        val categories = usageRows
+        val categories = history.appDays
             .groupBy { it.packageName }
             .mapValues { (_, rows) ->
                 rows.asReversed().firstOrNull { it.category != null }?.category
@@ -140,11 +146,11 @@ class FindingDetectionRunner(
     private suspend fun runVariableRewardLoop() {
         val start = dateRangeStart(21)
         val end = dateRangeEnd()
-        val dailyStats = appSessionDao.getSessionStatsByDay(start, end)
+        val history = detectorHistory(start, end) ?: return
+        val dailyStats = sessionStats(history.sessions)
         if (dailyStats.isEmpty()) return
 
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
-        val appNames = usageRows.associate { it.packageName to it.appName }
+        val appNames = history.appDays.associate { it.packageName to it.appName }
         val roughCandidates = dailyStats
             .groupBy { it.packageName }
             .filter { (_, days) ->
@@ -152,7 +158,7 @@ class FindingDetectionRunner(
                     days.sumOf { it.sessionCount }.toDouble() / days.size >= 5.0
             }
             .keys
-        val rawByPackage = loadRawSessions(roughCandidates, start, end)
+        val rawByPackage = loadRawSessions(history.sessions, roughCandidates)
 
         detectVariableRewardLoop(dailyStats, rawByPackage, appNames)
             ?.let { findingRepository.submit(it) }
@@ -161,12 +167,12 @@ class FindingDetectionRunner(
     private suspend fun runInfiniteSessionDesign() {
         val start = dateRangeStart(21)
         val end = dateRangeEnd()
-        val dailyStats = appSessionDao.getSessionStatsByDay(start, end)
+        val history = detectorHistory(start, end) ?: return
+        val dailyStats = sessionStats(history.sessions)
         if (dailyStats.isEmpty()) return
 
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
-        val appNames = usageRows.associate { it.packageName to it.appName }
-        val categories = usageRows
+        val appNames = history.appDays.associate { it.packageName to it.appName }
+        val categories = history.appDays
             .groupBy { it.packageName }
             .mapValues { (_, rows) ->
                 rows.asReversed().firstOrNull { it.category != null }?.category
@@ -177,7 +183,7 @@ class FindingDetectionRunner(
                 categories[packageName] != "utility" && days.size >= 14
             }
             .keys
-        val rawByPackage = loadRawSessions(roughCandidates, start, end)
+        val rawByPackage = loadRawSessions(history.sessions, roughCandidates)
 
         detectInfiniteSessionDesign(dailyStats, rawByPackage, appNames, categories)
             ?.let { findingRepository.submit(it) }
@@ -186,7 +192,7 @@ class FindingDetectionRunner(
     private suspend fun runEscalatingCapture() {
         val start = dateRangeStart(28)
         val end = dateRangeEnd()
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
+        val usageRows = detectorHistory(start, end)?.appDays ?: return
         if (usageRows.isEmpty()) return
 
         detectEscalatingCapture(usageRows, LocalDate.now())
@@ -197,7 +203,7 @@ class FindingDetectionRunner(
         val windowDays = 14
         val start = dateRangeStart(windowDays.toLong())
         val end = dateRangeEnd()
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
+        val usageRows = detectorHistory(start, end)?.appDays ?: return
         if (usageRows.isEmpty()) return
 
         val ratings = dayRatingDao.getForDateRange(start, end)
@@ -208,7 +214,7 @@ class FindingDetectionRunner(
     private suspend fun runSubstitution() {
         val start = dateRangeStart(28)
         val end = dateRangeEnd()
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
+        val usageRows = detectorHistory(start, end)?.appDays ?: return
         if (usageRows.isEmpty()) return
 
         detectSubstitution(usageRows, LocalDate.now())
@@ -218,7 +224,7 @@ class FindingDetectionRunner(
     private suspend fun runAllowanceSuggestion() {
         val start = dateRangeStart(30)
         val end = dateRangeEnd()
-        val usageRows = dailyAppUsageDao.getForDateRange(start, end)
+        val usageRows = detectorHistory(start, end)?.appDays ?: return
         if (usageRows.isEmpty()) return
 
         val ratings = dayRatingDao.getForDateRange(start, end)
@@ -226,24 +232,67 @@ class FindingDetectionRunner(
             ?.let { findingRepository.submit(it) }
     }
 
-    private suspend fun loadRawSessions(
-        packages: Set<String>,
+    private suspend fun detectorHistory(
         startDate: String,
         endDate: String,
-    ): Map<String, List<AppSessionEntity>> {
-        val sessionsByPackage = mutableMapOf<String, List<AppSessionEntity>>()
-        for (packageName in packages) {
-            sessionsByPackage[packageName] =
-                appSessionDao.getSessionsForPackageInRange(packageName, startDate, endDate)
+    ): DetectorUsageHistory? {
+        usageHistoryRepository?.let {
+            return it.detectorHistory(
+                startDate = startDate,
+                endDate = endDate,
+                today = LocalDate.now().format(ISO_DATE),
+            )
         }
-        return sessionsByPackage
+        return DetectorUsageHistory(
+            appDays = dailyAppUsageDao.getForDateRange(startDate, endDate),
+            sessions = appSessionDao.getAllSessionsInRange(startDate, endDate),
+        )
     }
+
+    private fun firstSessions(sessions: List<AppSessionEntity>): List<FirstSessionRow> =
+        sessions.groupBy { it.localDate }
+            .mapNotNull { (date, rows) ->
+                rows.minByOrNull { it.startedAt }?.let { first ->
+                    FirstSessionRow(
+                        localDate = date,
+                        packageName = first.packageName,
+                        appName = first.appName,
+                        startedAt = first.startedAt,
+                    )
+                }
+            }
+            .sortedBy { it.localDate }
+
+    private fun sessionStats(sessions: List<AppSessionEntity>): List<SessionStatRow> =
+        sessions.filter { it.durationMs > 0L }
+            .groupBy { it.packageName to it.localDate }
+            .map { (key, rows) ->
+                val durations = rows.map { it.durationMs }
+                SessionStatRow(
+                    packageName = key.first,
+                    localDate = key.second,
+                    sessionCount = rows.size,
+                    avgDurationMs = durations.average(),
+                    minDurationMs = durations.min(),
+                    maxDurationMs = durations.max(),
+                    totalMs = durations.sum(),
+                )
+            }
+            .sortedBy { it.localDate }
+
+    private fun loadRawSessions(
+        sessions: List<AppSessionEntity>,
+        packages: Set<String>,
+    ): Map<String, List<AppSessionEntity>> =
+        packages.associateWith { packageName ->
+            sessions.filter { it.packageName == packageName }
+        }
 
     private fun dateRangeStart(days: Long): String =
         LocalDate.now().minusDays(days).format(ISO_DATE)
 
     private fun dateRangeEnd(): String =
-        LocalDate.now().format(ISO_DATE)
+        LocalDate.now().minusDays(1).format(ISO_DATE)
 
     private fun isoRangeStart(days: Long): String =
         LocalDateTime.of(LocalDate.now().minusDays(days), LocalTime.MIDNIGHT).toString()

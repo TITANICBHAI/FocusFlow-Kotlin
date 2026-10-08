@@ -113,6 +113,13 @@ data class AnalyticsSnapshot(
         val totalMinutes: Int = 0,
         val observedMinutesByDayOfWeek: Map<Int, Double> = emptyMap(),
         val observedMinutesByDate: Map<String, Double> = emptyMap(),
+        val coverage: UsageCoverage? = null,
+    )
+
+    data class UsageCoverage(
+        val completeDays: Int,
+        val partialDays: Int,
+        val missingDays: Int,
     )
 
     data class HeaviestApp(

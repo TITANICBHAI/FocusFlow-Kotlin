@@ -142,6 +142,94 @@ class UsageRollupWriter(
             UsageRollupPass.Written(completeDates, partialDates)
         }
 
+    /**
+     * Persists an already-read on-demand window without issuing a second
+     * UsageEvents query. Today's date is always excluded.
+     */
+    suspend fun writeDaysFromEvents(
+        startDate: String,
+        endDate: String,
+        sessions: List<ForegroundSession>,
+        earliestEventAtMs: Long?,
+        nowMs: Long,
+    ): Set<String> = mutex.withLock {
+        val zone = ZoneId.systemDefault()
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        val start = LocalDate.parse(startDate)
+        val end = minOf(LocalDate.parse(endDate), today.minusDays(1))
+        if (start > end) return@withLock emptySet()
+
+        val savedDates = mutableSetOf<String>()
+        var date = start
+        while (!date.isAfter(end)) {
+            val dateText = date.toString()
+            val dayStartMs = date.atStartOfDay(zone).toInstant().toEpochMilli()
+            val dayEndMs = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val daySessions = sessions.filter {
+                it.startedAtMs < dayEndMs && it.endedAtMs > dayStartMs
+            }
+            val unresolvedSessionOnDate = daySessions.any { session ->
+                session.isInferredTail &&
+                    Instant.ofEpochMilli(session.startedAtMs).atZone(zone).toLocalDate() == date &&
+                    nowMs < session.startedAtMs + ForegroundSpanTracker.DEFAULT_INFERRED_TAIL_CAP_MS
+            }
+            val status = UsageRollupCoverage.status(
+                earliestEventAtMs = earliestEventAtMs,
+                dayStartMs = dayStartMs,
+                unresolvedSessionStartedOnDate = unresolvedSessionOnDate,
+            )
+            val appRows = UsageCalendarAggregator.aggregate(
+                sessions = daySessions,
+                rangeStartMs = dayStartMs,
+                rangeEndMs = dayEndMs,
+                zoneId = zone,
+            ).map { row ->
+                UsageRollupAppDayEntity(
+                    date = row.date,
+                    packageName = row.packageName,
+                    appName = UsageAppMetadata.resolveAppName(context, row.packageName),
+                    category = UsageAppMetadata.resolveCategory(context, row.packageName),
+                    foregroundMs = row.foregroundMs,
+                    hourlyMs = row.hourlyMs.joinToString(","),
+                    launchCount = row.launchCount,
+                    sessionCount = row.sessionCount,
+                    firstStartAtMs = row.firstStartAtMs,
+                    lastUsedAtMs = row.lastUsedAtMs,
+                )
+            }
+            val sessionRows = daySessions
+                .filter { session ->
+                    Instant.ofEpochMilli(session.startedAtMs).atZone(zone).toLocalDate() == date &&
+                        !(session.isInferredTail &&
+                            nowMs < session.startedAtMs +
+                            ForegroundSpanTracker.DEFAULT_INFERRED_TAIL_CAP_MS)
+                }
+                .map { session ->
+                    UsageRollupSessionEntity(
+                        packageName = session.packageName,
+                        startedAtMs = session.startedAtMs,
+                        endedAtMs = session.endedAtMs,
+                        durationMs = session.durationMs,
+                        localDate = dateText,
+                    )
+                }
+            val dayRow = UsageRollupDayEntity(
+                date = dateText,
+                status = status,
+                coverageStartMs = earliestEventAtMs,
+                coverageEndMs = nowMs,
+                pipelineVersion = UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION,
+                computedAtMs = nowMs,
+                totalForegroundMs = appRows.sumOf { it.foregroundMs },
+            )
+            if (replaceDateIfNeeded(dateText, dayRow, appRows, sessionRows)) {
+                savedDates += dateText
+            }
+            date = date.plusDays(1)
+        }
+        savedDates
+    }
+
     private suspend fun replaceDateIfNeeded(
         date: String,
         day: UsageRollupDayEntity,

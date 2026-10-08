@@ -16,12 +16,14 @@ import java.time.Instant
 
 @Composable
 fun DataHealthNotice(snapshot: AnalyticsSnapshot) {
+    val coverage = snapshot.phoneUsage?.coverage
+    val hasUsageGaps = coverage != null && (coverage.partialDays > 0 || coverage.missingDays > 0)
     val degraded = snapshot.sourceHealth?.let { health ->
         listOf(health.tasks, health.sessions, health.estimationErrors, health.tasksByHour, health.weeklyRates, health.temptations, health.usageSummary, health.usageHourly)
             .filterNotNull().any { it != SOURCE_LOADED }
     } == true
     val stale = runCatching { Duration.between(Instant.parse(snapshot.generatedAt), Instant.now()).toMinutes() > 5 }.getOrDefault(false)
-    if (!degraded && !stale) return
+    if (!degraded && !stale && !hasUsageGaps) return
     StatsCard {
         Row(modifier = androidx.compose.ui.Modifier.padding(12.dp)) {
             Icon(Icons.Outlined.Info, null, tint = MaterialTheme.colorScheme.tertiary)
@@ -29,6 +31,7 @@ fun DataHealthNotice(snapshot: AnalyticsSnapshot) {
                 when {
                     stale -> "This view is stale. Return to it to refresh your local history."
                     snapshot.sourceHealth?.let { listOf(it.tasks, it.sessions, it.estimationErrors, it.tasksByHour, it.weeklyRates, it.temptations, it.usageSummary, it.usageHourly).filterNotNull().any { source -> source == "unavailable" } } == true -> "Some local data sources are unavailable, so related insights are omitted."
+                    hasUsageGaps -> "Device usage has ${coverage!!.completeDays} complete, ${coverage.partialDays} partial, and ${coverage.missingDays} missing days in this view."
                     else -> "Some local data could not be read, so related insights are omitted."
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

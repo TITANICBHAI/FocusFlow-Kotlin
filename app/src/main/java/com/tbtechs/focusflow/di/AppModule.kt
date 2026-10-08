@@ -27,6 +27,7 @@ import com.tbtechs.focusflow.analytics.UsageRollupCoordinator
 import com.tbtechs.focusflow.analytics.UsageRollupWriter
 import com.tbtechs.focusflow.analytics.UsageHistoryRepository
 import com.tbtechs.focusflow.analytics.RoomUsageHistoryStore
+import com.tbtechs.focusflow.analytics.DeviceUsageSource
 import com.tbtechs.focusflow.analytics.detection.FindingDetectionRunner
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.SchedulerEngine
@@ -211,6 +212,7 @@ object AppModule {
                 FocusFlowDatabase.MIGRATION_4_5,
                 FocusFlowDatabase.MIGRATION_5_6,
                 FocusFlowDatabase.MIGRATION_6_7,
+                FocusFlowDatabase.MIGRATION_7_8,
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -266,6 +268,9 @@ object AppModule {
             RoomUsageHistoryStore(
                 dailyAppUsageDao = database.dailyAppUsageDao(),
                 appSessionDao = database.appSessionDao(),
+                usageRollupDao = database.usageRollupDao(),
+                eventSource = usageStatsRepository,
+                packageName = app.packageName,
             ),
         )
         usageRollupWriter = UsageRollupWriter(
@@ -283,6 +288,10 @@ object AppModule {
             focusSessionRepository = focusSessionRepository,
             greyoutRepository = greyoutRepository,
             usageStatsRepository = usageStatsRepository,
+            deviceUsageSource = DeviceUsageSource(
+                context = app,
+                eventSource = usageStatsRepository,
+            ),
         )
         insightEngine = InsightEngine(database.weeklyInsightDao())
         achievementEngine = AchievementEngine(
@@ -309,6 +318,7 @@ object AppModule {
             appSessionDao = database.appSessionDao(),
             dayRatingDao = database.dayRatingDao(),
             clarifyingQuestionRepository = clarifyingQuestionRepository,
+            usageHistoryRepository = usageHistoryRepository,
         )
 
     }

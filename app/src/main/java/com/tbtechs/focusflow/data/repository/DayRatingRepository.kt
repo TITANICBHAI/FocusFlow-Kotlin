@@ -5,6 +5,8 @@ import com.tbtechs.focusflow.data.local.dao.DailyAppUsageDao
 import com.tbtechs.focusflow.data.local.dao.DayRatingDao
 import com.tbtechs.focusflow.data.local.dao.TaskDao
 import com.tbtechs.focusflow.data.local.entity.DayRatingEntity
+import com.tbtechs.focusflow.analytics.UsageHistoryConsumer
+import com.tbtechs.focusflow.analytics.UsageHistoryRepository
 import kotlinx.coroutines.CancellationException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -38,12 +40,18 @@ class DayRatingRepository(private val dao: DayRatingDao) {
     suspend fun getRatableDates(
         dailyAppUsageDao: DailyAppUsageDao,
         taskDao: TaskDao,
+        usageHistoryRepository: UsageHistoryRepository? = null,
     ): List<RatableDateEntry> {
         val today = LocalDate.now()
         val cutoff = today.minusDays(RETRO_DAYS).format(DATE_FMT)
         val todayString = today.format(DATE_FMT)
         val usageDates = runCatching {
-            dailyAppUsageDao.getForDateRange(cutoff, todayString).map { it.date }.toSet()
+            usageHistoryRepository?.groupBUsageDates(
+                startDate = cutoff,
+                endDate = todayString,
+                today = todayString,
+                consumer = UsageHistoryConsumer.RATING_ELIGIBILITY,
+            ) ?: dailyAppUsageDao.getForDateRange(cutoff, todayString).map { it.date }.toSet()
         }.getOrDefault(emptySet())
         val taskDates = runCatching {
             taskDao.getTaskDatesInRange(cutoff, todayString).toSet()

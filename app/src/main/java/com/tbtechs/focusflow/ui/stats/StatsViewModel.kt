@@ -352,10 +352,18 @@ class StatsViewModel(
         _ratableDates.value = dayRatingRepository.getRatableDates(
             dailyAppUsageDao = db.dailyAppUsageDao(),
             taskDao = db.taskDao(),
+            usageHistoryRepository = AppModule.usageHistoryRepository,
         )
         totalRatingCount = dayRatingRepository.count()
         val usageDays = runCatching {
-            db.dailyAppUsageDao().countDistinctDates()
+            val today = java.time.LocalDate.now().toString()
+            val cutoff = java.time.LocalDate.now().minusDays(90).toString()
+            AppModule.usageHistoryRepository.groupBUsageDates(
+                startDate = cutoff,
+                endDate = today,
+                today = today,
+                consumer = com.tbtechs.focusflow.analytics.UsageHistoryConsumer.DATA_HEALTH,
+            ).size
         }.getOrDefault(0)
         val taskDays = runCatching {
             val cutoff = java.time.LocalDate.now()

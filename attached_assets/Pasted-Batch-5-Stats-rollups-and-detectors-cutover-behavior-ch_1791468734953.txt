@@ -1,0 +1,52 @@
+Batch 5 — Stats, rollups and detectors cutover (behavior-changing: D3, D5–D8)
+Status: NOT STARTED
+Started:
+Completed:
+
+Tasks
+DeviceUsageSource (Group A)
+
+ One pipeline pass feeds AnalyticsProcessor.buildPhoneUsageMetrics: summary, hourly and per-day Week values.
+ INTERVAL_BEST path removed from UsageStatsRepository and AnalyticsProcessor.
+ 7 per-day getUsageSummary calls for Week removed.
+ Observed Device Time card no longer disappears when only one of summary or hourly fails.
+cutoverDate and Group B switch
+
+ cutoverDate written to usage_pipeline_state.
+ FindingDetectionRunner.dateRangeEnd() changed to LocalDate.now().minusDays(1) (O7).
+ DayRatingRepository.getRatableDates uses merged read model for today's row.
+ dataHealthDayCount uses merged read model.
+ Detectors apply seam rules from 8.4.
+BackgroundFetchWorker ordering
+
+ In the same worker execution, rollup pass completes before runAll() is called.
+ A comment in BackgroundFetchWorker explicitly marks the required ordering.
+Legacy writer
+
+ Old AppUsageAndSessionTracker Room writes stopped (or scheduled to stop after stabilization window O8).
+ Existing legacy rows still readable through the merged read model.
+Stats surfaces
+
+ DataHealthNotice extended to report coverage: days complete, days partial, days missing.
+ Dormant 3-month path still builds and ThreeMonthRules works with the new byHour source.
+ PhoneUsageSummary.kt deleted only if Batch 0 confirmed zero callers; record outcome here.
+Detector seam tests (introduced here because source switching is introduced here)
+
+ A window entirely before cutoverDate is evaluated against legacy and passes.
+ A window entirely after cutoverDate with enough days passes.
+ A window crossing the seam (start < cutoverDate <= end) is refused for all seven usage detectors.
+ Today is excluded from every detector window (O7).
+ A midnight-crossing session is counted once per detector, on its start date.
+Verification
+
+ AppBlockerAccessibilityService.kt line count lower than before this batch.
+ All five detector seam tests above pass.
+ Stats Today hourly distribution is sane (no midnight pile) on API 29 and 33.
+ Stats Week populated from a single pipeline pass.
+ Detector output unchanged for a window entirely before cutoverDate.
+ DayRatingRepository.getRatableDates returns same dates as before for a day with task data only.
+ Test on API 29, 31 and 33.
+Notes
+Evidence
+Failures and blockers
+Decisions
