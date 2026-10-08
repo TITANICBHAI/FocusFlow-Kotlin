@@ -1,12 +1,14 @@
-# FocusFlow Phase 5 — Work Tracker (v2)
+# FocusFlow Phase 5 — Work Tracker (v3)
 
-Companion to `PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v6.md`.  
-No other document is needed. All plan references below are to sections of v6.
+Companion to `PHASE_5_USAGE_AND_ALLOWANCE_PLAN_v7.md`.  
+No other document is needed. All plan references below are to sections of v7.
 
 **v2 change:** Tests have been redistributed to the batch that introduces their production code.  
 Batch 1 is now characterization only. Pipeline, read-model and rollup DAO tests live in Batch 3;  
 allowance compatibility tests in Batch 2; durability state-machine tests in Batch 4; detector seam  
 tests in Batch 5. Duplicate "all X tests pass" requirements have been removed from later batches.
+
+**v3 change:** Updated the companion plan to v7. Batch 0 notes now combine the uploaded source audit with checks against the current checkout; device measurements and owner input remain open.
 
 ---
 
@@ -14,7 +16,7 @@ tests in Batch 5. Duplicate "all X tests pass" requirements have been removed fr
 
 **Before starting a batch**
 - Change its `Status` line from `NOT STARTED` to `IN PROGRESS` and fill in `Started`.
-- Read its full section in v6 before writing any code.
+- Read its full section in v7 before writing any code.
 
 **During a batch**
 - Update the `Notes` block after each meaningful change, not at the end.
@@ -46,23 +48,23 @@ tests in Batch 5. Duplicate "all X tests pass" requirements have been removed fr
 ## Batch 0 — Verify and measure
 
 **Status:** `IN PROGRESS`  
-**Started:** <!-- YYYY-MM-DD -->  
+**Started:** 2026-10-08  
 **Completed:** <!-- YYYY-MM-DD -->
 
 ### Tasks
 
 **SDK floor (Batch 0a)**
-- [ ] Read `minSdk`, `compileSdk`, `targetSdk` from Gradle and record them in `Notes`.
-- [ ] If `minSdk` < 29, raise it to 29 and verify the project still builds.
-- [ ] Add the Lint `NewApi` CI gate and run it on the current code; record all findings in `Notes`.
+- [x] Read `minSdk`, `compileSdk`, `targetSdk` from Gradle and record them in `Notes`.
+- [x] Confirm `minSdk` is at least 29; current value is 29, so no floor change is needed.
+- [x] Verify the existing Lint `NewApi` gate and run matching local flavor lint tasks; record findings in `Notes`. Do not trigger GitHub Actions unless the owner explicitly requests it.
 
 **Writer/reader maps**
-- [ ] Map every writer and reader of `daily_allowance_used` (prefs key): `AppBlockerAccessibilityService`, `ForegroundTaskService`, `LauncherActivity`, `SettingsRepository`, backup/export, and anything else found.
-- [ ] Map every writer and reader of `daily_app_usage` and `app_sessions` (Room): `BackgroundFetchWorker`, `AppUsageAndSessionTracker`, `DayRatingRepository`, `StatsViewModel`, detectors, and anything else found.
-- [ ] Map when `FindingDetectionRunner.runAll` is triggered (confirm `BackgroundFetchWorker.kt:138`).
-- [ ] Document exactly how `FindingRepository.submit` deduplicates (confirm `(detectionType, subjectPackage)` + `evidenceFingerprint` path).
-- [ ] Record how the existing tracker dates a midnight-crossing session (confirm `epochMsToLocalDate(sessionStartWall)`).
-- [ ] Record which code reads each of the four `ACTIVE_SESSION_*` keys and `daily_allowance_usage_stats_sync`, in both `AppBlockerAccessibilityService` and `ForegroundTaskService`.
+- [x] Map every writer and reader of `daily_allowance_used` (prefs key): `AppBlockerAccessibilityService`, `ForegroundTaskService`, `LauncherActivity`, `SettingsRepository`, backup/export, and anything else found.
+- [x] Map every writer and reader of `daily_app_usage` and `app_sessions` (Room): `BackgroundFetchWorker`, `AppUsageAndSessionTracker`, `DayRatingRepository`, `StatsViewModel`, detectors, and anything else found.
+- [x] Map when `FindingDetectionRunner.runAll` is triggered (confirm `BackgroundFetchWorker.kt:138`).
+- [x] Document exactly how `FindingRepository.submit` deduplicates (confirm `(detectionType, subjectPackage)` + `evidenceFingerprint` path).
+- [x] Record how the existing tracker dates a midnight-crossing session (confirm `epochMsToLocalDate(sessionStartWall)`).
+- [x] Record which code reads each of the four `ACTIVE_SESSION_*` keys and `daily_allowance_usage_stats_sync`, in both `AppBlockerAccessibilityService` and `ForegroundTaskService`.
 
 **Device matrix** — run on API 29, 31, 33, 34, and the latest available (section 3.3)  
 For each case: record the device/API, what each source reported, and the diff.
@@ -88,13 +90,36 @@ For each case: record the device/API, what each source reported, and the diff.
 - [ ] Report all source diffs to the owner. Record the owner's tolerance for measurement disagreement before closing this batch.
 
 ### Notes
-<!-- SDK versions: -->
-<!-- Writer/reader maps: -->
-<!-- Lint NewApi findings: -->
-<!-- O2 bridge allow-list: -->
-<!-- Tick interval chosen: -->
-<!-- Retention window: -->
-<!-- Owner tolerance: -->
+**Current checkout / SDK baseline (2026-10-08):** `app/build.gradle.kts` sets `minSdk = 29`, `compileSdk = 35`, and `targetSdk = 35`. No SDK floor change is needed. `FocusFlowDatabase.kt` is Room version 6 with schema export enabled. The source archive did not include Gradle files; that limitation does not apply to the current checkout.
+
+**NewApi lint gate:** `app/build.gradle.kts` has `abortOnError = true`, `checkOnly += "NewApi"`, and `error += "NewApi"`. Both flavor workflows include their lint tasks. The persisted local reports for Production and Tbtechsdev say “No issues found.” GitHub Actions were not triggered.
+
+**`daily_allowance_used` (`PREF_DAILY_ALLOWANCE_USED`) writers and readers:**
+- Writers: `AppBlockerAccessibilityService` (lines 2548, 2784, 2855); `ForegroundTaskService` (547, 731, 754); `SettingsRepository` (1361, 1364, 1371, 1376 — restore/reset paths).
+- Readers: `AppBlockerAccessibilityService` (2951); `ForegroundTaskService` (415, 444, 1504); `SettingsRepository` (1193 — backup export); `LauncherActivity` (1668, `loadAllowanceCardData`).
+- `SettingsRepository` defines `KEY_DAILY_ALLOWANCE_USED = "daily_allowance_used"` as well as using the service constant; no third definition found.
+
+**`daily_allowance_usage_stats_sync` (`PREF_USAGE_STATS_SYNC`) writers/readers:** `AppBlockerAccessibilityService` defines the key (115), reads it (2956), and writes it (2563, 2580, 2859). `ForegroundTaskService` reads/writes it (461, 551).
+
+**`ACTIVE_SESSION_*` keys:**
+- `PREF_ACTIVE_SESSION_PKG`: `AppBlockerAccessibilityService` reads at 2394, clears at 2443/2576 and writes at 2559; `ForegroundTaskService` reads at 451 and writes/clears at 713/767.
+- `PREF_ACTIVE_SESSION_OPEN_AT_MS`: accessibility service writes/clears at 2444/2577 and 2560, reads at 2871; foreground service reads at 455 for `AllowanceExpiry` interval fallback.
+- `PREF_ACTIVE_SESSION_LAST_CHECKPOINT_MS`: accessibility service uses it at 1605, 2395, 2445, 2561, 2651, 2857; foreground service reads it at 773.
+- `PREF_ACTIVE_SESSION_END_MS`: accessibility service reads at 2408 on reconnect and clears/writes at 2446/2579 and 2562; `SettingsRepository` also reads it at 1200 for backup. Keep it in Batch 4.
+
+**`daily_app_usage` / `app_sessions`:** writes flow through `AppUsageAndSessionTracker` via `AnalyticsProcessor` / `BackgroundFetchWorker`. Readers include `StatsViewModel`, `DayRatingRepository`, `FindingDetectors`, and `FindingDetectionRunner`; DAO and model references were also checked in the current repository.
+
+**Detection and dedup:** `BackgroundFetchWorker.kt:138` invokes `FindingDetectionRunner.runAll()`. `FindingRepository.submit` looks up by `(detectionType, subjectPackage)`; the evidence fingerprint determines whether an active finding resurfaces, while intentional suppression and resolved-finding cooldowns remain in effect.
+
+**Midnight-crossing behavior:** `AppUsageAndSessionTracker.closeCurrentSession` assigns `localDate = epochMsToLocalDate(sessionStartWall)`, stores the full duration, and `splitIntoHourlySegments` clips daily time. The new pipeline must preserve this behavior.
+
+**O7:** `FindingDetectionRunner.dateRangeEnd()` still includes today; the `minusDays(1)` change is deferred to Batch 5.
+
+**Lint/source inventory:** the uploaded source archive showed 23 pre-API-29 version checks across three files, a partial count only. The plan's broader inventory remains for Batch 7; the current lint reports contain no `NewApi` findings. `checkOpNoThrow` remains at `UsageStatsRepository.kt:67`, `ForegroundTaskService.kt:379`, and `AppBlockerAccessibilityService.kt:2477` (the plan says 2476; same call block).
+
+**Baseline line counts:** `AppBlockerAccessibilityService.kt` 4,802 lines; `ForegroundTaskService.kt` 1,627 lines.
+
+**Still open:** O2 bridge allow-list requires the device matrix. O3 remains 30 seconds by default pending latency measurement. Retention and `queryEvents` cost are unmeasured. Owner tolerance for measurement differences has not been reported.
 
 ### Evidence
 

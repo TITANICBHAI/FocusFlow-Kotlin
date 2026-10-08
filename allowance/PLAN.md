@@ -1,8 +1,8 @@
-# Phase 5 (v6): one usage pipeline, one allowance ledger, one Stats source, Android 10 to latest
+# Phase 5 (v7): one usage pipeline, one allowance ledger, one Stats source, Android 10 to latest
 
-For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maximum = the latest Android (API 37 at time of writing)** · 6 Oct 2026
+For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maximum = the latest Android (API 37 at time of writing)** · 8 Oct 2026
 
-**This replaces v1 to v5.** Phases 0-4 and the health card are already implemented.
+**This replaces v1 to v6.** Phases 0-4 and the health card are already implemented.
 
 ---
 
@@ -15,9 +15,15 @@ For the coding agent · FocusFlow Android · **minimum Android 10 (API 29), maxi
 - **Licenses.** Nudge and Device-Watch are GPL. Learn the rules from them; **do not copy their code**. Write our own implementation and tests from section 5.
 - **No rewrite.** Reuse `UsageStatsRepository` as the OS adapter, keep the existing Room tables, the allowance UI and our exact-expiry timer.
 
-## 1. What changed in v6
+## 1. What changed in v7
 
-v5 introduced three structural fixes (source precedence, durable stale estimate, session identity). This revision corrects eight points found by re-reading the code against v5.
+v6 corrected eight code-reading discrepancies. This revision fixes one structural conflict introduced by the v2 tracker update: section 11 Batch 1 previously front-loaded all test suites, but the tracker redistributed tests to the batch that introduces their production code. The plan now matches the tracker. No production-code decisions were changed.
+
+**Single change:** Batch 1 in section 11 is now characterization-only. Tests for the pipeline, read-model, rollup DAO, durability state machine, and detector seam are listed under the batch that introduces their respective production code (Batches 2–5).
+
+The eight v6 corrections below are unchanged and still apply:
+
+v5 introduced three structural fixes (source precedence, durable stale estimate, session identity). v6 corrected eight points found by re-reading the code against v5.
 
 1. **D8 replicates existing tracker behavior, not a new rule (section 5).** `AppUsageAndSessionTracker.closeCurrentSession` already sets `localDate = epochMsToLocalDate(sessionStartWall)` and stores the full `durationMs` (code). The new pipeline must match this, not invent it. v5 presented D8 as a new decision.
 2. **Three live-session keys must be kept in Batch 4, not two (7.1).** `ACTIVE_SESSION_END_MS` (`active_session_end_ms`) is read on accessibility reconnect to restore the interval expiry deadline (code, line 2407). Without it interval-mode restore silently fails. v5 said keep only `pkg` and `last_checkpoint_ms`.
@@ -70,7 +76,7 @@ Retained from v5: the fourth rollup table (`usage_pipeline_state`), the sharp `c
 5. **Usage-access check:** use `unsafeCheckOpNoThrow` (API 29+). Our code uses the deprecated `checkOpNoThrow`.
 6. **Day boundaries:** calendar arithmetic (DST days are 23 or 25 hours).
 7. **Binder calls off the main thread.** Enforcement reads in-memory state.
-8. **CI gate:** Android Lint `NewApi` must pass in CI. Nudge documents a crash on older versions that no JVM test and no single device caught; lint did.
+8. **CI gate:** Android Lint `NewApi` must be configured in CI and pass the corresponding local flavor lint tasks before cutover. Do not trigger GitHub Actions unless the owner explicitly requests it. Nudge documents a crash on older versions that no JVM test and no single device caught; lint did.
 
 ### 3.2 Per-version table
 
@@ -411,7 +417,7 @@ At cutover the rollups only hold the few recent days the OS still has, so a dete
 ### Batch 0 — Verify and measure (read-only plus device testing)
 
 - **Batch 0a SDK floor:** confirm Gradle `minSdk`, `compileSdk` and `targetSdk`; report them. Raise `minSdk` to 29 if lower.
-- Add the Lint `NewApi` CI gate (3.1 rule 8) and run it on the current code; report findings.
+- Verify the existing Lint `NewApi` CI gate (3.1 rule 8) and run matching local lint tasks on the current code; report findings. Do not trigger GitHub Actions unless the owner explicitly requests it.
 - Map every writer and reader of `daily_allowance_used`, `daily_app_usage`, `app_sessions` (include `BackgroundFetchWorker`, `SettingsRepository`, `LauncherActivity`, backup/export, the detectors, `DayRatingRepository`).
 - Map when `FindingDetectionRunner.runAll` runs and how `FindingRepository.submit` deduplicates.
 - Report how the old tracker dates a session that crosses midnight, and how the existing `ACTIVE_SESSION_*` keys are used.
@@ -426,19 +432,22 @@ At cutover the rollups only hold the few recent days the OS still has, so a dete
 - Stats Today in the afternoon (hourly distribution) and Week (9 event scans) on the current code.
 - Report measured differences; the owner sets the tolerance.
 
-### Batch 1 — Characterization and pipeline tests (behavior-preserving)
+### Batch 1 — Test infrastructure and characterization (behavior-preserving)
 
-JVM test source set (add if missing). Pin current pure behavior you will move or delete. Write, before any cutover:
+JVM test source set (add if missing). **Existing code only — no tests for components not yet introduced.** Pipeline, read-model, rollup DAO, durability, and detector seam tests each belong to the batch that introduces their production code (Batches 2–5).
 
-- Pipeline tests for every rule in section 5: missing `PAUSED`, `STOPPED` only, screen-off, keyguard, shutdown/startup, **midnight crossing (one session, clipped time)**, DST day, duplicate and out-of-order `RESUMED`, app already open at window start, tail cap, null/unknown input.
-- Read-model precedence tests (6.5, all 14).
-- Allowance durability tests (7.7, all 11).
-- DAO tests for rollup idempotency: run twice, same rows; downgrade refused; today never written; delete-then-insert per date.
-- Detector seam tests (8.4).
+Characterize the existing allowance math — this pins the current behavior before Batch 2 rewrites the owner:
+
+- Interval-window math: start, expiry, remaining, boundary cases.
+- Day-rollover: existing JSON resets correctly at midnight.
+- Remaining/exhausted: correct result from all four existing read-side copies (`isAllowanceAvailable`, the unlock calculation, `isFallbackBlocked`, `LauncherActivity.loadAllowanceCardData`).
+- Backward-compat snapshot: existing `daily_allowance_used` JSON format produces expected values. **This test must continue to pass after Batch 2.**
 
 ### Batch 2 — `AllowanceLedger` (behavior-preserving)
 
 Sole owner of the `daily_allowance_used` JSON schema (including the new fields in 7.1), the lock, day/window rollover, the remaining/exhausted math and the live-session marker. Replace the four read-side copies (`isAllowanceAvailable`, the unlock calculation, `isFallbackBlocked`, `LauncherActivity.loadAllowanceCardData`), `SettingsRepository`'s access and the launcher card. Read the **existing JSON as is**; old objects read as `confirmed = usedMs`, `extra = 0`. In-memory cache with write-behind. Fix the contradictory comments.
+
+Test added in this batch: old JSON (no new fields) reads as `confirmed = usedMs`, `extra = 0`; `usedMs` stays the effective value for old readers (7.7 test 10). The four characterization tests from Batch 1 must still pass without modification.
 
 ### Batch 3 — Pipeline and rollup tables in shadow mode (behavior-preserving)
 
@@ -446,6 +455,11 @@ Sole owner of the `daily_allowance_used` JSON schema (including the new fields i
 - Add migration 6 → 7 (four tables, `usage_pipeline_state` seeded empty) and the rollup writer (6.2, 6.3). It writes **completed past days only**, never today.
 - Add the merged read model (6.4) and keep it in shadow mode: it serves legacy for every date.
 - Run the pipeline alongside the old logic with a debug-only comparison log for at least 7 days. Record per-app daily differences (used for O6).
+
+Tests added in this batch (all introduced here because their production code is introduced here):
+- Pipeline tests for every rule in section 5: missing `PAUSED`, `STOPPED` only, screen-off, keyguard, shutdown/startup, **midnight crossing (one session, clipped time)**, DST day, duplicate and out-of-order `RESUMED`, app already open at window start, tail cap, null/unknown input.
+- Read-model precedence tests (6.5), all 14.
+- Rollup DAO idempotency tests: run twice, same rows; downgrade refused; today never written; delete-then-insert per date.
 
 ### Batch 4 — Allowance cutover (behavior-changing: D1, D2, D9)
 
@@ -456,6 +470,8 @@ Sole owner of the `daily_allowance_used` JSON schema (including the new fields i
 - Apply O1 and O2.
 - **Copy:** update `DailyAllowanceModal`, `DailyAllowanceDefenseDialog` and the launcher card to say it counts all usage today, not just during blocks, and show the "about" marker when not FRESH.
 
+Tests added in this batch: all 10 allowance durability tests (7.7 tests 1–9 and 11; test 10 backward-compat was added in Batch 2).
+
 ### Batch 5 — Stats, rollups and detectors cutover (behavior-changing: D3, D5 to D8)
 
 - `DeviceUsageSource` (one pass, Group A) feeds `AnalyticsProcessor`: summary, hourly and per-day Week values. Remove the `INTERVAL_BEST` path and the 7 per-day scans. Decouple the card from the hourly read (8.1).
@@ -464,6 +480,8 @@ Sole owner of the `daily_allowance_used` JSON schema (including the new fields i
 - Keep the old Room writer running for the stabilization window (O8), then stop it.
 - Extend `DataHealthNotice` for coverage. Check the dormant 3-month path still builds and its rules still work with the new `byHour` source.
 - Delete `PhoneUsageSummary.kt` only if Batch 0 confirms it is unused.
+
+Tests added in this batch: detector seam tests (8.4) — five tests per detector, covering: window before the seam passes; window after the seam with enough days passes; window crossing the seam (`start < cutoverDate <= end`) is refused; today is excluded; midnight-crossing session is counted once. Applies to all seven usage detectors.
 
 ### Batch 6 — Allowance suggestion and detector verification
 
@@ -503,7 +521,7 @@ Collapse the 51 pre-API-29 checks (section 2.3). Remove dead code, the shadow lo
 
 ## 14. Review gates (definition of done)
 
-- `minSdk` is 29 in Gradle; zero version checks at or below API 29 remain; Lint `NewApi` is clean in CI.
+- `minSdk` is 29 in Gradle; zero version checks at or below API 29 remain; the `NewApi` gate is configured in CI and the local flavor lint tasks are clean. Do not trigger GitHub Actions unless the owner explicitly requests it.
 - Every step builds and runs on its own and is labelled preserving or changing.
 - The accessibility file and `ForegroundTaskService.kt` are smaller than before; no new file over 300 lines.
 - One class interprets platform event types; one owner of the allowance JSON; one read model for history.
