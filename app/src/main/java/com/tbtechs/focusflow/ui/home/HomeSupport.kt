@@ -155,61 +155,81 @@ internal fun ActiveTaskBanner(
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 IconButton(
                     onClick = onComplete,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(actionOverlay),
+                    modifier = Modifier.size(30.dp),
                 ) {
-                    Icon(
-                        Icons.Outlined.Check,
-                        contentDescription = "Complete",
-                        tint = foregroundColor,
-                        modifier = Modifier.size(15.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(actionOverlay),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = "Complete",
+                            tint = foregroundColor,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
                 IconButton(
                     onClick = onExtend,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(actionOverlay),
+                    modifier = Modifier.size(30.dp),
                 ) {
-                    Icon(
-                        Icons.Outlined.Add,
-                        contentDescription = "Extend",
-                        tint = foregroundColor,
-                        modifier = Modifier.size(15.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(actionOverlay),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Add,
+                            contentDescription = "Extend",
+                            tint = foregroundColor,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
                 if (!isRunning) {
                     IconButton(
                         onClick = onSkip,
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(CircleShape)
-                            .background(actionOverlay),
+                        modifier = Modifier.size(30.dp),
                     ) {
-                        Icon(
-                            Icons.Outlined.Close,
-                            contentDescription = "Skip",
-                            tint = foregroundColor,
-                            modifier = Modifier.size(15.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(actionOverlay),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Skip",
+                                tint = foregroundColor,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     }
                 } else if (task.focusMode) {
                     IconButton(
                         onClick = onStartFocus,
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(CircleShape)
-                            .background(actionOverlay),
+                        modifier = Modifier.size(30.dp),
                     ) {
-                        Icon(
-                            Icons.Outlined.Shield,
-                            contentDescription = "Start focus",
-                            tint = foregroundColor,
-                            modifier = Modifier.size(15.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(actionOverlay),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Shield,
+                                contentDescription = "Start focus",
+                                tint = foregroundColor,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     }
                 }
             }
