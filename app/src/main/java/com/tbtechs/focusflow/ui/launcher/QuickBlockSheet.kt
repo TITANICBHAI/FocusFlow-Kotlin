@@ -263,7 +263,7 @@ fun QuickBlockSheet(
                 letterSpacing = 0.8.sp,
                 color = DarkTextSecondary,
             )
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
@@ -277,32 +277,28 @@ fun QuickBlockSheet(
                         RoundedCornerShape(10.dp),
                     )
                     .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        if (isAlwaysOn) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
-                        contentDescription = null,
-                        tint = if (isAlwaysOn) StatusReady else StatusNotSetUp,
-                        modifier = Modifier.size(20.dp),
+                Icon(
+                    if (isAlwaysOn) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = if (isAlwaysOn) StatusReady else StatusNotSetUp,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (isAlwaysOn) "Already Always-On" else "Block always",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isAlwaysOn) StatusReadyText else DarkTextPrimary,
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            if (isAlwaysOn) "Already Always-On" else "Block always",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = if (isAlwaysOn) StatusReadyText else DarkTextPrimary,
-                        )
-                        Text(
-                         "Keep this app blocked until you remove it from the Always-On list",
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                            color = DarkTextSecondary,
-                        )
-                    }
+                    Text(
+                        "Keep this app blocked until you remove it from the Always-On list",
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                        color = DarkTextSecondary,
+                    )
                 }
                 if (!isAlwaysOn) {
                     TextButton(
