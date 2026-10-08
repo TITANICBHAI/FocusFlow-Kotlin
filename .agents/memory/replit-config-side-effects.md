@@ -20,3 +20,9 @@ A workflow restart can also normalize `.replit` and remove an unrelated `[[ports
 **Why:** Restoring the original port mapping succeeded, but restarting the Android unit-test workflow removed that block again.
 
 **How to apply:** After the final workflow restart, restore the full desired `.replit` content through the validated replacement flow and verify the diff; do not restart a workflow afterward unless prepared to restore it again.
+
+On 2026-10-08, after a bootstrap-backed Android test run and a Python command summarizing test XML, `.replit`'s timestamp changed and a pre-existing dirty status disappeared. Neither test script references that file; the precise trigger is unclear, though runtime startup may normalize workspace config.
+
+**Why:** A config change visible before verification was no longer present afterward, so assuming it had been preserved or intentionally discarded would be unsafe.
+
+**How to apply:** Compare `.replit` before and after bootstrap-backed tests and runtime-invoking commands. If a prior diff disappears, do not reconstruct it from memory; inspect the final file and ask the owner before restoring unknown configuration.
