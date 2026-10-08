@@ -92,7 +92,7 @@ fun TaskCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 20.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(DarkCard)
             .clickable(onClick = onOpen)
@@ -126,7 +126,7 @@ fun TaskCard(
                         fontSize = 15.scaledSp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (closed) DarkTextMuted else DarkTextPrimary,
-                        textDecoration = if (complete) TextDecoration.LineThrough else TextDecoration.None,
+                        textDecoration = if (closed) TextDecoration.LineThrough else TextDecoration.None,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -166,26 +166,29 @@ fun TaskCard(
 
                 if (closed) {
                     val skipped = task.status == "skipped"
-                    val statusColor = if (skipped) DarkTextSecondary else completeGreen
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(15.dp)
-                                .clip(CircleShape)
-                                .background(statusColor.copy(alpha = 0.18f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = if (skipped) Icons.Outlined.Close else Icons.Outlined.Check,
-                                contentDescription = null,
-                                tint = statusColor,
-                                modifier = Modifier.size(10.dp),
-                            )
-                        }
-                        Spacer(Modifier.width(5.dp))
+                    val statusColor = when {
+                        !skipped -> completeGreen
+                        isLightTheme -> Color(0xFF92400E)
+                        else -> Color(0xFFFBBF24)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(statusColor.copy(alpha = 0.14f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (skipped) Icons.Outlined.Close else Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(14.dp),
+                        )
                         Text(
                             text = if (skipped) "Skipped" else "Completed",
-                            fontSize = 11.scaledSp,
+                            fontSize = 12.scaledSp,
+                            fontWeight = FontWeight.SemiBold,
                             color = statusColor,
                         )
                     }

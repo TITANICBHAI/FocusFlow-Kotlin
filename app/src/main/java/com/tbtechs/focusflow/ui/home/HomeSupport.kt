@@ -65,7 +65,6 @@ import com.tbtechs.focusflow.ui.theme.DarkTextSecondary
 import com.tbtechs.focusflow.ui.theme.InfoBorder
 import com.tbtechs.focusflow.ui.theme.InfoSurface
 import com.tbtechs.focusflow.ui.theme.InfoText
-import com.tbtechs.focusflow.ui.theme.LocalFocusFlowDimensions
 
 /**
  * Screenshot 6c: ActiveTaskBanner for running or awaiting-decision tasks
@@ -79,7 +78,6 @@ internal fun ActiveTaskBanner(
     onSkip: () -> Unit,
     onStartFocus: () -> Unit,
 ) {
-    val dimensions = LocalFocusFlowDimensions.current
     val isRunning = task.isRunningNow()
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val bannerShape = RoundedCornerShape(22.dp)
@@ -94,117 +92,119 @@ internal fun ActiveTaskBanner(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = dimensions.screenPadding, vertical = 8.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
             .clip(bannerShape)
             .background(bannerColor)
             .border(1.dp, foregroundColor.copy(alpha = 0.24f), bannerShape)
             .clickable(onClick = onOpen)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(actionOverlay)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        if (isRunning) "NOW" else "TIME'S UP",
-                        fontSize = 10.scaledSp,
-                        fontWeight = FontWeight.Bold,
-                        color = foregroundColor,
-                        letterSpacing = 0.8.scaledSp,
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(foregroundColor),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        task.title,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 15.scaledSp,
-                        fontWeight = FontWeight.Bold,
-                        color = foregroundColor,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(actionOverlay)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
                 Text(
-                    if (isRunning) "Until ${task.endTime.asLocalTime()}"
-                    else "Ended ${task.endTime.asLocalTime()} · pick one",
-                    fontSize = 12.scaledSp,
-                    color = foregroundColor.copy(alpha = 0.88f),
+                    if (isRunning) "NOW" else "TIME'S UP",
+                    fontSize = 10.scaledSp,
+                    fontWeight = FontWeight.Bold,
+                    color = foregroundColor,
+                    letterSpacing = 0.8.scaledSp,
                 )
             }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(
-                    onClick = onComplete,
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(8.dp)
                         .clip(CircleShape)
-                        .background(actionOverlay),
-                ) {
-                    Icon(
-                        Icons.Outlined.Check,
-                        contentDescription = "Complete",
-                        tint = foregroundColor,
-                        modifier = Modifier.size(15.dp),
-                    )
-                }
-                IconButton(
-                    onClick = onExtend,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(actionOverlay),
-                ) {
-                    Icon(
-                        Icons.Outlined.Add,
-                        contentDescription = "Extend",
-                        tint = foregroundColor,
-                        modifier = Modifier.size(15.dp),
-                    )
-                }
-                if (!isRunning) {
+                        .background(foregroundColor),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    task.title,
+                    modifier = Modifier.weight(1f),
+                    fontSize = 15.scaledSp,
+                    fontWeight = FontWeight.Bold,
+                    color = foregroundColor,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                if (isRunning) "Until ${task.endTime.asLocalTime()}"
+                else "Ended ${task.endTime.asLocalTime()} · pick one",
+                fontSize = 12.scaledSp,
+                color = foregroundColor.copy(alpha = 0.88f),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(
-                        onClick = onSkip,
+                        onClick = onComplete,
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
                         Icon(
-                            Icons.Outlined.Close,
-                            contentDescription = "Skip",
+                            Icons.Outlined.Check,
+                            contentDescription = "Complete",
                             tint = foregroundColor,
                             modifier = Modifier.size(15.dp),
                         )
                     }
-                } else if (task.focusMode) {
                     IconButton(
-                        onClick = onStartFocus,
+                        onClick = onExtend,
                         modifier = Modifier
                             .size(30.dp)
                             .clip(CircleShape)
                             .background(actionOverlay),
                     ) {
                         Icon(
-                            Icons.Outlined.Shield,
-                            contentDescription = "Start focus",
+                            Icons.Outlined.Add,
+                            contentDescription = "Extend",
                             tint = foregroundColor,
                             modifier = Modifier.size(15.dp),
                         )
+                    }
+                    if (!isRunning) {
+                        IconButton(
+                            onClick = onSkip,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(actionOverlay),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Skip",
+                                tint = foregroundColor,
+                                modifier = Modifier.size(15.dp),
+                            )
+                        }
+                    } else if (task.focusMode) {
+                        IconButton(
+                            onClick = onStartFocus,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(actionOverlay),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Shield,
+                                contentDescription = "Start focus",
+                                tint = foregroundColor,
+                                modifier = Modifier.size(15.dp),
+                            )
+                        }
                     }
                 }
             }

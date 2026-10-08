@@ -191,38 +191,52 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                if (bannerTask != null) {
-                    ActiveTaskBanner(
-                        task = bannerTask,
-                        onOpen = { detailTask = bannerTask },
-                        onComplete = { completeAndMaybeStop(bannerTask) },
-                        onExtend = { extendTask = bannerTask },
-                        onSkip = { skipTask = bannerTask },
-                        onStartFocus = { focusSessionViewModel.startFocusMode(bannerTask.id) },
-                    )
-                }
-                if (todayTasks.isEmpty()) {
-                    EmptySchedule(
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                         contentPadding = PaddingValues(top = 4.dp, bottom = dimensions.bottomContentPadding),
-                    ) {
-                        items(todayTasks, key = Task::id) { task ->
-                            TaskCard(
-                                task = task,
-                                isActive = task.id == activeTask?.id,
-                                onOpen = { detailTask = task },
-                                onComplete = { taskId ->
-                                    todayTasks.firstOrNull { it.id == taskId }
-                                        ?.let(::completeAndMaybeStop)
-                                        ?: taskViewModel.completeTask(taskId)
-                                },
-                                onSkip = { skipTask = task },
-                                onExtend = { extendTask = task },
+                CompositionLocalProvider(
+                    LocalFocusFlowTextScale provides (
+                        settings.screenTextScales[
+                            RouteTextScaleContext.screenScaleKey(
+                                Routes.HOME,
+                                RouteTextScaleContext.HOME_TASK_LIST_SCREEN,
                             )
+                        ] ?: LocalFocusFlowTextScale.current
+                    ),
+                ) {
+                    if (bannerTask != null) {
+                        ActiveTaskBanner(
+                            task = bannerTask,
+                            onOpen = { detailTask = bannerTask },
+                            onComplete = { completeAndMaybeStop(bannerTask) },
+                            onExtend = { extendTask = bannerTask },
+                            onSkip = { skipTask = bannerTask },
+                            onStartFocus = { focusSessionViewModel.startFocusMode(bannerTask.id) },
+                        )
+                    }
+                    if (todayTasks.isEmpty()) {
+                        EmptySchedule(
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(
+                                top = 4.dp,
+                                bottom = dimensions.bottomContentPadding,
+                            ),
+                        ) {
+                            items(todayTasks, key = Task::id) { task ->
+                                TaskCard(
+                                    task = task,
+                                    isActive = task.id == activeTask?.id,
+                                    onOpen = { detailTask = task },
+                                    onComplete = { taskId ->
+                                        todayTasks.firstOrNull { it.id == taskId }
+                                            ?.let(::completeAndMaybeStop)
+                                            ?: taskViewModel.completeTask(taskId)
+                                    },
+                                    onSkip = { skipTask = task },
+                                    onExtend = { extendTask = task },
+                                )
+                            }
                         }
                     }
                 }

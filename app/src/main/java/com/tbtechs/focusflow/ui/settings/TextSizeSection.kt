@@ -103,6 +103,13 @@ internal fun TextSizeSection(
             icon = Icons.Outlined.CalendarMonth,
             scale = settings.homeTextScale,
             screens = listOf(
+                TextSizeTarget(
+                    Routes.HOME,
+                    "Schedule",
+                    "Task cards & active banner",
+                    RouteTextScaleContext.HOME_TASK_LIST_SCREEN,
+                    "Task cards, status labels, and the running or ended task banner.",
+                ),
                 TextSizeTarget(Routes.HOME, "Schedule", "Quick Add task", RouteTextScaleContext.HOME_QUICK_ADD_SCREEN, "The quick-add task form."),
                 TextSizeTarget(Routes.HOME, "Schedule", "Task details", RouteTextScaleContext.HOME_TASK_DETAILS_SCREEN, "The task details sheet."),
                 TextSizeTarget(Routes.HOME, "Schedule", "Edit task", RouteTextScaleContext.HOME_EDIT_TASK_SCREEN, "The task editing form."),
