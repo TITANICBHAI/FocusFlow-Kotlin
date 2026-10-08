@@ -1,10 +1,14 @@
 package com.tbtechs.focusflow.data.local
 
+import android.content.ContextWrapper
+import android.database.sqlite.SQLiteDatabase
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -120,21 +124,40 @@ class FocusFlowDatabaseMigrationTest {
         )
         migrated.query(
             """
-            SELECT date, package_name, foreground_ms, hourly_ms, launch_count, last_used_at
+            SELECT date, package_name, app_name, category, foreground_ms, hourly_ms,
+                   launch_count, last_used_at
             FROM daily_app_usage
             """.trimIndent(),
         ).use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals("2026-10-07", cursor.getString(0))
             assertEquals("app.example", cursor.getString(1))
-            assertEquals(123456L, cursor.getLong(2))
-            assertEquals(3, cursor.getInt(4))
-            assertEquals(1791331200000L, cursor.getLong(5))
-            assertTrue(cursor.getString(3).startsWith("1,2,3"))
+            assertEquals("Example", cursor.getString(2))
+            assertEquals("utility", cursor.getString(3))
+            assertEquals(123456L, cursor.getLong(4))
+            assertEquals(
+                "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24",
+                cursor.getString(5),
+            )
+            assertEquals(3, cursor.getInt(6))
+            assertEquals(1791331200000L, cursor.getLong(7))
+            assertFalse(cursor.moveToNext())
         }
-        migrated.query("SELECT duration_ms FROM app_sessions").use { cursor ->
+        migrated.query(
+            """
+            SELECT id, package_name, app_name, started_at, ended_at, duration_ms, local_date
+            FROM app_sessions
+            """.trimIndent(),
+        ).use { cursor ->
             assertTrue(cursor.moveToFirst())
-            assertEquals(123456L, cursor.getLong(0))
+            assertEquals(1, cursor.getInt(0))
+            assertEquals("app.example", cursor.getString(1))
+            assertEquals("Example", cursor.getString(2))
+            assertEquals(1791390000000L, cursor.getLong(3))
+            assertEquals(1791390123456L, cursor.getLong(4))
+            assertEquals(123456L, cursor.getLong(5))
+            assertEquals("2026-10-07", cursor.getString(6))
+            assertFalse(cursor.moveToNext())
         }
         migrated.query(
             "SELECT cutover_date, pipeline_version, shadow_started_on FROM usage_pipeline_state WHERE id = 1",
@@ -191,6 +214,46 @@ class FocusFlowDatabaseMigrationTest {
             assertTrue(cursor.isNull(0))
         }
         migrated.close()
+    }
+
+    @Test
+    fun legacyUserVersionZeroDatabaseIsPreparedForRoomMigrations() {
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseFile = File(targetContext.cacheDir, "legacy-user-version-zero-test.db")
+        val legacyContext = object : ContextWrapper(targetContext) {
+            override fun getDatabasePath(name: String): File = databaseFile
+        }
+
+        try {
+            val legacyDb = SQLiteDatabase.openOrCreateDatabase(databaseFile, null)
+            legacyDb.execSQL(
+                "CREATE TABLE tasks (id TEXT NOT NULL PRIMARY KEY)",
+            )
+            legacyDb.version = 0
+            legacyDb.close()
+
+            FocusFlowDatabase.prepareLegacyDatabase(legacyContext)
+
+            val preparedDb = SQLiteDatabase.openDatabase(
+                databaseFile.absolutePath,
+                null,
+                SQLiteDatabase.OPEN_READONLY,
+            )
+            try {
+                assertEquals(1, preparedDb.version)
+                preparedDb.rawQuery("PRAGMA table_info(tasks)", null).use { cursor ->
+                    val nameIndex = cursor.getColumnIndexOrThrow("name")
+                    val columns = buildList {
+                        while (cursor.moveToNext()) add(cursor.getString(nameIndex))
+                    }
+                    assertTrue("focus_allowed_packages" in columns)
+                }
+            } finally {
+                preparedDb.close()
+            }
+        } finally {
+            databaseFile.delete()
+        }
     }
 
     companion object {

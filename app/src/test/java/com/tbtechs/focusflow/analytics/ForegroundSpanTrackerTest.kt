@@ -131,7 +131,7 @@ class ForegroundSpanTrackerTest {
         assertEquals(1, days.getValue("2026-10-01").sessionCount)
         assertEquals(0, days.getValue("2026-10-02").sessionCount)
         assertEquals(1, days.getValue("2026-10-01").launchCount)
-        assertFalse(days.getValue("2026-10-02").hourlyMs.take(23).any { it != 0L })
+        assertFalse(days.getValue("2026-10-02").hourlyMs.drop(1).any { it != 0L })
         assertEquals(20 * MINUTE, days.getValue("2026-10-02").hourlyMs[0])
     }
 

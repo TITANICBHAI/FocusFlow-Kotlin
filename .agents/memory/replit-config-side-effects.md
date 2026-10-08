@@ -14,3 +14,9 @@ The validated replacement helper may remove its temporary input file; check befo
 **Why:** After a successful replacement, the prepared temporary file was already absent.
 
 **How to apply:** Verify the `.replit` diff after replacement. Treat a missing temporary file afterward as normal rather than as a failed restore.
+
+A workflow restart can also normalize `.replit` and remove an unrelated `[[ports]]` block. Finish workflow runs before restoring the desired TOML.
+
+**Why:** Restoring the original port mapping succeeded, but restarting the Android unit-test workflow removed that block again.
+
+**How to apply:** After the final workflow restart, restore the full desired `.replit` content through the validated replacement flow and verify the diff; do not restart a workflow afterward unless prepared to restore it again.

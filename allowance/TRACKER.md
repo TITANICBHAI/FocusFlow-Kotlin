@@ -272,57 +272,57 @@ tests each belong to the batch that introduces their production code (Batch 2–
 ### Tasks
 
 **`ForegroundSpanTracker`**
-- [ ] Pure class with no Android imports: fed events in time order, emits `[start, end)` sessions.
-- [ ] Implements all rules from section 5 of v6. Replicates existing tracker's midnight behavior: session on start date, full duration, time clipped via `splitIntoHourlySegments`.
-- [ ] Null and `SecurityException` from the adapter produce "unknown", not zero.
-- [ ] No SDK version checks inside the class.
-- [ ] Thin adapter over `UsageStatsRepository` handles all platform API calls.
+- [x] Pure class with no Android imports: fed events in time order, emits `[start, end)` sessions.
+- [x] Implements all rules from section 5 of v6. Replicates existing tracker's midnight behavior: session on start date, full duration, time clipped via `splitIntoHourlySegments`.
+- [x] Null and `SecurityException` from the adapter produce "unknown", not zero.
+- [x] No SDK version checks inside the class.
+- [x] Thin adapter over `UsageStatsRepository` handles all platform API calls.
 
 **Migration 6 → 7**
-- [ ] Creates `usage_pipeline_state`, `usage_rollup_day`, `usage_rollup_app_day`, `usage_rollup_session` (section 6.2).
-- [ ] `usage_pipeline_state` seeded with `cutover_date = null`.
+- [x] Creates `usage_pipeline_state`, `usage_rollup_day`, `usage_rollup_app_day`, `usage_rollup_session` (section 6.2).
+- [x] `usage_pipeline_state` seeded with `cutover_date = null`.
 - [ ] Migration test: build a v6 DB with rows in `daily_app_usage` and `app_sessions`, migrate, assert every old row is byte-for-byte unchanged.
-- [ ] Exported schema JSON for version 7 committed.
+- [x] Exported schema JSON for version 7 committed.
 
 **Rollup writer**
-- [ ] Writes completed past days only — never today.
-- [ ] One writer, one mutex, one transaction per date: delete then insert.
+- [x] Writes completed past days only — never today.
+- [x] One writer, one mutex, one transaction per date: delete then insert.
 - [ ] COMPLETE day never downgraded.
-- [ ] Triggers: app open, service start, day rollover, Stats open.
+- [x] Triggers: app open, service start, day rollover, Stats open.
 
 **Merged read model**
-- [ ] `UsageHistoryRepository` (or equivalent) implemented.
-- [ ] Shadow mode: all reads return legacy for every date; rollup tables never served.
+- [x] `UsageHistoryRepository` (or equivalent) implemented.
+- [x] Shadow mode: all reads return legacy for every date; rollup tables never served.
 
 **Pipeline tests (introduced here because `ForegroundSpanTracker` is introduced here)**
-- [ ] Missing `ACTIVITY_PAUSED` — session closed by the next `RESUMED`.
-- [ ] `ACTIVITY_STOPPED` only — session closed by stop event.
-- [ ] Screen off (`SCREEN_NON_INTERACTIVE`) — open session closed.
-- [ ] Keyguard shown — open session closed.
-- [ ] `DEVICE_SHUTDOWN` — all open sessions closed; no explicit `STOPPED` events needed.
-- [ ] Startup — sessions begin from `DEVICE_STARTUP`.
-- [ ] Midnight crossing — one session row, clipped daily time on each day, session count 1 on start day and 0 on the next.
-- [ ] DST day (23 h and 25 h) — boundary is calendar arithmetic, not 86 400 000 ms.
-- [ ] Duplicate and out-of-order `ACTIVITY_RESUMED` — no duplicate open sessions.
-- [ ] App already open at window start — clipped to window start only.
-- [ ] Tail cap — open session capped at 4 h; measured session never capped.
+- [x] Missing `ACTIVITY_PAUSED` — session closed by the next `RESUMED`.
+- [x] `ACTIVITY_STOPPED` only — session closed by stop event.
+- [x] Screen off (`SCREEN_NON_INTERACTIVE`) — open session closed.
+- [x] Keyguard shown — open session closed.
+- [x] `DEVICE_SHUTDOWN` — all open sessions closed; no explicit `STOPPED` events needed.
+- [x] Startup — sessions begin from `DEVICE_STARTUP`.
+- [x] Midnight crossing — one session row, clipped daily time on each day, session count 1 on start day and 0 on the next.
+- [x] DST day (23 h and 25 h) — boundary is calendar arithmetic, not 86 400 000 ms.
+- [x] Duplicate and out-of-order `ACTIVITY_RESUMED` — no duplicate open sessions.
+- [x] App already open at window start — clipped to window start only.
+- [x] Tail cap — open session capped at 4 h; measured session never capped.
 - [ ] Null from `queryEvents` — last known value kept, not zero.
-- [ ] `SecurityException` — same as null.
+- [x] `SecurityException` — same as null.
 
 **Read-model precedence tests (introduced here because the read model is introduced here; section 6.5)**
-- [ ] Test 1: shadow mode — every date including today from legacy; rollup tables untouched.
+- [x] Test 1: shadow mode — every date including today from legacy; rollup tables untouched.
 - [ ] Test 2: cutover — today in Group A is live; no rollup row exists for today after repeated loads.
-- [ ] Test 3: cutover — detectors exclude today; rating eligibility includes today when live pipeline has a session.
-- [ ] Test 4: `date < cutoverDate` with a complete shadow rollup and legacy rows — legacy wins in both groups.
-- [ ] Test 5: `date >= cutoverDate` with legacy rows and no rollup — pipeline wins; legacy ignored.
+- [x] Test 3: cutover — detectors exclude today; rating eligibility includes today when live pipeline has a session.
+- [x] Test 4: `date < cutoverDate` with a complete shadow rollup and legacy rows — legacy wins in both groups.
+- [x] Test 5: `date >= cutoverDate` with legacy rows and no rollup — pipeline wins; legacy ignored.
 - [ ] Test 6: yesterday not yet rolled up — on-demand result equals the rollup written later.
-- [ ] Test 7: invariance — `live(D)` at 23:59 equals `rollup(D)` written after midnight for the same event log.
-- [ ] Test 8: PARTIAL day — Group A shows it with flag; Group B treats it as missing.
-- [ ] Test 9: events unavailable for today — Group A shows unknown, not zero.
-- [ ] Test 10: rollback — `cutoverDate` set to null returns legacy for all dates.
-- [ ] Test 11: property test — no date served from two sources for any combination of mode, date and row presence.
-- [ ] Test 12: seam predicate `start < cutoverDate <= end` including boundary dates.
-- [ ] Test 13: midnight — one session row on D (30 min), 10 min daily on D, 20 min on D+1, session count 1 on D and 0 on D+1.
+- [x] Test 7: invariance — `live(D)` at 23:59 equals `rollup(D)` written after midnight for the same event log.
+- [x] Test 8: PARTIAL day — Group A shows it with flag; Group B treats it as missing.
+- [x] Test 9: events unavailable for today — Group A shows unknown, not zero.
+- [x] Test 10: rollback — `cutoverDate` set to null returns legacy for all dates.
+- [x] Test 11: property test — no date served from two sources for any combination of mode, date and row presence.
+- [x] Test 12: seam predicate `start < cutoverDate <= end` including boundary dates.
+- [x] Test 13: midnight — one session row on D (30 min), 10 min daily on D, 20 min on D+1, session count 1 on D and 0 on D+1.
 - [ ] Test 14: day D rolled up while a session that started on D is still open — D stays PARTIAL, then COMPLETE after close, no duplicate session row.
 
 **Rollup DAO tests (introduced here because the DAO is introduced here)**
@@ -348,11 +348,29 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Read model and test update (2026-10-08):** Added the shadow-only legacy repository boundary and source-precedence policy, including all 14 planned policy cases. Added instrumentation coverage for v6→v7, the version-0 migration path, rollup idempotency, completion preservation, today exclusion, replacement, and open-session completion; tests are not yet verified.
 
+**Revalidation and test-fixture correction (2026-10-08):** Audited the current implementation and confirmed Room schema version 7, the 6→7 migration registration, and shadow-only read wiring. Corrected writer instrumentation fixtures that lacked an event before local midnight, expanded migration assertions to cover every legacy usage/session field, and added a focused `user_version = 0` pre-migration test. Corrected two existing JVM test assertions. Both flavor unit suites pass (195 tests each), and both AndroidTest Kotlin compile tasks pass; no instrumentation APK/device run is being attempted.
+
+**Adapter unknown-result test seam (2026-10-08):** Extracted the null/`SecurityException` conversion into a pure boundary used by `UsageStatsRepository` and added JVM cases for null, revoked access, and an available read. Both flavor suites pass with 198 tests each, and both AndroidTest Kotlin compile tasks pass.
+
 <!-- Shadow comparison results (fill after 7 days): -->
 
 ### Evidence
 
+- **Pipeline and calendar behavior:** `ForegroundSpanTracker.kt`, `UsageCalendarAggregator.kt`, and `ForegroundSpanTrackerTest.kt`; `bash scripts/test-unit.sh` passed in Production and Tbtechsdev, with 11/11 tracker tests in each flavor covering transitions, closures, lookback, midnight, DST, ordering, and tail cap.
+- **Read-model policy:** `UsageHistoryRepository.kt`, `UsageHistorySourcePolicy.kt`, and `UsageHistorySourcePolicyTest.kt`; both flavors passed 14/14 policy tests, including shadow source, cutover rules, PARTIAL/UNKNOWN handling, rollback, seam boundaries, and midnight aggregation.
+- **Adapter unknown handling:** `UsageEventReadBoundary.kt`, `UsageStatsRepository.kt`, and `UsageEventReadBoundaryTest.kt`; both flavors passed 3/3 cases for null→unknown, `SecurityException`→unknown, and preserving an available read.
+- **Full JVM suites:** `bash scripts/test-unit.sh`; Production and Tbtechsdev each passed 198 tests with zero failures and zero errors. The script sets `FOCUSFLOW_SKIP_APK_BUILD=1`; no APK was built.
+- **Instrumentation-source compilation:** `FocusFlowDatabaseMigrationTest.kt` and `UsageRollupWriterInstrumentedTest.kt`; ran `bash scripts/test-unit.sh :app:compileProductionDebugAndroidTestKotlin :app:compileTbtechsdevDebugAndroidTestKotlin`; both AndroidTest Kotlin compile tasks and both JVM test tasks passed. This did not run instrumentation tests or build an APK.
+- **Schema and migration wiring:** `FocusFlowDatabase.kt`, `AppModule.kt`, and `app/schemas/com.tbtechs.focusflow.data.local.FocusFlowDatabase/7.json`; source/schema inspection confirmed Room version 7, the registered 6→7 migration, the four additive tables, and the null cutover seed.
+- **Shadow-only wiring and triggers:** `UsageHistoryRepository.kt`, `UsageRollupWriter.kt`, `UsageRollupCoordinator.kt`, `FocusFlowApp.kt`, `AppBlockerAccessibilityService.kt`, and `StatsViewModel.kt`; source inspection confirmed legacy-only history reads and app-open, service-start, calendar-change/day-rollover, and Stats-open triggers.
+- `git diff --check` passed.
+
 ### Failures and blockers
+
+- First configured `bash scripts/test-unit.sh` run compiled both production flavors but failed during `:app:testProductionDebugUnitTest` (195 tests, 2 failures): `ForegroundSpanTrackerTest.midnightSessionHasOneStartDateAndClippedDailyTime` included hour 0 in its “hours 1–23 are empty” assertion, and `UsageHistorySourcePolicyTest.shadowModeKeepsCurrentStatsAndLegacyHistory` called the CUTOVER policy while expecting SHADOW behavior. Fixed both test calls/assertions. No Batch 3 production failure was observed in this run.
+- **Outcome:** The final corrected run passed all 198 JVM tests in both flavors (zero failures/errors), and both AndroidTest Kotlin compile tasks passed. The corrected failure details above are retained as history.
+- **Device blocker:** `adb devices -l` listed no connected devices and the Android emulator executable is unavailable. Instrumentation tests and the device matrix were not run; no APK was built on Replit.
+- **Shadow comparison blocker:** The required seven-day per-app comparison has not elapsed or produced observations. Keep the comparison and O6 tolerance items open.
 
 ### Decisions
 
@@ -604,7 +622,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 | Batch 0 Verify and measure | IN PROGRESS | — |
 | Batch 1 Test infra and characterization | IN PROGRESS | — |
 | Batch 2 `AllowanceLedger` | BLOCKED | — |
-| Batch 3 Shadow pipeline and rollups | NOT STARTED | — |
+| Batch 3 Shadow pipeline and rollups | IN PROGRESS | — |
 | Batch 4 Allowance cutover | NOT STARTED | — |
 | Batch 5 Stats, rollups and detectors cutover | NOT STARTED | — |
 | Batch 6 Detector verification | NOT STARTED | — |
@@ -613,6 +631,7 @@ tests each belong to the batch that introduces their production code (Batch 2–
 **Incomplete items and reasons** (reconcile with code before closing)
 - Batch 1 CI execution remains unchecked: the local Production and Tbtechsdev test tasks passed, and both CI workflow configs contain the matching test task, but GitHub Actions were not run because the user did not request APK-building verification.
 - Batch 2 is blocked on its unchecked manual timing comparison: `adb devices -l` was empty and the emulator executable is unavailable.
+- Batch 3 remains in progress: migration/writer instrumentation execution, read-model cases 2/6/14, DAO execution checks, preservation of the last known value on null event reads, the device matrix, and the seven-day shadow comparison are still open. The null/`SecurityException`-to-unknown behavior is verified by JVM tests.
 
 **Deferred work**
 <!-- Items explicitly moved to a future phase. -->

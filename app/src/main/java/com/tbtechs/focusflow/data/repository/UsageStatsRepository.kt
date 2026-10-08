@@ -18,6 +18,7 @@ import android.view.accessibility.AccessibilityManager
 import com.tbtechs.focusflow.analytics.ForegroundEventType
 import com.tbtechs.focusflow.analytics.ForegroundUsageEvent
 import com.tbtechs.focusflow.analytics.UsageEventRead
+import com.tbtechs.focusflow.analytics.UsageEventReadBoundary
 import com.tbtechs.focusflow.analytics.UsageEventsSource
 import com.tbtechs.focusflow.enforcement.receivers.FocusDayDeviceAdminReceiver
 import kotlinx.coroutines.Dispatchers
@@ -270,13 +271,11 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
                 )
             }
 
-            try {
+            UsageEventReadBoundary.capture {
                 val manager = context.getSystemService(Context.USAGE_STATS_SERVICE)
                     as UsageStatsManager
                 val usageEvents = manager.queryEvents(startMs, endMs)
-                    ?: return@withContext UsageEventRead.Unknown(
-                        UsageEventRead.Unknown.Reason.EVENTS_UNAVAILABLE,
-                    )
+                    ?: return@capture null
                 val platformEvent = UsageEvents.Event()
                 val events = mutableListOf<ForegroundUsageEvent>()
                 var earliestEventAtMs: Long? = null
@@ -311,8 +310,6 @@ class UsageStatsRepository(private val context: Context) : UsageEventsSource {
                     events = events,
                     earliestEventAtMs = earliestEventAtMs?.takeUnless { it == Long.MAX_VALUE },
                 )
-            } catch (_: SecurityException) {
-                UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.ACCESS_REVOKED)
             }
         }
 

@@ -10,7 +10,7 @@
 - [Stats fix plan](stats-fix-plan.md) — use calendar-time evidence, state-agnostic pacing, and persisted hourly data for Stats correctness.
 - [Rolling Stats dates](rolling-stats-dates.md) — rolling week charts must use ISO calendar-date series, not weekday-only aggregates.
 - [Portable backup authorization and legacy migration](backup-contract-authority.md) — keep authorized `.focusflow` backups separate from one-time settings migration.
-- [Replit config side effects](replit-config-side-effects.md) — invoking an unconfigured runtime can add a module to `.replit`; use the validated replacement flow to restore config.
+- [Replit config side effects](replit-config-side-effects.md) — runtime setup and workflow restarts may normalize `.replit`; use validated replacement after the last restart.
 - [Compose scope audits](kotlin-compose-scope-audits.md) — stop expression-bodied local functions at their expression end when checking `@Composable` call scope.
 - [Kotlin raw-string interpolation](kotlin-raw-string-interpolation.md) — triple-quoted Kotlin strings still parse `$` templates; preserve literal regex anchors near Markdown delimiters.
 - [Settings help and text-size destinations](settings-guides.md) — keep sliders on a separate Settings screen and integrate guarded-change help into the expanded How to Use guide.

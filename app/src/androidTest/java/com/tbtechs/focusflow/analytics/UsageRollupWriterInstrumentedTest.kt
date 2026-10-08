@@ -61,11 +61,16 @@ class UsageRollupWriterInstrumentedTest {
     fun completeDateIsNotOverwrittenByLaterPartialRead() = runBlocking {
         val today = LocalDate.now(zone)
         val date = today.minusDays(1)
+        val dayStart = date.atStartOfDay(zone).toInstant().toEpochMilli()
         val start = date.atTime(9, 0).atZone(zone).toInstant().toEpochMilli()
         val originalEnd = date.atTime(9, 30).atZone(zone).toInstant().toEpochMilli()
         writer(
-            listOf(resumed(start, "app.example"), paused(originalEnd, "app.example")),
-            start - 1,
+            listOf(
+                ForegroundUsageEvent(ForegroundEventType.DEVICE_STARTUP, dayStart - 1),
+                resumed(start, "app.example"),
+                paused(originalEnd, "app.example"),
+            ),
+            dayStart - 1,
         ).writeRecentPastDays(at(today, 12, 0))
 
         val shorterEnd = date.atTime(9, 15).atZone(zone).toInstant().toEpochMilli()
@@ -124,10 +129,14 @@ class UsageRollupWriterInstrumentedTest {
     fun openSessionKeepsStartDatePartialThenCompletesWithoutDuplicateSession() = runBlocking {
         val today = LocalDate.now(zone)
         val date = today.minusDays(1)
+        val dayStart = date.atStartOfDay(zone).toInstant().toEpochMilli()
         val start = at(date, 23, 30)
         val firstNow = at(today, 1, 30)
-        val sourceEvents = mutableListOf(resumed(start, "app.example"))
-        val writer = writer(sourceEvents, start - 1)
+        val sourceEvents = mutableListOf(
+            ForegroundUsageEvent(ForegroundEventType.DEVICE_STARTUP, dayStart - 1),
+            resumed(start, "app.example"),
+        )
+        val writer = writer(sourceEvents, dayStart - 1)
 
         writer.writeRecentPastDays(firstNow)
         assertEquals("PARTIAL", database.usageRollupDao().getDay(date.toString())?.status)

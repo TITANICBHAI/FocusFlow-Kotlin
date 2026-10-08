@@ -23,7 +23,13 @@ class UsageHistorySourcePolicyTest {
         )
         assertEquals(
             UsageHistorySource.LEGACY,
-            source("2026-10-02", UsageHistoryConsumer.DETECTOR, "COMPLETE", true),
+            source(
+                "2026-10-02",
+                UsageHistoryConsumer.DETECTOR,
+                "COMPLETE",
+                true,
+                phase = UsageHistoryReadPhase.SHADOW,
+            ),
         )
 
         val store = CountingLegacyStore()
@@ -203,8 +209,9 @@ class UsageHistorySourcePolicyTest {
         eventsAvailable: Boolean,
         cutoverDate: String? = cutover,
         liveHasSession: Boolean = false,
+        phase: UsageHistoryReadPhase = UsageHistoryReadPhase.CUTOVER,
     ) = UsageHistorySourcePolicy.selectHistory(
-        phase = UsageHistoryReadPhase.CUTOVER,
+        phase = phase,
         date = date,
         today = today,
         cutoverDate = cutoverDate,
