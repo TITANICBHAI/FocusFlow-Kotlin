@@ -390,7 +390,7 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 | 2026-10-08 | Replit Agent | Batch 11 — import UI parity | Moved Backup & Data after Pomodoro and before Permissions, matching the supplied flat TS Settings screen. Rebuilt the import preview hierarchy, dynamic merge/replace copy, destructive warning/red action, summary icons, and outlined Cancel while retaining restore behavior and safety. Both local variants passed (157 tests each, 0 failures/errors/skips); `git diff --check` passed. Compose UI tests and device picker/render checks remain open because no emulator is available. |
 
 ## Batch 12 — Compatibility with the attached backup
-**Status:** In progress — diagnosis found a valid JSON envelope missing metadata required by the current Kotlin decoder.
+**Status:** Local implementation and both-flavor unit verification complete; user-device retest pending.
 **Scope**
 - Diagnose the attached `.focusflow` file and ADB log; preserve the uploaded file unchanged.
 - Determine whether the missing fields are nonessential preview/export metadata and whether the task/settings payloads can be read safely.
@@ -398,14 +398,19 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 - Do not modify any file in the plan's no-touch list; do not copy the user's schedule/task data into source or tests.
 **Checklist**
 - [x] Inspect the attached file structure, log, current envelope/parser, and plan requirements.
-- [ ] Verify nested task and settings mapping, including unsupported-field handling.
-- [ ] Implement the smallest safe compatibility change and add anonymized regression tests.
-- [ ] Run `bash scripts/test-unit.sh` for both flavors and reconcile the reports.
-- [ ] Reconcile tracker, protected paths, and attached user-data handling.
+- [x] Verify nested task and settings mapping, including unsupported-field handling.
+- [x] Implement the smallest safe compatibility change and add anonymized regression tests.
+- [x] Run `bash scripts/test-unit.sh` for both flavors and reconcile the reports.
+- [x] Reconcile tracker, protected paths, and attached user-data handling.
+- [ ] Build/install an updated APK and retry import on the user's Android device; not run here.
 **Progress notes**
 - The file is valid JSON with `kind = FocusFlowBackupV1`, `version = 1`, `platform.os = android`, 105 tasks, and a settings object. It omits `exportedAtHuman`, `appVersion`, `presetSections`, and `summary`, which the current `BackupEnvelope` decoder requires.
 - The ADB log shows the device returned from the document picker to `com.tbtechsdev.focusflow`; no app `FATAL EXCEPTION` was found. The displayed message is consistent with the serializer's missing-required-field failure, not a crash.
 - All 105 task rows have the required `Task` fields and expected JSON types; no reminder rows are present. The only settings key is `focusMode`, which does not match a supported portable/legacy import key, so it must not be guessed or mapped to a local runtime toggle.
 - The TypeScript contract makes `appVersion` optional; `presetSections` and `summary` are descriptive and not used to activate protections, while the plan's root validation requires `kind`, `settings`, and `tasks`. Read-side defaults can therefore preserve the plan contract and leave canonical export unchanged.
-- Implemented read-side defaults for omitted preview/export metadata only; canonical export, V1 kind/version checks, settings/tasks requirements, task limits, restore mode, and data guards are unchanged. Added an anonymized regression test and a preview warning for settings the app cannot restore. Changed files: `BackupSerializer.kt`, `BackupSettingsAdapter.kt`, `BackupSerializerTest.kt`. Verification is pending; no app test has been marked complete yet.
-- The app's V1 writer and other restore behavior remain unchanged while compatibility scope is reviewed. The log and backup are untracked user attachments and will be preserved.
+- Implemented read-side defaults for omitted preview/export metadata only; canonical export, V1 kind/version checks, settings/tasks requirements, task limits, restore mode, and data guards are unchanged. The preview warns that unsupported settings will be left unchanged. The V1 writer and restore guards were not changed.
+- Changed code/test files: `app/src/main/java/com/tbtechs/focusflow/data/backup/BackupSerializer.kt`, `app/src/main/java/com/tbtechs/focusflow/data/backup/BackupSettingsAdapter.kt`, `app/src/test/java/com/tbtechs/focusflow/data/backup/BackupSerializerTest.kt`. Also updated this tracker and the backup-authority project memory to remove the stale blanket prohibition on the now-authorized backup feature.
+- Exact verification: `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`. XML reports contain 158 tests per flavor, 0 failures, 0 errors, and 0 skipped; the new compatibility regression case appears in each. `git diff HEAD^ HEAD --check` passed, and the changed paths were checked against the plan's no-touch list.
+- Two initial shell summaries of Gradle XML totals used incorrect `awk` attribute parsing (first read the `tests` value as `errors`, then retained only the last suite); neither indicated a test failure. Recomputed totals with Python's XML parser above and confirmed both suites passed.
+- Gradle emitted non-fatal environment/toolchain warnings (Android SDK XML v4 versus v3 support, serialization opt-in, and Gradle deprecations); the build completed successfully. No APK build or device retest was performed here, and I did not initiate GitHub Actions or a push.
+- The uploaded log and `.focusflow` file remain untouched user attachments. Device retest is deferred until the user installs a newly built APK; the parser error occurs before restore confirmation and therefore before task/settings writes.
