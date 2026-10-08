@@ -27,7 +27,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "GITHUB_SYNC_COMMIT_MESSAGE='daily allowance started' bash scripts/push-to-github.sh"
+args = "bash scripts/push-to-github.sh"
 
 [[workflows.workflow]]
 name = "Run Android unit tests"
