@@ -10,6 +10,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -93,9 +94,8 @@ object BackupSerializer {
                 return BackupParseResult.Failure("This FocusFlow backup version is not supported.")
             }
 
-            if (root["settings"] !is JsonObject) {
-                return BackupParseResult.Failure("Backup settings must be a JSON object.")
-            }
+            val settings = root["settings"] as? JsonObject
+                ?: return BackupParseResult.Failure("Backup settings must be a JSON object.")
 
             val tasks = root["tasks"] as? JsonArray
                 ?: return BackupParseResult.Failure("Backup tasks must be a JSON array.")
@@ -105,7 +105,22 @@ object BackupSerializer {
 
             // Decode the envelope metadata independently so one malformed task
             // row does not reject otherwise usable settings and task records.
-            val metadataRoot = JsonObject(root + ("tasks" to JsonArray(emptyList())))
+            val metadataFields = root.toMutableMap()
+            if ("exportedAtHuman" !in metadataFields) {
+                metadataFields["exportedAtHuman"] =
+                    (root["exportedAt"] as? JsonPrimitive)
+                        ?.takeIf(JsonPrimitive::isString)
+                        ?: JsonPrimitive("Unknown")
+            }
+            if ("appVersion" !in metadataFields) metadataFields["appVersion"] = JsonNull
+            if ("presetSections" !in metadataFields) {
+                metadataFields["presetSections"] = JsonArray(emptyList())
+            }
+            if ("summary" !in metadataFields) {
+                metadataFields["summary"] = fallbackSummary(settings, tasks.size)
+            }
+            metadataFields["tasks"] = JsonArray(emptyList())
+            val metadataRoot = JsonObject(metadataFields)
             val metadata = json.decodeFromJsonElement<BackupEnvelope>(metadataRoot)
             val validTasks = mutableListOf<Task>()
             var malformedTaskCount = 0
@@ -117,11 +132,14 @@ object BackupSerializer {
                 }
             }
 
-            val warnings = if (malformedTaskCount == 0) {
-                emptyList()
-            } else {
-                val recordWord = if (malformedTaskCount == 1) "record will" else "records will"
-                listOf("$malformedTaskCount malformed task $recordWord be skipped.")
+            val warnings = buildList {
+                if (malformedTaskCount > 0) {
+                    val recordWord = if (malformedTaskCount == 1) "record will" else "records will"
+                    add("$malformedTaskCount malformed task $recordWord be skipped.")
+                }
+                if (settings.isNotEmpty() && !BackupSettingsAdapter.hasRestorableSettings(settings)) {
+                    add("Settings in this backup are not supported by this app version and will be left unchanged.")
+                }
             }
             BackupParseResult.Success(
                 envelope = metadata.copy(
@@ -139,6 +157,27 @@ object BackupSerializer {
         } catch (_: Exception) {
             BackupParseResult.Failure("Backup JSON is malformed.")
         }
+    }
+
+    private fun fallbackSummary(settings: JsonObject, taskCount: Int): JsonObject =
+        JsonObject(
+            mapOf(
+                "taskCount" to JsonPrimitive(taskCount),
+                "blockedWordCount" to JsonPrimitive(arrayCount(settings, "blockedWords")),
+                "greyoutWindowCount" to JsonPrimitive(
+                    arrayCount(settings, "greyoutSchedule", "userGreyoutWindowsJson"),
+                ),
+                "dailyAllowanceCount" to JsonPrimitive(
+                    arrayCount(settings, "dailyAllowanceEntries", "dailyAllowanceConfigJson"),
+                ),
+            ),
+        )
+
+    private fun arrayCount(settings: JsonObject, vararg keys: String): Int {
+        keys.forEach { key ->
+            (settings[key] as? JsonArray)?.let { return it.size }
+        }
+        return 0
     }
 
     private fun buildPresetSections(

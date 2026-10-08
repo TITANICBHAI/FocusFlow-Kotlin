@@ -133,6 +133,35 @@ class BackupSerializerTest {
     }
 
     @Test
+    fun parserAcceptsV1BackupWithoutDescriptiveMetadataAndWarnsForUnsupportedSettings() {
+        val validJson = BackupSerializer.serializeToJson(
+            BackupSerializer.buildEnvelope(sampleSettings(), listOf(sampleTask()), appVersion = null),
+        )
+        val root = Json.parseToJsonElement(validJson).jsonObject
+        val exportedAt = root.getValue("exportedAt")
+        val minimalBackup = JsonObject(
+            (root - setOf("exportedAtHuman", "appVersion", "presetSections", "summary")) +
+                ("settings" to JsonObject(mapOf("focusMode" to JsonPrimitive(true)))),
+        )
+
+        val result = BackupSerializer.parseAndValidate(minimalBackup.toString())
+
+        assertTrue(result is BackupParseResult.Success)
+        val parsed = result as BackupParseResult.Success
+        assertEquals(listOf(sampleTask()), parsed.envelope.tasks)
+        assertEquals(exportedAt, JsonPrimitive(parsed.envelope.exportedAtHuman))
+        assertEquals(null, parsed.envelope.appVersion)
+        assertTrue(parsed.envelope.presetSections.isEmpty())
+        assertEquals(1, parsed.envelope.summary.taskCount)
+        assertEquals(
+            listOf(
+                "Settings in this backup are not supported by this app version and will be left unchanged.",
+            ),
+            parsed.warnings,
+        )
+    }
+
+    @Test
     fun parserSkipsMalformedTaskRowsAndKeepsValidRowsAndSettings() {
         val validJson = BackupSerializer.serializeToJson(
             BackupSerializer.buildEnvelope(sampleSettings(), listOf(sampleTask()), "1.1.4"),

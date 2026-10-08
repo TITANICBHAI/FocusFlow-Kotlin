@@ -2,7 +2,7 @@
 
 ## Current status
 
-- **Overall:** Batches 1–10 implementation and local unit verification complete; Android device-only checks remain deferred
+- **Overall:** Batches 1–11 implementation and local unit verification complete; Batch 12 is in progress; Android device-only checks remain deferred
 - **Authorization:** Granted by the user on 2026-10-08 to restore `.focusflow` import/export according to the saved plan.
 - **Last updated:** 2026-10-08
 - **Scope note:** Batch 10 is limited to import robustness and clearer preview behavior found in the second source comparison; export behavior is out of scope.
@@ -388,3 +388,24 @@ Plan phase: **Phase 6 — Navigation and plumbing**
 - No GitHub Actions or push was explicitly requested in this batch.
 
 | 2026-10-08 | Replit Agent | Batch 11 — import UI parity | Moved Backup & Data after Pomodoro and before Permissions, matching the supplied flat TS Settings screen. Rebuilt the import preview hierarchy, dynamic merge/replace copy, destructive warning/red action, summary icons, and outlined Cancel while retaining restore behavior and safety. Both local variants passed (157 tests each, 0 failures/errors/skips); `git diff --check` passed. Compose UI tests and device picker/render checks remain open because no emulator is available. |
+
+## Batch 12 — Compatibility with the attached backup
+**Status:** In progress — diagnosis found a valid JSON envelope missing metadata required by the current Kotlin decoder.
+**Scope**
+- Diagnose the attached `.focusflow` file and ADB log; preserve the uploaded file unchanged.
+- Determine whether the missing fields are nonessential preview/export metadata and whether the task/settings payloads can be read safely.
+- If compatible, add narrow read-side compatibility while keeping the canonical V1 export, JSON preflight, replace-off default, explicit confirmation, and active-session guard unchanged.
+- Do not modify any file in the plan's no-touch list; do not copy the user's schedule/task data into source or tests.
+**Checklist**
+- [x] Inspect the attached file structure, log, current envelope/parser, and plan requirements.
+- [ ] Verify nested task and settings mapping, including unsupported-field handling.
+- [ ] Implement the smallest safe compatibility change and add anonymized regression tests.
+- [ ] Run `bash scripts/test-unit.sh` for both flavors and reconcile the reports.
+- [ ] Reconcile tracker, protected paths, and attached user-data handling.
+**Progress notes**
+- The file is valid JSON with `kind = FocusFlowBackupV1`, `version = 1`, `platform.os = android`, 105 tasks, and a settings object. It omits `exportedAtHuman`, `appVersion`, `presetSections`, and `summary`, which the current `BackupEnvelope` decoder requires.
+- The ADB log shows the device returned from the document picker to `com.tbtechsdev.focusflow`; no app `FATAL EXCEPTION` was found. The displayed message is consistent with the serializer's missing-required-field failure, not a crash.
+- All 105 task rows have the required `Task` fields and expected JSON types; no reminder rows are present. The only settings key is `focusMode`, which does not match a supported portable/legacy import key, so it must not be guessed or mapped to a local runtime toggle.
+- The TypeScript contract makes `appVersion` optional; `presetSections` and `summary` are descriptive and not used to activate protections, while the plan's root validation requires `kind`, `settings`, and `tasks`. Read-side defaults can therefore preserve the plan contract and leave canonical export unchanged.
+- Implemented read-side defaults for omitted preview/export metadata only; canonical export, V1 kind/version checks, settings/tasks requirements, task limits, restore mode, and data guards are unchanged. Added an anonymized regression test and a preview warning for settings the app cannot restore. Changed files: `BackupSerializer.kt`, `BackupSettingsAdapter.kt`, `BackupSerializerTest.kt`. Verification is pending; no app test has been marked complete yet.
+- The app's V1 writer and other restore behavior remain unchanged while compatibility scope is reviewed. The log and backup are untracked user attachments and will be preserved.

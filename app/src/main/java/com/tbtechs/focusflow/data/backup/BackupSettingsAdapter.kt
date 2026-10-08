@@ -19,6 +19,15 @@ import kotlinx.serialization.json.intOrNull
  * legacy migration allow-list.
  */
 internal object BackupSettingsAdapter {
+    fun hasRestorableSettings(settings: JsonObject): Boolean {
+        if (additionalPreferenceWrites(settings).isNotEmpty()) return true
+        return try {
+            LegacySettingsAdapter.toSharedPreferencesValues(settings).isNotEmpty()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun additionalPreferenceWrites(settings: JsonObject): Map<String, BackupPreferenceValue> {
         val portable = JsonObject(
             settings.filterKeys(PortableSettingsPolicy::isPortableBackupKey),
