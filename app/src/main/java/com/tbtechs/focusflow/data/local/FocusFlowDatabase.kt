@@ -21,6 +21,7 @@ import com.tbtechs.focusflow.data.local.dao.FindingDao
 import com.tbtechs.focusflow.data.local.dao.FindingAcknowledgementDao
 import com.tbtechs.focusflow.data.local.dao.BehaviouralHypothesisDao
 import com.tbtechs.focusflow.data.local.dao.ClarifyingQuestionDao
+import com.tbtechs.focusflow.data.local.dao.UsageRollupDao
 import com.tbtechs.focusflow.data.local.entity.DailyCompletionEntity
 import com.tbtechs.focusflow.data.local.entity.AchievementEntity
 import com.tbtechs.focusflow.data.local.entity.FocusOverrideEntity
@@ -35,6 +36,10 @@ import com.tbtechs.focusflow.data.local.entity.FindingEntity
 import com.tbtechs.focusflow.data.local.entity.FindingAcknowledgementEntity
 import com.tbtechs.focusflow.data.local.entity.BehaviouralHypothesisEntity
 import com.tbtechs.focusflow.data.local.entity.ClarifyingQuestionEntity
+import com.tbtechs.focusflow.data.local.entity.UsagePipelineStateEntity
+import com.tbtechs.focusflow.data.local.entity.UsageRollupAppDayEntity
+import com.tbtechs.focusflow.data.local.entity.UsageRollupDayEntity
+import com.tbtechs.focusflow.data.local.entity.UsageRollupSessionEntity
 import com.tbtechs.focusflow.data.backup.LegacySettingsMigration
 import com.tbtechs.focusflow.data.backup.LegacyPreferenceValue
 import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
@@ -120,8 +125,12 @@ import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
         FindingAcknowledgementEntity::class,
         BehaviouralHypothesisEntity::class,
         ClarifyingQuestionEntity::class,
+        UsagePipelineStateEntity::class,
+        UsageRollupDayEntity::class,
+        UsageRollupAppDayEntity::class,
+        UsageRollupSessionEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -140,6 +149,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
     abstract fun findingAcknowledgementDao(): FindingAcknowledgementDao
     abstract fun behaviouralHypothesisDao(): BehaviouralHypothesisDao
     abstract fun clarifyingQuestionDao(): ClarifyingQuestionDao
+    abstract fun usageRollupDao(): UsageRollupDao
 
     companion object {
 
@@ -464,6 +474,72 @@ abstract class FocusFlowDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `idx_cq_asked_at` " +
                         "ON `clarifying_questions` (`asked_at`)",
+                )
+            }
+        }
+
+        /** Adds the shadow usage pipeline without changing any legacy usage rows. */
+        val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `usage_pipeline_state` (
+                        `id` INTEGER NOT NULL,
+                        `cutover_date` TEXT,
+                        `pipeline_version` INTEGER NOT NULL,
+                        `shadow_started_on` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `usage_pipeline_state`
+                        (`id`, `cutover_date`, `pipeline_version`, `shadow_started_on`)
+                    VALUES (1, NULL, 1, date('now', 'localtime'))
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `usage_rollup_day` (
+                        `date` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `coverage_start_ms` INTEGER,
+                        `coverage_end_ms` INTEGER,
+                        `pipeline_version` INTEGER NOT NULL,
+                        `computed_at_ms` INTEGER NOT NULL,
+                        `total_foreground_ms` INTEGER NOT NULL,
+                        PRIMARY KEY(`date`)
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `usage_rollup_app_day` (
+                        `date` TEXT NOT NULL,
+                        `package_name` TEXT NOT NULL,
+                        `app_name` TEXT NOT NULL,
+                        `category` TEXT,
+                        `foreground_ms` INTEGER NOT NULL,
+                        `hourly_ms` TEXT NOT NULL,
+                        `launch_count` INTEGER NOT NULL,
+                        `session_count` INTEGER NOT NULL,
+                        `first_start_at_ms` INTEGER,
+                        `last_used_at_ms` INTEGER NOT NULL,
+                        PRIMARY KEY(`date`, `package_name`)
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_urad_package_date` " +
+                        "ON `usage_rollup_app_day` (`package_name`, `date`)",
+                )
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `usage_rollup_session` (
+                        `package_name` TEXT NOT NULL,
+                        `started_at_ms` INTEGER NOT NULL,
+                        `ended_at_ms` INTEGER NOT NULL,
+                        `duration_ms` INTEGER NOT NULL,
+                        `local_date` TEXT NOT NULL,
+                        PRIMARY KEY(`package_name`, `started_at_ms`)
+                    )
+                """.trimIndent())
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `idx_urs_date_package` " +
+                        "ON `usage_rollup_session` (`local_date`, `package_name`)",
                 )
             }
         }

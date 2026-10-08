@@ -125,6 +125,10 @@ For each case: record the device/API, what each source reported, and the diff.
 
 ### Failures and blockers
 
+- Initial `bash scripts/test-unit.sh` attempt timed out after five minutes while the bootstrap installed JDK 17, Android SDK platform/build tools, and Gradle; no Gradle test task result was produced. The bootstrap is now cached; rerun after the Batch 3 implementation is coherent.
+- Second `bash scripts/test-unit.sh` attempt reached KSP but failed at `:app:kspTbtechsdevDebugKotlin` with `IllegalStateException: Empty schema file` while Room deserialized an exported schema. No unit test task ran; inspect the schema output and fix the cause before rerunning.
+- A cached retry with `--max-workers=1` passed KSP and compiled the production source and JVM tests, but the five-minute tool timeout expired after `:app:testProductionDebugUnitTest` started; task completion is not yet confirmed.
+
 ### Decisions
 
 ---
@@ -336,6 +340,14 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Batch start (2026-10-08):** User authorized Batch 3 while Batch 2 remains blocked only on its real-device comparison. The existing Batch 2 working-tree changes and supplied Batch 3 note are preserved. This batch must stay shadow-only: no existing read source is switched, no old usage rows are rewritten, and the 7-day comparison cannot be marked complete before observations exist. Batch 0's device measurements are still unavailable; choose and record the `STOPPED` matching strategy before implementing the tracker.
 
+**Implementation resumed (2026-10-08):** Rechecked the working tree; only the two supplied prompt files are untracked. Room remains at v6 and its migration chain ends at 5→6. Batch 3 source wiring and tests will be added without switching any current read source. Device matrix, retention, latency, and query-cost measurements remain unavailable.
+
+**Pipeline implementation update (2026-10-08):** Added the pure event/session models, foreground-span reducer, local-calendar aggregator, a UsageStats event adapter, and initial JVM coverage for stop matching, closures, lookback, midnight, DST, duplicate events, and tail capping. These changes have not yet been compiled or tested; all Batch 3 checkboxes remain open.
+
+**Storage and trigger implementation update (2026-10-08):** Added the four additive Room entities, DAO, v6→v7 migration with a null cutover state seed, a serialized past-days rollup writer, debug-only per-app shadow comparisons, and event-driven app-open/service-start/Stats/calendar triggers. Existing usage readers and legacy rows are not routed or rewritten. Compilation, migration validation, and writer behavior remain unverified.
+
+**Read model and test update (2026-10-08):** Added the shadow-only legacy repository boundary and source-precedence policy, including all 14 planned policy cases. Added instrumentation coverage for v6→v7, the version-0 migration path, rollup idempotency, completion preservation, today exclusion, replacement, and open-session completion; tests are not yet verified.
+
 <!-- Shadow comparison results (fill after 7 days): -->
 
 ### Evidence
@@ -343,6 +355,8 @@ tests each belong to the batch that introduces their production code (Batch 2–
 ### Failures and blockers
 
 ### Decisions
+
+- Match `ACTIVITY_STOPPED` only against the exact resumed activity class. A delayed stop from activity A must not close a newer session for activity B in the same package; if the stop event lacks a class name, do not close based on package alone. Device validation remains open.
 
 ---
 

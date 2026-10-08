@@ -168,6 +168,7 @@ class StatsViewModel(
     }
 
     fun reload() {
+        AppModule.usageRollupCoordinator.trigger("stats_open")
         loadJob?.cancel()
         val window = _activeWindow.value
         _weekStartDay.value = readWeekStartDay()

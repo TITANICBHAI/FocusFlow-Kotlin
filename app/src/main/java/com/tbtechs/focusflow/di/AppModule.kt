@@ -23,6 +23,10 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.analytics.AnalyticsProcessor
 import com.tbtechs.focusflow.analytics.AchievementEngine
 import com.tbtechs.focusflow.analytics.InsightEngine
+import com.tbtechs.focusflow.analytics.UsageRollupCoordinator
+import com.tbtechs.focusflow.analytics.UsageRollupWriter
+import com.tbtechs.focusflow.analytics.UsageHistoryRepository
+import com.tbtechs.focusflow.analytics.RoomUsageHistoryStore
 import com.tbtechs.focusflow.analytics.detection.FindingDetectionRunner
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.SchedulerEngine
@@ -142,6 +146,15 @@ object AppModule {
     lateinit var usageStatsRepository: UsageStatsRepository
         private set
 
+    lateinit var usageRollupWriter: UsageRollupWriter
+        private set
+
+    lateinit var usageRollupCoordinator: UsageRollupCoordinator
+        private set
+
+    lateinit var usageHistoryRepository: UsageHistoryRepository
+        private set
+
     lateinit var analyticsProcessor: AnalyticsProcessor
         private set
 
@@ -197,6 +210,7 @@ object AppModule {
                 FocusFlowDatabase.MIGRATION_3_4,
                 FocusFlowDatabase.MIGRATION_4_5,
                 FocusFlowDatabase.MIGRATION_5_6,
+                FocusFlowDatabase.MIGRATION_6_7,
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -248,6 +262,22 @@ object AppModule {
 
         greyoutRepository = GreyoutRepository(app)
         usageStatsRepository = UsageStatsRepository(app)
+        usageHistoryRepository = UsageHistoryRepository(
+            RoomUsageHistoryStore(
+                dailyAppUsageDao = database.dailyAppUsageDao(),
+                appSessionDao = database.appSessionDao(),
+            ),
+        )
+        usageRollupWriter = UsageRollupWriter(
+            context = app,
+            database = database,
+            eventSource = usageStatsRepository,
+        )
+        usageRollupCoordinator = UsageRollupCoordinator(
+            context = app,
+            applicationScope = applicationScope,
+            writer = usageRollupWriter,
+        ).also { it.registerCalendarChangeReceiver() }
         analyticsProcessor = AnalyticsProcessor(
             taskRepository = taskRepository,
             focusSessionRepository = focusSessionRepository,

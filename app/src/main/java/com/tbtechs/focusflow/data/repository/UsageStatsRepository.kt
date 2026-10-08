@@ -15,7 +15,13 @@ import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
+import com.tbtechs.focusflow.analytics.ForegroundEventType
+import com.tbtechs.focusflow.analytics.ForegroundUsageEvent
+import com.tbtechs.focusflow.analytics.UsageEventRead
+import com.tbtechs.focusflow.analytics.UsageEventsSource
 import com.tbtechs.focusflow.enforcement.receivers.FocusDayDeviceAdminReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 data class AppUsageInfo(
@@ -48,7 +54,7 @@ data class HourlyUsageSummary(
  * Every usage-stats query is strictly guarded by the AppOpsManager.checkOpNoThrow check.
  * Without this guard, a revoked permission would silently return empty or inaccurate data.
  */
-class UsageStatsRepository(private val context: Context) {
+class UsageStatsRepository(private val context: Context) : UsageEventsSource {
 
     /**
      * Returns whether the PACKAGE_USAGE_STATS (Usage Access) permission has been granted.
@@ -247,6 +253,68 @@ class UsageStatsRepository(private val context: Context) {
 
         return UsageSummary(totalMinutes = totalMinutes, apps = apps)
     }
+
+    /**
+     * Reads raw foreground events for the pure span pipeline. The UsageStats
+     * Binder call always runs off the main thread; unavailable or revoked data
+     * is represented as unknown rather than an empty-usage result.
+     */
+    override suspend fun readForegroundEvents(startMs: Long, endMs: Long): UsageEventRead =
+        withContext(Dispatchers.IO) {
+            if (startMs >= endMs) {
+                return@withContext UsageEventRead.Available(emptyList(), null)
+            }
+            if (!checkUsageAccessPermission()) {
+                return@withContext UsageEventRead.Unknown(
+                    UsageEventRead.Unknown.Reason.PERMISSION_MISSING,
+                )
+            }
+
+            try {
+                val manager = context.getSystemService(Context.USAGE_STATS_SERVICE)
+                    as UsageStatsManager
+                val usageEvents = manager.queryEvents(startMs, endMs)
+                    ?: return@withContext UsageEventRead.Unknown(
+                        UsageEventRead.Unknown.Reason.EVENTS_UNAVAILABLE,
+                    )
+                val platformEvent = UsageEvents.Event()
+                val events = mutableListOf<ForegroundUsageEvent>()
+                var earliestEventAtMs: Long? = null
+                while (usageEvents.hasNextEvent()) {
+                    usageEvents.getNextEvent(platformEvent)
+                    earliestEventAtMs = minOf(
+                        earliestEventAtMs ?: Long.MAX_VALUE,
+                        platformEvent.timeStamp,
+                    )
+                    val type = when (platformEvent.eventType) {
+                        UsageEvents.Event.ACTIVITY_RESUMED -> ForegroundEventType.ACTIVITY_RESUMED
+                        UsageEvents.Event.ACTIVITY_PAUSED -> ForegroundEventType.ACTIVITY_PAUSED
+                        UsageEvents.Event.ACTIVITY_STOPPED -> ForegroundEventType.ACTIVITY_STOPPED
+                        UsageEvents.Event.SCREEN_NON_INTERACTIVE ->
+                            ForegroundEventType.SCREEN_NON_INTERACTIVE
+                        UsageEvents.Event.SCREEN_INTERACTIVE ->
+                            ForegroundEventType.SCREEN_INTERACTIVE
+                        UsageEvents.Event.KEYGUARD_SHOWN -> ForegroundEventType.KEYGUARD_SHOWN
+                        UsageEvents.Event.KEYGUARD_HIDDEN -> ForegroundEventType.KEYGUARD_HIDDEN
+                        UsageEvents.Event.DEVICE_SHUTDOWN -> ForegroundEventType.DEVICE_SHUTDOWN
+                        UsageEvents.Event.DEVICE_STARTUP -> ForegroundEventType.DEVICE_STARTUP
+                        else -> null
+                    } ?: continue
+                    events += ForegroundUsageEvent(
+                        type = type,
+                        timestampMs = platformEvent.timeStamp,
+                        packageName = platformEvent.packageName,
+                        activityClassName = platformEvent.className,
+                    )
+                }
+                UsageEventRead.Available(
+                    events = events,
+                    earliestEventAtMs = earliestEventAtMs?.takeUnless { it == Long.MAX_VALUE },
+                )
+            } catch (_: SecurityException) {
+                UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.ACCESS_REVOKED)
+            }
+        }
 
     /** Overload for Double millisecond timestamp compatibility */
     suspend fun getUsageSummary(startMs: Double, endMs: Double): UsageSummary =

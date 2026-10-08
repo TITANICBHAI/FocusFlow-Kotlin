@@ -573,6 +573,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             dailyUsageDao = AppModule.database.dailyAppUsageDao(),
             sessionDao = AppModule.database.appSessionDao(),
         )
+        AppModule.usageRollupCoordinator.trigger("service_start")
     }
 
     /**

@@ -67,6 +67,14 @@ interface AppSessionDao {
         endDate: String,
     ): List<AppSessionEntity>
 
+    @Query("""
+        SELECT * FROM app_sessions
+        WHERE local_date BETWEEN :startDate AND :endDate
+          AND duration_ms > 0
+        ORDER BY started_at ASC
+    """)
+    suspend fun getAllSessionsInRange(startDate: String, endDate: String): List<AppSessionEntity>
+
     @Query("DELETE FROM app_sessions WHERE local_date < :cutoffDate")
     suspend fun deleteOlderThan(cutoffDate: String)
 

@@ -1,7 +1,6 @@
 package com.tbtechs.focusflow.analytics
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.SystemClock
 import android.util.Log
@@ -18,7 +17,6 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * Persists live foreground usage and closed app sessions. It is fed by the
@@ -189,41 +187,8 @@ class AppUsageAndSessionTracker(
         Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalDate().format(DATE_FMT)
 
     private fun resolveAppName(packageName: String): String =
-        try {
-            val pm = context.packageManager
-            pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
-        } catch (_: PackageManager.NameNotFoundException) {
-            packageName
-        }
+        UsageAppMetadata.resolveAppName(context, packageName)
 
-    private fun resolveCategory(packageName: String): String {
-        val apiCategory = try {
-            context.packageManager.getApplicationInfo(packageName, 0).category
-        } catch (_: PackageManager.NameNotFoundException) {
-            ApplicationInfo.CATEGORY_UNDEFINED
-        }
-        return when (apiCategory) {
-            ApplicationInfo.CATEGORY_SOCIAL -> "social"
-            ApplicationInfo.CATEGORY_VIDEO,
-            ApplicationInfo.CATEGORY_AUDIO,
-            ApplicationInfo.CATEGORY_GAME -> "entertainment"
-            ApplicationInfo.CATEGORY_PRODUCTIVITY -> "productivity"
-            ApplicationInfo.CATEGORY_NEWS -> "news"
-            ApplicationInfo.CATEGORY_MAPS,
-            ApplicationInfo.CATEGORY_IMAGE -> "utility"
-            else -> packageNameHeuristic(packageName)
-        }
-    }
-
-    private fun packageNameHeuristic(pkg: String): String {
-        val name = pkg.lowercase(Locale.ROOT)
-        return when {
-            listOf("instagram", "facebook", "twitter", "snapchat", "tiktok", "linkedin", "reddit")
-                .any(name::contains) -> "social"
-            listOf("youtube", "netflix", "spotify", "twitch").any(name::contains) -> "entertainment"
-            listOf("whatsapp", "telegram", "discord", "messenger").any(name::contains) -> "communication"
-            listOf("chrome", "gmail", "drive", "maps", "calendar", "sheets").any(name::contains) -> "utility"
-            else -> "other"
-        }
-    }
+    private fun resolveCategory(packageName: String): String =
+        UsageAppMetadata.resolveCategory(context, packageName)
 }
