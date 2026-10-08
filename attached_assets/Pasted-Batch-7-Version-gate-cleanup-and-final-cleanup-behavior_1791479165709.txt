@@ -1,0 +1,58 @@
+Batch 7 — Version-gate cleanup and final cleanup (behavior-preserving)
+Status: NOT STARTED
+Started:
+Completed:
+
+Tasks
+SDK gate cleanup (section 2.3 inventory)
+
+ All 51 pre-API-29 version checks collapsed to their always-true branch. Record file-by-file count in Notes.
+ MOVE_TO_FOREGROUND and MOVE_TO_BACKGROUND branches removed from UsageStatsRepository, ForegroundTaskService, and AppBlockerAccessibilityService.
+ No remaining VERSION_CODES reference at or below Q in any .kt file.
+ Lint NewApi CI gate passes with zero findings.
+Permission check
+
+ checkOpNoThrow → unsafeCheckOpNoThrow in UsageStatsRepository.kt:67.
+ checkOpNoThrow → unsafeCheckOpNoThrow in ForegroundTaskService.kt:379.
+ checkOpNoThrow → unsafeCheckOpNoThrow in AppBlockerAccessibilityService.kt:2476.
+ No remaining checkOpNoThrow calls in any .kt file.
+Other dead code
+
+ Shadow comparison log removed.
+ Retired AppUsageAndSessionTracker accumulation code removed if fully replaced.
+ Obsolete prefs keys removed, each with a comment or migration note on the upgrade path.
+Final matrix re-run — API 29, 31, 33, 34, latest (section 3.3)
+
+ Foreground service starts at app open and after reboot.
+ Notification card appears and returns after dismissal on API 33+.
+ Allowance blocks at the correct moment.
+ Stats totals are plausible.
+ Locked-boot read does not crash or reset usage to zero.
+Line count report (record in Evidence)
+
+ AppBlockerAccessibilityService.kt: before → after.
+ ForegroundTaskService.kt: before → after.
+ Every new file: name and line count.
+ No new file exceeds 300 lines.
+All review gates met (section 14 of v6)
+
+ minSdk = 29; zero VERSION_CODES checks at or below Q.
+ Lint NewApi clean in CI.
+ Every batch step labelled preserving or changing.
+ Accessibility file and ForegroundTaskService.kt smaller than before every batch.
+ No new file over 300 lines.
+ One class interprets platform event types.
+ One owner of the allowance JSON.
+ One merged read model for history.
+ Migration test passes; old rows unchanged after upgrade.
+ Rollup writes idempotent, never downgrade a complete day, never store today.
+ All 14 read-model precedence tests (6.5) pass.
+ All allowance durability tests pass (10 state-machine + 1 backward-compat).
+ Midnight-crossing session is one row, one open, clipped daily time — in pipeline, rollups and every detector.
+ Primary Stats screen, Extra view and dormant 3-month path all build and show sane numbers.
+ All seven usage detectors have seam tests.
+ Batch 0 matrix re-run on all versions in 3.3 with measured deltas reported.
+Notes
+Evidence
+Failures and blockers
+Decisions
