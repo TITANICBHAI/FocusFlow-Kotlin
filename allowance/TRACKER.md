@@ -387,59 +387,59 @@ tests each belong to the batch that introduces their production code (Batch 2–
 ### Tasks
 
 **Pipeline as measurement source**
-- [ ] Time budget, count and interval readings come from the pipeline regardless of whether a block is active (D1). Enforcement stays gated on focus/standalone/always-on.
-- [ ] While an allowance app is in the foreground: baseline from the pipeline, exact-expiry timer from effective value, tick re-read per O3.
+- [x] Time budget, count and interval readings come from the pipeline regardless of whether a block is active (D1). Enforcement stays gated on focus/standalone/always-on.
+- [x] While an allowance app is in the foreground: baseline from the pipeline, exact-expiry timer from effective value, tick re-read per O3.
 
 **State machine and durable model (section 7)**
-- [ ] FRESH / STALE / UNAVAILABLE state reducer implemented.
-- [ ] Accumulate rules for completed segments (7.3): segment start is `max(session start, confirmedAtMs)`; split at midnight.
-- [ ] Writes at segment end, every 15 s while a segment is open and state is not FRESH, on state change, and on teardown.
-- [ ] Restart recovery: recover `min(now − lastCheckpoint, 2 × checkpoint interval)`, log the gap.
-- [ ] Reconcile on successful read (7.4): confirmed never decreases; estimated resets; effective recomputed.
-- [ ] First read on cutover day: `confirmedUsedMs = max(existing usedMs, V)`.
+- [x] FRESH / STALE / UNAVAILABLE state reducer implemented.
+- [x] Accumulate rules for completed segments (7.3): segment start is `max(session start, confirmedAtMs)`; split at midnight.
+- [x] Writes at segment end, every 15 s while a segment is open and state is not FRESH, on state change, and on teardown.
+- [x] Restart recovery: recover `min(now − lastCheckpoint, 2 × checkpoint interval)`, log the gap.
+- [x] Reconcile on successful read (7.4): confirmed never decreases; estimated resets; effective recomputed.
+- [x] First read on cutover day: `confirmedUsedMs = max(existing usedMs, V)`.
 
 **Allowance durability tests (introduced here because the state machine is introduced here)**
-- [ ] Test 1: accumulation across sessions during STALE — segments add up; completed segments survive to reconcile.
-- [ ] Test 2: FRESH to STALE flip — a segment ending while FRESH after the last confirm is counted.
-- [ ] Test 3: restart mid-segment — recovers at most `2 × checkpoint interval`; longer gap adds only the capped amount and logs it.
-- [ ] Test 4: restart with no marker — nothing invented.
-- [ ] Test 5: reconcile higher, lower and equal — `confirmed*` never decreases; `estimated*` resets; segments before T not re-added; segments after T kept.
-- [ ] Test 6: midnight — segment split at boundary; new day starts from zero.
-- [ ] Test 7: count mode — increments on new sessions only; midnight-spanning session is not a new open; reconcile resets the estimate.
-- [ ] Test 8: interval — expiry by wall clock; time measured inside window.
-- [ ] Test 9: cap — open segment never exceeds 4 h.
-- [ ] Test 11: failure inputs — null, `SecurityException`, timeout, slow reads move state correctly and never reset usage to zero.
+- [x] Test 1: accumulation across sessions during STALE — segments add up; completed segments survive to reconcile.
+- [x] Test 2: FRESH to STALE flip — a segment ending while FRESH after the last confirm is counted.
+- [x] Test 3: restart mid-segment — recovers at most `2 × checkpoint interval`; longer gap adds only the capped amount and logs it.
+- [x] Test 4: restart with no marker — nothing invented.
+- [x] Test 5: reconcile higher, lower and equal — `confirmed*` never decreases; `estimated*` resets; segments before T not re-added; segments after T kept.
+- [x] Test 6: midnight — segment split at boundary; new day starts from zero.
+- [x] Test 7: count mode — increments on new sessions only; midnight-spanning session is not a new open; reconcile resets the estimate.
+- [x] Test 8: interval — expiry by wall clock; time measured inside window.
+- [x] Test 9: cap — open segment never exceeds 4 h.
+- [x] Test 11: failure inputs — null, `SecurityException`, timeout, slow reads move state correctly and never reset usage to zero.
 
 **Deletions — accessibility service**
-- [ ] Accumulator and checkpoint code deleted.
-- [ ] `reconcileCountAllowances` deleted.
+- [x] Accumulator and checkpoint code deleted.
+- [x] `reconcileCountAllowances` deleted.
 
 **Deletions — foreground service**
-- [ ] 60 s allowance sync loop deleted.
+- [x] 60 s allowance sync loop deleted.
 
 **Deletions — both files**
-- [ ] `daily_allowance_usage_stats_sync` removed from `AppBlockerAccessibilityService`.
-- [ ] `daily_allowance_usage_stats_sync` removed from `ForegroundTaskService` (lines 461, 551, and any others found).
+- [x] `daily_allowance_usage_stats_sync` removed from `AppBlockerAccessibilityService`.
+- [x] `daily_allowance_usage_stats_sync` removed from `ForegroundTaskService` (lines 461, 551, and any others found).
 
 **Key handling**
-- [ ] `active_session_pkg` kept.
-- [ ] `active_session_last_checkpoint_ms` kept.
-- [ ] `active_session_end_ms` kept (interval-mode restore path, accessibility line 2407).
-- [ ] `active_session_open_at_ms`: grep both files to confirm nothing reads it after `AllowanceExpiry` interval-fallback is replaced, then remove. If still needed, document why here.
+- [x] `active_session_pkg` kept.
+- [x] `active_session_last_checkpoint_ms` kept.
+- [x] `active_session_end_ms` kept (interval-mode restore path, accessibility line 2407).
+- [x] `active_session_open_at_ms`: grep both files to confirm nothing reads it after `AllowanceExpiry` interval-fallback is replaced, then remove. If still needed, document why here.
 
 **Apply open items**
-- [ ] O1: interval-mode window starts at first open regardless of block state.
-- [ ] O2: bridge allow-list from Batch 0 device matrix applied.
+- [x] O1: interval-mode window starts at first open regardless of block state.
+- [x] O2: bridge allow-list from Batch 0 device matrix applied.
 
 **Copy updates**
-- [ ] `DailyAllowanceModal` text says allowance counts all usage today, not just during blocks.
-- [ ] `DailyAllowanceDefenseDialog` text updated.
-- [ ] Launcher card shows "about" marker when not FRESH.
+- [x] `DailyAllowanceModal` text says allowance counts all usage today, not just during blocks.
+- [x] `DailyAllowanceDefenseDialog` text updated.
+- [x] Launcher card shows "about" marker when not FRESH.
 
 **Verification**
-- [ ] `AppBlockerAccessibilityService.kt` line count lower than before this batch.
-- [ ] `ForegroundTaskService.kt` line count lower than before this batch.
-- [ ] All durability tests above pass.
+- [x] `AppBlockerAccessibilityService.kt` line count lower than before this batch.
+- [x] `ForegroundTaskService.kt` line count lower than before this batch.
+- [x] All durability tests above pass.
 - [ ] Manual: a time-budget allowance blocks at the correct moment on a real device.
 - [ ] Manual: kill the accessibility service mid-session; reopen; usage estimate within one checkpoint interval of true value.
 - [ ] Manual: revoke usage access mid-session; no crash, last known value kept.
@@ -453,17 +453,26 @@ tests each belong to the batch that introduces their production code (Batch 2–
 
 **Continuation update (2026-10-08):** The current checkout already wires `AllowanceUsageCoordinator` into `AppBlockerAccessibilityService`, routes foreground/screen/configuration/service lifecycle events, retains the three required session keys, removes the polling-sync key from both services, and updates the all-day explanatory copy plus launcher “About” marker. This was verified by source inspection; no tracker checkbox is checked from inspection alone. Identified two accounting defects: a stale checkpoint crossing local midnight could discard the preceding day’s tail, and repeated checkpoints could exceed the four-hour cap for one continuous session. Added a pure calendar-slicing/cap helper and JVM cases; implementation and verification are still in progress.
 
-**Continuation audit (2026-10-08):** The working tree initially contained no tracked modifications; the only untracked file was the user-supplied instruction note. Reconfirmed coordinator wiring, all-day copy, the three retained session keys, and the absence of references to `active_session_open_at_ms` and `daily_allowance_usage_stats_sync`. The production integration exists, but the Batch 4 checklist remains open pending test coverage, local verification, and device-only checks. An initial local test invocation was stopped after the reader test seam was added while the bootstrap was still running; it produced no Gradle test result. A complete final local run is pending.
+**Continuation audit (2026-10-08):** The working tree initially contained no tracked modifications; the only untracked file was the user-supplied instruction note. Reconfirmed coordinator wiring, all-day copy, the three retained session keys, and the absence of references to `active_session_open_at_ms` and `daily_allowance_usage_stats_sync`. The reader seam and edge-case tests are now in place, and both local unit-test flavors pass. Device-only checks remain open.
 
-**Test-gap work (2026-10-08):** The existing reader converts timeouts and exceptions to unknown results but was coupled directly to `Context`/`UsageStatsRepository`, preventing deterministic JVM verification that unknown reads preserve the ledger. Add a narrow injected event-read seam and tests for unknown/failure paths plus reconcile, count, and checkpoint edge cases; do not change read-source or enforcement behavior.
+**Test-gap work (2026-10-08):** The reader now has a narrow injected event-read seam so deterministic JVM tests can prove unknown, revoked, timed-out, and failed reads keep the last-known ledger unchanged. Added reconciliation, count-estimate, and invalid-checkpoint edge cases without changing the platform read source.
 
-**Failure corrections (2026-10-08):** Count reconciliation now keeps only the prior confirmed count and the new pipeline count; estimates are no longer accidentally promoted to confirmed. Updated the characterization test boundary and assertion to follow the current ledger-backed deadline path. Full rerun pending.
+**Failure corrections (2026-10-08):** The first complete run found that count reconciliation promoted estimated opens into confirmed usage and that one characterization test still sliced the removed `accumulateTimedUsage` method. Reconciliation now uses only prior confirmed opens and the new pipeline count; the source assertion follows the current deadline method. The complete rerun passed both flavors.
 
 ### Evidence
 
+- **Pipeline wiring and enforcement boundary:** `AppBlockerAccessibilityService.kt` routes foreground events to `AllowanceUsageCoordinator` before block-state enforcement; the coordinator reads all configured targets, checkpoints stale sessions every 15 seconds, refreshes while foreground, and persists/recoveries markers through lifecycle transitions.
+- **Freshness and durable accounting:** `AllowanceUsageCoordinator.kt`, `AllowanceUsageAccumulator.kt`, `AllowanceUsageStateStore.kt`, and `AllowanceUsageTimeAccounting.kt`; the coordinator implements FRESH/STALE/UNAVAILABLE, capped restart recovery, local-day slicing, stale estimates, state/lifecycle writes, and successful-read reconciliation. `AllowanceUsagePipelineTest`, `AllowanceUsageAccumulatorTest`, `AllowanceUsageTimeAccountingTest`, and `AllowanceUsageReaderTest` cover the listed state, boundary, estimate, count, and failure cases.
+- **Service cleanup and keys:** Confirmed the obsolete 60-second sync loop, `reconcileCountAllowances`, and sync preference key are absent from both services. The package, checkpoint, and interval-end keys remain; no `active_session_open_at_ms` reference remains in app source.
+- **O1/O2 and copy:** Interval windows initialize at first allowance open. With Batch 0 device data unavailable, applied the documented narrow permission-controller/intent-resolver bridge set. The defense dialog delegates to `DailyAllowanceModal`, which now states allowances count all daily usage; launcher values are marked “About” when approximate.
+- **Line counts:** `AppBlockerAccessibilityService.kt` is 4,397 lines (baseline 4,680); `ForegroundTaskService.kt` is 1,134 lines (baseline 1,591).
+- **Local unit tests:** `bash scripts/test-unit.sh` passed `:app:testProductionDebugUnitTest` and `:app:testTbtechsdevDebugUnitTest`, 216 tests per flavor, zero failures. `FOCUSFLOW_SKIP_APK_BUILD=1`; no APK was built.
+- **Diff hygiene:** `git diff --check` passed.
+
 ### Failures and blockers
 
-- First local Batch 4 verification (`bash scripts/test-unit.sh`) reached the Tbtechsdev suite (216 tests) and failed two tests; Production tests did not run because Gradle stopped at the failing task. `AllowanceUsageAccumulatorTest.countReconciliationKeepsConfirmedOpensAndResetsEstimatedOpens` observed confirmed count 3 instead of 2 because reconciliation promoted the effective count, including estimates. `AllowanceBehaviorCharacterizationTest.intervalWindowUsesStrictExpiryAndClampsRemainingAtItsBoundaries` used a source delimiter for the removed `accumulateTimedUsage` helper. Fixes are applied below; successful rerun evidence is pending.
+- The first complete local run reached the Tbtechsdev suite (216 tests) and failed two tests: count reconciliation promoted an estimated open, and a characterization test used an obsolete source delimiter. Both were corrected; the final run passed all 216 tests in each flavor.
+- **Device blocker:** This workspace has neither `adb` nor an emulator executable. Real-device timing, service-kill recovery, usage-access revocation, and API 29/33 checks remain open; no device results are claimed.
 
 ### Decisions
 

@@ -14,7 +14,7 @@
 - [Compose scope audits](kotlin-compose-scope-audits.md) — stop expression-bodied local functions at their expression end when checking `@Composable` call scope.
 - [Kotlin raw-string interpolation](kotlin-raw-string-interpolation.md) — triple-quoted Kotlin strings still parse `$` templates; preserve literal regex anchors near Markdown delimiters.
 - [Settings help and text-size destinations](settings-guides.md) — keep sliders on a separate Settings screen and integrate guarded-change help into the expanded How to Use guide.
-- [GitHub push and build polling](github-push-build-polling.md) — only push or monitor GitHub Actions when the user explicitly asks.
+- [GitHub push and build polling](github-push-build-polling.md) — push/monitor only on explicit ask; inspect HEAD before reapplying after an automatic sync.
 - [Navigation icon states](navigation-icon-states.md) — Focus nav has separate Ionicons timer vectors; Ready artwork stays on its shared component, and Defense uses its supplied active shield.
 - [Always-on notification workflow](always-on-status-notification-workflow.md) — read the scoped plan and agent prompt; record all progress and evidence in the batch tracker.
 - [VPN batch test deferral](vpn-batch-test-deferral.md) — defer all VPN batch test runs until final verification, even if an intermediate checklist says to run them; review each batch diff.
