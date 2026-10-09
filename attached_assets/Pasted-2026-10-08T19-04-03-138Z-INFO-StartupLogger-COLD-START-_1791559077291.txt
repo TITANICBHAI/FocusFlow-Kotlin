@@ -1,0 +1,93 @@
+2026-10-08T19:04:03.138Z [INFO] [StartupLogger] [COLD_START boot-muzwnk1q] First session since install or log clear
+2026-10-08T19:04:03.138Z [INFO] [FocusFlowApp] Application startup began
+2026-10-08T19:04:03.147Z [INFO] [Room] Preparing legacy database before Room initialization
+2026-10-08T19:04:03.149Z [INFO] [Room] Initializing Room database and repositories
+2026-10-08T19:04:03.233Z [INFO] [Migration] Checking legacy settings migration
+2026-10-08T19:04:03.275Z [INFO] [Notifications] Creating application notification channels
+2026-10-08T19:04:03.295Z [INFO] [FocusFlowApp] Application startup completed
+2026-10-08T19:04:03.356Z [INFO] [MainActivity] Main activity created
+2026-10-08T19:05:28.517Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791486328511 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=false alarmTierUsed=ALARM_CLOCK
+2026-10-09T01:50:00.788Z [INFO] [TaskAlarmRuntime] event=receiver.onReceive wallClockEpochMs=1791510600787 elapsedRealtimeMs=486268486
+2026-10-09T01:50:00.817Z [INFO] [AlarmCapabilitySnapshot] phase=fire capturedAtEpochMs=1791510600811 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=false keyguardLocked=true alarmTierUsed=ALARM_CLOCK
+2026-10-09T01:50:00.837Z [INFO] [TaskAlarmRuntime] event=notification.nm_notify.begin wallClockEpochMs=1791510600837 elapsedRealtimeMs=486268536
+2026-10-09T01:50:00.843Z [INFO] [TaskAlarmRuntime] event=notification.nm_notify.returned wallClockEpochMs=1791510600843 elapsedRealtimeMs=486268542
+2026-10-09T01:50:01.007Z [INFO] [TaskAlarmRuntime] event=activityFallback.startActivity.returned wallClockEpochMs=1791510601007 elapsedRealtimeMs=486268706 overlayAuthorized=true visibility=unknown
+2026-10-09T01:50:01.094Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.onCreate wallClockEpochMs=1791510601093 elapsedRealtimeMs=486268792
+2026-10-09T01:50:01.430Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791510601403 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=true alarmTierUsed=ALARM_CLOCK
+2026-10-09T01:50:01.911Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.onResume wallClockEpochMs=1791510601911 elapsedRealtimeMs=486269610
+2026-10-09T01:50:02.481Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.windowFocusChanged wallClockEpochMs=1791510602480 elapsedRealtimeMs=486270179 windowFocused=true becameVisible=true
+2026-10-09T01:50:04.747Z [INFO] [MainActivity] Main activity created
+2026-10-09T01:52:31.633Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791510751625 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=false alarmTierUsed=ALARM_CLOCK
+2026-10-09T02:30:00.029Z [INFO] [TaskAlarmRuntime] event=receiver.onReceive wallClockEpochMs=1791513000017 elapsedRealtimeMs=488667716
+2026-10-09T02:30:00.084Z [INFO] [TaskAlarmRuntime] event=notification.nm_notify.begin wallClockEpochMs=1791513000084 elapsedRealtimeMs=488667783
+2026-10-09T02:30:00.091Z [INFO] [TaskAlarmRuntime] event=notification.nm_notify.returned wallClockEpochMs=1791513000090 elapsedRealtimeMs=488667789
+2026-10-09T02:30:00.163Z [INFO] [TaskAlarmRuntime] event=activityFallback.startActivity.returned wallClockEpochMs=1791513000162 elapsedRealtimeMs=488667861 overlayAuthorized=true visibility=unknown
+2026-10-09T02:30:00.191Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.onCreate wallClockEpochMs=1791513000191 elapsedRealtimeMs=488667890
+2026-10-09T02:30:00.537Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791513000484 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=true alarmTierUsed=ALARM_CLOCK
+2026-10-09T02:30:00.820Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.onResume wallClockEpochMs=1791513000820 elapsedRealtimeMs=488668518
+2026-10-09T02:30:00.994Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.windowFocusChanged wallClockEpochMs=1791513000994 elapsedRealtimeMs=488668692 windowFocused=true becameVisible=true
+2026-10-09T02:30:04.595Z [INFO] [MainActivity] Main activity created
+2026-10-09T02:30:05.704Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791513005698 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=false keyguardLocked=true alarmTierUsed=ALARM_CLOCK
+2026-10-09T02:30:47.843Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791513047831 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=true alarmTierUsed=ALARM_CLOCK
+2026-10-09T02:30:47.919Z [INFO] [AlarmCapabilitySnapshot] phase=schedule capturedAtEpochMs=1791513047913 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=false alarmTierUsed=ALARM_CLOCK
+2026-10-09T04:30:00.013Z [INFO] [TaskAlarmRuntime] event=receiver.onReceive wallClockEpochMs=1791520200008 elapsedRealtimeMs=495867707
+2026-10-09T04:30:00.066Z [INFO] [AlarmCapabilitySnapshot] phase=fire capturedAtEpochMs=1791520200054 postNotificationsGranted=true channelImportance=4 channelIsBlocked=false canUseFullScreenIntent=not_applicable_or_unknown canDrawOverlays=true canScheduleExactAlarms=true batteryOptimizationExempt=true targetSdk=35 deviceInteractive=true keyguardLocked=false alarmTierUsed=ALARM_CLOCK
+2026-10-09T04:30:00.096Z [INFO] [TaskAlarmRuntime] event=notification.nm_notify.begin wallClockEpochMs=1791520200095 elapsedRealtimeMs=495867794
+2026-10-09T04:30:00.108Z [INFO] [TaskAlarmRuntime] event=notification.nm_notify.returned wallClockEpochMs=1791520200107 elapsedRealtimeMs=495867806
+2026-10-09T04:30:00.170Z [INFO] [TaskAlarmRuntime] event=activityFallback.startActivity.returned wallClockEpochMs=1791520200170 elapsedRealtimeMs=495867869 overlayAuthorized=true visibility=unknown
+2026-10-09T04:30:00.620Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.onCreate wallClockEpochMs=1791520200620 elapsedRealtimeMs=495868319
+2026-10-09T04:30:01.138Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.onResume wallClockEpochMs=1791520201138 elapsedRealtimeMs=495868837
+2026-10-09T04:30:01.452Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.windowFocusChanged wallClockEpochMs=1791520201452 elapsedRealtimeMs=495869151 windowFocused=true becameVisible=true
+2026-10-09T04:30:02.920Z [INFO] [TaskAlarmRuntime] event=TaskAlarmActivity.windowFocusChanged wallClockEpochMs=1791520202920 elapsedRealtimeMs=495870618 windowFocused=false becameVisible=false
+2026-10-09T04:30:05.247Z [INFO] [MainActivity] Main activity created
+2026-10-09T05:02:22.646Z [INFO] [StartupLogger] [NEW_PROCESS boot-mv0i108f] App relaunched after kill
+2026-10-09T05:02:22.648Z [INFO] [FocusFlowApp] Application startup began
+2026-10-09T05:02:22.650Z [INFO] [Room] Preparing legacy database before Room initialization
+2026-10-09T05:02:22.682Z [INFO] [Room] Initializing Room database and repositories
+2026-10-09T05:02:22.787Z [INFO] [Migration] Checking legacy settings migration
+2026-10-09T05:02:22.787Z [INFO] [Notifications] Creating application notification channels
+2026-10-09T05:02:22.812Z [INFO] [FocusFlowApp] Application startup completed
+2026-10-09T11:04:26.474Z [INFO] [StartupLogger] [NEW_PROCESS boot-mv0uymhb] App relaunched after kill
+2026-10-09T11:04:26.475Z [INFO] [FocusFlowApp] Application startup began
+2026-10-09T11:04:26.476Z [INFO] [Room] Preparing legacy database before Room initialization
+2026-10-09T11:04:26.500Z [INFO] [Room] Initializing Room database and repositories
+2026-10-09T11:04:26.526Z [INFO] [Migration] Checking legacy settings migration
+2026-10-09T11:04:26.527Z [INFO] [Notifications] Creating application notification channels
+2026-10-09T11:04:26.540Z [INFO] [FocusFlowApp] Application startup completed
+2026-10-09T11:04:26.577Z [INFO] [MainActivity] Main activity created
+2026-10-09T11:04:26.777Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:04:26.867Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:04:39.302Z [ERROR] [Task alarms] Task changes were saved, but task-end alarms need reconciliation.
+2026-10-09T11:05:18.350Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:05:18.373Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:05:59.753Z [INFO] [MainActivity] Main activity received a new intent
+2026-10-09T11:05:59.920Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:06:07.259Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:06:07.315Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:07:36.281Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:07:36.364Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:08:34.134Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:08:34.219Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:10:43.160Z [INFO] [StartupLogger] [NEW_PROCESS boot-mv0v6p3d] App relaunched after kill
+2026-10-09T11:10:43.160Z [INFO] [FocusFlowApp] Application startup began
+2026-10-09T11:10:43.161Z [INFO] [Room] Preparing legacy database before Room initialization
+2026-10-09T11:10:43.195Z [INFO] [Room] Initializing Room database and repositories
+2026-10-09T11:10:43.240Z [INFO] [Migration] Checking legacy settings migration
+2026-10-09T11:10:43.241Z [INFO] [Notifications] Creating application notification channels
+2026-10-09T11:10:43.264Z [INFO] [FocusFlowApp] Application startup completed
+2026-10-09T11:10:43.550Z [INFO] [MainActivity] Main activity created
+2026-10-09T11:10:43.788Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T11:10:43.885Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T14:46:52.176Z [INFO] [StartupLogger] [NEW_PROCESS boot-mv12wnzb] App relaunched after kill
+2026-10-09T14:46:52.177Z [INFO] [FocusFlowApp] Application startup began
+2026-10-09T14:46:52.179Z [INFO] [Room] Preparing legacy database before Room initialization
+2026-10-09T14:46:52.208Z [INFO] [Room] Initializing Room database and repositories
+2026-10-09T14:46:52.286Z [INFO] [Migration] Checking legacy settings migration
+2026-10-09T14:46:52.288Z [INFO] [Notifications] Creating application notification channels
+2026-10-09T14:46:52.321Z [INFO] [FocusFlowApp] Application startup completed
+2026-10-09T14:59:47.540Z [INFO] [MainActivity] Main activity created
+2026-10-09T14:59:47.733Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T14:59:47.826Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T14:59:53.730Z [ERROR] [Task alarms] Task changes were saved, but task-end alarms need reconciliation.
+2026-10-09T15:00:14.493Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.
+2026-10-09T15:00:14.530Z [ERROR] [Task alarms] Task-end alarms could not be fully reconciled.

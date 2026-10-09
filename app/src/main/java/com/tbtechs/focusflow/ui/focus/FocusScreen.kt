@@ -87,6 +87,7 @@ import com.tbtechs.focusflow.ui.FocusSessionViewModel
 import com.tbtechs.focusflow.ui.SettingsViewModel
 import com.tbtechs.focusflow.ui.TaskViewModel
 import com.tbtechs.focusflow.ui.common.FocusFlowTimerIcon
+import com.tbtechs.focusflow.ui.common.taskTimeDisplay
 import com.tbtechs.focusflow.ui.defense.BlockPresetUi
 import com.tbtechs.focusflow.ui.defense.StandaloneBlockModal
 import com.tbtechs.focusflow.ui.navigation.FocusTabIcons
@@ -883,8 +884,8 @@ private fun TaskFocusPanel(
 ) {
     val remaining = task.remainingMillis(now)
     val progress = task.progressNow(now)
-    val overdue = remaining < 0
-    val displayOverdue = overdue && task.status !in setOf("completed", "skipped")
+    val timeDisplay = taskTimeDisplay(parseMillis(task.endTime), now)
+    val displayOverdue = timeDisplay.hasEnded && task.status !in setOf("completed", "skipped")
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -952,7 +953,11 @@ private fun TaskFocusPanel(
                         color = if (displayOverdue) Color(0xFFF87171) else BrandPrimary,
                     )
                     Text(
-                        text = if (displayOverdue) "overdue" else "remaining",
+                        text = when {
+                            timeDisplay.justEnded -> "choose an action"
+                            displayOverdue -> "overdue"
+                            else -> "remaining"
+                        },
                         fontSize = 13.scaledSp,
                         fontWeight = FontWeight.Medium,
                         color = DarkTextMuted,
@@ -1061,20 +1066,28 @@ private fun TaskFocusPanel(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                                 shape = RoundedCornerShape(10.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 6.dp,
+                                    vertical = 8.dp,
+                                ),
                             ) {
-                                Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Done")
+                                Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Done", fontSize = 12.scaledSp, maxLines = 1, softWrap = false)
                             }
                             Button(
                                 onClick = onExtend,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                                 shape = RoundedCornerShape(10.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 6.dp,
+                                    vertical = 8.dp,
+                                ),
                             ) {
-                                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Extend")
+                                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("Extend", fontSize = 12.scaledSp, maxLines = 1, softWrap = false)
                             }
                             OutlinedButton(
                                 onClick = onSkip,
@@ -1082,8 +1095,12 @@ private fun TaskFocusPanel(
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFCA5A5)),
                                 border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFEF4444))),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 6.dp,
+                                    vertical = 8.dp,
+                                ),
                             ) {
-                                Text("Skip")
+                                Text("Skip", fontSize = 12.scaledSp, maxLines = 1, softWrap = false)
                             }
                         }
                     }
@@ -1099,7 +1116,7 @@ private fun TaskFocusPanel(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (!isFocusing) {
+                if (!isFocusing && !displayOverdue) {
                     Button(
                         onClick = onStart,
                         modifier = Modifier.fillMaxWidth(),
@@ -1110,7 +1127,7 @@ private fun TaskFocusPanel(
                         Spacer(Modifier.width(8.dp))
                         Text("Activate Focus", fontSize = 16.scaledSp, fontWeight = FontWeight.SemiBold)
                     }
-                } else {
+                } else if (isFocusing) {
                     OutlinedButton(
                         onClick = onStop,
                         modifier = Modifier.fillMaxWidth(),
@@ -1127,34 +1144,36 @@ private fun TaskFocusPanel(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(
-                        onClick = onComplete,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = DarkCard,
-                            contentColor = DarkTextPrimary,
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
-                    ) {
-                        Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Done")
-                    }
-                    OutlinedButton(
-                        onClick = onExtend,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = DarkCard,
-                            contentColor = DarkTextPrimary,
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
-                    ) {
-                        Icon(Icons.Outlined.Alarm, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Extend")
+                if (!displayOverdue) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = onComplete,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = DarkCard,
+                                contentColor = DarkTextPrimary,
+                            ),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
+                        ) {
+                            Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Done")
+                        }
+                        OutlinedButton(
+                            onClick = onExtend,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = DarkCard,
+                                contentColor = DarkTextPrimary,
+                            ),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
+                        ) {
+                            Icon(Icons.Outlined.Alarm, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Extend")
+                        }
                     }
                 }
 
@@ -1650,8 +1669,16 @@ private fun Task.progressNow(now: Long): Float {
 
 private fun Task.remainingLabel(now: Long): String {
     val remaining = remainingMillis(now)
-    return if (remaining < 0) "+${(-remaining / 60_000L)}m"
-    else remaining.focusDuration()
+    val timeDisplay = taskTimeDisplay(parseMillis(endTime), now)
+    return when {
+        timeDisplay.justEnded -> "Just ended"
+        timeDisplay.overdueMinutes != null -> "+${timeDisplay.overdueMinutes}m"
+        timeDisplay.secondsRemaining != null -> {
+            val seconds = timeDisplay.secondsRemaining
+            "%d:%02d".format(seconds / 60, seconds % 60)
+        }
+        else -> remaining.focusDuration()
+    }
 }
 
 private fun Task.startLabel(): String = formatTimestamp(startTime)

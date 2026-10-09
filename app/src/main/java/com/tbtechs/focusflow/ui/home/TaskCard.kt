@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tbtechs.focusflow.ui.theme.scaledSp
 import com.tbtechs.focusflow.data.model.Task
+import com.tbtechs.focusflow.ui.common.taskTimeDisplay
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkCard
 import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
@@ -82,11 +83,18 @@ fun TaskCard(
     val accent = if (isActive && !closed) activeBlue else taskAccent(task.color)
     var nowMs by remember(task.id) { mutableLongStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(task.id, closed) {
+    LaunchedEffect(task.id, task.startTime, task.endTime, closed) {
         if (closed) return@LaunchedEffect
         while (true) {
-            nowMs = System.currentTimeMillis()
-            delay(30_000)
+            val currentMs = System.currentTimeMillis()
+            nowMs = currentMs
+            val refreshIntervalMs = runCatching {
+                val startMs = Instant.parse(task.startTime).toEpochMilli()
+                val endMs = Instant.parse(task.endTime).toEpochMilli()
+                val remainingMs = endMs - currentMs
+                if (startMs <= currentMs && remainingMs in -59_999L..59_999L) 1_000L else 30_000L
+            }.getOrDefault(30_000L)
+            delay(refreshIntervalMs)
         }
     }
 
@@ -212,7 +220,11 @@ fun TaskCard(
                         }
                     }
                     Text(
-                        text = if (isActive) task.timeRemainingLabel(nowMs) else task.timeUntilStartLabel(nowMs),
+                        text = if (isActive || task.hasStartedAt(nowMs)) {
+                            task.timeRemainingLabel(nowMs)
+                        } else {
+                            task.timeUntilStartLabel(nowMs)
+                        },
                         fontSize = 11.scaledSp,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                         color = DarkTextSecondary,
@@ -316,8 +328,14 @@ internal fun Int.asDurationLabel(): String = when {
 }
 
 private fun Task.timeRemainingLabel(nowMs: Long): String = runCatching {
-    val minutes = Duration.ofMillis(Instant.parse(endTime).toEpochMilli() - nowMs).toMinutes()
-    if (minutes < 0) "Overdue by ${-minutes}m" else "${minutes}m remaining"
+    val endMs = Instant.parse(endTime).toEpochMilli()
+    val display = taskTimeDisplay(endMs, nowMs)
+    when {
+        display.justEnded -> "Just ended"
+        display.overdueMinutes != null -> "Overdue by ${display.overdueMinutes}m"
+        display.secondsRemaining != null -> "${display.secondsRemaining}s remaining"
+        else -> "${(endMs - nowMs) / 60_000L}m remaining"
+    }
 }.getOrDefault("")
 
 private fun Task.progressAt(nowMs: Long): Float = runCatching {
@@ -334,3 +352,7 @@ private fun Task.timeUntilStartLabel(nowMs: Long): String = runCatching {
         else -> "Starts in ${minutes / 60}h ${minutes % 60}m"
     }
 }.getOrDefault("")
+
+private fun Task.hasStartedAt(nowMs: Long): Boolean = runCatching {
+    Instant.parse(startTime).toEpochMilli() <= nowMs
+}.getOrDefault(false)
