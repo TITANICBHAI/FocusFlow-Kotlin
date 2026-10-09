@@ -223,7 +223,7 @@ fun TaskCard(
             if (!closed) {
                 Column(
                     modifier = Modifier.padding(end = 12.dp, top = 12.dp, bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (isActive) {
                         TaskCardAction(
