@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow.analytics
 
 import com.tbtechs.focusflow.data.model.Task
+import com.tbtechs.focusflow.data.repository.AppUsageInfo
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.GreyoutRepository
 import com.tbtechs.focusflow.data.repository.HourlyUsageSummary
@@ -8,11 +9,14 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.data.repository.UsageSummary
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -69,6 +73,59 @@ data class UsageDaySummary(
     val dayOfWeek: Int,
     val totalMinutes: Int,
 )
+
+internal data class TodayUsageMerge(
+    val summary: UsageSummary?,
+    val daily: List<UsageDaySummary>,
+    val fallbackApplied: Boolean,
+)
+
+/**
+ * Adds a legacy UsageEvents summary for today only when the primary daily
+ * pipeline produced no row for today. Historical rollups remain authoritative,
+ * and an existing live row is never added a second time.
+ */
+internal fun mergeTodayUsageFallback(
+    summary: UsageSummary?,
+    daily: List<UsageDaySummary>,
+    today: LocalDate,
+    fallback: UsageSummary?,
+): TodayUsageMerge {
+    val todayKey = today.toString()
+    if (
+        daily.any { it.date == todayKey } ||
+        fallback == null ||
+        fallback.totalMinutes <= 0
+    ) {
+        return TodayUsageMerge(summary, daily, fallbackApplied = false)
+    }
+
+    val appsByPackage = (summary?.apps.orEmpty() + fallback.apps)
+        .groupBy { it.packageName }
+        .map { (packageName, rows) ->
+            val latest = rows.maxByOrNull { it.lastUsedAt }!!
+            latest.copy(
+                appName = rows.firstOrNull { it.appName.isNotBlank() }?.appName ?: packageName,
+                foregroundMinutes = rows.sumOf { it.foregroundMinutes },
+                launchCount = rows.sumOf { it.launchCount },
+                lastUsedAt = rows.maxOf { it.lastUsedAt },
+            )
+        }
+        .sortedByDescending { it.foregroundMinutes }
+
+    return TodayUsageMerge(
+        summary = UsageSummary(
+            totalMinutes = (summary?.totalMinutes ?: 0) + fallback.totalMinutes,
+            apps = appsByPackage,
+        ),
+        daily = daily + UsageDaySummary(
+            date = todayKey,
+            dayOfWeek = today.dayOfWeek.value % 7,
+            totalMinutes = fallback.totalMinutes,
+        ),
+        fallbackApplied = true,
+    )
+}
 
 data class AnalyticsBuildOptions(
     val now: ZonedDateTime = ZonedDateTime.now(),
@@ -567,9 +624,43 @@ class AnalyticsProcessor(
         } else {
             SourceRead<DeviceUsageSnapshot?>(null, SOURCE_UNAVAILABLE)
         }
-        val usageSummary = deviceUsage.value?.summary
+        val today = options.now.toLocalDate()
+        val rangeContainsToday =
+            !today.isBefore(range.start.toLocalDate()) && !today.isAfter(range.end.toLocalDate())
+        val todayNeedsFallback = usagePermission &&
+            window != ANALYTICS_ALL_TIME &&
+            rangeContainsToday &&
+            deviceUsage.value?.daily.orEmpty().none { it.date == today.toString() }
+        val todayFallback = if (todayNeedsFallback) {
+            val todayStart = today.atStartOfDay(options.now.zone).toInstant().toEpochMilli()
+            readSource(
+                {
+                    withContext(Dispatchers.IO) {
+                        usageStatsRepository.getUsageSummary(
+                            startMs = todayStart,
+                            endMs = options.now.toInstant().toEpochMilli(),
+                        )
+                    }
+                },
+                null,
+            )
+        } else {
+            SourceRead<UsageSummary?>(null, SOURCE_UNAVAILABLE)
+        }
+        val todayUsageMerge = mergeTodayUsageFallback(
+            summary = deviceUsage.value?.summary,
+            daily = deviceUsage.value?.daily.orEmpty(),
+            today = today,
+            fallback = todayFallback.value,
+        )
+        val usageSummary = todayUsageMerge.summary
         val usageHourly = deviceUsage.value?.hourly
-        val usageDaily = deviceUsage.value?.daily.orEmpty()
+        val usageDaily = todayUsageMerge.daily
+        val usageSummaryState = when {
+            todayUsageMerge.fallbackApplied -> SOURCE_LOADED
+            todayNeedsFallback -> todayFallback.state
+            else -> deviceUsage.state
+        }
 
         return coroutineScope {
             // These independent reads intentionally remain concurrent. There are
@@ -635,7 +726,7 @@ class AnalyticsProcessor(
                         tasksByHour = taskHourResult.state,
                         weeklyRates = weeklyResult.state,
                         temptations = temptationResult.state,
-                        usageSummary = deviceUsage.state,
+                        usageSummary = usageSummaryState,
                         usageHourly = deviceUsage.state,
                     ),
                 ),
