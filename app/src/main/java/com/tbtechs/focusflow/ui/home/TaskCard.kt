@@ -278,7 +278,7 @@ private fun TaskCardAction(
                 imageVector = imageVector,
                 contentDescription = contentDescription,
                 tint = tint,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
     }
