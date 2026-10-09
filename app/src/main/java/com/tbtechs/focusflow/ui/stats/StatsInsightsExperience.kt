@@ -220,7 +220,7 @@ fun StatsInsightsExperience(
                                 onMarkSeen = statsViewModel::markFindingSeen,
                                 onIntentional = statsViewModel::acknowledgeFindingIntentional,
                                 onAware = statsViewModel::acknowledgeFindingAware,
-                            onAnswerQuestion = statsViewModel::answerClarifyingQuestion,
+                                onAnswerQuestion = statsViewModel::answerClarifyingQuestion,
                             )
                         }
                     }

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
 import com.tbtechs.focusflow.analytics.LifetimeStats
+import com.tbtechs.focusflow.analytics.ANALYTICS_ALL_TIME
 import kotlin.math.roundToInt
 
 @Composable
@@ -110,9 +111,16 @@ fun ProductivityHeatmap(snapshot: AnalyticsSnapshot) {
                 }
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("WEEKLY ACTIVITY", style = MaterialTheme.typography.labelLarge)
                     Text(
-                        "${snapshot.tasks.completed} of ${snapshot.tasks.total} tasks completed",
+                        if (snapshot.window == ANALYTICS_ALL_TIME) "LIFETIME WEEKDAY PATTERN" else "WEEKLY ACTIVITY",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Text(
+                        if (snapshot.window == ANALYTICS_ALL_TIME) {
+                            "Task completion across each weekday"
+                        } else {
+                            "${snapshot.tasks.completed} of ${snapshot.tasks.total} tasks completed"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
