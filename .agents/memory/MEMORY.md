@@ -22,3 +22,4 @@
 - [Coroutine test dispatchers](coroutine-test-dispatchers.md) — share the test scheduler with repository I/O in ViewModel tests to avoid stale assertions and late Main-dispatcher failures.
 - [Legacy 24:00 schedule ends](legacy-24-hour-schedules.md) — preserve midnight-exclusive ends in raw stored schedules without broadening UI or backup input.
 - [Patch application failures](patch-application-failures.md) — a failed multi-hunk patch may have applied earlier hunks; inspect the file before retrying.
+- [Force-stop alarm recovery](force-stop-alarm-recovery.md) — verify task-end alarms are re-armed after force-stop and app relaunch; JVM tests cannot validate Android alarm restoration.

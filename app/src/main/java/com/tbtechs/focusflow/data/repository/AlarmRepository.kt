@@ -37,6 +37,36 @@ class AlarmRepository(
     companion object {
         private const val TAG = "AlarmRepository"
 
+        private fun alarmIntent(
+            ctx: Context,
+            taskId: String,
+            taskName: String,
+            endMs: Long,
+        ): Intent =
+            Intent(ctx.applicationContext, TaskEndAlarmReceiver::class.java).apply {
+                action = TaskEndAlarmReceiver.ACTION_FIRE
+                data = TaskEndAlarmIdentity.dataUri(taskId)
+                `package` = ctx.packageName
+                putExtra(TaskEndAlarmReceiver.EXTRA_TASK_ID, taskId)
+                putExtra(TaskEndAlarmReceiver.EXTRA_TASK_NAME, taskName)
+                putExtra(TaskEndAlarmReceiver.EXTRA_END_MS, endMs)
+            }
+
+        private fun showIntent(
+            ctx: Context,
+            taskId: String,
+            taskName: String,
+            endMs: Long,
+        ): Intent =
+            Intent(ctx.applicationContext, TaskAlarmActivity::class.java).apply {
+                action = TaskAlarmActivity.ACTION_SHOW_ALARM
+                data = TaskEndAlarmIdentity.dataUri(taskId)
+                `package` = ctx.packageName
+                putExtra(TaskAlarmActivity.EXTRA_TASK_ID, taskId)
+                putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, taskName)
+                putExtra(TaskAlarmActivity.EXTRA_END_MS, endMs)
+            }
+
         /** Build the canonical alarm PendingIntent for a given taskId. */
         fun buildAlarmPendingIntent(
             ctx: Context,
@@ -45,21 +75,25 @@ class AlarmRepository(
             endMs: Long,
             flags: Int,
         ): PendingIntent {
-            val intent = Intent(ctx.applicationContext, TaskEndAlarmReceiver::class.java).apply {
-                action = TaskEndAlarmReceiver.ACTION_FIRE
-                data = TaskEndAlarmIdentity.dataUri(taskId)
-                `package` = ctx.packageName
-                putExtra(TaskEndAlarmReceiver.EXTRA_TASK_ID, taskId)
-                putExtra(TaskEndAlarmReceiver.EXTRA_TASK_NAME, taskName)
-                putExtra(TaskEndAlarmReceiver.EXTRA_END_MS, endMs)
-            }
             return PendingIntent.getBroadcast(
                 ctx.applicationContext,
                 TaskEndAlarmIdentity.REQUEST_CODE,
-                intent,
+                alarmIntent(ctx, taskId, taskName, endMs),
                 flags,
             )
         }
+
+        /** Find an existing task-end alarm without creating one. */
+        internal fun findAlarmPendingIntent(
+            ctx: Context,
+            taskId: String,
+        ): PendingIntent? =
+            PendingIntent.getBroadcast(
+                ctx.applicationContext,
+                TaskEndAlarmIdentity.REQUEST_CODE,
+                alarmIntent(ctx, taskId, "", 0L),
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+            )
 
         /** Build the task-specific show/full-screen Activity PendingIntent. */
         fun buildShowPendingIntent(
@@ -69,14 +103,37 @@ class AlarmRepository(
             endMs: Long,
             flags: Int,
         ): PendingIntent {
-            val intent = Intent(ctx.applicationContext, TaskAlarmActivity::class.java).apply {
-                action = TaskAlarmActivity.ACTION_SHOW_ALARM
-                data = TaskEndAlarmIdentity.dataUri(taskId)
-                `package` = ctx.packageName
-                putExtra(TaskAlarmActivity.EXTRA_TASK_ID, taskId)
-                putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, taskName)
-                putExtra(TaskAlarmActivity.EXTRA_END_MS, endMs)
+            val intent = showIntent(ctx, taskId, taskName, endMs)
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                val options = ActivityOptions.makeBasic().apply {
+                    setPendingIntentCreatorBackgroundActivityStartMode(
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
+                    )
+                }
+                PendingIntent.getActivity(
+                    ctx.applicationContext,
+                    TaskEndAlarmIdentity.REQUEST_CODE,
+                    intent,
+                    flags,
+                    options.toBundle(),
+                )
+            } else {
+                PendingIntent.getActivity(
+                    ctx.applicationContext,
+                    TaskEndAlarmIdentity.REQUEST_CODE,
+                    intent,
+                    flags,
+                )
             }
+        }
+
+        /** Find an existing task-end Activity PendingIntent without creating one. */
+        internal fun findShowPendingIntent(
+            ctx: Context,
+            taskId: String,
+        ): PendingIntent? {
+            val intent = showIntent(ctx, taskId, "", 0L)
+            val flags = PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 val options = ActivityOptions.makeBasic().apply {
                     setPendingIntentCreatorBackgroundActivityStartMode(
@@ -242,9 +299,8 @@ class AlarmRepository(
         return try {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
                 ?: return false
-            val flags = PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            val alarmPi = buildAlarmPendingIntent(context, id, "", 0L, flags)
-            val showPi = buildShowPendingIntent(context, id, "", 0L, flags)
+            val alarmPi = findAlarmPendingIntent(context, id)
+            val showPi = findShowPendingIntent(context, id)
             if (alarmPi != null) {
                 alarmManager.cancel(alarmPi)
                 alarmPi.cancel()
