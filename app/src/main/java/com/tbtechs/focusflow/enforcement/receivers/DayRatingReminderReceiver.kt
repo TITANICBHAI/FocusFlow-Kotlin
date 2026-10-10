@@ -8,8 +8,9 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.tbtechs.focusflow.di.AppModule
+import com.tbtechs.focusflow.MainActivity
 import com.tbtechs.focusflow.R
+import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.enforcement.DayRatingNotificationScheduler
 import com.tbtechs.focusflow.enforcement.LauncherActivity
 import com.tbtechs.focusflow.notifications.NotificationChannels
@@ -48,9 +49,11 @@ class DayRatingReminderReceiver : BroadcastReceiver() {
                 }.getOrDefault(false)
 
                 if (!alreadyRated && NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-                    val tapIntent = Intent(context, LauncherActivity::class.java).apply {
+                    val tapIntent = Intent(context, MainActivity::class.java).apply {
                         action = LauncherActivity.ACTION_OPEN_DAY_RATING
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
                     }
                     val pendingIntent = PendingIntent.getActivity(
                         context,
