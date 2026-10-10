@@ -8,6 +8,18 @@ import java.time.format.DateTimeFormatter
 object UsageCalendarAggregator {
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
+    /**
+     * Keeps every per-app row when callers need to select data by calendar date.
+     * A plain associateBy(date) would silently discard all but one app per day.
+     */
+    fun aggregateByDate(
+        sessions: List<ForegroundSession>,
+        rangeStartMs: Long,
+        rangeEndMs: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Map<String, List<AppUsageDay>> =
+        aggregate(sessions, rangeStartMs, rangeEndMs, zoneId).groupBy { it.date }
+
     fun aggregate(
         sessions: List<ForegroundSession>,
         rangeStartMs: Long,

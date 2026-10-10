@@ -66,12 +66,12 @@ class DeviceUsageSource(
                 nowMs = effectiveEndMs,
             )
         }.orEmpty()
-        val pipelineDays = UsageCalendarAggregator.aggregate(
+        val pipelineDays = UsageCalendarAggregator.aggregateByDate(
             sessions = sessions,
             rangeStartMs = rangeStartMs,
             rangeEndMs = effectiveEndMs,
             zoneId = zone,
-        ).associateBy { it.date }
+        )
 
         val pastEnd = minOf(lastDate, today.minusDays(1))
         if (availableRead != null && firstDate <= pastEnd) {
@@ -146,7 +146,7 @@ class DeviceUsageSource(
                 UsageHistorySource.PARTIAL_ROLLUP -> selectedRows += rollup?.appDays.orEmpty()
                 UsageHistorySource.LIVE_PIPELINE,
                 UsageHistorySource.ON_DEMAND_PIPELINE -> selectedRows +=
-                    listOfNotNull(pipelineDays[dateText]?.toHistoryAppDay())
+                    pipelineDays[dateText].orEmpty().map { it.toHistoryAppDay() }
                 else -> Unit
             }
             when (coverageStatus) {

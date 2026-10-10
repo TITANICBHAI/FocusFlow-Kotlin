@@ -47,3 +47,13 @@ though later full dates had valid coverage.
 
 **How to apply:** Evaluate COMPLETE/PARTIAL coverage independently for each
 local day when merging event-backed detector history with persisted rollups.
+
+Device-usage aggregation must preserve every per-app row through date selection;
+never reduce a list of app-day rows to one row per date.
+
+**Why:** Several apps can have usage on the same date. Keeping only one row can
+discard the rest, and the row retained may be below the UI's display threshold,
+making real device use appear to be zero.
+
+**How to apply:** Group rows by date into lists, carry all rows into the selected
+history source, and cover multi-app dates with a regression test.
