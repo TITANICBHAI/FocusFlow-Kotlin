@@ -109,6 +109,8 @@ fun FocusFlowNavGraph(
     externalBackupImportNonce: Int = 0,
     onOnboardingTourFinished: () -> Unit = {},
     focusDayRating: Boolean = false,
+    dayRatingRequestNonce: Int = 0,
+    onDayRatingRequestHandled: (Int) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -263,6 +265,8 @@ fun FocusFlowNavGraph(
                                     }
                                 },
                                 focusDayRating = focusDayRating,
+                                dayRatingRequestNonce = dayRatingRequestNonce,
+                                onDayRatingRequestHandled = onDayRatingRequestHandled,
                             )
                         }
                     }

@@ -63,6 +63,8 @@ import com.tbtechs.focusflow.ui.support.DiagnosticsModal
 import com.tbtechs.focusflow.ui.splash.FocusFlowSplashOverlay
 import kotlinx.coroutines.launch
 
+private const val STATE_DAY_RATING_REQUEST_NONCE = "focusflow.state.DAY_RATING_REQUEST_NONCE"
+
 /**
  * Normal app activity host. LauncherActivity remains a separate CATEGORY_HOME
  * activity and is intentionally not part of this NavHost.
@@ -73,6 +75,7 @@ class MainActivity : ComponentActivity() {
     }
     private var requestedRoute by mutableStateOf(Routes.HOME)
     private var focusDayRating by mutableStateOf(false)
+    private var dayRatingRequestNonce by mutableStateOf(0)
     private var notificationEventNonce by mutableStateOf(0)
     private var externalBackupImportNonce by mutableStateOf(0)
     private var resumeNonce by mutableStateOf(0)
@@ -82,12 +85,20 @@ class MainActivity : ComponentActivity() {
         StartupLogger.info("MainActivity", "Main activity created")
         requestedRoute = routeFromIntent(intent)
         focusDayRating = intent?.action == LauncherActivity.ACTION_OPEN_DAY_RATING
+        if (focusDayRating) {
+            dayRatingRequestNonce = savedInstanceState
+                ?.getInt(STATE_DAY_RATING_REQUEST_NONCE)
+                ?.takeIf { it > 0 }
+                ?: 1
+        }
         setTheme(R.style.Theme_FocusFlow)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             FocusFlowRoot(
                 requestedRoute = requestedRoute,
                 focusDayRating = focusDayRating,
+                dayRatingRequestNonce = dayRatingRequestNonce,
+                onDayRatingRequestHandled = ::onDayRatingRequestHandled,
                 notificationEventNonce = notificationEventNonce,
                 externalBackupImportNonce = externalBackupImportNonce,
                 resumeNonce = resumeNonce,
@@ -102,7 +113,24 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         requestedRoute = routeFromIntent(intent)
         focusDayRating = intent.action == LauncherActivity.ACTION_OPEN_DAY_RATING
+        if (focusDayRating) {
+            dayRatingRequestNonce++
+        }
         notificationEventNonce++
+    }
+
+    private fun onDayRatingRequestHandled(requestNonce: Int) {
+        if (requestNonce != dayRatingRequestNonce) return
+        focusDayRating = false
+        val currentIntent = intent
+        if (currentIntent.action == LauncherActivity.ACTION_OPEN_DAY_RATING) {
+            setIntent(Intent(currentIntent).apply { action = null })
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt(STATE_DAY_RATING_REQUEST_NONCE, dayRatingRequestNonce)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onStart() {
@@ -152,6 +180,8 @@ class MainActivity : ComponentActivity() {
 private fun FocusFlowRoot(
     requestedRoute: String,
     focusDayRating: Boolean,
+    dayRatingRequestNonce: Int,
+    onDayRatingRequestHandled: (Int) -> Unit,
     notificationEventNonce: Int,
     externalBackupImportNonce: Int,
     resumeNonce: Int,
@@ -434,6 +464,8 @@ private fun FocusFlowRoot(
                         // immediately after this callback.
                     },
                     focusDayRating = focusDayRating,
+                    dayRatingRequestNonce = dayRatingRequestNonce,
+                    onDayRatingRequestHandled = onDayRatingRequestHandled,
                 )
             }
             FocusFlowSplashOverlay(

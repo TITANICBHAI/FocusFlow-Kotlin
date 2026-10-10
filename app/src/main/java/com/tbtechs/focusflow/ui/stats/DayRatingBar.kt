@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,7 +82,8 @@ fun DayRatingBar(
     suggestedChips: List<SuggestedChip>,
     onSelectDate: (String) -> Unit,
     onLoadChips: (String) -> Unit,
-    requestFocus: Boolean = false,
+    requestFocusNonce: Int = 0,
+    onFocusRequestHandled: (Int) -> Unit = {},
     onSubmit: suspend (
         date: String,
         rating: Int,
@@ -173,8 +175,27 @@ fun DayRatingBar(
     LaunchedEffect(selectedDate) {
         onLoadChips(selectedDate)
     }
-    LaunchedEffect(requestFocus) {
-        if (requestFocus) focusRequester.requestFocus()
+    LaunchedEffect(requestFocusNonce, selectedDate, currentRating, isEditing) {
+        if (requestFocusNonce <= 0) return@LaunchedEffect
+        if (
+            shouldRequestDayRatingInputFocus(
+                requestNonce = requestFocusNonce,
+                isEditing = isEditing,
+                hasSavedRating = currentRating != null,
+            )
+        ) {
+            withFrameNanos { }
+            try {
+                focusRequester.requestFocus()
+            } catch (error: IllegalStateException) {
+                android.util.Log.w(
+                    "DayRatingBar",
+                    "Rating field was not available for focus",
+                    error,
+                )
+            }
+        }
+        onFocusRequestHandled(requestFocusNonce)
     }
 
     StatsCard(

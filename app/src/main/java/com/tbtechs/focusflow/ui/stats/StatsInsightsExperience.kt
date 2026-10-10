@@ -50,7 +50,8 @@ fun StatsInsightsExperience(
     onOpenUsageAccessSettings: () -> Unit = {},
     onOpenActiveBlocks: () -> Unit = {},
     onOpenQuickBlock: (String?) -> Unit = {},
-    focusDayRating: Boolean = false,
+    dayRatingFocusRequestNonce: Int = 0,
+    onDayRatingFocusHandled: (Int) -> Unit = {},
     screenTitle: String = "Stats",
     onOpenArchived: (() -> Unit)? = null,
 ) {
@@ -134,7 +135,8 @@ fun StatsInsightsExperience(
                 suggestedChips = suggestedChips,
                 onSelectDate = statsViewModel::selectRatingDate,
                 onLoadChips = statsViewModel::loadChipsForDate,
-                requestFocus = focusDayRating,
+                requestFocusNonce = dayRatingFocusRequestNonce,
+                onFocusRequestHandled = onDayRatingFocusHandled,
                 onSubmit = statsViewModel::submitRating,
             )
         }

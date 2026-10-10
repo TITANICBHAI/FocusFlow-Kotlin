@@ -391,6 +391,7 @@ class LauncherActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (intent?.action == ACTION_OPEN_DAY_RATING) {
             openDayRatingInMainActivity()
             finish()
@@ -399,7 +400,6 @@ class LauncherActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         window.statusBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         rootFrame = FrameLayout(this)
         setContentView(rootFrame)
         buildHomeLayout()
@@ -430,12 +430,16 @@ class LauncherActivity : Activity() {
     }
 
     override fun onPause() {
-        prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        if (::prefs.isInitialized) {
+            prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        }
         super.onPause()
     }
 
     override fun onDestroy() {
-        prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        if (::prefs.isInitialized) {
+            prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        }
         clockRunnable?.let { handler.removeCallbacks(it) }
         super.onDestroy()
     }
