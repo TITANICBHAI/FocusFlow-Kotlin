@@ -200,9 +200,9 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A3 — Stats zero reading
 
-**Status:** `NOT STARTED`  
+**Status:** `IN PROGRESS`  
 **Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
-**Started:** —  
+**Started:** 2026-10-11  
 **Completed:** —  
 **Owner-run:** No
 
@@ -219,6 +219,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 **Done when:** required source tests pass; owner check remains open until reported.  
 **Notes:**  
+- **A3 start (2026-10-11):** User authorized A3 after A5; its dependency is satisfied. A2 remains a separate in-progress batch with the C5 rollup-retention integration deferred. Initial worktree: `main` ahead of `origin/main` by one commit; only the supplied attachments were untracked. Preserve those attachments and keep S1 owner-run for E1.
 **Evidence:**  
 **Failures and blockers:**  
 **Decisions and deferred work:**  

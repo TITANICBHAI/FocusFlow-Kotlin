@@ -28,6 +28,8 @@ import com.tbtechs.focusflow.analytics.UsageRollupWriter
 import com.tbtechs.focusflow.analytics.UsageHistoryRepository
 import com.tbtechs.focusflow.analytics.RoomUsageHistoryStore
 import com.tbtechs.focusflow.analytics.DeviceUsageSource
+import com.tbtechs.focusflow.analytics.DeviceUsageAppMetadata
+import com.tbtechs.focusflow.analytics.UsageAppMetadata
 import com.tbtechs.focusflow.analytics.detection.FindingDetectionRunner
 import com.tbtechs.focusflow.domain.PinManager
 import com.tbtechs.focusflow.domain.SchedulerEngine
@@ -298,10 +300,31 @@ object AppModule {
             greyoutRepository = greyoutRepository,
             usageStatsRepository = usageStatsRepository,
             deviceUsageSource = DeviceUsageSource(
-                context = app,
+                appPackageName = app.packageName,
                 eventSource = usageStatsRepository,
                 usageHistoryRepository = usageHistoryRepository,
-                rollupWriter = usageRollupWriter,
+                persistRollupDays = { startDate, endDate, sessions, earliestEventAtMs, nowMs ->
+                    usageRollupWriter.writeDaysFromEvents(
+                        startDate = startDate,
+                        endDate = endDate,
+                        sessions = sessions,
+                        earliestEventAtMs = earliestEventAtMs,
+                        nowMs = nowMs,
+                    )
+                },
+                resolveAppMetadata = { packageName ->
+                    DeviceUsageAppMetadata(
+                        appName = UsageAppMetadata.resolveAppName(app, packageName),
+                        category = UsageAppMetadata.resolveCategory(app, packageName),
+                    )
+                },
+                isLaunchable = { packageName ->
+                    try {
+                        app.packageManager.getLaunchIntentForPackage(packageName) != null
+                    } catch (_: Exception) {
+                        false
+                    }
+                },
             ),
         )
         insightEngine = InsightEngine(database.weeklyInsightDao())

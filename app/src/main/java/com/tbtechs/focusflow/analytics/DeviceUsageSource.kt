@@ -1,6 +1,5 @@
 package com.tbtechs.focusflow.analytics
 
-import android.content.Context
 import android.util.Log
 import com.tbtechs.focusflow.data.local.entity.UsageRollupDayEntity
 import com.tbtechs.focusflow.data.repository.AppUsageInfo
@@ -19,19 +18,33 @@ data class DeviceUsageSnapshot(
     val eventsAvailable: Boolean,
 )
 
+data class DeviceUsageAppMetadata(
+    val appName: String,
+    val category: String?,
+)
+
 /**
  * Builds all Stats device-time metrics from the same UsageEvents pass.
  * Persisted rollups remain the source for background history consumers.
  */
 class DeviceUsageSource(
-    private val context: Context,
+    appPackageName: String,
     private val eventSource: UsageEventsSource,
     private val usageHistoryRepository: UsageHistoryRepository,
-    private val rollupWriter: UsageRollupWriter,
+    private val persistRollupDays: suspend (
+        startDate: String,
+        endDate: String,
+        sessions: List<ForegroundSession>,
+        earliestEventAtMs: Long?,
+        nowMs: Long,
+    ) -> Unit,
+    private val resolveAppMetadata: (String) -> DeviceUsageAppMetadata,
+    private val isLaunchable: (String) -> Boolean,
     private val zoneId: () -> ZoneId = ZoneId::systemDefault,
+    private val debugLog: (String) -> Unit = { Log.d(TAG, it) },
 ) {
     private val spanTracker = ForegroundSpanTracker(
-        excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + context.packageName,
+        excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + appPackageName,
     )
 
     suspend fun read(
@@ -41,6 +54,10 @@ class DeviceUsageSource(
     ): DeviceUsageSnapshot? {
         val effectiveEndMs = minOf(rangeEndMs, nowMs)
         if (rangeStartMs >= effectiveEndMs) {
+            debugLog(
+                "read eventCount=0 sessionCount=0 rowsPerDateBeforeGrouping={} " +
+                    "dateSourcesAndStatuses=[] selectedRows=0 displayedRows=0",
+            )
             return DeviceUsageSnapshot(
                 summary = UsageSummary(0, emptyList()),
                 hourly = HourlyUsageSummary(List(24) { 0L }, 0L),
@@ -72,16 +89,19 @@ class DeviceUsageSource(
             rangeEndMs = effectiveEndMs,
             zoneId = zone,
         )
+        val appMetadataByPackage = mutableMapOf<String, DeviceUsageAppMetadata>()
+        fun appMetadata(packageName: String): DeviceUsageAppMetadata =
+            appMetadataByPackage.getOrPut(packageName) { resolveAppMetadata(packageName) }
 
         val pastEnd = minOf(lastDate, today.minusDays(1))
         if (availableRead != null && firstDate <= pastEnd) {
             try {
-                rollupWriter.writeDaysFromEvents(
-                    startDate = firstDate.toString(),
-                    endDate = pastEnd.toString(),
-                    sessions = sessions,
-                    earliestEventAtMs = availableRead.earliestEventAtMs,
-                    nowMs = effectiveEndMs,
+                persistRollupDays(
+                    firstDate.toString(),
+                    pastEnd.toString(),
+                    sessions,
+                    availableRead.earliestEventAtMs,
+                    effectiveEndMs,
                 )
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -107,6 +127,8 @@ class DeviceUsageSource(
         var partialDays = 0
         var missingDays = 0
         var hasRollupSource = false
+        val rowsPerDateBeforeGrouping = linkedMapOf<String, Int>()
+        val dateSourcesAndStatuses = mutableListOf<String>()
         var date = firstDate
         while (!date.isAfter(lastDate)) {
             val dateText = date.toString()
@@ -143,12 +165,20 @@ class DeviceUsageSource(
 
             when (source) {
                 UsageHistorySource.ROLLUP,
-                UsageHistorySource.PARTIAL_ROLLUP -> selectedRows += rollup?.appDays.orEmpty()
+                UsageHistorySource.PARTIAL_ROLLUP -> {
+                    val rows = rollup?.appDays.orEmpty()
+                    rowsPerDateBeforeGrouping[dateText] = rows.size
+                    selectedRows += rows
+                }
                 UsageHistorySource.LIVE_PIPELINE,
-                UsageHistorySource.ON_DEMAND_PIPELINE -> selectedRows +=
-                    pipelineDays[dateText].orEmpty().map { it.toHistoryAppDay() }
-                else -> Unit
+                UsageHistorySource.ON_DEMAND_PIPELINE -> {
+                    val rows = pipelineDays[dateText].orEmpty()
+                    rowsPerDateBeforeGrouping[dateText] = rows.size
+                    selectedRows += rows.map { it.toHistoryAppDay(appMetadata(it.packageName)) }
+                }
+                else -> rowsPerDateBeforeGrouping[dateText] = 0
             }
+            dateSourcesAndStatuses += "$dateText=$source/${coverageStatus ?: "UNKNOWN"}"
             when (coverageStatus) {
                 UsageRollupDayEntity.COMPLETE -> completeDays++
                 UsageRollupDayEntity.PARTIAL -> partialDays++
@@ -160,6 +190,14 @@ class DeviceUsageSource(
         if (availableRead == null && !hasRollupSource) {
             val reason = (eventRead as? UsageEventRead.Unknown)?.reason?.name
                 ?: "No UsageEvents were returned and no persisted rollups cover this range"
+            logRead(
+                eventCount = availableRead?.events?.size ?: 0,
+                sessionCount = sessions.size,
+                rowsPerDateBeforeGrouping = rowsPerDateBeforeGrouping,
+                dateSourcesAndStatuses = dateSourcesAndStatuses,
+                selectedRowCount = selectedRows.size,
+                displayedRowCount = 0,
+            )
             throw DeviceUsageUnavailableException(reason)
         }
 
@@ -172,13 +210,21 @@ class DeviceUsageSource(
                 }
                 packageName to rows
             }
+        logRead(
+            eventCount = availableRead?.events?.size ?: 0,
+            sessionCount = sessions.size,
+            rowsPerDateBeforeGrouping = rowsPerDateBeforeGrouping,
+            dateSourcesAndStatuses = dateSourcesAndStatuses,
+            selectedRowCount = selectedRows.size,
+            displayedRowCount = displayRows.size,
+        )
 
         val apps = displayRows.map { (packageName, rows) ->
             val foregroundMs = rows.sumOf { it.foregroundMs }
             AppUsageInfo(
                 packageName = packageName,
                 appName = rows.firstOrNull()?.appName?.takeIf { it.isNotBlank() }
-                    ?: UsageAppMetadata.resolveAppName(context, packageName),
+                    ?: appMetadata(packageName).appName,
                 foregroundMinutes = (foregroundMs / MILLIS_PER_MINUTE).toInt(),
                 launchCount = rows.sumOf { it.launchCount },
                 lastUsedAt = rows.maxOfOrNull { it.lastUsedAtMs } ?: 0L,
@@ -234,11 +280,13 @@ class DeviceUsageSource(
         )
     }
 
-    private fun AppUsageDay.toHistoryAppDay(): UsageHistoryAppDay = UsageHistoryAppDay(
+    private fun AppUsageDay.toHistoryAppDay(
+        metadata: DeviceUsageAppMetadata,
+    ): UsageHistoryAppDay = UsageHistoryAppDay(
         date = date,
         packageName = packageName,
-        appName = UsageAppMetadata.resolveAppName(context, packageName),
-        category = UsageAppMetadata.resolveCategory(context, packageName),
+        appName = metadata.appName,
+        category = metadata.category,
         foregroundMs = foregroundMs,
         hourlyMs = hourlyMs.joinToString(","),
         launchCount = launchCount,
@@ -250,12 +298,21 @@ class DeviceUsageSource(
         .take(24)
         .let { values -> List(24) { values.getOrElse(it) { 0L } } }
 
-    private fun isLaunchable(packageName: String): Boolean =
-        try {
-            context.packageManager.getLaunchIntentForPackage(packageName) != null
-        } catch (_: Exception) {
-            false
-        }
+    private fun logRead(
+        eventCount: Int,
+        sessionCount: Int,
+        rowsPerDateBeforeGrouping: Map<String, Int>,
+        dateSourcesAndStatuses: List<String>,
+        selectedRowCount: Int,
+        displayedRowCount: Int,
+    ) {
+        debugLog(
+            "read eventCount=$eventCount sessionCount=$sessionCount " +
+                "rowsPerDateBeforeGrouping=$rowsPerDateBeforeGrouping " +
+                "dateSourcesAndStatuses=$dateSourcesAndStatuses " +
+                "selectedRows=$selectedRowCount displayedRows=$displayedRowCount",
+        )
+    }
 
     companion object {
         private const val TAG = "DeviceUsageSource"
