@@ -18,6 +18,7 @@ import android.view.accessibility.AccessibilityManager
 import androidx.core.app.NotificationCompat
 import com.tbtechs.focusflow.data.repository.AlarmRuntimeDiagnostics
 import com.tbtechs.focusflow.data.repository.AlarmRepository
+import com.tbtechs.focusflow.data.repository.SettingsRepository
 import com.tbtechs.focusflow.data.repository.TaskAlarmRegistry
 import com.tbtechs.focusflow.data.repository.TaskEndAlarmIdentity
 import com.tbtechs.focusflow.enforcement.health.AccessibilityStateChangeTracker
@@ -106,6 +107,7 @@ class ForegroundTaskService : Service() {
          * the full-screen intent is honoured even on locked / asleep devices.
          */
         const val TASK_ALARM_CHANNEL   = "task_alarm"
+        const val TASK_END_QUIET_CHANNEL = "task_alarm_quiet"
         const val TASK_ALARM_NOTIF_ID  = TaskEndAlarmIdentity.NOTIFICATION_ID
 
         /** The single authoritative definition of the task-end notification channel. */
@@ -139,6 +141,26 @@ class ForegroundTaskService : Service() {
             manager.createNotificationChannel(channel)
         }
 
+        private fun ensureQuietTaskEndChannel(context: Context) {
+            val app = context.applicationContext
+            val manager = app.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                ?: return
+            if (manager.getNotificationChannel(TASK_END_QUIET_CHANNEL) != null) return
+            val channel = NotificationChannel(
+                TASK_END_QUIET_CHANNEL,
+                "Task End Notifications",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "A quiet notification when a scheduled task ends."
+                setSound(null, null)
+                enableVibration(false)
+                setBypassDnd(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
+            }
+            manager.createNotificationChannel(channel)
+        }
+
         /**
          * Posts the heads-up + full-screen-intent task-end alarm notification.
          *
@@ -164,8 +186,13 @@ class ForegroundTaskService : Service() {
             try {
                 val app = context.applicationContext
                 val nm = app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val ringAlarm = SettingsRepository.taskEndAlarmRings(app)
 
-                ensureTaskAlarmChannel(app)
+                if (ringAlarm) {
+                    ensureTaskAlarmChannel(app)
+                } else {
+                    ensureQuietTaskEndChannel(app)
+                }
 
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 val fullScreenPi = AlarmRepository.buildShowPendingIntent(
@@ -174,31 +201,33 @@ class ForegroundTaskService : Service() {
                     endedTaskName,
                     endedAtMs,
                     flags,
+                    ringAlarm = ringAlarm,
                 )
-                val activityIntent = Intent(app, TaskAlarmActivity::class.java).apply {
-                    this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                            Intent.FLAG_ACTIVITY_NO_HISTORY
-                    action = TaskAlarmActivity.ACTION_SHOW_ALARM
-                    data = TaskEndAlarmIdentity.dataUri(endedTaskId)
-                    putExtra(TaskAlarmActivity.EXTRA_TASK_ID,   endedTaskId)
-                    putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, endedTaskName)
-                    putExtra(TaskAlarmActivity.EXTRA_END_MS,    endedAtMs)
-                }
 
                 val displayName = if (endedTaskName.isNotEmpty()) endedTaskName else "Your task"
 
-                val notif = NotificationCompat.Builder(app, TASK_ALARM_CHANNEL)
+                val notification = NotificationCompat.Builder(
+                    app,
+                    if (ringAlarm) TASK_ALARM_CHANNEL else TASK_END_QUIET_CHANNEL,
+                )
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle("\u23F0 Time's up")
                     .setContentText("$displayName has ended — tap to choose")
                     .setContentIntent(fullScreenPi)
-                    .setFullScreenIntent(fullScreenPi, true)
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
-                    .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
-                    .setOngoing(true)
+                    .apply {
+                        if (ringAlarm) {
+                            setFullScreenIntent(fullScreenPi, true)
+                            setPriority(NotificationCompat.PRIORITY_MAX)
+                            setCategory(NotificationCompat.CATEGORY_ALARM)
+                            setOngoing(true)
+                        } else {
+                            setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                            setCategory(NotificationCompat.CATEGORY_REMINDER)
+                            setOngoing(false)
+                        }
+                    }
                     .build()
                 val posted = TaskAlarmRegistry(app).postOnce(
                     endedTaskId,
@@ -225,8 +254,19 @@ class ForegroundTaskService : Service() {
 
                 // Background activity launches are restricted. Keep this
                 // non-authoritative fallback only on devices with overlay access.
-                val overlayAuthorized = Settings.canDrawOverlays(app)
+                val overlayAuthorized = ringAlarm && Settings.canDrawOverlays(app)
                 if (overlayAuthorized) {
+                    val activityIntent = Intent(app, TaskAlarmActivity::class.java).apply {
+                        this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_NO_HISTORY
+                        action = TaskAlarmActivity.ACTION_SHOW_ALARM
+                        data = TaskEndAlarmIdentity.dataUri(endedTaskId)
+                        putExtra(TaskAlarmActivity.EXTRA_TASK_ID, endedTaskId)
+                        putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, endedTaskName)
+                        putExtra(TaskAlarmActivity.EXTRA_END_MS, endedAtMs)
+                        putExtra(TaskAlarmActivity.EXTRA_RING_ALARM, true)
+                    }
                     try {
                         app.startActivity(activityIntent)
                         AlarmRuntimeDiagnostics.record(

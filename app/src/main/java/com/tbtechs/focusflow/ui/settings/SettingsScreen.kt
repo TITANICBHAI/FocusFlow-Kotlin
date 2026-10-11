@@ -49,6 +49,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -363,6 +366,107 @@ fun SettingsScreen(
                             },
                         )
                     }
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    Text(
+                        text = "TASK REMINDERS",
+                        fontSize = 11.scaledSp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkTextMuted,
+                        letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp),
+                    )
+                    SettingsToggleRow(
+                        title = "Before task starts",
+                        description = "10, 5, and 1 minute before",
+                        enabled = settings.taskRemindersEnabled,
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.taskPreStartRemindersEnabled,
+                            enabled = settings.taskRemindersEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(
+                                    settings.copy(taskPreStartRemindersEnabled = enabled),
+                                )
+                            },
+                        )
+                    }
+                    SettingsToggleRow(
+                        title = "At task start",
+                        enabled = settings.taskRemindersEnabled,
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.taskAtStartReminderEnabled,
+                            enabled = settings.taskRemindersEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(
+                                    settings.copy(taskAtStartReminderEnabled = enabled),
+                                )
+                            },
+                        )
+                    }
+                    SettingsToggleRow(
+                        title = "Mid-task check-ins",
+                        description = "15- and 30-minute reminders",
+                        enabled = settings.taskRemindersEnabled,
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.taskMidSessionRemindersEnabled,
+                            enabled = settings.taskRemindersEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(
+                                    settings.copy(taskMidSessionRemindersEnabled = enabled),
+                                )
+                            },
+                        )
+                    }
+                    SettingsToggleRow(
+                        title = "Wrapping up",
+                        description = "One minute before a task ends",
+                        enabled = settings.taskRemindersEnabled,
+                    ) {
+                        FocusFlowSwitch(
+                            checked = settings.taskWrapUpReminderEnabled,
+                            enabled = settings.taskRemindersEnabled,
+                            onCheckedChange = { enabled ->
+                                settingsViewModel.updateSettings(
+                                    settings.copy(taskWrapUpReminderEnabled = enabled),
+                                )
+                            },
+                        )
+                    }
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Text(
+                            text = "Task end alert",
+                            fontSize = 15.scaledSp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkTextPrimary,
+                        )
+                        Text(
+                            text = "Choose how FocusFlow alerts you when a task ends.",
+                            fontSize = 13.scaledSp,
+                            color = DarkTextSecondary,
+                        )
+                    }
+                    TaskEndAlertOption(
+                        title = "Ringing alarm",
+                        description = "Play the alarm and show the full-screen controls",
+                        selected = settings.taskEndAlarmRings,
+                        onClick = {
+                            settingsViewModel.updateSettings(settings.copy(taskEndAlarmRings = true))
+                        },
+                    )
+                    TaskEndAlertOption(
+                        title = "Notification only",
+                        description = "Show a quiet alert; tap it to open task actions",
+                        selected = !settings.taskEndAlarmRings,
+                        onClick = {
+                            settingsViewModel.updateSettings(settings.copy(taskEndAlarmRings = false))
+                        },
+                    )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsToggleRow(
                         title = "Daily reflection prompts",
@@ -1017,11 +1121,13 @@ private fun SettingsActionRow(
 private fun SettingsToggleRow(
     title: String,
     description: String? = null,
+    enabled: Boolean = true,
     control: @Composable () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.48f)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1044,6 +1150,45 @@ private fun SettingsToggleRow(
         }
         Spacer(Modifier.width(10.dp))
         control()
+    }
+}
+
+@Composable
+private fun TaskEndAlertOption(
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                fontSize = 14.scaledSp,
+                fontWeight = FontWeight.Medium,
+                color = DarkTextPrimary,
+            )
+            Text(
+                description,
+                fontSize = 12.scaledSp,
+                color = DarkTextSecondary,
+            )
+        }
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = BrandPrimary,
+                unselectedColor = DarkTextMuted,
+            ),
+        )
     }
 }
 

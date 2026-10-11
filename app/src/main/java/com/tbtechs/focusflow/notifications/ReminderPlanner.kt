@@ -67,6 +67,10 @@ object ReminderPlanner {
         nowMs: Long,
         zoneId: ZoneId = ZoneId.systemDefault(),
         remindersEnabled: Boolean = true,
+        preStartRemindersEnabled: Boolean = true,
+        atStartReminderEnabled: Boolean = true,
+        midSessionRemindersEnabled: Boolean = true,
+        wrapUpReminderEnabled: Boolean = true,
         includeDueSlots: Boolean = false,
     ): List<ReminderSlot> {
         return tasks.asSequence()
@@ -80,7 +84,17 @@ object ReminderPlanner {
                 task to (startMs to endMs)
             }
             .flatMap { (task, times) ->
-                slotsFor(task, times.first, times.second, zoneId, remindersEnabled).asSequence()
+                slotsFor(
+                    task = task,
+                    startMs = times.first,
+                    endMs = times.second,
+                    zoneId = zoneId,
+                    remindersEnabled = remindersEnabled,
+                    preStartRemindersEnabled = preStartRemindersEnabled,
+                    atStartReminderEnabled = atStartReminderEnabled,
+                    midSessionRemindersEnabled = midSessionRemindersEnabled,
+                    wrapUpReminderEnabled = wrapUpReminderEnabled,
+                ).asSequence()
             }
             .filter { slot ->
                 includeDueSlots || slot.triggerMs >= nowMs + MIN_SCHEDULE_LEAD_MS
@@ -96,6 +110,10 @@ object ReminderPlanner {
         endMs: Long,
         zoneId: ZoneId,
         remindersEnabled: Boolean,
+        preStartRemindersEnabled: Boolean,
+        atStartReminderEnabled: Boolean,
+        midSessionRemindersEnabled: Boolean,
+        wrapUpReminderEnabled: Boolean,
     ): List<ReminderSlot> {
         val endLabel = Instant.ofEpochMilli(endMs)
             .atZone(zoneId)
@@ -117,52 +135,65 @@ object ReminderPlanner {
 
         if (!remindersEnabled) return slots
 
-        val preStart = listOf(
-            -10 * MINUTES_MS to "Starting in 10 min · ends at $endLabel · $durationLabel total",
-            -5 * MINUTES_MS to "Starting in 5 min · ends at $endLabel",
-            -MINUTES_MS to "Starting in 1 min — get ready! Ends at $endLabel",
-            0L to "$durationLabel session · ends at $endLabel — tap to open",
-        )
-        preStart.forEach { (offsetMs, text) ->
-            val triggerMs = safeAdd(startMs, offsetMs) ?: return@forEach
-            val kind = if (offsetMs == 0L) ReminderKind.AT_START else ReminderKind.PRE_START
-            slots += ReminderSlot(
-                id = "${task.id}-pre$offsetMs",
-                taskId = task.id,
-                kind = kind,
-                triggerMs = triggerMs,
-                title = "🎯 ${task.title}",
-                text = text,
-            )
-        }
-
-        listOf(
-            15 * MINUTES_MS to "15 minutes in — how's it going?",
-            30 * MINUTES_MS to "Half hour in — keep going!",
-        ).forEach { (offsetMs, text) ->
-            val triggerMs = safeAdd(startMs, offsetMs) ?: return@forEach
-            if (triggerMs >= endMs || endMs - triggerMs < MID_SESSION_MIN_REMAINING_MS) {
-                return@forEach
+        if (preStartRemindersEnabled) {
+            listOf(
+                -10 * MINUTES_MS to "Starting in 10 min · ends at $endLabel · $durationLabel total",
+                -5 * MINUTES_MS to "Starting in 5 min · ends at $endLabel",
+                -MINUTES_MS to "Starting in 1 min — get ready! Ends at $endLabel",
+            ).forEach { (offsetMs, text) ->
+                val triggerMs = safeAdd(startMs, offsetMs) ?: return@forEach
+                slots += ReminderSlot(
+                    id = "${task.id}-pre$offsetMs",
+                    taskId = task.id,
+                    kind = ReminderKind.PRE_START,
+                    triggerMs = triggerMs,
+                    title = "🎯 ${task.title}",
+                    text = text,
+                )
             }
+        }
+        if (atStartReminderEnabled) {
             slots += ReminderSlot(
-                id = "${task.id}-mid$offsetMs",
+                id = "${task.id}-pre0",
                 taskId = task.id,
-                kind = ReminderKind.MID_SESSION,
-                triggerMs = triggerMs,
-                title = "🟢 ${task.title}",
-                text = text,
+                kind = ReminderKind.AT_START,
+                triggerMs = startMs,
+                title = "🎯 ${task.title}",
+                text = "$durationLabel session · ends at $endLabel — tap to open",
             )
         }
 
-        val almostDoneMs = endMs - MINUTES_MS
-        slots += ReminderSlot(
-            id = "${task.id}-almost",
-            taskId = task.id,
-            kind = ReminderKind.ALMOST_DONE,
-            triggerMs = almostDoneMs,
-            title = "⏳ ${task.title} — 1 minute left",
-            text = "Start wrapping up!",
-        )
+        if (midSessionRemindersEnabled) {
+            listOf(
+                15 * MINUTES_MS to "15 minutes in — how's it going?",
+                30 * MINUTES_MS to "Half hour in — keep going!",
+            ).forEach { (offsetMs, text) ->
+                val triggerMs = safeAdd(startMs, offsetMs) ?: return@forEach
+                if (triggerMs >= endMs || endMs - triggerMs < MID_SESSION_MIN_REMAINING_MS) {
+                    return@forEach
+                }
+                slots += ReminderSlot(
+                    id = "${task.id}-mid$offsetMs",
+                    taskId = task.id,
+                    kind = ReminderKind.MID_SESSION,
+                    triggerMs = triggerMs,
+                    title = "🟢 ${task.title}",
+                    text = text,
+                )
+            }
+        }
+
+        if (wrapUpReminderEnabled) {
+            val almostDoneMs = endMs - MINUTES_MS
+            slots += ReminderSlot(
+                id = "${task.id}-almost",
+                taskId = task.id,
+                kind = ReminderKind.ALMOST_DONE,
+                triggerMs = almostDoneMs,
+                title = "⏳ ${task.title} — 1 minute left",
+                text = "Start wrapping up!",
+            )
+        }
         return slots
     }
 

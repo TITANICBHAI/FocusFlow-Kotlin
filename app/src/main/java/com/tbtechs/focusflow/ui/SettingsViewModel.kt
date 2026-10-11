@@ -192,7 +192,12 @@ class SettingsViewModel(
                 storedValue = settingsRepository.isVpnSelfHealEnabledNow(),
             )
             taskReminderPreferenceChanged =
-                newSettings.taskRemindersEnabled != current.taskRemindersEnabled
+                newSettings.taskRemindersEnabled != current.taskRemindersEnabled ||
+                    newSettings.taskPreStartRemindersEnabled != current.taskPreStartRemindersEnabled ||
+                    newSettings.taskAtStartReminderEnabled != current.taskAtStartReminderEnabled ||
+                    newSettings.taskMidSessionRemindersEnabled != current.taskMidSessionRemindersEnabled ||
+                    newSettings.taskWrapUpReminderEnabled != current.taskWrapUpReminderEnabled ||
+                    newSettings.taskEndAlarmRings != current.taskEndAlarmRings
             dayRatingScheduleChanged =
                 newSettings.reflectionPromptsEnabled != current.reflectionPromptsEnabled ||
                     newSettings.bedTime != current.bedTime
@@ -313,7 +318,7 @@ class SettingsViewModel(
                 DayRatingNotificationScheduler.ensureScheduled(appContext)
             }
             if (taskReminderPreferenceChanged) {
-                AppModule.requestTaskAlarmReconciliation("task_reminders_setting")
+                AppModule.requestTaskAlarmReconciliation("task_alert_settings")
             }
         }
     }

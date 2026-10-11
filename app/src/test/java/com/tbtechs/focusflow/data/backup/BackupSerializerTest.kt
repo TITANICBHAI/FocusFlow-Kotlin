@@ -76,6 +76,34 @@ class BackupSerializerTest {
     }
 
     @Test
+    fun taskAlertSettingsRoundTripThroughPortableBackup() {
+        val settings = AppSettings(
+            taskPreStartRemindersEnabled = false,
+            taskAtStartReminderEnabled = false,
+            taskMidSessionRemindersEnabled = false,
+            taskWrapUpReminderEnabled = false,
+            taskEndAlarmRings = false,
+        )
+        val portable = PortableSettingsPolicy.toPortableJson(settings)
+
+        assertEquals(JsonPrimitive(false), portable["taskPreStartRemindersEnabled"])
+        assertEquals(JsonPrimitive(false), portable["taskAtStartReminderEnabled"])
+        assertEquals(JsonPrimitive(false), portable["taskMidSessionRemindersEnabled"])
+        assertEquals(JsonPrimitive(false), portable["taskWrapUpReminderEnabled"])
+        assertEquals(JsonPrimitive(false), portable["taskEndAlarmRings"])
+
+        val writes = BackupSettingsAdapter.additionalPreferenceWrites(portable)
+        assertEquals(
+            BackupPreferenceValue.BooleanValue(false),
+            writes[com.tbtechs.focusflow.data.repository.SettingsRepository.KEY_TASK_PRE_START_REMINDERS_ENABLED],
+        )
+        assertEquals(
+            BackupPreferenceValue.BooleanValue(false),
+            writes[com.tbtechs.focusflow.data.repository.SettingsRepository.KEY_TASK_END_ALARM_RINGS],
+        )
+    }
+
+    @Test
     fun envelopeBuildsPresetSectionsAndSummaryCountsFromCurrentSettings() {
         val envelope = BackupSerializer.buildEnvelope(
             settings = sampleSettings(),

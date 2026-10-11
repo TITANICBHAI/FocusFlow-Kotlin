@@ -121,11 +121,15 @@ class TaskAlarmReconciler(
                     tasks = tasks,
                     cancel = cancelReminderNotification,
                 )
-                val remindersEnabled = settingsRepository.readAppSettings().taskRemindersEnabled
+                val settings = settingsRepository.readAppSettings()
                 val reminderPlan = ReminderPlanner.plan(
                     tasks = tasks,
                     nowMs = reminderNowMs,
-                    remindersEnabled = remindersEnabled,
+                    remindersEnabled = settings.taskRemindersEnabled,
+                    preStartRemindersEnabled = settings.taskPreStartRemindersEnabled,
+                    atStartReminderEnabled = settings.taskAtStartReminderEnabled,
+                    midSessionRemindersEnabled = settings.taskMidSessionRemindersEnabled,
+                    wrapUpReminderEnabled = settings.taskWrapUpReminderEnabled,
                 )
                 reminderChainScheduler.rearm(reminderPlan, reminderNowMs)
                 syncLiveTaskStatus(tasks, reminderNowMs)

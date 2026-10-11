@@ -66,6 +66,7 @@ class TaskAlarmActivity : Activity() {
         const val EXTRA_TASK_ID    = "taskId"
         const val EXTRA_TASK_NAME  = "taskName"
         const val EXTRA_END_MS     = "endTimeMs"
+        const val EXTRA_RING_ALARM = "ringAlarm"
 
         const val ACTION_SHOW_ALARM = "com.tbtechs.focusflow.SHOW_TASK_ALARM"
 
@@ -78,6 +79,7 @@ class TaskAlarmActivity : Activity() {
 
     private var taskId: String   = ""
     private var taskName: String = ""
+    private var ringAlarmOnOpen: Boolean = true
 
     private var ringtone: Ringtone? = null
     private var vibrator: Vibrator? = null
@@ -103,12 +105,15 @@ class TaskAlarmActivity : Activity() {
         AlarmRuntimeDiagnostics.record("TaskAlarmActivity.onCreate")
         taskId   = intent?.getStringExtra(EXTRA_TASK_ID) ?: ""
         taskName = intent?.getStringExtra(EXTRA_TASK_NAME) ?: ""
+        ringAlarmOnOpen = intent?.getBooleanExtra(EXTRA_RING_ALARM, true) ?: true
 
-        applyAlarmWindowFlags()
+        if (ringAlarmOnOpen) applyAlarmWindowFlags()
         buildUI()
-        startRingtone()
-        startVibration()
-        acquireWakeLock()
+        if (ringAlarmOnOpen) {
+            startRingtone()
+            startVibration()
+            acquireWakeLock()
+        }
 
         val filter = IntentFilter(ACTION_DISMISS_ALARM)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -125,6 +130,17 @@ class TaskAlarmActivity : Activity() {
         setIntent(intent)
         intent.getStringExtra(EXTRA_TASK_ID)?.let { if (it.isNotEmpty()) taskId = it }
         taskName = intent.getStringExtra(EXTRA_TASK_NAME).orEmpty()
+        ringAlarmOnOpen = intent.getBooleanExtra(EXTRA_RING_ALARM, true)
+        if (ringAlarmOnOpen) {
+            applyAlarmWindowFlags()
+            startRingtone()
+            startVibration()
+            acquireWakeLock()
+        } else {
+            stopRingtone()
+            stopVibration()
+            releaseWakeLock()
+        }
         buildUI()
     }
 

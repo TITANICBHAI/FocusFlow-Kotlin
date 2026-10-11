@@ -160,6 +160,11 @@ class SettingsRepository(
         private const val KEY_SHOWN_PATTERN_INSIGHT_IDS = "shown_pattern_insight_ids"
         private const val KEY_LAST_SHOWN_DEBRIEF_SESSION_ID = "last_shown_debrief_session_id"
         private const val KEY_TASK_REMINDERS_ENABLED = "task_reminders_enabled"
+        const val KEY_TASK_PRE_START_REMINDERS_ENABLED = "task_pre_start_reminders_enabled"
+        const val KEY_TASK_AT_START_REMINDER_ENABLED = "task_at_start_reminder_enabled"
+        const val KEY_TASK_MID_SESSION_REMINDERS_ENABLED = "task_mid_session_reminders_enabled"
+        const val KEY_TASK_WRAP_UP_REMINDER_ENABLED = "task_wrap_up_reminder_enabled"
+        const val KEY_TASK_END_ALARM_RINGS = "task_end_alarm_rings"
         const val REFLECTION_PROMPTS_ENABLED_KEY = "reflection_prompts_enabled"
         private const val KEY_DEFAULT_DURATION_MINUTES = "default_duration_minutes"
         private const val KEY_AUTO_FOCUS_ENABLED = "auto_focus_enabled"
@@ -199,6 +204,18 @@ class SettingsRepository(
 
         private const val KEY_ACTIVE_SESSION_PACKAGE = "active_session_pkg"
         private const val KEY_ACTIVE_SESSION_END_MS = "active_session_end_ms"
+
+        /**
+         * Synchronous read for the shared native alarm-notification publisher.
+         * The normal SettingsRepository read remains the typed settings path.
+         */
+        fun taskEndAlarmRings(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences(
+                    AppBlockerAccessibilityService.PREFS_NAME,
+                    Context.MODE_PRIVATE,
+                )
+                .getBoolean(KEY_TASK_END_ALARM_RINGS, true)
     }
 
     private val appContext = context.applicationContext
@@ -982,6 +999,11 @@ class SettingsRepository(
             .putString(KEY_LAST_SESSION_RESULT_BY_TASK_ID, results.toString())
             .putString(KEY_SHOWN_PATTERN_INSIGHT_IDS, JSONArray(settings.shownPatternInsightIds).toString())
             .putBoolean(KEY_TASK_REMINDERS_ENABLED, settings.taskRemindersEnabled)
+            .putBoolean(KEY_TASK_PRE_START_REMINDERS_ENABLED, settings.taskPreStartRemindersEnabled)
+            .putBoolean(KEY_TASK_AT_START_REMINDER_ENABLED, settings.taskAtStartReminderEnabled)
+            .putBoolean(KEY_TASK_MID_SESSION_REMINDERS_ENABLED, settings.taskMidSessionRemindersEnabled)
+            .putBoolean(KEY_TASK_WRAP_UP_REMINDER_ENABLED, settings.taskWrapUpReminderEnabled)
+            .putBoolean(KEY_TASK_END_ALARM_RINGS, settings.taskEndAlarmRings)
             .putBoolean(REFLECTION_PROMPTS_ENABLED_KEY, settings.reflectionPromptsEnabled)
             .putInt(KEY_DEFAULT_DURATION_MINUTES, settings.defaultDurationMinutes.coerceIn(5, 480))
             .putBoolean(KEY_AUTO_FOCUS_ENABLED, settings.autoFocusEnabled)
@@ -1172,6 +1194,11 @@ class SettingsRepository(
                 null
             },
             taskRemindersEnabled = prefs.getBoolean(KEY_TASK_REMINDERS_ENABLED, true),
+            taskPreStartRemindersEnabled = prefs.getBoolean(KEY_TASK_PRE_START_REMINDERS_ENABLED, true),
+            taskAtStartReminderEnabled = prefs.getBoolean(KEY_TASK_AT_START_REMINDER_ENABLED, true),
+            taskMidSessionRemindersEnabled = prefs.getBoolean(KEY_TASK_MID_SESSION_REMINDERS_ENABLED, true),
+            taskWrapUpReminderEnabled = prefs.getBoolean(KEY_TASK_WRAP_UP_REMINDER_ENABLED, true),
+            taskEndAlarmRings = prefs.getBoolean(KEY_TASK_END_ALARM_RINGS, true),
             reflectionPromptsEnabled = prefs.getBoolean(REFLECTION_PROMPTS_ENABLED_KEY, true),
             defaultDurationMinutes = prefs.getInt(KEY_DEFAULT_DURATION_MINUTES, 60).coerceIn(5, 480),
             autoFocusEnabled = prefs.getBoolean(KEY_AUTO_FOCUS_ENABLED, false),

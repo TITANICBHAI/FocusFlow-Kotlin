@@ -124,6 +124,23 @@ object PortableSettingsPolicy {
             value = settings.lastShownDebriefSessionId?.let { JsonPrimitive(it) } ?: JsonNull,
         )
         add("taskRemindersEnabled", value = JsonPrimitive(settings.taskRemindersEnabled))
+        add(
+            "taskPreStartRemindersEnabled",
+            value = JsonPrimitive(settings.taskPreStartRemindersEnabled),
+        )
+        add(
+            "taskAtStartReminderEnabled",
+            value = JsonPrimitive(settings.taskAtStartReminderEnabled),
+        )
+        add(
+            "taskMidSessionRemindersEnabled",
+            value = JsonPrimitive(settings.taskMidSessionRemindersEnabled),
+        )
+        add(
+            "taskWrapUpReminderEnabled",
+            value = JsonPrimitive(settings.taskWrapUpReminderEnabled),
+        )
+        add("taskEndAlarmRings", value = JsonPrimitive(settings.taskEndAlarmRings))
         add("reflectionPromptsEnabled", value = JsonPrimitive(settings.reflectionPromptsEnabled))
         add("defaultDurationMinutes", LegacySettingsAdapter.DEFAULT_DURATION, JsonPrimitive(settings.defaultDurationMinutes))
         add("autoFocusEnabled", value = JsonPrimitive(settings.autoFocusEnabled))

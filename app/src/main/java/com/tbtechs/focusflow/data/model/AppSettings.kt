@@ -134,6 +134,11 @@ data class AppSettings(
 
     // ── Productivity preferences ─────────────────────────────────────────────
     val taskRemindersEnabled: Boolean = true,
+    val taskPreStartRemindersEnabled: Boolean = true,
+    val taskAtStartReminderEnabled: Boolean = true,
+    val taskMidSessionRemindersEnabled: Boolean = true,
+    val taskWrapUpReminderEnabled: Boolean = true,
+    val taskEndAlarmRings: Boolean = true,
     val reflectionPromptsEnabled: Boolean = true,
     val defaultDurationMinutes: Int = 60,
     val autoFocusEnabled: Boolean = false,

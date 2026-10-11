@@ -38,8 +38,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 withTimeout(RECEIVER_BUDGET_MS) {
                     AppModule.restoreGate.write("ReminderReceiver") {
                         val nowMs = System.currentTimeMillis()
-                        val remindersEnabled =
-                            AppModule.settingsRepository.readAppSettings().taskRemindersEnabled
+                        val settings = AppModule.settingsRepository.readAppSettings()
 
                         val tasks = try {
                             withTimeoutOrNull(ROOM_READ_BUDGET_MS) {
@@ -63,7 +62,11 @@ class ReminderReceiver : BroadcastReceiver() {
                         val firePlan = ReminderPlanner.plan(
                             tasks = tasks,
                             nowMs = nowMs,
-                            remindersEnabled = remindersEnabled,
+                            remindersEnabled = settings.taskRemindersEnabled,
+                            preStartRemindersEnabled = settings.taskPreStartRemindersEnabled,
+                            atStartReminderEnabled = settings.taskAtStartReminderEnabled,
+                            midSessionRemindersEnabled = settings.taskMidSessionRemindersEnabled,
+                            wrapUpReminderEnabled = settings.taskWrapUpReminderEnabled,
                             includeDueSlots = true,
                         )
                         val dueReminderSlots = ReminderDelivery.dueSlots(firePlan, nowMs)
@@ -100,7 +103,11 @@ class ReminderReceiver : BroadcastReceiver() {
                         val nextPlan = ReminderPlanner.plan(
                             tasks = tasks,
                             nowMs = replanNowMs,
-                            remindersEnabled = remindersEnabled,
+                            remindersEnabled = settings.taskRemindersEnabled,
+                            preStartRemindersEnabled = settings.taskPreStartRemindersEnabled,
+                            atStartReminderEnabled = settings.taskAtStartReminderEnabled,
+                            midSessionRemindersEnabled = settings.taskMidSessionRemindersEnabled,
+                            wrapUpReminderEnabled = settings.taskWrapUpReminderEnabled,
                         )
                         AppModule.reminderChainScheduler.rearm(nextPlan, replanNowMs)
                     }

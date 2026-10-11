@@ -143,6 +143,57 @@ class ReminderChainTest {
     }
 
     @Test
+    fun reminderCategoriesCanBeDisabledIndependentlyWithoutRemovingLiveStatus() {
+        val task = task("categories", startMs, startMs + 60 * 60_000L)
+
+        val withoutPreStart = ReminderPlanner.plan(
+            tasks = listOf(task),
+            nowMs = beforeStartMs,
+            zoneId = ZoneOffset.UTC,
+            preStartRemindersEnabled = false,
+        )
+        assertFalse(withoutPreStart.any { it.kind == ReminderKind.PRE_START })
+        assertTrue(withoutPreStart.any { it.kind == ReminderKind.AT_START })
+
+        val withoutAtStart = ReminderPlanner.plan(
+            tasks = listOf(task),
+            nowMs = beforeStartMs,
+            zoneId = ZoneOffset.UTC,
+            atStartReminderEnabled = false,
+        )
+        assertFalse(withoutAtStart.any { it.kind == ReminderKind.AT_START })
+        assertTrue(withoutAtStart.any { it.kind == ReminderKind.PRE_START })
+
+        val withoutMidSession = ReminderPlanner.plan(
+            tasks = listOf(task),
+            nowMs = beforeStartMs,
+            zoneId = ZoneOffset.UTC,
+            midSessionRemindersEnabled = false,
+        )
+        assertFalse(withoutMidSession.any { it.kind == ReminderKind.MID_SESSION })
+
+        val withoutWrapUp = ReminderPlanner.plan(
+            tasks = listOf(task),
+            nowMs = beforeStartMs,
+            zoneId = ZoneOffset.UTC,
+            wrapUpReminderEnabled = false,
+        )
+        assertFalse(withoutWrapUp.any { it.kind == ReminderKind.ALMOST_DONE })
+
+        val remindersOff = ReminderPlanner.plan(
+            tasks = listOf(task),
+            nowMs = beforeStartMs,
+            zoneId = ZoneOffset.UTC,
+            remindersEnabled = false,
+            preStartRemindersEnabled = false,
+            atStartReminderEnabled = false,
+            midSessionRemindersEnabled = false,
+            wrapUpReminderEnabled = false,
+        )
+        assertEquals(listOf(ReminderKind.LIVE_STATUS_START), remindersOff.map(ReminderSlot::kind))
+    }
+
+    @Test
     fun chainReschedulesToNextFutureSlotAndCancelsWhenNoSlotRemains() {
         val driver = RecordingAlarmDriver()
         val scheduler = ReminderChainScheduler(driver)

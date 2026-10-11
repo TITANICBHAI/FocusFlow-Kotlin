@@ -1,5 +1,6 @@
 package com.tbtechs.focusflow.data.backup
 
+import com.tbtechs.focusflow.data.repository.SettingsRepository
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -150,6 +151,11 @@ internal object BackupSettingsAdapter {
         }
 
         boolean("taskRemindersEnabled", "task_reminders_enabled")
+        boolean("taskPreStartRemindersEnabled", SettingsRepository.KEY_TASK_PRE_START_REMINDERS_ENABLED)
+        boolean("taskAtStartReminderEnabled", SettingsRepository.KEY_TASK_AT_START_REMINDER_ENABLED)
+        boolean("taskMidSessionRemindersEnabled", SettingsRepository.KEY_TASK_MID_SESSION_REMINDERS_ENABLED)
+        boolean("taskWrapUpReminderEnabled", SettingsRepository.KEY_TASK_WRAP_UP_REMINDER_ENABLED)
+        boolean("taskEndAlarmRings", SettingsRepository.KEY_TASK_END_ALARM_RINGS)
         boolean("reflectionPromptsEnabled", "reflection_prompts_enabled")
         boolean("autoFocusEnabled", "auto_focus_enabled")
         boolean("focusDefenseHintDismissed", "focus_defense_hint_dismissed")

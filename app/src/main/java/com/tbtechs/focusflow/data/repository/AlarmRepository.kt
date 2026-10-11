@@ -57,6 +57,7 @@ class AlarmRepository(
             taskId: String,
             taskName: String,
             endMs: Long,
+            ringAlarm: Boolean = true,
         ): Intent =
             Intent(ctx.applicationContext, TaskAlarmActivity::class.java).apply {
                 action = TaskAlarmActivity.ACTION_SHOW_ALARM
@@ -65,6 +66,7 @@ class AlarmRepository(
                 putExtra(TaskAlarmActivity.EXTRA_TASK_ID, taskId)
                 putExtra(TaskAlarmActivity.EXTRA_TASK_NAME, taskName)
                 putExtra(TaskAlarmActivity.EXTRA_END_MS, endMs)
+                putExtra(TaskAlarmActivity.EXTRA_RING_ALARM, ringAlarm)
             }
 
         /** Build the canonical alarm PendingIntent for a given taskId. */
@@ -102,8 +104,9 @@ class AlarmRepository(
             taskName: String,
             endMs: Long,
             flags: Int,
+            ringAlarm: Boolean = true,
         ): PendingIntent {
-            val intent = showIntent(ctx, taskId, taskName, endMs)
+            val intent = showIntent(ctx, taskId, taskName, endMs, ringAlarm)
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 val options = ActivityOptions.makeBasic().apply {
                     setPendingIntentCreatorBackgroundActivityStartMode(
@@ -210,6 +213,7 @@ class AlarmRepository(
                 taskName.orEmpty(),
                 endMs,
                 flags,
+                ringAlarm = SettingsRepository.taskEndAlarmRings(context),
             )
 
             try {
