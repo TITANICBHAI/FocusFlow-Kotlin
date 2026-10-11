@@ -8,9 +8,10 @@ Before inspecting implementation details or editing files, read these documents 
 
 1. `fixes/AGENT_PRE_PROMPT.md`
 2. `fixes/PLAN.md`
-3. `allowance/TRACKER.md`
+3. `fixes/TRACKER.md` — this is the main and authoritative tracker for the fixes plan.
+4. `allowance/TRACKER.md` — read only as a reference for its tracker instructions/format.
 
-The v8 plan supersedes `allowance/PLAN.md` (v7). The existing tracker is still written for v7 and must be reconciled with v8 as Batch A5 before any app-code change. After reading these documents, read the current project instructions, inspect the relevant current source, and check the working tree. Verify paths, APIs, and behavior against the current repository. Preserve unrelated user changes and user data.
+The v8 plan supersedes `allowance/PLAN.md` (v7). `fixes/TRACKER.md` is the only progress record for this work. `allowance/TRACKER.md` belongs to a separate workstream: do not copy its statuses, evidence, decisions, or progress into the fixes tracker, and do not update it for fixes work. After reading these documents, read the current project instructions, inspect the relevant current source, and check the working tree. Verify paths, APIs, and behavior against the current repository. Preserve unrelated user changes and user data.
 
 ## Authorization and scope
 
@@ -31,7 +32,7 @@ The v8 plan supersedes `allowance/PLAN.md` (v7). The existing tracker is still w
 
 ## Tracker discipline — required throughout implementation
 
-- Keep `allowance/TRACKER.md` current. At the start of a batch, mark it in progress in its notes. After each meaningful change, update the relevant notes rather than waiting until the batch is finished.
+- Keep `fixes/TRACKER.md` current; it is the main tracker for this effort. At the start of a batch, mark it in progress in its notes. After each meaningful change, update the relevant notes rather than waiting until the batch is finished.
 - Give every item a status, `blocked by`, evidence, and owner-run state. Record decisions in the decision log; label applied defaults “default applied, awaiting owner.”
 - Tick a checkbox only when its work is complete and the named evidence has been observed. Never mark unverified, partial, attempted, or owner-run work complete.
 - For each completed item, record the changed files, the exact verification performed, and its result. Record decisions, failures, blockers, and deferred work.
