@@ -32,6 +32,7 @@ internal class AllowanceUsageReader(
     private val zoneId: ZoneId,
     private val onReconciled: (String) -> Unit,
     private val readTimeoutMs: Long = READ_TIMEOUT_MS,
+    private val clockNowMs: () -> Long = { System.currentTimeMillis() },
 ) {
     constructor(
         context: Context,
@@ -69,7 +70,7 @@ internal class AllowanceUsageReader(
         } catch (_: Exception) {
             UsageEventRead.Unknown(UsageEventRead.Unknown.Reason.EVENTS_UNAVAILABLE)
         }
-        val completedAtMs = System.currentTimeMillis()
+        val completedAtMs = clockNowMs()
 
         if (read !is UsageEventRead.Available) {
             return AllowanceUsageReadOutcome(read = read, completedAtMs = completedAtMs)

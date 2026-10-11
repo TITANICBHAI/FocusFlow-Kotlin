@@ -234,23 +234,30 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A4 — Test baseline
 
-**Status:** `NOT STARTED`  
+**Status:** `COMPLETE`
 **Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
-**Started:** —  
-**Completed:** —  
+**Started:** 2026-10-11<br>
+**Completed:** 2026-10-11
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Find and remove tests that read `.kt` source text; replace with behavior tests for ledger, pipeline, and meter using fake clocks/sources. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Add fresh-database test and ensure migration tests compile and run where the project supports them. | NOT STARTED | A5 complete; A1 | Pending | No |
-| [ ] | Search test sources and verify no Kotlin-source `readText` checks remain; verify section 6 requirements are assigned to batch tests. | NOT STARTED | A5 complete | Pending | No |
+| [x] | Find and remove tests that read `.kt` source text; replace with behavior tests for ledger, pipeline, and meter using fake clocks/sources. | DONE | A5 complete | Removed both source-text tests; ledger/pipeline behavior suites retained; injected-clock/source reader test passes in 267-test Production suite; alarm behavior test compiles in AndroidTest | No |
+| [x] | Add fresh-database test and ensure migration tests compile and run where the project supports them. | DONE | A5 complete; A1 | Existing fresh-database and migration cases in `FocusFlowDatabaseMigrationTest.kt` compiled with Production AndroidTest; no connected device for instrumentation runtime, per plan compile-only path applies | No |
+| [x] | Search test sources and verify no Kotlin-source `readText` checks remain; verify section 6 requirements are assigned to batch tests. | DONE | A5 complete | Final test-source search found only the JSON backup fixture read; Section 6 ownership is mapped to A1–A4, B1–B6, C1–C6, and D1 test rows | No |
 
 **Done when:** source-text tests are absent and section 6 test coverage is present.  
 **Notes:**  
-**Evidence:**  
-**Failures and blockers:**  
-**Decisions and deferred work:**  
+- **A4 start (2026-10-11):** User explicitly authorized A4. Initial `git status --short` was clean. The source-text readers are `AlarmPendingIntentLookupContractTest` and `AllowanceBehaviorCharacterizationTest`; `BackupSerializerTest` reads a committed JSON fixture, not Kotlin source, so leave it unchanged. The fresh database and migration cases already exist in `FocusFlowDatabaseMigrationTest`; build/compile evidence is still required. No app/test files changed yet.
+- Replaced source inspection with behavior coverage: removed the two source-reading tests; added a real `AllowanceUsageReader` reconciliation case backed by fixed usage events and an injected completion clock, and an Android instrumentation test that cancels absent/present task alarms without creating pending intents. The reader now accepts a clock provider so this test does not use wall time. Existing ledger/pipeline tests retain the characterized boundary and legacy-JSON behavior.
+- **Section 6 ownership check:** ledger/tail/time-accounting cases → B4/B5; meter lifecycle/recovery/read policy → B1/B3; signal filtering → B2; per-mode behavior → B5; config/resolvers → B6; Stats → A3; pipeline/session/inclusion → C1/C2; fresh DB, migrations and cutover → A1; maintenance worker → A2; detector windows → C3; rollup retention → C5; rollback/golden logs → C6; shared freshness → D1. Later-batch cases remain assigned and open rather than being implemented ahead of their batches.
+- **Final verification (2026-10-11):** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest :app:compileProductionDebugAndroidTestKotlin` succeeded. Production JVM reports show 57 suites, 267 tests, 0 failures, 0 errors, and 0 skipped; the new reader behavior test is present in XML. AndroidTest compilation succeeded, including the fresh DB/migration tests and alarm behavior test. The test-source audit found only `BackupSerializerTest` reading `backup/v1-export-golden.json`; no test reads `.kt` source text. `git diff --check` passed.
+**Evidence:**
+- `AllowanceUsageReader.kt`, `AllowanceUsageReaderTest.kt`, `TaskEndAlarmIdentityInstrumentedTest.kt`; deleted `AlarmPendingIntentLookupContractTest.kt` and `AllowanceBehaviorCharacterizationTest.kt`. Production JVM suite passed 267/267; Production AndroidTest Kotlin compilation passed.
+- Existing `FocusFlowDatabaseMigrationTest.kt` includes fresh database and migration cases; Production AndroidTest Kotlin compilation succeeded. No connected Android device was available, so runtime instrumentation was not run; S2 remains pending.
+- Final source-read audit and Section 6 crosswalk above; only the JSON fixture read remains, and every required test group is assigned to a batch test row.
+**Failures and blockers:** None for A4. Android instrumentation runtime was unavailable because `adb devices` listed no devices; use the already planned S2 owner device run.
+**Decisions and deferred work:** Reuse the existing fresh-database/migration instrumentation cases rather than duplicating them. Follow the plan’s compile-only fallback on Replit; retain runtime device verification for S2. AndroidTest compilation reported the existing deprecated `MigrationTestHelper` constructor and Java nullability warnings but completed successfully. No APK builds, Gradle edits, or GitHub Actions runs.
 
 ---
 
@@ -687,7 +694,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 | A1 — Database and cutover | DONE — evidence recorded | A5 complete | S2 pending later |
 | A2 — Maintenance job | IN PROGRESS | A5 complete; eligible; C5 pruning row blocked | Not owner-run |
 | A3 — Stats zero reading | DONE — evidence recorded | A5 complete; eligible | S1 pending later |
-| A4 — Test baseline | NOT STARTED | A5 complete; eligible | Not owner-run |
+| A4 — Test baseline | COMPLETE | A5 complete; eligible | Not owner-run |
 | B1–B7 — One meter everywhere | NOT STARTED | A1–A4 | S4 pending later |
 | C1–C6 — One definition of usage | NOT STARTED | A1–A4; E1 logs for C6 | Manifest confirmation/logs may be owner-provided |
 | D1–D3 — Screens and wording | NOT STARTED | B and C; A3 for D3 | Not owner-run |

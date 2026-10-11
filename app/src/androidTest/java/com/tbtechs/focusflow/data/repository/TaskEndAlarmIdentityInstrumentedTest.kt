@@ -12,8 +12,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.tbtechs.focusflow.enforcement.TaskAlarmActivity
 import com.tbtechs.focusflow.enforcement.receivers.TaskEndAlarmReceiver
+import com.tbtechs.focusflow.data.restore.RestoreGate
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -25,6 +27,45 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TaskEndAlarmIdentityInstrumentedTest {
+
+    @Test
+    fun cancellingMissingOrExistingAlarmDoesNotCreatePendingIntents() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val taskId = "cancel-lookup-test-${UUID.randomUUID()}"
+        val repository = AlarmRepository(context, RestoreGate())
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
+        assertNull(existingAlarmPendingIntent(context, taskId))
+        assertNull(existingShowPendingIntent(context, taskId))
+        assertTrue(repository.cancelAlarm(taskId))
+        assertNull(existingAlarmPendingIntent(context, taskId))
+        assertNull(existingShowPendingIntent(context, taskId))
+
+        val alarm = AlarmRepository.buildAlarmPendingIntent(
+            context,
+            taskId,
+            "Task",
+            System.currentTimeMillis() + 60_000L,
+            flags,
+        )
+        val show = AlarmRepository.buildShowPendingIntent(
+            context,
+            taskId,
+            "Task",
+            System.currentTimeMillis() + 60_000L,
+            flags,
+        )
+        try {
+            assertNotNull(existingAlarmPendingIntent(context, taskId))
+            assertNotNull(existingShowPendingIntent(context, taskId))
+            assertTrue(repository.cancelAlarm(taskId))
+            assertNull(existingAlarmPendingIntent(context, taskId))
+            assertNull(existingShowPendingIntent(context, taskId))
+        } finally {
+            alarm.cancel()
+            show.cancel()
+        }
+    }
 
     @Test
     fun twoTasksHaveIndependentAlarmAndActivityPendingIntents() {
