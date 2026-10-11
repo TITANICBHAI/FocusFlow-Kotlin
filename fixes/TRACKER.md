@@ -144,6 +144,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 **Evidence:**<br>
 **Failures and blockers:**<br>
 - The initial `bash scripts/test-unit.sh` run was stopped during SDK setup before Gradle tests ran: it also schedules the development flavor, contrary to the production-only test rule. The production-only unit-test task is being run separately.
+- The first production-only unit-test run failed during test compilation on an unresolved helper reference inside `FakeStore`; the fake now constructs the seeded state directly, and the production-only task is being rerun.
 **Decisions and deferred work:**<br>
 
 ### A2 — Maintenance job

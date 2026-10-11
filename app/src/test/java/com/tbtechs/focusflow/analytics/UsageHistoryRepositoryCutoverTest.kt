@@ -134,7 +134,11 @@ class UsageHistoryRepositoryCutoverTest {
         override suspend fun ensurePipelineState(shadowStartedOn: String) {
             ensureCalls += 1
             if (state == null) {
-                state = newPipelineState(shadowStartedOn)
+                state = UsagePipelineStateEntity(
+                    cutoverDate = null,
+                    pipelineVersion = UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION,
+                    shadowStartedOn = shadowStartedOn,
+                )
             }
         }
 
