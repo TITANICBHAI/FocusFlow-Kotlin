@@ -6,6 +6,7 @@ import com.tbtechs.focusflow.data.repository.UsageSummary
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AnalyticsProcessorPhoneUsageTest {
@@ -49,58 +50,21 @@ class AnalyticsProcessorPhoneUsageTest {
     }
 
     @Test
-    fun todayFallbackRestoresSummaryAndAddsItsCalendarDateWithoutReplacingHistory() {
-        val today = LocalDate.of(2026, 10, 9)
-        val previousDay = today.minusDays(1)
-        val current = UsageSummary(
-            totalMinutes = 40,
-            apps = listOf(AppUsageInfo("app.reader", "Reader", 40, 2, 100L)),
-        )
-        val fallback = UsageSummary(
-            totalMinutes = 25,
-            apps = listOf(AppUsageInfo("app.reader", "Reader", 25, 1, 200L)),
-        )
-
-        val merged = mergeTodayUsageFallback(
-            summary = current,
-            daily = listOf(UsageDaySummary(previousDay.toString(), previousDay.dayOfWeek.value % 7, 40)),
-            today = today,
-            fallback = fallback,
-        )
-
-        assertEquals(true, merged.fallbackApplied)
-        assertEquals(65, merged.summary?.totalMinutes)
-        assertEquals(65, merged.summary?.apps?.single()?.foregroundMinutes)
-        assertEquals(3, merged.summary?.apps?.single()?.launchCount)
-        assertEquals(
-            listOf(previousDay.toString(), today.toString()),
-            merged.daily.map { it.date },
-        )
-        assertEquals(25, merged.daily.last().totalMinutes)
-    }
-
-    @Test
-    fun todayFallbackDoesNotDoubleCountWhenPrimaryPipelineAlreadyHasToday() {
-        val today = LocalDate.of(2026, 10, 9)
-        val summary = UsageSummary(
-            totalMinutes = 12,
-            apps = listOf(AppUsageInfo("app.reader", "Reader", 12, 1, 100L)),
-        )
-        val daily = listOf(UsageDaySummary(today.toString(), today.dayOfWeek.value % 7, 12))
-
-        val merged = mergeTodayUsageFallback(
-            summary = summary,
-            daily = daily,
-            today = today,
-            fallback = UsageSummary(
-                totalMinutes = 30,
-                apps = listOf(AppUsageInfo("app.reader", "Reader", 30, 2, 200L)),
+    fun unavailableDeviceUsageDoesNotBecomeAZeroPhoneUsageCard() {
+        val snapshot = createAnalyticsSnapshot(
+            window = ANALYTICS_TODAY,
+            range = AnalyticsRange(start = now.toLocalDate().atStartOfDay(now.zone), end = now),
+            source = source(usageSummary = null, usageHourly = null).copy(
+                health = AnalyticsSnapshot.SourceHealth(
+                    usageSummary = SOURCE_UNAVAILABLE,
+                    usageHourly = SOURCE_UNAVAILABLE,
+                ),
             ),
+            generatedAt = now.toInstant().toString(),
         )
 
-        assertEquals(false, merged.fallbackApplied)
-        assertEquals(summary, merged.summary)
-        assertEquals(daily, merged.daily)
+        assertNull(snapshot.phoneUsage)
+        assertEquals(SOURCE_UNAVAILABLE, snapshot.sourceHealth?.usageSummary)
     }
 
     @Test

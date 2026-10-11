@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.tbtechs.focusflow.analytics.AnalyticsSnapshot
+import com.tbtechs.focusflow.analytics.SOURCE_LOADED
 import com.tbtechs.focusflow.ui.theme.BrandPrimary
 import com.tbtechs.focusflow.ui.theme.DarkBorder
 import com.tbtechs.focusflow.ui.theme.DarkSurfaceVariant
@@ -41,7 +42,17 @@ fun PhoneUsageSummary(
         Text("ANDROID USAGESTATS", style = MaterialTheme.typography.labelLarge)
         Text("ON DEVICE", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
         val usage = snapshot.phoneUsage
-        if (usage == null) Text("Android returned no phone-use history for this period.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (usage == null) {
+            val usageUnavailable = snapshot.sourceHealth?.usageSummary?.let { it != SOURCE_LOADED } == true
+            Text(
+                if (usageUnavailable) {
+                    "Usage data unavailable. Grant Usage Access or try again."
+                } else {
+                    "Android returned no phone-use history for this period."
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         else {
             val minutes = usage.byHour.values.sum().roundToInt()
             Text(formatUsageMinutes(minutes), style = MaterialTheme.typography.headlineSmall, color = Color(0xFF63A7FF))

@@ -1,7 +1,7 @@
 package com.tbtechs.focusflow.analytics
 
+import android.util.Log
 import com.tbtechs.focusflow.data.model.Task
-import com.tbtechs.focusflow.data.repository.AppUsageInfo
 import com.tbtechs.focusflow.data.repository.FocusSessionRepository
 import com.tbtechs.focusflow.data.repository.GreyoutRepository
 import com.tbtechs.focusflow.data.repository.HourlyUsageSummary
@@ -9,10 +9,8 @@ import com.tbtechs.focusflow.data.repository.UsageStatsRepository
 import com.tbtechs.focusflow.data.repository.UsageSummary
 import com.tbtechs.focusflow.data.repository.TaskRepository
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.time.Duration
 import java.time.Instant
@@ -73,59 +71,6 @@ data class UsageDaySummary(
     val dayOfWeek: Int,
     val totalMinutes: Int,
 )
-
-internal data class TodayUsageMerge(
-    val summary: UsageSummary?,
-    val daily: List<UsageDaySummary>,
-    val fallbackApplied: Boolean,
-)
-
-/**
- * Adds a legacy UsageEvents summary for today only when the primary daily
- * pipeline produced no row for today. Historical rollups remain authoritative,
- * and an existing live row is never added a second time.
- */
-internal fun mergeTodayUsageFallback(
-    summary: UsageSummary?,
-    daily: List<UsageDaySummary>,
-    today: LocalDate,
-    fallback: UsageSummary?,
-): TodayUsageMerge {
-    val todayKey = today.toString()
-    if (
-        daily.any { it.date == todayKey } ||
-        fallback == null ||
-        fallback.totalMinutes <= 0
-    ) {
-        return TodayUsageMerge(summary, daily, fallbackApplied = false)
-    }
-
-    val appsByPackage = (summary?.apps.orEmpty() + fallback.apps)
-        .groupBy { it.packageName }
-        .map { (packageName, rows) ->
-            val latest = rows.maxByOrNull { it.lastUsedAt }!!
-            latest.copy(
-                appName = rows.firstOrNull { it.appName.isNotBlank() }?.appName ?: packageName,
-                foregroundMinutes = rows.sumOf { it.foregroundMinutes },
-                launchCount = rows.sumOf { it.launchCount },
-                lastUsedAt = rows.maxOf { it.lastUsedAt },
-            )
-        }
-        .sortedByDescending { it.foregroundMinutes }
-
-    return TodayUsageMerge(
-        summary = UsageSummary(
-            totalMinutes = (summary?.totalMinutes ?: 0) + fallback.totalMinutes,
-            apps = appsByPackage,
-        ),
-        daily = daily + UsageDaySummary(
-            date = todayKey,
-            dayOfWeek = today.dayOfWeek.value % 7,
-            totalMinutes = fallback.totalMinutes,
-        ),
-        fallbackApplied = true,
-    )
-}
 
 data class AnalyticsBuildOptions(
     val now: ZonedDateTime = ZonedDateTime.now(),
@@ -530,18 +475,51 @@ fun createAnalyticsSnapshot(
     )
 }
 
-private data class SourceRead<T>(val value: T, val state: AnalyticsSourceState)
+internal data class SourceFailure(
+    val exceptionType: String,
+    val reason: String,
+)
 
-private suspend fun <T> readSource(read: suspend () -> T, fallback: T): SourceRead<T> =
+internal data class SourceRead<T>(
+    val value: T,
+    val state: AnalyticsSourceState,
+    val failure: SourceFailure? = null,
+)
+
+internal suspend fun <T> readSource(
+    sourceName: String,
+    read: suspend () -> T,
+    fallback: T,
+    logFailure: (String, Throwable) -> Unit = { message, error ->
+        Log.w("AnalyticsProcessor", message, error)
+    },
+): SourceRead<T> =
     try {
         SourceRead(read(), SOURCE_LOADED)
     } catch (cancelled: CancellationException) {
         // A cancelled stats load must remain cancelled. Treating it as a
         // failed source lets an obsolete reload continue building a snapshot.
         throw cancelled
-    } catch (_: Exception) {
-        SourceRead(fallback, SOURCE_FAILED)
+    } catch (unavailable: DeviceUsageUnavailableException) {
+        val failure = unavailable.toSourceFailure()
+        logFailure(sourceFailureMessage(sourceName, "unavailable", failure), unavailable)
+        SourceRead(fallback, SOURCE_UNAVAILABLE, failure)
+    } catch (error: Exception) {
+        val failure = error.toSourceFailure()
+        logFailure(sourceFailureMessage(sourceName, "failed", failure), error)
+        SourceRead(fallback, SOURCE_FAILED, failure)
     }
+
+private fun Throwable.toSourceFailure() = SourceFailure(
+    exceptionType = javaClass.simpleName.ifBlank { javaClass.name },
+    reason = message?.takeIf(String::isNotBlank) ?: "No error detail provided",
+)
+
+private fun sourceFailureMessage(
+    sourceName: String,
+    status: String,
+    failure: SourceFailure,
+): String = "Analytics source '$sourceName' $status: ${failure.exceptionType}: ${failure.reason}"
 
 private fun parseTemptationLog(raw: String): List<TemptationEntry> {
     val array = JSONArray(raw)
@@ -608,14 +586,15 @@ class AnalyticsProcessor(
         val usagePermission = options.usageStatsPermission ?: usageStatsRepository.hasPermission()
         val deviceUsage = if (usagePermission && window != ANALYTICS_ALL_TIME) {
             readSource(
-                {
+                sourceName = "device_usage",
+                read = {
                     deviceUsageSource.read(
                         rangeStartMs = range.start.toInstant().toEpochMilli(),
                         rangeEndMs = range.end.toInstant().toEpochMilli(),
                         nowMs = options.now.toInstant().toEpochMilli(),
                     )
                 },
-                null,
+                fallback = null,
             )
         } else if (usagePermission) {
             // All Time does not display device usage; avoid an epoch-wide
@@ -624,68 +603,44 @@ class AnalyticsProcessor(
         } else {
             SourceRead<DeviceUsageSnapshot?>(null, SOURCE_UNAVAILABLE)
         }
-        val today = options.now.toLocalDate()
-        val rangeContainsToday =
-            !today.isBefore(range.start.toLocalDate()) && !today.isAfter(range.end.toLocalDate())
-        val todayNeedsFallback = usagePermission &&
-            window != ANALYTICS_ALL_TIME &&
-            rangeContainsToday &&
-            deviceUsage.value?.daily.orEmpty().none { it.date == today.toString() }
-        val todayFallback = if (todayNeedsFallback) {
-            val todayStart = today.atStartOfDay(options.now.zone).toInstant().toEpochMilli()
-            readSource(
-                {
-                    withContext(Dispatchers.IO) {
-                        usageStatsRepository.getUsageSummary(
-                            startMs = todayStart,
-                            endMs = options.now.toInstant().toEpochMilli(),
-                        )
-                    }
-                },
-                null,
-            )
-        } else {
-            SourceRead<UsageSummary?>(null, SOURCE_UNAVAILABLE)
-        }
-        val todayUsageMerge = mergeTodayUsageFallback(
-            summary = deviceUsage.value?.summary,
-            daily = deviceUsage.value?.daily.orEmpty(),
-            today = today,
-            fallback = todayFallback.value,
-        )
-        val usageSummary = todayUsageMerge.summary
+        val usageSummary = deviceUsage.value?.summary
         val usageHourly = deviceUsage.value?.hourly
-        val usageDaily = todayUsageMerge.daily
-        val usageSummaryState = when {
-            todayUsageMerge.fallbackApplied -> SOURCE_LOADED
-            todayNeedsFallback -> todayFallback.state
-            else -> deviceUsage.state
-        }
+        val usageDaily = deviceUsage.value?.daily.orEmpty()
 
         return coroutineScope {
             // These independent reads intentionally remain concurrent. There are
             // five analytics DB query families plus the week-only comparison read.
-            val tasks = async { readSource({ taskRepository.getTasksInDateRange(startISO, endISO) }, emptyList()) }
+            val tasks = async {
+                readSource("tasks", { taskRepository.getTasksInDateRange(startISO, endISO) }, emptyList())
+            }
             val tasksThisWeek = async {
                 weekForSkipComparison?.let { week ->
                     val result = readSource(
+                        "tasks_this_week",
                         { taskRepository.getTasksInDateRange(week.start.toInstant().toString(), week.end.toInstant().toString()) },
                         emptyList(),
                     )
-                    SourceRead<List<Task>?>(result.value, result.state)
+                    SourceRead<List<Task>?>(result.value, result.state, result.failure)
                 } ?: SourceRead<List<Task>?>(null, SOURCE_UNAVAILABLE)
             }
-            val sessions = async { readSource({ focusSessionRepository.getSessionsWithOverrideCount(startISO, endISO) }, emptyList()) }
-            val estimationErrors = async { readSource({ focusSessionRepository.getEstimationErrors(startISO, endISO) }, emptyList()) }
-            val tasksByHour = async { readSource({ taskRepository.getTasksByHourOfDay(startISO, endISO) }, emptyList()) }
+            val sessions = async {
+                readSource("sessions", { focusSessionRepository.getSessionsWithOverrideCount(startISO, endISO) }, emptyList())
+            }
+            val estimationErrors = async {
+                readSource("estimation_errors", { focusSessionRepository.getEstimationErrors(startISO, endISO) }, emptyList())
+            }
+            val tasksByHour = async {
+                readSource("tasks_by_hour", { taskRepository.getTasksByHourOfDay(startISO, endISO) }, emptyList())
+            }
             val weeklyRates = async {
                 readSource(
+                    "weekly_rates",
                     { focusSessionRepository.getWeeklyCompletionRates(expectedWeekCount, options.now.toInstant()) },
                     emptyList(),
                 )
             }
             val temptations = async {
-                readSource({ parseTemptationLog(greyoutRepository.getTemptationLog()) }, emptyList())
+                readSource("temptations", { parseTemptationLog(greyoutRepository.getTemptationLog()) }, emptyList())
             }
 
             val tasksResult = tasks.await()
@@ -726,7 +681,7 @@ class AnalyticsProcessor(
                         tasksByHour = taskHourResult.state,
                         weeklyRates = weeklyResult.state,
                         temptations = temptationResult.state,
-                        usageSummary = usageSummaryState,
+                        usageSummary = deviceUsage.state,
                         usageHourly = deviceUsage.state,
                     ),
                 ),

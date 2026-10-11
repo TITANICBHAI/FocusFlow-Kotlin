@@ -200,29 +200,37 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A3 — Stats zero reading
 
-**Status:** `IN PROGRESS`  
+**Status:** `DONE — evidence recorded`<br>
 **Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** 2026-10-11  
-**Completed:** —  
+**Completed:** 2026-10-11<br>
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Preserve every app row per date in `DeviceUsageSource`; cache app name/category per package per read. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Remove `mergeTodayUsageFallback` and its `getUsageSummary` dependency; represent read failure as unavailable, never zero. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Log exception type/reason and return typed failure from `readSource`; add one debug line with the plan-required read counters. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Test multi-app day values (Instagram 40m, WhatsApp 15m, Maps 3m, Settings 0.4s): summary, daily, hourly, and app rows agree. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Test four stored days plus live today total (120+90+150+60 plus today = 478 as specified). | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Test same multi-app day from live and rollup sources gives identical per-app minutes. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Test unavailable events produce unavailable state, not zero. | NOT STARTED | A5 complete | Pending | No |
+| [x] | Preserve every app row per date in `DeviceUsageSource`; cache app name/category per package per read. | DONE | A5 complete | Multi-app source test; each package resolved once | No |
+| [x] | Remove `mergeTodayUsageFallback` and its `getUsageSummary` dependency; represent read failure as unavailable, never zero. | DONE | A5 complete | No fallback references; unavailable-card test | No |
+| [x] | Log exception type/reason and return typed failure from `readSource`; add one debug line with the plan-required read counters. | DONE | A5 complete | Unavailable/error tests; required counters asserted | No |
+| [x] | Test multi-app day values (Instagram 40m, WhatsApp 15m, Maps 3m, Settings 0.4s): summary, daily, hourly, and app rows agree. | DONE | A5 complete | `DeviceUsageSourceTest` | No |
+| [x] | Test four stored days plus live today total (120+90+150+60 plus today = 478 as specified). | DONE | A5 complete | `DeviceUsageSourceTest` | No |
+| [x] | Test same multi-app day from live and rollup sources gives identical per-app minutes. | DONE | A5 complete | `DeviceUsageSourceTest` | No |
+| [x] | Test unavailable events produce unavailable state, not zero. | DONE | A5 complete | Source-state and card tests | No |
 | [ ] | Owner checks S1 and confirms Today/Week totals against daily bars and device screen-time page. | OWNER-RUN PENDING | A5 complete; E1 device session | Pending owner report | Yes |
 
 **Done when:** required source tests pass; owner check remains open until reported.  
 **Notes:**  
 - **A3 start (2026-10-11):** User authorized A3 after A5; its dependency is satisfied. A2 remains a separate in-progress batch with the C5 rollup-retention integration deferred. Initial worktree: `main` ahead of `origin/main` by one commit; only the supplied attachments were untracked. Preserve those attachments and keep S1 owner-run for E1.
+- **A3 continuation (2026-10-11):** User explicitly authorized resuming A3. The worktree was `main` aligned with `origin/main`; the supplied instruction attachment was preserved. Automated implementation and tests are now complete; S1 remains owner-run pending for E1.
 **Evidence:**  
+- `AnalyticsProcessor.kt` removes the Today fallback, preserves source failure type/reason, logs unavailable vs failed reads, and keeps device-usage health unavailable rather than substituting zero.
+- `PhoneUsageSummary.kt` shows an explicit unavailable message when device usage was not loaded. `DeviceUsageSourceTest.kt` covers multi-app aggregation, per-read metadata caching, the 478-minute five-day total, live/rollup parity, unavailable events, error logging, and debug counters.
+- `AnalyticsProcessorPhoneUsageTest.kt` verifies unavailable device usage does not become a zero-valued card.
+- **Production verification:** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest` passed; 272 tests, zero failures/errors/skips. The 5 new source tests and 4 phone-usage tests are present in XML reports. No APK was built.
+- **Diff hygiene/config:** `git diff --check` passed; `.replit` unchanged. The user-supplied attachment remains untouched.
 **Failures and blockers:**  
+- S1 owner confirmation remains pending until the E1 device session; automated tests and code have no open blocker.
 **Decisions and deferred work:**  
+- Keep the S1 Today/Week comparison owner-run; A2 and its deferred C5 integration were not changed.
 
 ### A4 — Test baseline
 
@@ -678,7 +686,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 | A5 — Tracker truth | DONE — evidence recorded | — | Not owner-run |
 | A1 — Database and cutover | DONE — evidence recorded | A5 complete | S2 pending later |
 | A2 — Maintenance job | IN PROGRESS | A5 complete; eligible; C5 pruning row blocked | Not owner-run |
-| A3 — Stats zero reading | NOT STARTED | A5 complete; eligible | S1 pending later |
+| A3 — Stats zero reading | DONE — evidence recorded | A5 complete; eligible | S1 pending later |
 | A4 — Test baseline | NOT STARTED | A5 complete; eligible | Not owner-run |
 | B1–B7 — One meter everywhere | NOT STARTED | A1–A4 | S4 pending later |
 | C1–C6 — One definition of usage | NOT STARTED | A1–A4; E1 logs for C6 | Manifest confirmation/logs may be owner-provided |
