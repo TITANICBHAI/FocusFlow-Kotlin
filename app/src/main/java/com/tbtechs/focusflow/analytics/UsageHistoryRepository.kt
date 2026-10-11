@@ -48,6 +48,7 @@ interface UsageHistoryStore {
     suspend fun legacyAppDays(startDate: String, endDate: String): List<UsageHistoryAppDay>
     suspend fun legacySessions(startDate: String, endDate: String): List<AppSessionEntity>
     suspend fun pipelineState(): UsagePipelineStateEntity? = null
+    suspend fun ensurePipelineState(shadowStartedOn: String) = Unit
     suspend fun rollupDays(startDate: String, endDate: String): List<UsageRollupDayEntity> = emptyList()
     suspend fun rollupAppDays(date: String): List<UsageRollupAppDayEntity> = emptyList()
     suspend fun rollupAppDays(
@@ -287,13 +288,12 @@ class UsageHistoryRepository(
     )
 
     private suspend fun cutoverDate(today: String): String? {
+        store.ensurePipelineState(today)
         val state = store.pipelineState() ?: return null
         state.cutoverDate?.let { return it }
         val todayDate = LocalDate.parse(today)
         val shadowStart = runCatching { LocalDate.parse(state.shadowStartedOn) }.getOrNull()
             ?: return null
-        val eligibleShadowStart = todayDate.minusDays(CUTOVER_SHADOW_DAYS)
-        if (shadowStart.isAfter(eligibleShadowStart)) return null
         val requiredStart = todayDate.minusDays(CUTOVER_SHADOW_DAYS)
         if (shadowStart.isAfter(requiredStart)) return null
         val requiredDates = (0 until CUTOVER_SHADOW_DAYS)
@@ -307,11 +307,14 @@ class UsageHistoryRepository(
                 it.pipelineVersion == UsagePipelineStateEntity.CURRENT_PIPELINE_VERSION
         }.map { it.date }.toSet()
         if (!completeShadowDates.containsAll(requiredDates)) return null
-        store.setCutoverDateIfShadowMature(
+        return if (store.setCutoverDateIfShadowMature(
             cutoverDate = today,
-            shadowStartedBy = eligibleShadowStart.toString(),
-        )
-        return store.pipelineState()?.cutoverDate
+            shadowStartedBy = requiredStart.toString(),
+        )) {
+            today
+        } else {
+            null
+        }
     }
 
     private companion object {
@@ -360,6 +363,9 @@ class RoomUsageHistoryStore(
 
     override suspend fun pipelineState(): UsagePipelineStateEntity? =
         usageRollupDao.getPipelineState()
+
+    override suspend fun ensurePipelineState(shadowStartedOn: String) =
+        usageRollupDao.ensurePipelineState(shadowStartedOn)
 
     override suspend fun rollupDays(
         startDate: String,

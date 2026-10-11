@@ -69,11 +69,15 @@ import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
  * ### Schema version history
  * | Version | Change |
  * |---|---|
- * | 1 | Original schema: `tasks` (without `focus_allowed_packages`), `focus_sessions`, `focus_overrides`, `daily_completions`, plus `settings`/`report_notes`/`achievements`/`weekly_insights` (not Room-managed). |
- * | 2 | `ALTER TABLE tasks ADD COLUMN focus_allowed_packages TEXT` — the column added by the hybrid app's inline try/catch migration in `initSchema`. |
- * | 3 | `CREATE TABLE IF NOT EXISTS achievements (id TEXT PRIMARY KEY, earned_at TEXT NOT NULL)`. |
+ * | 1 | Original schema: `tasks` (without `focus_allowed_packages`), `focus_sessions`, `focus_overrides`, and `daily_completions`. |
+ * | 2 | `tasks.focus_allowed_packages` is added. |
+ * | 3 | The achievements ledger becomes Room-managed. |
  * | 4 | `weekly_insights` becomes Room-managed. |
  * | 5 | `report_notes` becomes Room-managed and active-session indexes are hardened. |
+ * | 6 | Behavioural-intelligence tables, including legacy daily usage and app sessions, are added. |
+ * | 7 | Shadow usage rollup tables and pipeline state are added. |
+ * | 8 | Data-free bridge version; it must not create an upgrade-day cutover. |
+ * | 9 | Stale cutover dates are cleared and missing pipeline state is seeded. |
  *
  * ### Hybrid-app database bootstrap — IMPORTANT
  * The hybrid app used expo-sqlite and **never set SQLite `user_version`**, so
@@ -93,14 +97,21 @@ import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
  *
  * [prepareLegacyDatabase] opens the raw SQLite file, adds the
  * `focus_allowed_packages` column if it is absent, and sets `user_version = 1`
- * so Room subsequently calls `onUpgrade(db, 1, 3)` → [MIGRATION_1_2] and
- * [MIGRATION_2_3] run → schema is validated against version 3.
+ * so Room subsequently runs the registered migrations through version 9.
+ *
+ * ### Usage pipeline state on both install paths
+ * A fresh database gets the complete schema from Room and the
+ * [DATABASE_CALLBACK] inserts its initial pipeline-state row after table
+ * creation. An upgrade from versions 6–8 passes through [MIGRATION_8_9],
+ * which clears only stale cutover dates, resets their shadow start to the
+ * current local date, and inserts the singleton row if it is missing. The
+ * read model also performs an idempotent insert-if-missing before reading state.
  *
  * ### [MIGRATION_0_1]
  * Baseline schema (version 1, no `focus_allowed_packages`). This migration
  * is included for completeness; in practice it **does not run** for hybrid-app
  * users (they land at version 1 via [prepareLegacyDatabase]) or for fresh
- * installs (Room calls `onCreate()` directly and creates the full version-2
+ * installs (Room calls `onCreate()` directly and creates the full current
  * schema). It would only execute for a device that somehow holds version 1
  * without having passed through [prepareLegacyDatabase].
  *
@@ -130,7 +141,7 @@ import com.tbtechs.focusflow.enforcement.AppBlockerAccessibilityService
         UsageRollupAppDayEntity::class,
         UsageRollupSessionEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -157,6 +168,29 @@ abstract class FocusFlowDatabase : RoomDatabase() {
 
         private const val TAG = "FocusFlowDatabase"
         private const val SETTINGS_BLOB_MIGRATED_KEY = "_settings_blob_migrated"
+
+        val DATABASE_CALLBACK: RoomDatabase.Callback = object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                ensurePipelineStateRow(db)
+            }
+
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `idx_focus_sessions_one_active` " +
+                        "ON `focus_sessions` (`is_active`) WHERE `is_active` = 1",
+                )
+            }
+        }
+
+        private fun ensurePipelineStateRow(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO `usage_pipeline_state`
+                    (`id`, `cutover_date`, `pipeline_version`, `shadow_started_on`)
+                VALUES (1, NULL, 1, date('now', 'localtime'))
+                """.trimIndent(),
+            )
+        }
 
         // ─── Migrations ───────────────────────────────────────────────────────
 
@@ -544,14 +578,31 @@ abstract class FocusFlowDatabase : RoomDatabase() {
             }
         }
 
-        /** Activates pipeline history from the first local day after upgrade. */
+        /**
+         * Retains the upgrade edge for already-installed version-7 databases.
+         * This migration must remain data-free; an upgrade-day cutover skips
+         * the required shadow period. Version 9 repairs stale state instead.
+         */
         val MIGRATION_7_8: Migration = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) = Unit
+        }
+
+        /**
+         * Removes cutover dates written by the old 7→8 migration and restarts
+         * the shadow window from the current local day. The insert is harmless
+         * when a healthy singleton row already exists.
+         */
+        val MIGRATION_8_9: Migration = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
+                db.execSQL(
+                    """
                     UPDATE `usage_pipeline_state`
-                    SET `cutover_date` = date('now', 'localtime')
-                    WHERE `id` = 1 AND `cutover_date` IS NULL
-                """.trimIndent())
+                    SET `cutover_date` = NULL,
+                        `shadow_started_on` = date('now', 'localtime')
+                    WHERE `cutover_date` IS NOT NULL
+                    """.trimIndent(),
+                )
+                ensurePipelineStateRow(db)
             }
         }
 

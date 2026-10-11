@@ -1,9 +1,13 @@
 package com.tbtechs.focusflow.data.local
 
 import android.content.ContextWrapper
+import android.database.DatabaseErrorHandler
 import android.database.sqlite.SQLiteDatabase
+import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -118,10 +122,13 @@ class FocusFlowDatabaseMigrationTest {
 
         val migrated = helper.runMigrationsAndValidate(
             USAGE_DB_NAME,
-            7,
+            9,
             true,
             FocusFlowDatabase.MIGRATION_6_7,
+            FocusFlowDatabase.MIGRATION_7_8,
+            FocusFlowDatabase.MIGRATION_8_9,
         )
+        val expectedShadowStart = localToday(migrated)
         migrated.query(
             """
             SELECT date, package_name, app_name, category, foreground_ms, hourly_ms,
@@ -165,7 +172,7 @@ class FocusFlowDatabaseMigrationTest {
             assertTrue(cursor.moveToFirst())
             assertTrue(cursor.isNull(0))
             assertEquals(1, cursor.getInt(1))
-            assertNotNull(cursor.getString(2))
+            assertEquals(expectedShadowStart, cursor.getString(2))
         }
         listOf("usage_rollup_day", "usage_rollup_app_day", "usage_rollup_session").forEach { table ->
             migrated.query("SELECT COUNT(*) FROM `$table`").use { cursor ->
@@ -177,7 +184,134 @@ class FocusFlowDatabaseMigrationTest {
     }
 
     @Test
-    fun freshUserVersionZeroDatabaseCanReachTheShadowSchema() {
+    fun migrateV7To9LeavesTheV7To8StepDataFreeAndRepairsStaleCutover() {
+        helper.createDatabase(V7_DB_NAME, 7).apply {
+            execSQL(
+                """
+                INSERT INTO usage_pipeline_state
+                    (id, cutover_date, pipeline_version, shadow_started_on)
+                VALUES (1, '2026-10-01', 1, '2026-09-20')
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val versionEight = helper.runMigrationsAndValidate(
+            V7_DB_NAME,
+            8,
+            true,
+            FocusFlowDatabase.MIGRATION_7_8,
+        )
+        versionEight.query(
+            "SELECT cutover_date, shadow_started_on FROM usage_pipeline_state WHERE id = 1",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("2026-10-01", cursor.getString(0))
+            assertEquals("2026-09-20", cursor.getString(1))
+        }
+        versionEight.close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            V7_DB_NAME,
+            9,
+            true,
+            FocusFlowDatabase.MIGRATION_8_9,
+        )
+        migrated.query(
+            "SELECT cutover_date, shadow_started_on FROM usage_pipeline_state WHERE id = 1",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue(cursor.isNull(0))
+            assertEquals(localToday(migrated), cursor.getString(1))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateV8To9ClearsStaleCutoverAndResetsShadowStart() {
+        helper.createDatabase(V8_DB_NAME, 8).apply {
+            execSQL(
+                """
+                INSERT INTO usage_pipeline_state
+                    (id, cutover_date, pipeline_version, shadow_started_on)
+                VALUES (1, '2026-10-01', 1, '2026-09-20')
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            V8_DB_NAME,
+            9,
+            true,
+            FocusFlowDatabase.MIGRATION_8_9,
+        )
+        migrated.query(
+            "SELECT cutover_date, shadow_started_on FROM usage_pipeline_state WHERE id = 1",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue(cursor.isNull(0))
+            assertEquals(localToday(migrated), cursor.getString(1))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateV8To9SeedsMissingPipelineState() {
+        helper.createDatabase(MISSING_STATE_DB_NAME, 8).apply {
+            execSQL("DELETE FROM usage_pipeline_state")
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            MISSING_STATE_DB_NAME,
+            9,
+            true,
+            FocusFlowDatabase.MIGRATION_8_9,
+        )
+        migrated.query(
+            "SELECT cutover_date, pipeline_version, shadow_started_on " +
+                "FROM usage_pipeline_state WHERE id = 1",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue(cursor.isNull(0))
+            assertEquals(1, cursor.getInt(1))
+            assertEquals(localToday(migrated), cursor.getString(2))
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun freshRoomDatabaseSeedsPipelineStateAfterSchemaCreation() {
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        targetContext.deleteDatabase(FRESH_INSTALL_DB_NAME)
+        val database = Room.databaseBuilder(
+            targetContext,
+            FocusFlowDatabase::class.java,
+            FRESH_INSTALL_DB_NAME,
+        )
+            .addCallback(FocusFlowDatabase.DATABASE_CALLBACK)
+            .build()
+
+        try {
+            val db = database.openHelper.writableDatabase
+            db.query(
+                "SELECT cutover_date, pipeline_version, shadow_started_on " +
+                    "FROM usage_pipeline_state WHERE id = 1",
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertTrue(cursor.isNull(0))
+                assertEquals(1, cursor.getInt(1))
+                assertEquals(localToday(db), cursor.getString(2))
+            }
+        } finally {
+            database.close()
+            targetContext.deleteDatabase(FRESH_INSTALL_DB_NAME)
+        }
+    }
+
+    @Test
+    fun legacySchemaCanReachVersionNineThroughTheFullMigrationChain() {
         helper.createDatabase(FRESH_DB_NAME, 0).apply {
             FocusFlowDatabase.MIGRATION_0_1.migrate(this)
             FocusFlowDatabase.MIGRATION_1_2.migrate(this)
@@ -199,9 +333,11 @@ class FocusFlowDatabaseMigrationTest {
 
         val migrated = helper.runMigrationsAndValidate(
             FRESH_DB_NAME,
-            7,
+            9,
             true,
             FocusFlowDatabase.MIGRATION_6_7,
+            FocusFlowDatabase.MIGRATION_7_8,
+            FocusFlowDatabase.MIGRATION_8_9,
         )
         migrated.query(
             "SELECT foreground_ms FROM daily_app_usage WHERE package_name = 'app.fresh'",
@@ -217,20 +353,57 @@ class FocusFlowDatabaseMigrationTest {
     }
 
     @Test
-    fun legacyUserVersionZeroDatabaseIsPreparedForRoomMigrations() {
+    fun legacyUserVersionZeroDatabaseIsPreparedAndUpgradedToVersionNine() {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val databaseFile = File(targetContext.cacheDir, "legacy-user-version-zero-test.db")
+        val databaseFile = File(targetContext.cacheDir, LEGACY_USER_VERSION_ZERO_DB_NAME)
+        databaseFile.delete()
         val legacyContext = object : ContextWrapper(targetContext) {
             override fun getDatabasePath(name: String): File = databaseFile
+
+            override fun openOrCreateDatabase(
+                name: String,
+                mode: Int,
+                factory: SQLiteDatabase.CursorFactory?,
+            ): SQLiteDatabase = SQLiteDatabase.openDatabase(
+                databaseFile.absolutePath,
+                factory,
+                mode or SQLiteDatabase.CREATE_IF_NECESSARY,
+            )
+
+            override fun openOrCreateDatabase(
+                name: String,
+                mode: Int,
+                factory: SQLiteDatabase.CursorFactory?,
+                errorHandler: DatabaseErrorHandler?,
+            ): SQLiteDatabase = SQLiteDatabase.openDatabase(
+                databaseFile.absolutePath,
+                factory,
+                mode or SQLiteDatabase.CREATE_IF_NECESSARY,
+                errorHandler,
+            )
         }
 
         try {
-            val legacyDb = SQLiteDatabase.openOrCreateDatabase(databaseFile, null)
-            legacyDb.execSQL(
-                "CREATE TABLE tasks (id TEXT NOT NULL PRIMARY KEY)",
+            val legacyOpenHelper = FrameworkSQLiteOpenHelperFactory().create(
+                SupportSQLiteOpenHelper.Configuration.builder(legacyContext)
+                    .name(FocusFlowDatabase.DB_NAME)
+                    .callback(object : SupportSQLiteOpenHelper.Callback(1) {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            FocusFlowDatabase.MIGRATION_0_1.migrate(db)
+                        }
+
+                        override fun onUpgrade(
+                            db: SupportSQLiteDatabase,
+                            oldVersion: Int,
+                            newVersion: Int,
+                        ) {
+                            error("Unexpected upgrade while creating the legacy test database")
+                        }
+                    })
+                    .build(),
             )
-            legacyDb.version = 0
-            legacyDb.close()
+            legacyOpenHelper.writableDatabase.use { it.version = 0 }
+            legacyOpenHelper.close()
 
             FocusFlowDatabase.prepareLegacyDatabase(legacyContext)
 
@@ -251,14 +424,59 @@ class FocusFlowDatabaseMigrationTest {
             } finally {
                 preparedDb.close()
             }
+
+            val database = Room.databaseBuilder(
+                legacyContext,
+                FocusFlowDatabase::class.java,
+                FocusFlowDatabase.DB_NAME,
+            )
+                .addMigrations(
+                    FocusFlowDatabase.MIGRATION_0_1,
+                    FocusFlowDatabase.MIGRATION_1_2,
+                    FocusFlowDatabase.MIGRATION_2_3,
+                    FocusFlowDatabase.MIGRATION_3_4,
+                    FocusFlowDatabase.MIGRATION_4_5,
+                    FocusFlowDatabase.MIGRATION_5_6,
+                    FocusFlowDatabase.MIGRATION_6_7,
+                    FocusFlowDatabase.MIGRATION_7_8,
+                    FocusFlowDatabase.MIGRATION_8_9,
+                )
+                .addCallback(FocusFlowDatabase.DATABASE_CALLBACK)
+                .build()
+            try {
+                val migrated = database.openHelper.writableDatabase
+                assertEquals(9, migrated.version)
+                migrated.query(
+                    "SELECT cutover_date, pipeline_version, shadow_started_on " +
+                        "FROM usage_pipeline_state WHERE id = 1",
+                ).use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertTrue(cursor.isNull(0))
+                    assertEquals(1, cursor.getInt(1))
+                    assertNotNull(cursor.getString(2))
+                }
+            } finally {
+                database.close()
+            }
         } finally {
             databaseFile.delete()
         }
     }
 
+    private fun localToday(db: SupportSQLiteDatabase): String =
+        db.query("SELECT date('now', 'localtime')").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            cursor.getString(0)
+        }
+
     companion object {
         private const val DB_NAME = "focusflow-migration-test.db"
         private const val USAGE_DB_NAME = "focusflow-usage-migration-test.db"
         private const val FRESH_DB_NAME = "focusflow-usage-zero-migration-test.db"
+        private const val V7_DB_NAME = "focusflow-migration-v7-to-v9.db"
+        private const val V8_DB_NAME = "focusflow-migration-v8-to-v9.db"
+        private const val MISSING_STATE_DB_NAME = "focusflow-migration-missing-state.db"
+        private const val FRESH_INSTALL_DB_NAME = "focusflow-fresh-install-state.db"
+        private const val LEGACY_USER_VERSION_ZERO_DB_NAME = "legacy-user-version-zero-test.db"
     }
 }

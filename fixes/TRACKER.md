@@ -122,26 +122,28 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A1 — Database and cutover
 
-**Status:** `NOT STARTED`  
-**Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
-**Started:** —  
-**Completed:** —  
+**Status:** `IN PROGRESS`<br>
+**Blocked by:** A5 complete<br>
+**Started:** 2026-10-11<br>
+**Completed:** —<br>
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Seed `usage_pipeline_state` on fresh database creation with local `shadow_started_on` and null `cutover_date`. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Add an idempotent read-model repair for a missing state row. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Make `MIGRATION_7_8` data-free; add version 9 `MIGRATION_8_9` to clear stale cutover dates, reset shadow start where needed, and create missing state. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Simplify `cutoverDate()` as specified; document fresh-install and upgrade behavior. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | JVM/fake-store cases: missing row repair; fewer than seven complete days; seven complete current-version days; old pipeline version excluded; repeated calls idempotent. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Migration coverage: 6→9, 7→9, 8→9, fresh install, and legacy `user_version = 0`; record whether tests ran or only compiled. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Seed `usage_pipeline_state` on fresh database creation with local `shadow_started_on` and null `cutover_date`. | IN PROGRESS | A5 complete | Room callback implementation and fresh-install test added; verification pending. | No |
+| [ ] | Add an idempotent read-model repair for a missing state row. | IN PROGRESS | A5 complete | Implementation and tests added; verification pending. | No |
+| [ ] | Make `MIGRATION_7_8` data-free; add version 9 `MIGRATION_8_9` to clear stale cutover dates, reset shadow start where needed, and create missing state. | IN PROGRESS | A5 complete | Migration and upgrade-path tests added; verification pending. | No |
+| [ ] | Simplify `cutoverDate()` as specified; document fresh-install and upgrade behavior. | IN PROGRESS | A5 complete | Duplicate eligibility check and post-write re-read removed; verification pending. | No |
+| [ ] | JVM/fake-store cases: missing row repair; fewer than seven complete days; seven complete current-version days; old pipeline version excluded; repeated calls idempotent. | IN PROGRESS | A5 complete | Five fake-store cases added; verification pending. | No |
+| [ ] | Migration coverage: 6→9, 7→9, 8→9, fresh install, and legacy `user_version = 0`; record whether tests ran or only compiled. | IN PROGRESS | A5 complete | Instrumented path tests added; verification pending. | No |
 | [ ] | Owner scenario S2 on both phones; do not tick until owner reports. | OWNER-RUN PENDING | A5 complete; E1 device session | Pending owner report | Yes |
 
 **Done when:** fresh and upgraded installs reach the same state and behavior; automated migration/cutover evidence is recorded.  
 **Notes:**<br>
+- A1 implementation is in progress: Room is now version 9; fresh-database callback and read-model repair seed the singleton state; 7→8 is data-free; 8→9 resets only rows with cutover dates and repairs a missing row. Cutover eligibility and write-result handling were simplified. Tests are added but not yet verified.
 **Evidence:**<br>
 **Failures and blockers:**<br>
+- The initial `bash scripts/test-unit.sh` run was stopped during SDK setup before Gradle tests ran: it also schedules the development flavor, contrary to the production-only test rule. The production-only unit-test task is being run separately.
 **Decisions and deferred work:**<br>
 
 ### A2 — Maintenance job
@@ -645,7 +647,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 | Batch | Status | Blocked by | Owner-run status |
 |---|---|---|---|
 | A5 — Tracker truth | DONE — evidence recorded | — | Not owner-run |
-| A1 — Database and cutover | NOT STARTED | A5 complete; eligible | S2 pending later |
+| A1 — Database and cutover | IN PROGRESS | A5 complete | S2 pending later |
 | A2 — Maintenance job | NOT STARTED | A5 complete; eligible | Not owner-run |
 | A3 — Stats zero reading | NOT STARTED | A5 complete; eligible | S1 pending later |
 | A4 — Test baseline | NOT STARTED | A5 complete; eligible | Not owner-run |

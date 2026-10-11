@@ -14,6 +14,15 @@ interface UsageRollupDao {
     @Query("SELECT * FROM usage_pipeline_state WHERE id = 1")
     suspend fun getPipelineState(): UsagePipelineStateEntity?
 
+    @Query(
+        """
+        INSERT OR IGNORE INTO usage_pipeline_state
+            (id, cutover_date, pipeline_version, shadow_started_on)
+        VALUES (1, NULL, 1, :shadowStartedOn)
+        """,
+    )
+    suspend fun ensurePipelineState(shadowStartedOn: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPipelineState(state: UsagePipelineStateEntity)
 

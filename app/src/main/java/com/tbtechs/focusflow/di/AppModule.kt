@@ -2,7 +2,6 @@ package com.tbtechs.focusflow.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.RoomDatabase
 import com.tbtechs.focusflow.notifications.AndroidReminderChainAlarmDriver
 import com.tbtechs.focusflow.notifications.ReminderChainLedger
 import com.tbtechs.focusflow.notifications.ReminderNotificationPublisher
@@ -224,15 +223,9 @@ object AppModule {
                 FocusFlowDatabase.MIGRATION_5_6,
                 FocusFlowDatabase.MIGRATION_6_7,
                 FocusFlowDatabase.MIGRATION_7_8,
+                FocusFlowDatabase.MIGRATION_8_9,
             )
-            .addCallback(object : RoomDatabase.Callback() {
-                override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                    db.execSQL(
-                        "CREATE UNIQUE INDEX IF NOT EXISTS `idx_focus_sessions_one_active` " +
-                            "ON `focus_sessions` (`is_active`) WHERE `is_active` = 1",
-                    )
-                }
-            })
+            .addCallback(FocusFlowDatabase.DATABASE_CALLBACK)
             .build()
 
         // Repositories — order within this block does not matter.
