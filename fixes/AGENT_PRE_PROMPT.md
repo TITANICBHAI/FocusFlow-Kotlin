@@ -6,8 +6,8 @@ Use this prompt before doing work tracked by the v8 plan in this folder.
 
 Before inspecting implementation details or editing files, read these documents in full and in this order:
 
-1. `fices/AGENT_PRE_PROMPT.md`
-2. `fices/PLAN.md`
+1. `fixes/AGENT_PRE_PROMPT.md`
+2. `fixes/PLAN.md`
 3. `allowance/TRACKER.md`
 
 The v8 plan supersedes `allowance/PLAN.md` (v7). The existing tracker is still written for v7 and must be reconciled with v8 as Batch A5 before any app-code change. After reading these documents, read the current project instructions, inspect the relevant current source, and check the working tree. Verify paths, APIs, and behavior against the current repository. Preserve unrelated user changes and user data.
