@@ -15,10 +15,12 @@ import com.tbtechs.focusflow.data.repository.ClarifyingQuestionRepository
 import com.tbtechs.focusflow.data.repository.FindingRepository
 import com.tbtechs.focusflow.analytics.DetectorUsageHistory
 import com.tbtechs.focusflow.analytics.UsageHistoryRepository
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
@@ -37,6 +39,8 @@ class FindingDetectionRunner(
     private val dayRatingDao: DayRatingDao,
     private val clarifyingQuestionRepository: ClarifyingQuestionRepository,
     private val usageHistoryRepository: UsageHistoryRepository? = null,
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val zoneId: ZoneId = clock.zone,
 ) {
     private companion object {
         private const val TAG = "FindingDetectionRunner"
@@ -95,7 +99,10 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runMorningHijack() {
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.MORNING_HIJACK)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.MORNING_HIJACK,
+            today = localToday(),
+        )
         val history = detectorHistory(range.start.toString(), range.end.toString()) ?: return
         val firstSessions = firstSessions(history.sessions)
         if (firstSessions.isEmpty()) return
@@ -135,7 +142,7 @@ class FindingDetectionRunner(
                 questionType = "morning_high_rating",
                 dateOfConcern = mostRecent.date,
                 contextJson = contextJson,
-                askedAt = Instant.now().toString(),
+                askedAt = clock.instant().toString(),
                 response = null,
                 respondedAt = null,
             ),
@@ -143,7 +150,10 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runVariableRewardLoop() {
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.VARIABLE_REWARD_LOOP)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.VARIABLE_REWARD_LOOP,
+            today = localToday(),
+        )
         val history = detectorHistory(range.start.toString(), range.end.toString()) ?: return
         val dailyStats = sessionStats(history.sessions)
         if (dailyStats.isEmpty()) return
@@ -163,7 +173,10 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runInfiniteSessionDesign() {
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.INFINITE_SESSION_DESIGN)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.INFINITE_SESSION_DESIGN,
+            today = localToday(),
+        )
         val history = detectorHistory(range.start.toString(), range.end.toString()) ?: return
         val dailyStats = sessionStats(history.sessions)
         if (dailyStats.isEmpty()) return
@@ -187,17 +200,23 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runEscalatingCapture() {
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.ESCALATING_CAPTURE)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.ESCALATING_CAPTURE,
+            today = localToday(),
+        )
         val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
-        detectEscalatingCapture(usageRows, LocalDate.now())
+        detectEscalatingCapture(usageRows, localToday())
             ?.let { findingRepository.submit(it) }
     }
 
     private suspend fun runStreakLockIn() {
         val windowDays = 14
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.STREAK_LOCK_IN)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.STREAK_LOCK_IN,
+            today = localToday(),
+        )
         val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
@@ -207,16 +226,22 @@ class FindingDetectionRunner(
     }
 
     private suspend fun runSubstitution() {
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.SUBSTITUTION)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.SUBSTITUTION,
+            today = localToday(),
+        )
         val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
-        detectSubstitution(usageRows, LocalDate.now())
+        detectSubstitution(usageRows, localToday())
             ?.let { findingRepository.submit(it) }
     }
 
     private suspend fun runAllowanceSuggestion() {
-        val range = UsageDetectorWindows.range(UsageDetectorWindow.ALLOWANCE_SUGGESTION)
+        val range = UsageDetectorWindows.range(
+            UsageDetectorWindow.ALLOWANCE_SUGGESTION,
+            today = localToday(),
+        )
         val usageRows = detectorHistory(range.start.toString(), range.end.toString())?.appDays ?: return
         if (usageRows.isEmpty()) return
 
@@ -233,7 +258,7 @@ class FindingDetectionRunner(
             return it.detectorHistory(
                 startDate = startDate,
                 endDate = endDate,
-                today = LocalDate.now().format(ISO_DATE),
+                today = localToday().format(ISO_DATE),
             )
         }
         return DetectorUsageHistory(
@@ -282,16 +307,19 @@ class FindingDetectionRunner(
         }
 
     private fun dateRangeStart(days: Long): String =
-        LocalDate.now().minusDays(days).format(ISO_DATE)
+        localToday().minusDays(days).format(ISO_DATE)
 
     private fun dateRangeEnd(): String =
-        LocalDate.now().minusDays(1).format(ISO_DATE)
+        localToday().minusDays(1).format(ISO_DATE)
 
     private fun isoRangeStart(days: Long): String =
-        LocalDateTime.of(LocalDate.now().minusDays(days), LocalTime.MIDNIGHT).toString()
+        LocalDateTime.of(localToday().minusDays(days), LocalTime.MIDNIGHT).toString()
 
     private fun isoRangeEnd(): String =
-        LocalDateTime.now().toString()
+        LocalDateTime.ofInstant(clock.instant(), zoneId).toString()
+
+    private fun localToday(): LocalDate =
+        LocalDate.ofInstant(clock.instant(), zoneId)
 
     private fun jsonEscape(value: String): String =
         value.replace("\\", "\\\\").replace("\"", "\\\"")

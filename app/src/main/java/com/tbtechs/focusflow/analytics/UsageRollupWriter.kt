@@ -9,6 +9,7 @@ import com.tbtechs.focusflow.data.local.entity.UsageRollupSessionEntity
 import com.tbtechs.focusflow.data.local.entity.UsagePipelineStateEntity
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -30,15 +31,17 @@ class UsageRollupWriter(
     private val context: Context,
     private val database: FocusFlowDatabase,
     private val eventSource: UsageEventsSource,
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val zoneId: ZoneId = clock.zone,
 ) {
     private val mutex = Mutex()
     private val tracker = ForegroundSpanTracker(
         excludedPackages = ForegroundSpanTracker.DEFAULT_EXCLUDED_PACKAGES + context.packageName,
     )
 
-    suspend fun writeRecentPastDays(nowMs: Long = System.currentTimeMillis()): UsageRollupPass =
+    suspend fun writeRecentPastDays(nowMs: Long = clock.millis()): UsageRollupPass =
         mutex.withLock {
-            val zone = ZoneId.systemDefault()
+            val zone = zoneId
             val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
             val firstDate = today.minusDays(ROLLUP_LOOKBACK_DAYS)
             val rangeStartMs = firstDate.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -151,7 +154,7 @@ class UsageRollupWriter(
         earliestEventAtMs: Long?,
         nowMs: Long,
     ): Set<String> = mutex.withLock {
-        val zone = ZoneId.systemDefault()
+        val zone = zoneId
         val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
         val start = LocalDate.parse(startDate)
         val end = minOf(LocalDate.parse(endDate), today.minusDays(1))
@@ -252,7 +255,7 @@ class UsageRollupWriter(
     }
 
     companion object {
-        private const val ROLLUP_LOOKBACK_DAYS = 3L
+        const val ROLLUP_LOOKBACK_DAYS = 3L
         private const val SESSION_LOOKBACK_MS = 6L * 60L * 60L * 1_000L
     }
 }

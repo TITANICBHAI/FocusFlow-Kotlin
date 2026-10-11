@@ -30,8 +30,6 @@ class BackgroundFetchWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        runDailyFindingDetection()
-
         val gateway = BackgroundFetchDependencies.create(applicationContext)
             ?: return Result.failure(
                 workDataOf("error" to "BackgroundFetchGateway is not configured"),
@@ -76,18 +74,6 @@ class BackgroundFetchWorker(
                 }
             }
 
-            val prunePrefs = applicationContext.getSharedPreferences(
-                "focusday_prefs",
-                Context.MODE_PRIVATE,
-            )
-            val todayString = java.time.LocalDate.now().toString()
-            val lastPruned = prunePrefs.getString("last_prune_date", "") ?: ""
-            if (lastPruned != todayString) {
-                runCatching { prunePhase1Tables() }
-                    .onSuccess { prunePrefs.edit().putString("last_prune_date", todayString).apply() }
-                    .onFailure { Log.w(TAG, "Phase 1 prune failed", it) }
-            }
-
             Result.success(
                 workDataOf("rearmedCount" to tasksToRearm.size),
             )
@@ -106,55 +92,6 @@ class BackgroundFetchWorker(
         runCatching { java.time.Instant.parse(value) }.getOrElse {
             java.time.OffsetDateTime.parse(value).toInstant()
         }
-
-    private suspend fun prunePhase1Tables() {
-        val database = com.tbtechs.focusflow.di.AppModule.database
-        val cutoffDate = java.time.LocalDate.now().minusDays(90).toString()
-        val cutoffIso = java.time.Instant.now()
-            .minus(90, java.time.temporal.ChronoUnit.DAYS)
-            .toString()
-        database.dailyAppUsageDao().deleteOlderThan(cutoffDate)
-        database.appSessionDao().deleteOlderThan(cutoffDate)
-        database.findingDao().deleteOldResolved(cutoffIso)
-        database.clarifyingQuestionDao().deleteAnsweredBefore(cutoffIso)
-    }
-
-    /**
-     * Detection is independent of the legacy background-fetch gateway. Run it
-     * before that adapter check so findings can still be generated while the
-     * primary task-sync adapter is unavailable.
-     */
-    private suspend fun runDailyFindingDetection() {
-        val detectionPrefs = applicationContext.getSharedPreferences(
-            "focusday_prefs",
-            Context.MODE_PRIVATE,
-        )
-        val todayForDetection = java.time.LocalDate.now().toString()
-        val lastDetectionRun =
-            detectionPrefs.getString("last_detection_run_date", "") ?: ""
-        if (lastDetectionRun == todayForDetection) return
-
-        runCatching {
-            // The rollup pass must finish before detectors read the cutover-aware
-            // history, so no detector observes an incomplete day that this run
-            // could have persisted first.
-            when (
-                val pass = com.tbtechs.focusflow.di.AppModule.usageRollupWriter
-                    .writeRecentPastDays()
-            ) {
-                is com.tbtechs.focusflow.analytics.UsageRollupPass.Unknown ->
-                    Log.i(TAG, "Usage rollup unavailable for detection: ${pass.reason}")
-                is com.tbtechs.focusflow.analytics.UsageRollupPass.Written -> Unit
-            }
-            com.tbtechs.focusflow.di.AppModule.findingDetectionRunner.runAll()
-        }.onSuccess {
-            detectionPrefs.edit()
-                .putString("last_detection_run_date", todayForDetection)
-                .apply()
-        }.onFailure {
-            Log.w(TAG, "Finding detection failed", it)
-        }
-    }
 
     companion object {
         private const val TAG = "BackgroundFetchWorker"

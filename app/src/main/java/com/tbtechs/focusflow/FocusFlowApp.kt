@@ -1,6 +1,7 @@
 package com.tbtechs.focusflow
 
 import android.app.Application
+import com.tbtechs.focusflow.background.UsageMaintenanceWorker
 import com.tbtechs.focusflow.data.local.FocusFlowDatabase
 import com.tbtechs.focusflow.di.AppModule
 import com.tbtechs.focusflow.data.repository.StartupLogger
@@ -58,6 +59,7 @@ class FocusFlowApp : Application() {
         StartupLogger.info("Notifications", "Creating application notification channels")
         NotificationChannels.createAll(this)
         DayRatingNotificationScheduler.ensureScheduled(this)
+        UsageMaintenanceWorker.enqueuePeriodic(this)
         AppModule.usageRollupCoordinator.trigger("app_open")
         StartupLogger.info("FocusFlowApp", "Application startup completed")
     }

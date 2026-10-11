@@ -41,6 +41,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import com.tbtechs.focusflow.ui.common.AppErrorEvents
+import java.time.Clock
+import java.time.ZoneId
 
 /**
  * Manual DI singleton — the single source of truth for every repository
@@ -282,6 +284,8 @@ object AppModule {
             context = app,
             database = database,
             eventSource = usageStatsRepository,
+            clock = Clock.systemDefaultZone(),
+            zoneId = ZoneId.systemDefault(),
         )
         usageRollupCoordinator = UsageRollupCoordinator(
             context = app,
@@ -326,6 +330,8 @@ object AppModule {
             dayRatingDao = database.dayRatingDao(),
             clarifyingQuestionRepository = clarifyingQuestionRepository,
             usageHistoryRepository = usageHistoryRepository,
+            clock = Clock.systemDefaultZone(),
+            zoneId = ZoneId.systemDefault(),
         )
 
     }

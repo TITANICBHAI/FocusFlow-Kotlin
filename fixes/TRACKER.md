@@ -156,27 +156,44 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A2 — Maintenance job
 
-**Status:** `NOT STARTED`  
+**Status:** `IN PROGRESS`<br>
 **Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
-**Started:** —  
+**Started:** 2026-10-11<br>
 **Completed:** —  
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Implement a maintenance worker that runs recent rollups, completed-day detection, then prune in that order. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Schedule unique periodic work with keep policy from app startup; record observed schedule evidence. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Preserve unrelated old background-fetch duties; remove old detection/prune calls only after the replacement is live. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Detection marker advances only when required days are COMPLETE or permission is denied; unknown results retry. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Run detection after successful rollup completion; inject clock/zone for pruning and detection while task dates retain UTC behavior. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Worker tests: order; unknown-result retry; one success per local day; prune horizon uses injected clock. | NOT STARTED | A5 complete | Pending | No |
-| [ ] | Prune delegates to the rollup retention work in C5. | NOT STARTED | A5 complete; C5 | Pending | No |
+| [x] | Implement a maintenance worker that runs recent rollups, completed-day detection, then prune in that order. | DONE | A5 complete | Worker sequence test; full Production suite passed | No |
+| [x] | Schedule unique periodic work with keep policy from app startup; record observed schedule evidence. | DONE | A5 complete | Startup call, captured 15-minute KEEP request, and WorkManager completion log | No |
+| [x] | Preserve unrelated old background-fetch duties; remove old detection/prune calls only after the replacement is live. | DONE | A5 complete | Focused replacement test passed before old calls were removed; task warnings/reminders/digest retained | No |
+| [x] | Detection marker advances only when required days are COMPLETE or permission is denied; unknown results retry. | DONE | A5 complete | Complete/incomplete/permission/unknown cases covered by worker tests | No |
+| [x] | Run detection after successful rollup completion; inject clock/zone for pruning and detection while task dates retain UTC behavior. | DONE | A5 complete | Injected clock/zone; UTC task-date query unchanged; Production tests passed | No |
+| [x] | Worker tests: order; unknown-result retry; one success per local day; prune horizon uses injected clock. | DONE | A5 complete | `UsageMaintenanceJobTest` 7/7; full suite 268/268 | No |
+| [ ] | Prune delegates to the rollup retention work in C5. | BLOCKED | A5 complete; C5 | Pending C5 rollup-retention implementation | No |
 
 **Done when:** scheduling is evidenced at app start and required worker tests pass.  
-**Notes:**  
+**Notes:**<br>
+- **A2 start (2026-10-11):** User authorized A2 after A1 completed. The initial worktree was clean. Source review confirmed that startup does not schedule the maintenance job, `BackgroundFetchWorker` mixes legacy task duties with detection and legacy-table pruning, and the rollup writer and detection runner already exist. Keep unrelated task/reminder behavior out of scope. C5 has not added rollup-table retention yet; leave the A2→C5 pruning item blocked and do not implement C5 here.
+- **Initial implementation checkpoint (2026-10-11):** Added a platform-free maintenance coordinator, a WorkManager adapter, a unique 15-minute `KEEP` schedule request from `FocusFlowApp`, startup logging after WorkManager accepts the operation, local-clock rollup/detection/prune seams, and behavior tests. The job checks all three recent rollup dates before detection, retries incomplete/unknown reads, and treats missing/revoked usage permission as a terminal no-read state for that local day. At this checkpoint, the old BackgroundFetch detection/prune code remained pending replacement verification.
+- **Replacement verification (2026-10-11):** Ran `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest --tests 'com.tbtechs.focusflow.background.UsageMaintenanceJobTest'`; Gradle succeeded and the XML report confirms 7/7 tests, zero failures/errors/skips. After that pass, removed only the old detection and prune calls from `BackgroundFetchWorker`; late-start warnings, task reminders, and morning digest remain. Final full Production verification is still pending.
+- **Final verification (2026-10-11):** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest` passed; Production XML contains 268 tests, zero failures/errors/skips, including all seven `UsageMaintenanceJobTest` cases. The new startup helper records the exact unique-work name, 15-minute interval, and `KEEP` policy in its test; production logs only after WorkManager's enqueue operation completes. `git diff --check` passed. No APK, GitHub workflow, push, or device run was started.
 **Evidence:**  
+ - **Rollup → readiness → detection → prune:** `UsageMaintenanceJob.kt`, `UsageMaintenanceWorker.kt`, and `UsageMaintenanceJobTest.kt`; the order case passed and the full Production suite passed (268 tests, zero failures/errors/skips).
+ - **App-start scheduling:** `FocusFlowApp.kt`, `UsageMaintenanceWorker.kt`, `UsageMaintenanceJob.kt`, and `UsageMaintenanceJobTest.kt`; startup invokes the scheduler, the test captured `FOCUSDAY_USAGE_MAINTENANCE` / 15 minutes / `KEEP`, and the WorkManager operation logs only after completion; Production suite passed.
+ - **Background-fetch separation:** `BackgroundFetchWorker.kt` and `UsageMaintenanceWorker.kt`; replacement was tested before moving detection/prune, then old detection/prune were removed while late warnings, task reminders, and morning digest remained; Production suite passed.
+ - **Readiness and retry:** `UsageMaintenanceJob.kt`, `UsageMaintenanceWorker.kt`, and `UsageMaintenanceJobTest.kt`; incomplete required days and `EVENTS_UNAVAILABLE` leave the detection marker unchanged and return retry; `PERMISSION_MISSING` permits one detection for that local day; tests passed.
+ - **Injected time and UTC task dates:** `UsageMaintenanceJob.kt`, `UsageRollupWriter.kt`, `FindingDetectionRunner.kt`, `BackgroundFetchWorker.kt`, and `UsageMaintenanceJobTest.kt`; tests verified the injected 90-day prune cutoff and local-day detection marker; `BackgroundFetchWorker` continues querying task dates in UTC; Production suite passed.
+ - **Required worker cases:** `UsageMaintenanceJobTest.kt`; seven cases passed for order, unknown retry, permission-denied handling, incomplete-day retry, once-per-local-day detection, injected prune horizon, and scheduling policy.
+ - **Full local verification:** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest`; 58 XML reports, 268 tests, zero failures/errors/skips. No APK was built.
+ - **Diff hygiene:** `git diff --check` passed.
 **Failures and blockers:**  
+ - **C5 dependency:** Rollup-table retention does not exist yet; the worker's legacy-table pruning remains separate. Leave “Prune delegates to the rollup retention work in C5” unchecked and blocked until C5.
 **Decisions and deferred work:**  
+ - Require all three recent past-day rollup rows to be `COMPLETE` at the current pipeline version before detection; this matches the writer's existing three-day rollup window.
+ - Treat `PERMISSION_MISSING` and `ACCESS_REVOKED` as the documented no-read condition for a local day; retry all other unknown and incomplete results.
+ - Preserve the existing `last_detection_run_date` and `last_prune_date` preference keys; keep BackgroundFetch task-date lookup on UTC.
+ - Defer rollup-table retention delegation to C5; do not add a no-op retention hook in A2.
 
 ### A3 — Stats zero reading
 
@@ -656,7 +673,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 |---|---|---|---|
 | A5 — Tracker truth | DONE — evidence recorded | — | Not owner-run |
 | A1 — Database and cutover | DONE — evidence recorded | A5 complete | S2 pending later |
-| A2 — Maintenance job | NOT STARTED | A5 complete; eligible | Not owner-run |
+| A2 — Maintenance job | IN PROGRESS | A5 complete; eligible; C5 pruning row blocked | Not owner-run |
 | A3 — Stats zero reading | NOT STARTED | A5 complete; eligible | S1 pending later |
 | A4 — Test baseline | NOT STARTED | A5 complete; eligible | Not owner-run |
 | B1–B7 — One meter everywhere | NOT STARTED | A1–A4 | S4 pending later |
