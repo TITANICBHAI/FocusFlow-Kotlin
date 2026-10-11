@@ -1,0 +1,22 @@
+A1 — Database and cutover
+Status: IN PROGRESS
+Blocked by: A5 complete
+Started: 2026-10-11
+Completed: —
+Owner-run: No
+
+Done	Work item	Status	Blocked by	Evidence	Owner-run
+[ ]	Seed usage_pipeline_state on fresh database creation with local shadow_started_on and null cutover_date.	IN PROGRESS	A5 complete	Room callback implementation and fresh-install test added; verification pending.	No
+[ ]	Add an idempotent read-model repair for a missing state row.	IN PROGRESS	A5 complete	Implementation and tests added; verification pending.	No
+[ ]	Make MIGRATION_7_8 data-free; add version 9 MIGRATION_8_9 to clear stale cutover dates, reset shadow start where needed, and create missing state.	IN PROGRESS	A5 complete	Migration and upgrade-path tests added; verification pending.	No
+[ ]	Simplify cutoverDate() as specified; document fresh-install and upgrade behavior.	IN PROGRESS	A5 complete	Duplicate eligibility check and post-write re-read removed; verification pending.	No
+[ ]	JVM/fake-store cases: missing row repair; fewer than seven complete days; seven complete current-version days; old pipeline version excluded; repeated calls idempotent.	IN PROGRESS	A5 complete	Five fake-store cases added; verification pending.	No
+[ ]	Migration coverage: 6→9, 7→9, 8→9, fresh install, and legacy user_version = 0; record whether tests ran or only compiled.	IN PROGRESS	A5 complete	Instrumented path tests added; verification pending.	No
+[ ]	Owner scenario S2 on both phones; do not tick until owner reports.	OWNER-RUN PENDING	A5 complete; E1 device session	Pending owner report	Yes
+Done when: fresh and upgraded installs reach the same state and behavior; automated migration/cutover evidence is recorded.
+Notes:
+
+A1 implementation is in progress: Room is now version 9; fresh-database callback and read-model repair seed the singleton state; 7→8 is data-free; 8→9 resets only rows with cutover dates and repairs a missing row. Cutover eligibility and write-result handling were simplified. Tests are added but not yet verified. Evidence:
+Failures and blockers:
+The initial bash scripts/test-unit.sh run was stopped during SDK setup before Gradle tests ran: it also schedules the development flavor, contrary to the production-only test rule. The production-only unit-test task is being run separately.
+The first production-only unit-test run failed during test compilation on an unresolved helper reference inside FakeStore; the fake now constructs the seeded state directly, and the production-only task is being rerun. Decisions and deferred work:
