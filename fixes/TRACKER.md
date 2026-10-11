@@ -4,7 +4,7 @@
 
 The v8 plan supersedes `allowance/PLAN.md` (v7). The plan is the implementation contract; it is not authorization by itself. See `fixes/AGENT_PRE_PROMPT.md` before starting work.
 
-**Initial state:** All implementation batches below are `NOT STARTED`; no progress or evidence has been copied from the allowance tracker. Product decisions below are transcribed from section 3 of the v8 plan, not independently re-confirmed in this tracker.
+**Initial state at tracker creation:** All batches were `NOT STARTED`; no progress or evidence was copied from the allowance tracker. Batch A5 has since completed. Product decisions below are transcribed from section 3 of the v8 plan, not independently re-confirmed in this tracker.
 
 ---
 
@@ -82,69 +82,85 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A5 — Tracker truth
 
-**Status:** `NOT STARTED`  
-**Blocked by:** None — do this first  
-**Started:** —  
-**Completed:** —  
+**Status:** `DONE — evidence recorded`<br>
+**Blocked by:** None — do this first<br>
+**Started:** 2026-10-11<br>
+**Completed:** 2026-10-11<br>
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Verify current Room database version and `MIGRATION_7_8`; record the v8 A1 change accurately. | NOT STARTED | — | Pending | No |
-| [ ] | Check this primary tracker for stale v6/v7 plan references; correct them to v8 or document why a historical reference remains. | NOT STARTED | — | Pending | No |
-| [ ] | Audit all checkboxes and statuses; leave unsupported or unverified work incomplete. Confirm no allowance-tracker progress was imported. | NOT STARTED | — | Pending | No |
-| [ ] | Verify the Batch 0 usage-table writer/reader map against code; identify `AppUsageAndSessionTracker` as legacy-table writer if confirmed. | NOT STARTED | — | Pending | No |
-| [ ] | Verify the `SettingsRepository.getAllowanceSnapshot` purpose and whether `resetDailyAllowanceUsage` has callers. | NOT STARTED | — | Pending | No |
-| [ ] | Confirm every batch/item has status, blocker, evidence, and owner-run fields; reconcile this decision log with PD-1–PD-14. | NOT STARTED | — | Pending | No |
-| [ ] | Final audit: every tracker statement matches current code or is explicitly marked pending/unverified. | NOT STARTED | Items above | Pending | No |
+| [x] | Verify current Room database version and `MIGRATION_7_8`; record the v8 A1 change accurately. | DONE — evidence recorded | — | `FocusFlowDatabase.kt:133,548-555`; `AppModule.kt:218-227`; verified no `MIGRATION_8_9` exists. | No |
+| [x] | Audit old plan-version references; keep explicit historical supersession/archive references and remove stale active references. | DONE — evidence recorded | — | `rg -ni` audit: remaining v7 mentions are explicitly historical; no stale active reference remains. | No |
+| [x] | Audit all checkboxes and statuses; leave unsupported or unverified work incomplete. Confirm no allowance-tracker progress was imported. | DONE — evidence recorded | — | Initial tracker had no completed items; only this A5 work is now checked, with evidence recorded; no allowance progress copied. | No |
+| [x] | Verify the Batch 0 usage-table writer/reader map against code; identify `AppUsageAndSessionTracker` as legacy-table writer if confirmed. | DONE — evidence recorded | — | DAO call-site search and source inspection: tracker is producer; readers and worker pruning are detailed in Notes. | No |
+| [x] | Verify the `SettingsRepository.getAllowanceSnapshot` purpose and whether `resetDailyAllowanceUsage` has callers. | DONE — evidence recorded | — | `SettingsRepository.kt:1193-1210`; `SettingsViewModel.kt:108`; workspace search found only reset declaration. | No |
+| [x] | Confirm every batch/item has status, blocker, evidence, and owner-run fields; reconcile this decision log with PD-1–PD-14. | DONE — evidence recorded | — | Structural audit: 110 work-item rows include all four fields; decision entries checked against plan sections 3.1–3.2. | No |
+| [x] | Final audit: every tracker statement matches current code or is explicitly marked pending/unverified. | DONE — evidence recorded | — | Current-code claims and v8-derived acceptance criteria reconciled; all future work remains NOT STARTED or OWNER-RUN PENDING. Structural checks passed. | No |
 
-**Done when:** every statement in `fixes/TRACKER.md` matches the current code and v8 plan.  
-**Notes:**  
-**Evidence:**  
-**Failures and blockers:**  
-**Decisions and deferred work:**  
+**Done when:** every statement in `fixes/TRACKER.md` matches the current code and v8 plan.<br>
+**Notes:**
+- `NOT STARTED` in later batches means v8-tracked work has not begun; it does not claim similar code is absent. Existing behavior must be re-verified against the batch acceptance criteria.
+- Current Room version is 8 (`FocusFlowDatabase.kt:133`). `MIGRATION_7_8` (`:548-555`) sets a null `cutover_date` to `date('now', 'localtime')`; `AppModule.kt:218-227` registers it. Search found no `MIGRATION_8_9`. Under v8 A1, version 7→8 should become data-free and a new 8→9 migration should clear stale cutover state and repair/seed the pipeline row. This records a required future change; no database code was changed in A5.
+- `AppUsageAndSessionTracker.kt:22-29,56-80,115-159` produces legacy daily usage (launch count and foreground time) and closed session rows. `AppBlockerAccessibilityService.kt:569` creates it, and `:1018-1024` feeds foreground window changes. `BackgroundFetchWorker.kt:116-117` only prunes old legacy rows; it does not produce usage rows. Search found no usage-write calls in `AnalyticsProcessor` or the worker.
+- Readers found by DAO call-site search: `UsageHistoryRepository.kt:343,359` reads legacy app-days and sessions; `FindingDetectionRunner.kt:240-241` reads both in its direct fallback; `DayRatingRepository.kt:54` reads daily usage dates; and `StatsViewModel.kt:389-394` reads daily rows for suggested chips. Other consumers use the history repository rather than writing legacy rows.
+- `SettingsRepository.getAllowanceSnapshot()` builds an `AllowanceSnapshot` from the allowance ledger and preferences (`:1193-1210`); `SettingsViewModel.kt:108` consumes it. It is a UI snapshot, not a backup path. `resetDailyAllowanceUsage()` only delegates to the ledger (`:1367-1369`); repository-wide Kotlin search found only its declaration.
+- The only remaining v7 mentions in this tracker describe the superseded allowance plan and its later archival as history. They are not active plan references. No progress was imported from `allowance/TRACKER.md`.
+**Evidence:**<br>
+- Changed file: `fixes/TRACKER.md`; no app source or allowance tracker changed.
+- `rg -n "version =|MIGRATION_7_8|MIGRATION_8_9" app/src/main/java/com/tbtechs/focusflow/data/local/FocusFlowDatabase.kt app/src/main/java/com/tbtechs/focusflow/di/AppModule.kt` and source inspection: Room is version 8; 7→8 sets null cutover to local today and is registered; no 8→9 migration exists. This is recorded as A1 work, not represented as fixed.
+- `rg -n "(dailyAppUsageDao\\(\\)|appSessionDao\\(\\)|dailyUsageDao\\.|sessionDao\\.|dailyAppUsageDao\\.|appSessionDao\\.)" app/src/main/java --glob '*.kt'` plus DAO/tracker inspection: only `AppUsageAndSessionTracker` produces legacy usage/session rows, called by Accessibility; other listed DAO calls are readers or the worker's retention deletes.
+- `rg -n 'getAllowanceSnapshot\\(|resetDailyAllowanceUsage\\(' app/src/main/java --glob '*.kt'`: snapshot is consumed by `SettingsViewModel`; reset has only its declaration.
+- `rg -ni 'v6|v7|version 6|version 7|plan_v7|plan v7|phase 5.*v7' fixes/TRACKER.md`: only explicit historical supersession/archive references remain.
+- `awk` item-row check: 110 work-item rows; every row has status, blocker, evidence, and owner-run columns. Decision log compared with plan sections 3.1–3.2.
+- `git diff --check`: passed after the whitespace correction below. App tests were not run because A5 changed tracker documentation only.
+**Failures and blockers:**<br>
+- First `git diff --check` failed with exit 2 on trailing Markdown hard-break spaces in the A5 status metadata. Replaced those spaces with explicit `<br>` tags; the rerun passed.
+- A later `git diff --check` failed with exit 2 on trailing hard-break spaces in the A1–A4 blocker metadata after updating the satisfied A5 dependency. Replaced those spaces with explicit `<br>` tags; the final rerun passed.
+**Decisions and deferred work:**<br>
+- No product decision changed. PD-3's detail remains the plan's default “No,” awaiting owner confirmation; PD-12 remains open. A1–A4 are now eligible but still NOT STARTED.
 
 ### A1 — Database and cutover
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A5  
+**Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** —  
 **Completed:** —  
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Seed `usage_pipeline_state` on fresh database creation with local `shadow_started_on` and null `cutover_date`. | NOT STARTED | A5 | Pending | No |
-| [ ] | Add an idempotent read-model repair for a missing state row. | NOT STARTED | A5 | Pending | No |
-| [ ] | Make `MIGRATION_7_8` data-free; add version 9 `MIGRATION_8_9` to clear stale cutover dates, reset shadow start where needed, and create missing state. | NOT STARTED | A5 | Pending | No |
-| [ ] | Simplify `cutoverDate()` as specified; document fresh-install and upgrade behavior. | NOT STARTED | A5 | Pending | No |
-| [ ] | JVM/fake-store cases: missing row repair; fewer than seven complete days; seven complete current-version days; old pipeline version excluded; repeated calls idempotent. | NOT STARTED | A5 | Pending | No |
-| [ ] | Migration coverage: 6→9, 7→9, 8→9, fresh install, and legacy `user_version = 0`; record whether tests ran or only compiled. | NOT STARTED | A5 | Pending | No |
-| [ ] | Owner scenario S2 on both phones; do not tick until owner reports. | OWNER-RUN PENDING | A5; E1 device session | Pending owner report | Yes |
+| [ ] | Seed `usage_pipeline_state` on fresh database creation with local `shadow_started_on` and null `cutover_date`. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Add an idempotent read-model repair for a missing state row. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Make `MIGRATION_7_8` data-free; add version 9 `MIGRATION_8_9` to clear stale cutover dates, reset shadow start where needed, and create missing state. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Simplify `cutoverDate()` as specified; document fresh-install and upgrade behavior. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | JVM/fake-store cases: missing row repair; fewer than seven complete days; seven complete current-version days; old pipeline version excluded; repeated calls idempotent. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Migration coverage: 6→9, 7→9, 8→9, fresh install, and legacy `user_version = 0`; record whether tests ran or only compiled. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Owner scenario S2 on both phones; do not tick until owner reports. | OWNER-RUN PENDING | A5 complete; E1 device session | Pending owner report | Yes |
 
 **Done when:** fresh and upgraded installs reach the same state and behavior; automated migration/cutover evidence is recorded.  
-**Notes:**  
-**Evidence:**  
-**Failures and blockers:**  
-**Decisions and deferred work:**  
+**Notes:**<br>
+**Evidence:**<br>
+**Failures and blockers:**<br>
+**Decisions and deferred work:**<br>
 
 ### A2 — Maintenance job
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A5  
+**Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** —  
 **Completed:** —  
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Implement a maintenance worker that runs recent rollups, completed-day detection, then prune in that order. | NOT STARTED | A5 | Pending | No |
-| [ ] | Schedule unique periodic work with keep policy from app startup; record observed schedule evidence. | NOT STARTED | A5 | Pending | No |
-| [ ] | Preserve unrelated old background-fetch duties; remove old detection/prune calls only after the replacement is live. | NOT STARTED | A5 | Pending | No |
-| [ ] | Detection marker advances only when required days are COMPLETE or permission is denied; unknown results retry. | NOT STARTED | A5 | Pending | No |
-| [ ] | Run detection after successful rollup completion; inject clock/zone for pruning and detection while task dates retain UTC behavior. | NOT STARTED | A5 | Pending | No |
-| [ ] | Worker tests: order; unknown-result retry; one success per local day; prune horizon uses injected clock. | NOT STARTED | A5 | Pending | No |
-| [ ] | Prune delegates to the rollup retention work in C5. | NOT STARTED | A5; C5 | Pending | No |
+| [ ] | Implement a maintenance worker that runs recent rollups, completed-day detection, then prune in that order. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Schedule unique periodic work with keep policy from app startup; record observed schedule evidence. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Preserve unrelated old background-fetch duties; remove old detection/prune calls only after the replacement is live. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Detection marker advances only when required days are COMPLETE or permission is denied; unknown results retry. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Run detection after successful rollup completion; inject clock/zone for pruning and detection while task dates retain UTC behavior. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Worker tests: order; unknown-result retry; one success per local day; prune horizon uses injected clock. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Prune delegates to the rollup retention work in C5. | NOT STARTED | A5 complete; C5 | Pending | No |
 
 **Done when:** scheduling is evidenced at app start and required worker tests pass.  
 **Notes:**  
@@ -155,21 +171,21 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 ### A3 — Stats zero reading
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A5  
+**Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** —  
 **Completed:** —  
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Preserve every app row per date in `DeviceUsageSource`; cache app name/category per package per read. | NOT STARTED | A5 | Pending | No |
-| [ ] | Remove `mergeTodayUsageFallback` and its `getUsageSummary` dependency; represent read failure as unavailable, never zero. | NOT STARTED | A5 | Pending | No |
-| [ ] | Log exception type/reason and return typed failure from `readSource`; add one debug line with the plan-required read counters. | NOT STARTED | A5 | Pending | No |
-| [ ] | Test multi-app day values (Instagram 40m, WhatsApp 15m, Maps 3m, Settings 0.4s): summary, daily, hourly, and app rows agree. | NOT STARTED | A5 | Pending | No |
-| [ ] | Test four stored days plus live today total (120+90+150+60 plus today = 478 as specified). | NOT STARTED | A5 | Pending | No |
-| [ ] | Test same multi-app day from live and rollup sources gives identical per-app minutes. | NOT STARTED | A5 | Pending | No |
-| [ ] | Test unavailable events produce unavailable state, not zero. | NOT STARTED | A5 | Pending | No |
-| [ ] | Owner checks S1 and confirms Today/Week totals against daily bars and device screen-time page. | OWNER-RUN PENDING | A5; E1 device session | Pending owner report | Yes |
+| [ ] | Preserve every app row per date in `DeviceUsageSource`; cache app name/category per package per read. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Remove `mergeTodayUsageFallback` and its `getUsageSummary` dependency; represent read failure as unavailable, never zero. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Log exception type/reason and return typed failure from `readSource`; add one debug line with the plan-required read counters. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Test multi-app day values (Instagram 40m, WhatsApp 15m, Maps 3m, Settings 0.4s): summary, daily, hourly, and app rows agree. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Test four stored days plus live today total (120+90+150+60 plus today = 478 as specified). | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Test same multi-app day from live and rollup sources gives identical per-app minutes. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Test unavailable events produce unavailable state, not zero. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Owner checks S1 and confirms Today/Week totals against daily bars and device screen-time page. | OWNER-RUN PENDING | A5 complete; E1 device session | Pending owner report | Yes |
 
 **Done when:** required source tests pass; owner check remains open until reported.  
 **Notes:**  
@@ -180,16 +196,16 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 ### A4 — Test baseline
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A5  
+**Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** —  
 **Completed:** —  
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Find and remove tests that read `.kt` source text; replace with behavior tests for ledger, pipeline, and meter using fake clocks/sources. | NOT STARTED | A5 | Pending | No |
-| [ ] | Add fresh-database test and ensure migration tests compile and run where the project supports them. | NOT STARTED | A5; A1 | Pending | No |
-| [ ] | Search test sources and verify no Kotlin-source `readText` checks remain; verify section 6 requirements are assigned to batch tests. | NOT STARTED | A5 | Pending | No |
+| [ ] | Find and remove tests that read `.kt` source text; replace with behavior tests for ledger, pipeline, and meter using fake clocks/sources. | NOT STARTED | A5 complete | Pending | No |
+| [ ] | Add fresh-database test and ensure migration tests compile and run where the project supports them. | NOT STARTED | A5 complete; A1 | Pending | No |
+| [ ] | Search test sources and verify no Kotlin-source `readText` checks remain; verify section 6 requirements are assigned to batch tests. | NOT STARTED | A5 complete | Pending | No |
 
 **Done when:** source-text tests are absent and section 6 test coverage is present.  
 **Notes:**  
@@ -451,7 +467,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Add pruning for pipeline state/rollup day, app-day, and session tables with the legacy 90-day retention horizon. | NOT STARTED | A1–A4 | Pending | No |
+| [ ] | Add pruning for all three rollup tables (day, app-day, session) with the legacy 90-day retention horizon. | NOT STARTED | A1–A4 | Pending | No |
 | [ ] | Add tests proving every usage table is pruned at the boundary. | NOT STARTED | A1–A4 | Pending | No |
 | [ ] | Verify A2 maintenance worker invokes rollup pruning. | NOT STARTED | A2 | Pending | No |
 
@@ -522,7 +538,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 | [ ] | Update Usage Access definition and broken-without copy to cover foreground detection, allowance measurement, and history. | NOT STARTED | B and C | Pending | No |
 | [ ] | Update Stats, data-health, Focus/Standalone/Defense, How to Use, Changelog, and Privacy wording from the plan. | NOT STARTED | B and C | Pending | No |
 | [ ] | Add backup/restore notice that usage history is device-local and rebuilt; do not change `.focusflow` format. | NOT STARTED | B and C | Pending | No |
-| [ ] | Centralize `UsageAccess.isGranted`, including `MODE_DEFAULT` and failure behavior; errors are not treated as granted. | NOT STARTED | B and C | Pending | No |
+| [ ] | Centralize `UsageAccess.isGranted`, including `MODE_DEFAULT`, `unsafeCheckOpNoThrow`, and failure behavior; `ActiveHeaderButton` errors are not treated as granted. | NOT STARTED | B and C | Pending | No |
 | [ ] | Verify permission-health and allowance editor lock text agrees with PD-2/PD-4/PD-5/PD-6/PD-14 behavior. | NOT STARTED | B and C | Pending | No |
 
 **Done when:** required screens, help, and permission paths use consistent wording and one permission definition.  
@@ -628,11 +644,11 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 | Batch | Status | Blocked by | Owner-run status |
 |---|---|---|---|
-| A5 — Tracker truth | NOT STARTED | — | Not owner-run |
-| A1 — Database and cutover | NOT STARTED | A5 | S2 pending later |
-| A2 — Maintenance job | NOT STARTED | A5 | Not owner-run |
-| A3 — Stats zero reading | NOT STARTED | A5 | S1 pending later |
-| A4 — Test baseline | NOT STARTED | A5 | Not owner-run |
+| A5 — Tracker truth | DONE — evidence recorded | — | Not owner-run |
+| A1 — Database and cutover | NOT STARTED | A5 complete; eligible | S2 pending later |
+| A2 — Maintenance job | NOT STARTED | A5 complete; eligible | Not owner-run |
+| A3 — Stats zero reading | NOT STARTED | A5 complete; eligible | S1 pending later |
+| A4 — Test baseline | NOT STARTED | A5 complete; eligible | Not owner-run |
 | B1–B7 — One meter everywhere | NOT STARTED | A1–A4 | S4 pending later |
 | C1–C6 — One definition of usage | NOT STARTED | A1–A4; E1 logs for C6 | Manifest confirmation/logs may be owner-provided |
 | D1–D3 — Screens and wording | NOT STARTED | B and C; A3 for D3 | Not owner-run |
