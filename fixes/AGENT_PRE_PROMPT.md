@@ -16,6 +16,7 @@ The v9 plan supersedes `allowance/PLAN.md` (v7). The previous v8 plan/tracker ar
 ## Authorization and scope
 
 - The plan is the implementation contract, not authorization by itself. Do not begin app-code implementation until the user explicitly authorizes it. If the requested scope or authorization is unclear, stop before changing app code and ask.
+- A request to audit, reconcile, or work from the plan/tracker authorizes documentation and status corrections only; do not start planned implementation unless the user explicitly asks for implementation.
 - Follow the plan's batch order and acceptance criteria. Do not silently widen scope or change the plan's contract. C5 may start after the A1/A2a/A3/A4 foundation gate to close A2b; C5 must not wait for A2b. All other B/C work waits for that integration and Batch A completion. Do not infer a B1a/B1b early-start exception from an attachment; it must be explicitly authorized and recorded in both active plan and tracker before use.
 - Respect the plan's no-touch list: do not touch Gradle files, GitHub Actions, APK builds, the `.focusflow` backup format, or the Linux app unless the user explicitly changes the scope.
 - Do not start a later batch before the earlier batch's “done when” condition holds, except for the exact C5/A2b dependency stated above and other explicitly parallel work in the plan.

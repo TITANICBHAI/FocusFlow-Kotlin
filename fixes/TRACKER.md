@@ -559,7 +559,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 **Done when:** pruning covers every usage table, boundary tests pass, and the worker-invocation test closes A2b.<br>
 **Notes:** C5 may start after the Foundation Gate. It owns A2b; A2b is not a prerequisite for starting C5.<br>
-**Evidence:**  
+**Evidence:** Repository audit (2026-10-12): `UsageRollupDao` has only per-date delete methods, and `UsageMaintenanceWorker` prunes legacy daily/session usage plus expired findings/questions but does not prune rollup tables. C5 implementation and the worker-invocation test remain unstarted; A2b remains blocked by C5.
 **Failures and blockers:**  
 **Decisions and deferred work:**  
 
