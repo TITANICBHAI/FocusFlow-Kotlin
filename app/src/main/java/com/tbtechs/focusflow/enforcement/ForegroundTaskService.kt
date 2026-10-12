@@ -879,6 +879,7 @@ class ForegroundTaskService : Service() {
                 serviceStartMs = serviceStartMs,
                 clock = notificationClock(),
                 needsAttention = enforcementHealth.needsAttention,
+                healthKnown = enforcementHealth.isKnown,
             ),
         )
 

@@ -14,13 +14,14 @@ object StatusCardMapper {
         serviceStartMs: Long,
         clock: StatusCardClock,
         needsAttention: Boolean = false,
+        healthKnown: Boolean = true,
     ) = StatusCardModel(
         mode = StatusCardMode.IDLE,
         title = "FocusFlow",
-        text = if (needsAttention) {
-            "Needs attention — tap to fix"
-        } else {
-            "Monitoring active — tap to open"
+        text = when {
+            !healthKnown -> "Checking protection status — tap to open"
+            needsAttention -> "Needs attention — tap to fix"
+            else -> "Monitoring active — tap to open"
         },
         subText = null,
         chronometerBaseMs = clock.elapsedRealtimeMs - (clock.wallClockMs - serviceStartMs),
@@ -28,7 +29,7 @@ object StatusCardMapper {
         progressPercent = null,
         actions = emptyList(),
         priority = StatusCardPriority.MIN,
-        tapTarget = if (needsAttention) {
+        tapTarget = if (healthKnown && needsAttention) {
             StatusCardTapTarget.PERMISSIONS
         } else {
             StatusCardTapTarget.HOME

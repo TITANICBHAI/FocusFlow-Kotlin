@@ -8,3 +8,9 @@ Keep the service running whenever existing background consent is granted; do not
 **Why:** The user chose always-on behavior to avoid bugs caused by app-side idle/active decisions.
 
 **How to apply:** Preserve these scope decisions when changing the foreground service or its notifications. Re-check current source and tests rather than relying on old implementation-plan or tracker references.
+
+Unknown enforcement health is a checking state, not a failure. Keep the idle notification neutral until a completed check confirms a missing required permission; only confirmed missing permissions should show “Needs attention” and open Permissions.
+
+**Why:** The foreground service must post its notification before the asynchronous permission check completes, and treating unknown as failure creates a false warning on startup.
+
+**How to apply:** Keep `isKnown` distinct from `needsAttention` when building idle status cards. Unknown health should show a checking message and use the Home tap target.

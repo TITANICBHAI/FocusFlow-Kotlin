@@ -7,7 +7,7 @@ data class EnforcementHealth(
     val isKnown: Boolean = true,
 ) {
     val needsAttention: Boolean
-        get() = !isKnown || missingRequiredPermissions.isNotEmpty()
+        get() = isKnown && missingRequiredPermissions.isNotEmpty()
 
     companion object {
         val UNKNOWN = EnforcementHealth(emptyList(), isKnown = false)

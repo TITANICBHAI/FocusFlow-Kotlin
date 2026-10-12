@@ -40,6 +40,18 @@ class StatusCardMapperTest {
     }
 
     @Test
+    fun idleUnknownHealthShowsCheckingStateAndOpensHome() {
+        val model = StatusCardMapper.idle(
+            serviceStartMs = 4_000L,
+            clock = clock(wallClockMs = 10_000L, elapsedRealtimeMs = 50_000L),
+            healthKnown = false,
+        )
+
+        assertEquals("Checking protection status — tap to open", model.text)
+        assertEquals(StatusCardTapTarget.HOME, model.tapTarget)
+    }
+
+    @Test
     fun focusEndLabelHandlesMidnightAndTwelveThirtyPm() {
         assertEquals(
             "ends 12:00 AM",

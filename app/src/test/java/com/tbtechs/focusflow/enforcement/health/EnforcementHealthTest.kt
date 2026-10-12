@@ -36,8 +36,9 @@ class EnforcementHealthTest {
     }
 
     @Test
-    fun unknownHealthRequiresAttentionUntilVerified() {
-        assertTrue(EnforcementHealth.UNKNOWN.needsAttention)
+    fun unknownHealthWaitsForVerificationBeforeRequiringAttention() {
+        assertFalse(EnforcementHealth.UNKNOWN.isKnown)
+        assertFalse(EnforcementHealth.UNKNOWN.needsAttention)
     }
 
     @Test
