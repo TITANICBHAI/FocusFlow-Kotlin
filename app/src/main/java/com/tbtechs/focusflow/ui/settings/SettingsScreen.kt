@@ -133,6 +133,7 @@ fun SettingsScreen(
     onOpenActiveBlocks: () -> Unit = {},
     onOpenTextSize: () -> Unit = {},
     onOpenHowToUse: () -> Unit = {},
+    onOpenFileGuide: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenPermissions: () -> Unit = {},
     onReportIssue: (() -> Unit)? = null,
@@ -674,6 +675,13 @@ fun SettingsScreen(
                         title = "How to Use",
                         description = "Learn the modes, protections, and settings",
                         onClick = onOpenHowToUse,
+                    )
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    SettingsActionRow(
+                        icon = Icons.Outlined.CloudUpload,
+                        title = "FocusFlow File Guide",
+                        description = "Learn about .focusflow backups and task-only AI prompts",
+                        onClick = onOpenFileGuide,
                     )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
                     SettingsActionRow(

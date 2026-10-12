@@ -14,6 +14,7 @@ object Routes {
     const val IMPORT_CONFIRM = "import_confirm"
     const val TEXT_SIZE_SETTINGS = "text_size_settings"
     const val SETTINGS_HOW_TO_USE = "settings_how_to_use"
+    const val FOCUSFLOW_FILE_GUIDE = "focusflow_file_guide"
     const val DEFENSE = "defense"
     const val ACTIVE = "active"
     const val ALWAYS_ON = "always_on"
@@ -44,6 +45,7 @@ object Routes {
         IMPORT_CONFIRM,
         TEXT_SIZE_SETTINGS,
         SETTINGS_HOW_TO_USE,
+        FOCUSFLOW_FILE_GUIDE,
         DEFENSE,
         ACTIVE,
         ALWAYS_ON,
