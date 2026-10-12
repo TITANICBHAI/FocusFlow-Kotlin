@@ -14,3 +14,9 @@ Unknown enforcement health is a checking state, not a failure. Keep the idle not
 **Why:** The foreground service must post its notification before the asynchronous permission check completes, and treating unknown as failure creates a false warning on startup.
 
 **How to apply:** Keep `isKnown` distinct from `needsAttention` when building idle status cards. Unknown health should show a checking message and use the Home tap target.
+
+Notifications may remain optional for core blocking, but the permission is required for status-notification health because app-level notification disablement hides the foreground card from the notification shade.
+
+**Why:** A healthy enforcement state alone does not guarantee users can see the always-on service status.
+
+**How to apply:** Include notification visibility in the foreground status health check without reclassifying it as mandatory for all blocking features.

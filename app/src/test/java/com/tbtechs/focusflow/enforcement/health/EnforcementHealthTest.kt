@@ -14,25 +14,44 @@ class EnforcementHealthTest {
             permission(PermissionId.ACCESSIBILITY, optional = false),
             permission(PermissionId.USAGE, optional = true),
             permission(PermissionId.OVERLAY, optional = false),
+            permission(PermissionId.NOTIFICATIONS, optional = true),
         )
 
         val required = EnforcementHealthReader.requiredPermissionIds(definitions)
         val incomplete = EnforcementHealth.fromRequiredPermissions(
             required = required,
-            granted = setOf(PermissionId.ACCESSIBILITY),
+            granted = setOf(PermissionId.ACCESSIBILITY, PermissionId.NOTIFICATIONS),
         )
         val complete = EnforcementHealth.fromRequiredPermissions(
             required = required,
-            granted = setOf(PermissionId.ACCESSIBILITY, PermissionId.OVERLAY),
+            granted = setOf(
+                PermissionId.ACCESSIBILITY,
+                PermissionId.OVERLAY,
+                PermissionId.NOTIFICATIONS,
+            ),
         )
 
         assertEquals(
-            listOf(PermissionId.ACCESSIBILITY, PermissionId.OVERLAY),
+            listOf(
+                PermissionId.ACCESSIBILITY,
+                PermissionId.OVERLAY,
+                PermissionId.NOTIFICATIONS,
+            ),
             required,
         )
         assertEquals(listOf(PermissionId.OVERLAY), incomplete.missingRequiredPermissions)
         assertTrue(incomplete.needsAttention)
         assertFalse(complete.needsAttention)
+    }
+
+    @Test
+    fun disabledNotificationsRequireAttentionForStatusNotificationHealth() {
+        val required = EnforcementHealthReader.requiredPermissionIds()
+        val granted = required.filterNot { it == PermissionId.NOTIFICATIONS }.toSet()
+        val health = EnforcementHealth.fromRequiredPermissions(required, granted)
+
+        assertEquals(listOf(PermissionId.NOTIFICATIONS), health.missingRequiredPermissions)
+        assertTrue(health.needsAttention)
     }
 
     @Test

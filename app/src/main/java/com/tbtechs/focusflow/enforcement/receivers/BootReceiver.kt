@@ -27,6 +27,7 @@ import android.os.UserManager
  * SharedPreferences keys:
  *   "focus_active"          Boolean — true if a task focus was running at shutdown
  *   "task_name"             String  — last task name
+ *   "task_start_ms"         Long    — original task start epoch ms
  *   "task_end_ms"           Long    — last task end epoch ms
  *   "next_task_name"        String? — next task name (may be null)
  *   "standalone_block_active" Boolean — standalone (no-task) blocking active
@@ -120,6 +121,9 @@ class BootReceiver : BroadcastReceiver() {
             val serviceIntent = Intent(context, ForegroundTaskService::class.java).apply {
                 putExtra(ForegroundTaskService.EXTRA_TASK_ID,   taskId)
                 putExtra(ForegroundTaskService.EXTRA_TASK_NAME, taskName)
+                // Preserve the original session start so the recovered card's progress
+                // reflects time already spent focusing before the reboot.
+                putExtra(ForegroundTaskService.EXTRA_START_MS, startTimeMs)
                 putExtra(ForegroundTaskService.EXTRA_END_MS, endTimeMs)
                 nextName?.let { putExtra(ForegroundTaskService.EXTRA_NEXT_NAME, it) }
             }

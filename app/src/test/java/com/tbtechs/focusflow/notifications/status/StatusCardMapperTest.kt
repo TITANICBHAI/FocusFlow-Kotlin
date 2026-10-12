@@ -70,6 +70,21 @@ class StatusCardMapperTest {
     }
 
     @Test
+    fun focusProgressUsesTheOriginalStartTimeAfterRecovery() {
+        val model = StatusCardMapper.focus(
+            taskId = "task-1",
+            taskName = "Deep work",
+            startTimeMs = 1_000_000L,
+            endTimeMs = 2_000_000L,
+            remainingMs = 250_000L,
+            nextName = null,
+            clock = clock(wallClockMs = 1_750_000L, elapsedRealtimeMs = 50_000L),
+        )
+
+        assertEquals(75, model.progressPercent)
+    }
+
+    @Test
     fun focusAndBreakChronometerBasesCountDownFromTheirEndTimes() {
         val clock = clock(wallClockMs = 1_000_000L, elapsedRealtimeMs = 500_000L)
         val focus = StatusCardMapper.focus(
