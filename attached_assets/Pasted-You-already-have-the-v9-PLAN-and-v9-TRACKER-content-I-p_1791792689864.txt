@@ -1,0 +1,110 @@
+You already have the **v9 PLAN** and **v9 TRACKER** content I provided. Now you need to apply them and decide what to do with the old files. Below is exactly what to do, in order. You can save this answer as `NEXT_STEPS.md` if you want a separate file to follow.
+
+---
+
+## 1. Files to create or update
+
+| File | Action |
+|---|---|
+| `fixes/PLAN.md` | **Replace** with the v9 PLAN content I gave. Keep §1, §2, §4, §8, §9 unchanged. Replace §0, §3.1, §5, §6, §7, §10. |
+| `fixes/TRACKER.md` | **Edit in place** using the v9 TRACKER structure. Do **not** delete existing evidence rows. Split the batches, fix statuses, rewrite the Summary. Keep all recorded evidence under the new sub-batches. |
+| `fixes/flaws.md` | **Keep as an internal audit reference.** Do not treat it as a plan. You can move it to `fixes/audits/2026-10-11-dependency-audit.md` or leave it where it is. Do not include it in the active plan/tracker. |
+| `fixes/OWNER_DEVICE_TEST_GUIDE.md` | Create later, in E1. Not needed yet. |
+
+---
+
+## 2. Exact changes to `PLAN.md`
+
+1. **§0 Rules** – Add the narrow B1a exception: owner authorized independent B1a work before the A gate. B1b waits for B6 and the A gate.
+2. **§3.1 Decisions** – Add corrections:
+   - PD-10: tuning after E1 only if needed; if code changes, reopen C1/B5, rerun tests, owner retests failed scenarios only.
+   - Devices: one initial full session; failed retests up to two rounds.
+   - Sequence: B1a exception as above.
+3. **§5 Batches** – Replace with the v9 batch list:
+   - Split **A2** into **A2a** (worker/scheduling/detection) and **A2b** (C5 prune integration).
+   - Split **B1** into **B1a** (lifecycle/recovery/messaging) and **B1b** (fallback resolver integration).
+   - Split **C2** into **C2a** (implementation/tests) and **C2b** (owner manifest confirmation).
+   - Split **C6** into **C6a** (completeness/rollback/seam) and **C6b** (owner golden logs).
+   - Update batch gates: Batch D depends on B1a, B1b, B2–B7, C1, C2a, C3, C4, C5, C6a. Owner-run S4, C2b, C6b do not block D.
+   - State that A2b is required before E3, not before D.
+4. **§6 Review gates and tests** – Add:
+   - Migration tests: JVM/Robolectric preferred; compile-only + S2 is acceptable for Phase 5 close-out.
+   - Section 6 ownership: A4 maps future tests; it does not require them to pass.
+   - C6b golden logs and C2b manifest confirmation are owner-run after E1; they do not block D.
+5. **§7 Owner device protocol** – Change wording:
+   - One initial full device session at the end.
+   - Retest only failed scenarios, up to two rounds.
+   - If PD-10 tuning changes code after E1, reopen C1/B5, rerun automated tests, owner retests failed scenarios only.
+6. **§10 Definition of done** – Add:
+   - A2b must be DONE.
+   - Owner-run S1, S2, S4, C2b, C6b must have reports or explicit deferrals.
+   - Migration close-out accepts compile-only + S2 + committed schema where runtime instrumentation was unavailable.
+
+---
+
+## 3. Exact changes to `TRACKER.md`
+
+Do **not** overwrite the whole file. Edit it as follows:
+
+1. **A5 notes** – Remove the line “A1–A4 are now eligible but still NOT STARTED.” Replace with current statuses: A1 DONE, A2a DONE, A2b BLOCKED on C5, A3 DONE, A4 DONE, B1a IN PROGRESS.
+2. **A2** – Split into:
+   - **A2a** – All existing A2 rows except the C5 prune row. Mark DONE with existing evidence.
+   - **A2b** – The C5 prune row. Status: `BLOCKED — C5`. Blocked by: C5. Required before E3.
+3. **B1** – Split into:
+   - **B1a** – Lifecycle, recovery, messaging, tests. Status: `IN PROGRESS`. Blocked by: owner exception. Keep the start date.
+   - **B1b** – Fallback resolver integration. Status: `BLOCKED — B6`. Blocked by: B6. Keep S4 as `OWNER-RUN PENDING` at E1.
+4. **C2** – Split into:
+   - **C2a** – Implementation, tests, recorded limitation. Status: `NOT STARTED`. Blocked by: A gate.
+   - **C2b** – Owner manifest confirmation. Status: `OWNER-RUN PENDING`. Does not block D.
+5. **C6** – Split into:
+   - **C6a** – Completeness, rollback, seam. Status: `NOT STARTED`. Blocked by: A gate.
+   - **C6b** – Owner golden logs. Status: `OWNER-RUN PENDING`. Blocked by: E1 logs. Does not block D.
+6. **Batch gates** – Update:
+   - Batch B gate: A gate satisfied, except B1a may start earlier. B1b waits for B6.
+   - Batch C gate: A gate satisfied. B and C may run in parallel.
+   - Batch D gate: B1a, B1b, B2–B7, C1, C2a, C3, C4, C5, C6a DONE with automated evidence. Owner-run S4, C2b, C6b, S1, S2 do not block D.
+   - Batch E gate: D done. Owner session once, at the end.
+7. **Summary table** – Replace with the v9 Summary table I provided. Ensure it shows:
+   - A5 DONE, A1 DONE (S2 pending), A2a DONE, A2b BLOCKED, A3 DONE (S1 pending), A4 DONE.
+   - B1a IN PROGRESS, B1b BLOCKED, B2–B7 NOT STARTED.
+   - C1 NOT STARTED, C2a NOT STARTED, C2b OWNER-RUN PENDING, C3 NOT STARTED, C4 NOT STARTED, C5 NOT STARTED, C6a NOT STARTED, C6b OWNER-RUN PENDING.
+   - D1–D3 NOT STARTED, E1–E3 NOT STARTED.
+8. **Decision log** – Add the splits (A2a/A2b, B1a/B1b, C2a/C2b, C6a/C6b) and the corrected PD-10/Devices/Sequence entries.
+
+---
+
+## 4. What to do with `flaws.md`
+
+- Keep it as a separate audit document. It is useful for understanding why the plan was changed.
+- Do **not** include it in the active `fixes/PLAN.md` or `fixes/TRACKER.md`.
+- You can move it to `fixes/audits/2026-10-11-dependency-audit.md` or leave it as `flaws.md` in the root. It does not need to be delivered to the owner as part of the plan.
+
+---
+
+## 5. Recommended next actions (in order)
+
+1. **Finish B1a** – Complete the lifecycle, recovery, messaging, and tests. Keep S4 pending.
+2. **Start C5** – Retention. The A gate is satisfied, so C5 is unblocked. This is now the critical path because A2b depends on it.
+3. **Complete A2b** – Once C5 is done, integrate rollup pruning into the A2a worker and test it.
+4. **Do B6** – Config, block decision, editor lock. This unblocks B1b.
+5. **Do B1b** – Fallback resolver integration. Keep S4 owner-run pending.
+6. **Do B2–B7, C1–C4, C6a** – In parallel where possible.
+7. **Do D1–D3** – After B/C automated gate.
+8. **Do E1** – Owner initial full device session. Collect S1, S2, S4, C2b, C6b evidence.
+9. **Do E2** – Release gates.
+10. **Do E3** – Close-out.
+
+---
+
+## 6. Other important reminders
+
+- **Never tick owner-run items.** S1, S2, S4, C2b, C6b stay `OWNER-RUN PENDING` until the owner reports.
+- **Migration tests:** If runtime instrumentation is unavailable, compile-only + S2 + committed schema is acceptable for Phase 5.
+- **PD-10 tuning:** Only if E1 shows a need. If code changes, reopen C1/B5, rerun automated tests, and ask the owner to retest only failed scenarios.
+- **A4 section 6 coverage:** A4 maps future tests to their batches. It does not require B/C/D tests to pass.
+- **Batch D gate:** It depends on automated evidence only. Owner-run items do not block D.
+- **A2b is not required before D.** It is required before E3 close-out.
+
+---
+
+If you want, I can also generate a single `NEXT_STEPS.md` file that contains only this action list, so you can drop it into the repo.

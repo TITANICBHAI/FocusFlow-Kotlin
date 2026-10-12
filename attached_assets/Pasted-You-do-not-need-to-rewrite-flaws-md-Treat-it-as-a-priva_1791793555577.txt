@@ -1,0 +1,239 @@
+You do **not** need to rewrite `flaws.md`. Treat it as a private audit note. The useful changes are:
+
+1. Replace the active plan with the repaired `PLAN.md` v8.1.
+2. Replace the active tracker with the repaired `TRACKER.md` v8.1.
+3. Optionally create one small handoff file: `fixes/NEXT_STEPS.md`.
+4. Then tell the coding agent to start with **C5**, followed by **B1-independent**.
+
+Below is exactly what I would do.
+
+---
+
+## 1. File changes to make
+
+### Minimum required changes
+
+| File | Action |
+|---|---|
+| `fixes/PLAN.md` | Replace with the repaired v8.1 plan I gave you. |
+| `fixes/TRACKER.md` | Replace with the repaired v8.1 tracker I gave you. |
+| `fixes/flaws.md` | Leave unchanged. Use it only as reference/history. |
+
+If your files are currently renamed, either rename them back to the active names your agent expects, or update your agent prompt to point to the actual file paths.
+
+Recommended active names:
+
+```text
+fixes/PLAN.md
+fixes/TRACKER.md
+fixes/flaws.md
+```
+
+---
+
+### Safer versioned approach
+
+Before overwriting, back up the old v8 files:
+
+```bash
+mkdir -p fixes/archive
+cp fixes/PLAN.md fixes/archive/PLAN.v8.md
+cp fixes/TRACKER.md fixes/archive/TRACKER.v8.md
+```
+
+Then paste the repaired content into:
+
+```text
+fixes/PLAN.md
+fixes/TRACKER.md
+```
+
+If your current files have different names, adjust the commands accordingly.
+
+---
+
+## 2. Optional but useful: create `fixes/NEXT_STEPS.md`
+
+This is the separate MD I would create. It is short, safe, and gives the coding agent a clear next task without mixing it into the main plan.
+
+Save this as:
+
+```text
+fixes/NEXT_STEPS.md
+```
+
+Content:
+
+```markdown
+# FocusFlow Fixes — Next Steps after v8.1 dependency repair
+
+This file is a short handoff only. The authoritative documents are:
+
+- `fixes/PLAN.md` v8.1
+- `fixes/TRACKER.md` v8.1
+
+`fixes/flaws.md` is an audit note only. Do not use it as the implementation plan.
+
+## Current state
+
+- A5 is DONE.
+- A1 is DONE for automated evidence; owner S2 remains pending.
+- A2-core is DONE; the A2 → C5 rollup-prune integration is now owned by C5.
+- A3 is DONE for automated evidence; owner S1 remains pending.
+- A4 is DONE under the corrected interpretation.
+- The A-core gate is satisfied.
+- B and C implementation work may proceed.
+- D remains blocked by B implementation and C-core implementation.
+- E remains blocked by D.
+- Owner-run items are never agent-ticked.
+
+## Recommended implementation order
+
+### 1. Do C5 first
+
+C5 is small and closes the deferred A2 integration.
+
+C5 scope:
+
+- Add pruning for the three rollup tables:
+  - `usage_rollup_day`
+  - `usage_rollup_app_day`
+  - `usage_rollup_session`
+- Use the same 90-day retention horizon as legacy tables.
+- Call rollup pruning from the A2 maintenance worker.
+- Add tests proving boundary retention behavior.
+- Use injected clock/time in tests; no wall-clock dependence.
+
+C5 done when:
+
+- Rollup pruning exists for all three rollup tables.
+- Tests prove the retention horizon.
+- The A2 maintenance worker invocation is evidenced.
+- Tracker C5 items are updated with exact test evidence.
+
+After C5 is done:
+
+- Update the A2 note to say the deferred C5 integration is now closed.
+- Do not reopen A2-core except for evidence reconciliation.
+
+### 2. Then do B1-independent work
+
+After C5, continue B1 only with the independent scope.
+
+B1-independent scope:
+
+- `onInterrupt` must not tear down the meter.
+- Teardown happens only on unbind/destroy.
+- Rebind recreates and starts the meter.
+- Recovery checkpoint is applied once at meter start.
+- Recovery marker is cleared after applying.
+- No double credit.
+- Foreground service stops calling recovery.
+- Add the Accessibility-off explanation to allowance screens and permission health card.
+- Add JVM tests for lifecycle, capped one-time recovery, and independent messaging behavior.
+
+Do not implement these B1 parts yet:
+
+- Removing the foreground-service allowance mirror.
+- Shared resolver fallback behavior.
+- Fallback reason behavior that depends on B6.
+- Any B6-dependent block-decision logic.
+
+Those remain blocked by B6.
+
+### 3. Later order
+
+After B1-independent:
+
+- B6: typed config, block-decision resolver, editor lock.
+- B1-fallback: only after B6 is done.
+- Other B/C items may proceed in parallel where ownership allows.
+- C6-core may be done before D.
+- C6-golden remains owner-run after E1.
+
+## Hard rules for the coding agent
+
+- Use `fixes/PLAN.md` v8.1 and `fixes/TRACKER.md` v8.1 as authoritative.
+- Ignore old v8 wording if it conflicts with v8.1 dependency repair rules.
+- The A-core gate is satisfied.
+- Do not start D.
+- Do not start E.
+- Do not tick owner-run items.
+- Do not treat compiled-only AndroidTest tests as runtime-passed.
+- Do not implement B1 fallback/resolver behavior before B6.
+- Do not require C6 golden logs before D.
+- Do not require C2 owner confirmation before D unless the owner reports a code-changing manifest defect.
+- Update `fixes/TRACKER.md` after every meaningful change with exact evidence.
+
+## Suggested agent prompt for the next task
+
+Use this prompt for the coding agent:
+
+> Read `fixes/PLAN.md` v8.1 and `fixes/TRACKER.md` v8.1. They are authoritative. The old v8 dependency rules are superseded where v8.1 changes them. The A-core gate is satisfied. Your next task is C5 only. Implement rollup retention for `usage_rollup_day`, `usage_rollup_app_day`, and `usage_rollup_session` with the 90-day horizon, call it from the A2 maintenance worker, and add behavior tests using injected time. Do not start B1 fallback, B6, D, E, C6-golden, or owner-run work. When C5 is complete, update `fixes/TRACKER.md` with exact evidence and leave owner-run items unchecked.
+
+## Optional owner decisions not needed for C5
+
+These are not required for C5, but answering them later will reduce defaults:
+
+- PD-3 detail: confirm whether the default “No” is correct for empty Focus allow-list behavior.
+- PD-12: confirm whether Google Play distribution applies.
+- C2 manifest/package visibility: if you can confirm it before D, that helps C2 close cleanly; otherwise C2 can proceed with the recorded limitation.
+```
+
+---
+
+## 3. What the coding agent should do first
+
+I recommend this exact order:
+
+### First task: C5
+
+Why C5 first?
+
+- It is small.
+- It closes the last deferred A2 dependency.
+- It removes the awkward A2/C5 follow-up from the critical path.
+- It has no owner-run dependency.
+- It helps satisfy review gate G8: every usage table is pruned.
+
+Give the agent only C5 first. Do not let it mix C5 with B1, B6, D, or E.
+
+---
+
+### Second task: B1-independent
+
+After C5 is complete and tracker evidence is recorded, let the agent do B1-independent.
+
+This respects the owner-approved B1 exception without touching the B6-dependent fallback part.
+
+---
+
+## 4. What not to do
+
+Do not do any of these yet:
+
+| Do not do | Reason |
+|---|---|
+| Do not start D | D is blocked by B implementation and C-core implementation. |
+| Do not start E | E is blocked by D. |
+| Do not implement B1 fallback/resolver logic | It depends on B6. |
+| Do not implement C6 golden-log validation | It depends on owner logs from E1/S11. |
+| Do not tick S1, S2, S4, S11, or any owner-run scenario | Owner-run only. |
+| Do not treat compiled AndroidTest migration tests as runtime-passed | They are compiled-only unless actually executed. |
+| Do not use the old A1–A4 gate wording | v8.1 replaces it with the A-core gate. |
+| Do not make C2 owner confirmation block D | It is owner-run/close-out evidence unless it reveals a code-changing defect. |
+
+---
+
+## 5. If you want the simplest possible instruction
+
+If you want the shortest practical version, do this:
+
+1. Save the repaired plan as `fixes/PLAN.md`.
+2. Save the repaired tracker as `fixes/TRACKER.md`.
+3. Save the `NEXT_STEPS.md` above as `fixes/NEXT_STEPS.md`.
+4. Tell the coding agent:
+
+> Use `fixes/PLAN.md` v8.1 and `fixes/TRACKER.md` v8.1. The old v8 dependency rules are superseded. The A-core gate is satisfied. Next task: C5 only. Implement rollup retention for all three rollup tables, wire it into the A2 maintenance worker, add tests, and update the tracker with evidence. Do not start B1 fallback, B6, D, E, C6-golden, or owner-run work.
+
+That is enough to continue safely.

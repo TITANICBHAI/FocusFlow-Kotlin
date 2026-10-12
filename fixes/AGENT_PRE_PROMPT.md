@@ -1,6 +1,6 @@
 # FocusFlow Fixes Phase 5 — Agent Pre-Prompt
 
-Use this prompt before doing work tracked by the v8 plan in this folder.
+Use this prompt before doing work tracked by the v9 plan in this folder.
 
 ## Read first
 
@@ -11,15 +11,16 @@ Before inspecting implementation details or editing files, read these documents 
 3. `fixes/TRACKER.md` — this is the main and authoritative tracker for the fixes plan.
 4. `allowance/TRACKER.md` — read only as a reference for its tracker instructions/format.
 
-The v8 plan supersedes `allowance/PLAN.md` (v7). `fixes/TRACKER.md` is the only progress record for this work. `allowance/TRACKER.md` belongs to a separate workstream: do not copy its statuses, evidence, decisions, or progress into the fixes tracker, and do not update it for fixes work. After reading these documents, read the current project instructions, inspect the relevant current source, and check the working tree. Verify paths, APIs, and behavior against the current repository. Preserve unrelated user changes and user data.
+The v9 plan supersedes `allowance/PLAN.md` (v7). The previous v8 plan/tracker are archived; `fixes/TRACKER.md` remains the only progress record for this work. `allowance/TRACKER.md` belongs to a separate workstream: do not copy its statuses, evidence, decisions, or progress into the fixes tracker, and do not update it for fixes work. After reading these documents, read the current project instructions, inspect the relevant current source, and check the working tree. Verify paths, APIs, and behavior against the current repository. Preserve unrelated user changes and user data.
 
 ## Authorization and scope
 
 - The plan is the implementation contract, not authorization by itself. Do not begin app-code implementation until the user explicitly authorizes it. If the requested scope or authorization is unclear, stop before changing app code and ask.
-- Follow the plan's batch order and acceptance criteria. Do not silently widen scope or change the plan's contract. B and C may proceed in parallel only where the plan permits.
+- Follow the plan's batch order and acceptance criteria. Do not silently widen scope or change the plan's contract. C5 may start after the A1/A2a/A3/A4 foundation gate to close A2b; C5 must not wait for A2b. All other B/C work waits for that integration and Batch A completion. Do not infer a B1a/B1b early-start exception from an attachment; it must be explicitly authorized and recorded in both active plan and tracker before use.
 - Respect the plan's no-touch list: do not touch Gradle files, GitHub Actions, APK builds, the `.focusflow` backup format, or the Linux app unless the user explicitly changes the scope.
-- Do not start a later batch before the earlier batch's “done when” condition holds, except for explicitly parallel batches.
-- Device checks are owner-run and happen only at the end of Batch E. Never mark an owner-run check complete.
+- Do not start a later batch before the earlier batch's “done when” condition holds, except for the exact C5/A2b dependency stated above and other explicitly parallel work in the plan.
+- Device checks are owner-run and happen only at the end of Batch E. Run one initial full session, then retest failed scenarios only for at most two rounds. Never mark an owner-run check complete.
+- Protect the upgrade check: run S2 on a data-bearing pre-v9 installation before uninstalling, clearing data, or doing a fresh install for S1 on that phone.
 - Treat task replacement and any other deletion of user data as destructive. Keep replacement disabled by default, preserve explicit confirmation and required safety guards, and do not perform destructive actions without the user's authorization.
 
 ## Required working rules

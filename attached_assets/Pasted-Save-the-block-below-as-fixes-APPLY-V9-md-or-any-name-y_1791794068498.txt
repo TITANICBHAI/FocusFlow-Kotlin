@@ -1,0 +1,407 @@
+Save the block below as `fixes/APPLY_V9.md` (or any name you like — it's your runbook, not a project file the agent depends on). It gives you one safe order of operations: archive → apply plan edits → swap tracker → verify → commit → the 5 decisions only you can make → what to tell the agent. It deliberately avoids my Part 2 "skeleton" approach (which had paste-back gaps) and instead **edits your existing v8 files in place** — nothing can get lost that way.
+
+````markdown
+# APPLY_V9 — How to apply the v9 plan/tracker repair
+
+**Purpose:** Apply the dependency repair (flaws F-01…F-11 from `flaws.md`) to
+`fixes/PLAN.md` and `fixes/TRACKER.md` without losing any recorded progress, without
+creating new cycles, and without touching app source.
+
+**Time:** ~20–30 minutes. **No tests need to run** — this is a documentation swap
+(same precedent as A5). **No app code changes.**
+
+---
+
+## 1. Ground rules
+
+DO:
+- Archive before editing (history is never deleted — tracker rule).
+- Do plan and tracker in the **same commit** (the tracker cites "plan v9 §3.1"; never
+  let that citation dangle).
+- Run `git diff --check` before committing (v8 history shows repeated trailing-whitespace
+  failures from Markdown hard breaks — keep the `<br>` style, no trailing spaces).
+
+DO NOT:
+- Do not edit any file under `app/`.
+- Do not touch `allowance/*`.
+- Do not tick any `OWNER-RUN PENDING` item.
+- Do not mark B2–B7 or C1–C6 as started.
+- Do not touch Gradle files, GitHub Actions, or APK builds.
+- Do not rename the working files — they must stay exactly `fixes/PLAN.md` and
+  `fixes/TRACKER.md` (all cross-references use these paths).
+
+---
+
+## 2. Step 1 — Snapshot and archive
+
+```bash
+mkdir -p fixes/archive
+cp fixes/PLAN.md   fixes/archive/PLAN_v8.md
+cp fixes/TRACKER.md fixes/archive/TRACKER_v8.md
+mv flaws.md fixes/archive/flaws_v8_audit.md   # optional but recommended: it audits v8, so it is now historical
+```
+
+---
+
+## 3. Step 2 — PLAN.md: apply this edit map to your existing v8 file
+
+Apply each edit exactly. Small edits are given as **find → replace**. Block edits say
+"replace the whole … with the block below". Everything not listed stays byte-identical.
+
+### P-1 · Title and supersession
+- `# FocusFlow Fixes : final plan (v8)` → `# FocusFlow Fixes : final plan (v9)`
+- `**Supersedes** \`FocusFlow Fixes\`.` →
+  `**Supersedes** \`FocusFlow Fixes\` and v8 of this plan (archived at \`fixes/archive/PLAN_v8.md\`). v9 repairs the dependency graph and separates batch completion from owner-run evidence.`
+
+### P-2 · Rule 5 (owner constraints) — last sentence
+FIND: `Do not start a later batch before the earlier batch's "done when" holds, unless the batch says it can run in parallel.`
+REPLACE WITH:
+```
+Do not start a later batch before the earlier batch's automated "done when" holds, unless
+the batch says it can run in parallel. The owner may authorize a specific exception in
+writing; it is recorded in section 3.1 ("Sequence") and in the tracker's decision log, and
+it stays narrowly scoped.
+```
+
+### P-3 · Rule 10 (device testing)
+FIND: `**Device testing happens once, at the very end (Batch E), by the owner, on a Realme C3 (Android 10) and a Samsung M31 (Android 12).**`
+REPLACE WITH:
+```
+**Device testing happens at the very end (Batch E), by the owner, on a Realme C3
+(Android 10) and a Samsung M31 (Android 12): one initial full session, then retests of
+only the failed scenarios, at most two rounds (section 7).**
+```
+(Keep the sentence that follows it unchanged.)
+
+### P-4 · Add rules 11 and 12 after rule 10
+```
+11. **Completion versus owner evidence.** A batch is complete when its **automated** "done
+    when" holds. Owner-run items (section 7 scenarios, the C2 manifest confirmation, the
+    owner-recorded event logs) **never** block a batch's completion, a later batch's start,
+    or the Batch D gate. They are recorded `OWNER-RUN PENDING` and resolved in Batch E /
+    close-out (E3).
+12. **Dependency direction.** Every dependency points from a later batch to an earlier one.
+    Cross-batch integration work belongs to the **later** batch: C5 wires the A2 worker's
+    retention seam; E3 runs C6's golden-log harness on the real logs. An item may not depend
+    on any batch whose start gate requires the item's own batch. Owner confirmations that
+    need no device (C2 manifest visibility) are requested when their batch starts and are
+    non-blocking.
+```
+
+### P-5 · §3.1 — append one row to the owner-decision table
+```
+| Sequence | **B1 may start before the A1–A4 gate is fully satisfied** (owner authorization, 11 Oct 2026). Scope: only B1 work independent of B6's shared resolver; the resolver-dependent fallback change and its tests are done with B6; A2's C5 wiring stays in C5. No other batch is released from its gate. | B1; rules 5, 11, 12 |
+```
+
+### P-6 · §5 intro — append after "Sizes: S under a day, M one to three days, L more."
+```
+Batch completion is judged only by the automated "done when" of each batch (rules 11–12);
+owner-run items are collected in Batch E.
+```
+
+### P-7 · §5 A2
+- FIND: `- Prune calls the rollup prune from C5.`
+  REPLACE WITH:
+```
+- Prune the **legacy** tables here with the injected-clock horizon. Leave one named retention
+  seam (a single method or interface the worker calls) so C5 can add the rollup tables
+  without touching the worker's schedule; do not add a no-op hook. **Adding the rollup prune
+  and wiring it into the worker is C5 work (rule 12). A2 does not wait for C5.**
+```
+- FIND: `- *Done when:* a log or counter shows the job scheduled at app start, and the tests pass.`
+  REPLACE WITH: `- *Done when:* a log or counter shows the job scheduled at app start, and the tests pass. (Rollup-retention wiring is C5's and is not part of this done-when.)`
+
+### P-8 · §5 A4 (three changes)
+1. In the first bullet, FIND `covering the required tests in section 6` → REPLACE WITH `covering the behaviors that exist today`.
+2. Add this bullet after the migration-test bullet:
+```
+- Record a **crosswalk** in the tracker that assigns every section 6.2 test group to its
+  owning batch. A4 does not implement later batches' tests.
+```
+3. FIND: `- *Done when:* a search of the test sources finds no \`readText\` on a \`.kt\` file and the section 6 list is covered.`
+   REPLACE WITH:
+```
+- *Done when:* a search of the test sources finds no `readText` on a `.kt` file, the
+  baseline behavior tests pass, and every section 6.2 group is assigned to its owning batch
+  in the tracker crosswalk.
+```
+
+### P-9 · §5 Batch B gate — add directly under the `### Batch B` heading
+```
+**Batch gate.** A1–A4 automated done-when, **except B1 under the Sequence exception (3.1)**.
+Within B: do **B6 before B1's resolver-dependent part**; do **B5 after B2 and B4**.
+```
+
+### P-10 · §5 B1 — replace the entire B1 block with:
+```
+**B1 · accessibility lifecycle and fallback behavior (M).** Fixes P5-05, P5-10, P5-27; PD-2.
+B1 has two parts.
+- **(i) Independent part.** Keep the meter in the accessibility service. `onInterrupt` must not
+  tear it down; teardown happens only on unbind and destroy, and a rebind recreates and starts
+  the meter (a start is a "read due" event). Recovery: apply the persisted checkpoint once when
+  the meter starts, clear the marker after applying, and never credit time twice; the
+  foreground service stops calling recovery. Tell the user: in the allowance screens and the
+  permission health card say "Allowance limits only work while the Accessibility service is on.
+  While it is off, apps with an allowance are blocked during blocks."
+- **(ii) Resolver-dependent part (do with B6).** Remove the foreground service's allowance
+  mirror: `isFallbackBlocked` stops reading the ledger. While accessibility is off, an app that
+  has an allowance entry is blocked during any active block, with its own block reason
+  ("Allowance limits need the Accessibility service"), implemented through the shared resolver
+  from B6 so both paths agree.
+- *Tests (JVM):* (i) an interrupt does not stop the meter; a rebind starts it again; recovery
+  credits at most the cap once. (ii) with B6: the fallback path blocks an allowance app during
+  a block with the new reason and never touches the ledger (gate G2).
+- *Owner check:* S4 (owner-run at E1; does not gate B1's completion or Batch D — rule 11).
+- *Done when:* the (i) and (ii) tests pass. S4 remains `OWNER-RUN PENDING` until E1.
+```
+
+### P-11 · §5 B5 and B6 — append one sentence to each
+- B5: `Count-mode tests need B2's filter; time-budget and interval tests need B4's closed/tail model.`
+- B6: `Land B6 before B1's resolver-dependent part (B1 ii).`
+
+### P-12 · §5 Batch C gate — add under the `### Batch C` heading (keep the existing gate sentence):
+```
+**C5 owns the A2 wiring (rule 12).**
+```
+
+### P-13 · §5 C2 — replace the manifest bullet
+FIND: `- Verify the manifest allows the queries this needs (package visibility); the manifest is not in the repository, so the owner confirms.`
+REPLACE WITH:
+```
+- Verify the manifest allows the queries this needs (package visibility) against any available
+  project files and record the result or limitation. The manifest is not in the repository:
+  **ask the owner to confirm when C2 starts** (no device needed). The confirmation is
+  owner-run, **does not block C2's completion, Batch D or E1** (rules 11–12), and is resolved
+  at E3.
+```
+
+### P-14 · §5 C5 — replace the whole C5 paragraph with:
+```
+**C5 · retention (S).** Fixes P5-20.
+- Add prune methods for the three rollup tables with the same 90-day horizon as the legacy
+  tables, and test them.
+- **Wire the A2 maintenance worker's retention seam to these prune methods** and add the
+  end-to-end worker test (A2 is complete before C starts; one-way dependency — rule 12).
+- *Done when:* pruning covers every usage table (G8), tests prove the retention horizon, and
+  the maintenance worker invokes it.
+```
+
+### P-15 · §5 C6 — replace the whole C6 block with:
+```
+**C6 · what the cutover gate proves (M).** Fixes P5-24; PD-8, PD-9.
+- Document in code and here that the gate proves completeness only. (Automated.)
+- Document and test the rollback: set `cutover_date` to NULL, history is served from the
+  legacy tables again, the legacy writer resumes. (Automated.)
+- Build the **golden-log test harness** and run it on **synthetic fixtures** through the
+  tracker, aggregator and `measure`, asserting the expected output (automated; gates Batch D).
+  Define the fixture format E1 will use for real logs.
+- **Running the harness on the owner-recorded logs from at least two devices (one not a Pixel)
+  is E3 work** (rule 12); the owner records the logs with the E1 tooling.
+- Keep the legacy tracker unchanged (PD-8).
+- *Done when:* the completeness-only contract, the rollback, and the golden-log harness on
+  synthetic fixtures are evidenced. Real-log validation is E3.
+```
+
+### P-16 · §5 Batch D gate — add under the `### Batch D` heading:
+```
+**Batch gate.** Start when B and C are complete by their **automated** done-when (rules 11–12).
+```
+
+### P-17 · §5 Batch E
+- Add under the `### Batch E` heading: `**Batch gate.** D complete (automated). E1 collects every owner-run item; E3 closes them out.`
+- In E1, insert before the final sentence ("Also confirm that the exported Room schema…"):
+  `E1 also collects every owner-run item: S1–S11, the C2 manifest confirmation, and the event-log export scenario for C6's harness.` *(If your v8 numbers the log-export scenario differently than S11, keep your numbering.)*
+- Replace the whole E3 line with:
+```
+**E3 · close-out (S).**
+- Run C6's golden-log harness on the two devices' recorded logs (one not a Pixel) and record
+  the results.
+- Record the C2 manifest confirmation as resolved, or as a verified limitation.
+- If any post-E1 code change was made (for example the PD-10 three-second tune): rerun the
+  affected automated suites and ask the owner to retest only the affected scenarios as one
+  retest round (rule 10; at most two rounds; otherwise defer with owner sign-off).
+- Final tracker pass; re-verify gates G1–G9 by search or test; mark this plan's batches with
+  evidence; archive v8 (with v7).
+```
+
+### P-18 · §6.2 — append this note at the end of the section:
+```
+**Ownership note.** A4 assigns these test groups to batches (tracker crosswalk); each group
+is required at its owning batch's automated gate. Database tests keep the fallback: JVM or
+Robolectric if possible, otherwise instrumented and compile-only, with S2 on the owner's
+phones — section 10 accepts that substitute as final evidence.
+```
+
+### P-19 · §7
+- First sentence: FIND `The owner tests **once, at the very end** (Batch E)` → REPLACE WITH
+  `The owner runs **one initial full session at the very end** (Batch E)` and add after that paragraph's first sentence: `After the initial session, **only failed scenarios are retested, at most two rounds** (triage rule below).`
+- After item 5 of "What the agent must produce", add:
+  `**E1 also collects, without a device where possible:** the C2 manifest confirmation; the event-log exports for C6's golden-log harness (run in E3).`
+
+### P-20 · §10 Final definition of done — replace the entire section with:
+```
+## 10. Final definition of done
+
+- Every batch A5–D3 is `DONE — evidence recorded` under its **automated** done-when.
+- **Tests.** The production JVM suite is green. Instrumented tests run wherever the
+  environment can run them; where it cannot (currently: no device, no Robolectric), the
+  **compile-only instrumented tests plus owner scenario S2 on both phones are the accepted
+  substitute evidence** (the affected tests are named in the tracker:
+  `FocusFlowDatabaseMigrationTest`, `TaskEndAlarmIdentityInstrumentedTest`). If a capable
+  environment appears before close-out, the tests are run and the result recorded.
+- **Batch E.** One initial full device session was held; failed scenarios were retested in at
+  most two rounds; every scenario passed, or the remainder is summarized and accepted by the
+  owner.
+- **E3 executed.** Golden-log harness run on real logs from both phones; C2 confirmation
+  resolved or recorded as a verified limitation; any post-E1 change re-verified per rule 10;
+  every `OWNER-RUN PENDING` item resolved or explicitly deferred with owner sign-off.
+- Gates G1–G9 re-verified by search or test at close-out.
+- Tracker reconciled and current; v8 plan and tracker archived.
+```
+
+### P-21 · (optional) §8 — add one line at the top:
+`Executed 2026-10-11 (A5). The tracker was re-issued as v9 alongside this plan; see fixes/APPLY_V9.md.`
+
+---
+
+## 4. Step 3 — TRACKER.md: replace wholesale
+
+Copy the **v9 tracker from my previous message (Part 3)** over `fixes/TRACKER.md`. It is
+complete and self-contained — every status, evidence entry, failure note, and decision from
+your v8 tracker is preserved verbatim inside it (A2/A1/A3/A4 batches, all notes and
+evidence). Do not hand-merge unless you prefer to; if you hand-merge instead, apply exactly
+the 10 changes listed in "Part 4 — Change log" of my previous message.
+
+Sanity checks after pasting:
+- Filename is exactly `fixes/TRACKER.md`.
+- Progress summary at top matches the batch headers (A1/A2/A3/A4/A5 DONE, B1 IN PROGRESS, rest NOT STARTED).
+- Batches D and E now exist as full sections (your v8 paste didn't include them; the v9 tracker builds them in house style — read them once against plan §5).
+
+---
+
+## 5. Step 4 — AGENT_PRE_PROMPT.md check
+
+Search it for `v8`, `PLAN`, `TRACKER`:
+- Update any version pin (e.g., "plan v8") → v9.
+- Make sure it does not contradict the two new rules (batch completion = automated done-when; owner-run items non-blocking). One added sentence is enough.
+
+---
+
+## 6. Step 5 — Verification
+
+```bash
+# No dangling owner-evidence back-edges: every "Blocked by … E1" must say non-blocking, or be an E-batch row
+rg -n "Blocked by.*E1" fixes/TRACKER.md
+
+# A2 must have no open C5 item (only the v9 annotation may mention C5 in Batch A)
+rg -n "C5" fixes/TRACKER.md
+
+# Status vocabulary normalized (expect: no **Status:** `COMPLETE`)
+rg -n "Status:\*\* \`?COMPLETE" fixes/TRACKER.md        # expect 0 hits
+rg -n "once, at the very end" fixes/PLAN.md             # expect 0 hits
+rg -n "Prune calls the rollup prune from C5" fixes/PLAN.md   # expect 0
+rg -n "section 6 list is covered" fixes/PLAN.md         # expect 0
+rg -n "REINSERT" fixes/PLAN.md fixes/TRACKER.md         # expect 0
+rg -n "^11\. \*\*Completion versus owner evidence" fixes/PLAN.md   # expect 1
+rg -n "^12\. \*\*Dependency direction" fixes/PLAN.md               # expect 1
+rg -n "Sequence" fixes/PLAN.md                          # §3.1 row must exist
+
+# Whitespace hygiene (v8's recurring failure)
+git diff --check
+```
+
+Manual (30 seconds): read the tracker's Progress summary against each batch header, and the
+tracker's B/C/D/E gate lines against plan §5.
+
+---
+
+## 7. Step 6 — Commit
+
+```bash
+git add fixes
+git diff --cached --check        # must pass
+git commit -m "docs(fixes): apply v9 plan/tracker repair (F-01..F-11)
+
+- archive v8 plan+tracker+audit; add plan rules 11-12 (completion vs owner evidence, dependency direction)
+- A2 closed on its own evidence; C5 owns the A2 wiring (breaks A2<->C5)
+- B1/C2/C6 owner-run items made non-blocking (breaks B1<->E1, C6<->E1, C2<->E1)
+- C6 golden-log harness on synthetic fixtures gates D; real-log run moved to E3
+- tracker: progress summary, normalized statuses, rebuilt batches D/E; no app source changed"
+```
+
+---
+
+## 8. Step 7 — Owner decisions (the "other stuff" only you can do)
+
+| # | Decision | Effect | Urgency |
+|---|---|---|---|
+| D1 | **Provide `AndroidManifest.xml` (and `app/build.gradle`) to the agent.** | Removes the C2 owner-confirmation loop entirely — the agent verifies package visibility directly from the file and closes that row with evidence. Also clears the plan §3.2 "Build files" open item and several "unverified" marks. | **Recommended now — biggest single win** |
+| D2 | PD-3 detail: confirm the default "No" (empty Focus allow-list = nothing opens), or answer differently. | One line to the agent; removes "default applied, awaiting owner". | Anytime before B6 |
+| D3 | Ratify the Sequence exception wording now recorded in plan §3.1 (you already authorized B1; v9 just writes it down). | Resolves F-08 permanently. If you want different wording, edit that one row in both files. | Now (30 seconds) |
+| D4 | Migration tests: pick one — (a) accept compile-only + S2 (v9 default, zero action), (b) authorize a one-off Gradle edit to add Robolectric (owner exception to rule 5), or (c) run the instrumentation yourself on any machine with a device/emulator and paste results. | Determines whether §10's test clause ever upgrades beyond the fallback. | Before close-out |
+| D5 | Optional: state whether the PD-10 three-second tune is "only if device evidence shows a problem" (v9 assumes this) or mandatory. | v9's E3 rule handles both; only needed if you want it mandatory. | Before E1 |
+
+---
+
+## 9. Step 8 — Resume the agent
+
+Send it something like:
+
+> Plan and tracker are now v9 (`fixes/PLAN.md`, `fixes/TRACKER.md`); v8 and the audit are
+> archived in `fixes/archive/`. Read plan §0 rules 11–12, the tracker's Progress summary,
+> and the Batch B gate, then resume **B1's independent part only (B1 i)**: interrupt/rebind
+> lifecycle, one-time checkpoint recovery with marker clear, Accessibility-off wording in the
+> allowance screens and permission health card, and their JVM tests. B1(ii) and the fallback
+> tests wait for B6. S4 stays OWNER-RUN PENDING.
+
+Suggested order after that (your call, gates all permit B and C in parallel):
+**B6** (B1(ii) and D2 wording hang on it) → **B2 → B3 → B4** (B5 last in B) → **B7**;
+C-batch anytime: **C1 → C2 → C3 → C4 → C5 → C6**.
+
+---
+
+## 10. Rollback
+
+```bash
+cp fixes/archive/PLAN_v8.md   fixes/PLAN.md
+cp fixes/archive/TRACKER_v8.md fixes/TRACKER.md
+```
+(or `git revert` the single commit).
+
+---
+
+## 11. Appendix A — flaw coverage map
+
+| Flaw | Fixed by | Where |
+|---|---|---|
+| F-01 A2 ⇄ C5 | A2 done on own evidence; C5 owns wiring | P-7, P-14; tracker A2/C5 |
+| F-02 B1 ⇄ E1 | rule 11; B1 done-when excludes S4 | P-4, P-10; tracker B1 |
+| F-03 C6 ⇄ E1 | C6 split; real logs → E3 | P-15, P-17; tracker C6/E3 |
+| F-04 C2 ⇄ E1 | ask at C2 start; non-blocking; resolves at E3 | P-13, P-17; tracker C2 (or eliminate via D1) |
+| F-05 A4 over-broad done-when | crosswalk wording | P-8 |
+| F-06 A2 done-when omission | parenthetical | P-7 |
+| F-07 "once" vs retests | rule 10 + §7 wording | P-3, P-19 |
+| F-08 B1 exception absent from plan | §3.1 row + rule 5 | P-2, P-5 |
+| F-09 stale summaries | Progress summary + update-on-change rule | tracker v9 |
+| F-10 migration-test close-out | §10 rewrite | P-20 |
+| F-11 post-E1 tuning | E3 reopen rule | P-17 |
+
+Cycle check: every new edge (C5→A2-done, E3→C6-harness/logs, B1(ii)→B6, D-gate→B/C automated) points later→earlier only. No new cycles.
+
+## 12. Appendix B — if you already saved my Part 2 skeleton as PLAN.md
+
+Then instead of the edit map, paste from your original v8 into the skeleton: §2 defect table,
+§3.1 decision table (+ the new Sequence row), §3.2 table, §4 (all), §6.1, §6.2 (+ note),
+§7 scenario rows S7–S10 (S7 pass text needs verifying), and §9. Verify with
+`rg -n "REINSERT|verbatim|unchanged from v8" fixes/PLAN.md` → expect 0. Path A (edit map on
+your original file) avoids all of this, which is why it's recommended.
+
+## 13. Note — if you veto the A2 closure
+
+v9 closes A2 as DONE because its own done-when (scheduling + worker tests) is evidenced and
+the only open item was re-homed to C5. If you disagree: keep A2 `IN PROGRESS`, delete its
+tracker DONE annotation, and change the Batch C gate to "A1–A4 done **except the C5-owned
+wiring item**" in both files. Everything else in v9 still holds.
+````
+
+If you do only three things from all of this: **(1)** run Steps 1–6 in order (archive → edits → verify → commit), **(2)** hand the agent the manifest (`APPLY_V9.md` §8, D1 — it dissolves the last conditional cycle instead of just managing it), **(3)** send the agent the resume message from §9 so it restarts on B1(i) with the corrected rules in front of it.

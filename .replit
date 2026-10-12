@@ -33,12 +33,12 @@ args = "bash scripts/push-to-github.sh"
 name = "Run Android unit tests"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "bash scripts/test-unit.sh"
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [[ports]]
 localPort = 22876

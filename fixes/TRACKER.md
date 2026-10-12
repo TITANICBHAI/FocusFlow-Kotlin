@@ -1,10 +1,10 @@
-# FocusFlow Fixes Phase 5 — Main Work Tracker (v8)
+# FocusFlow Fixes Phase 5 — Main Work Tracker (v9)
 
-**Primary tracker for the plan in `fixes/PLAN.md`.** This file is the authoritative progress record for this fixes effort. `allowance/TRACKER.md` belongs to a separate earlier workstream: it may be read as a reference for tracker format and discipline, but its statuses, evidence, decisions, and progress do not apply here and must not be updated for this work.
+**Primary tracker for the plan in `fixes/PLAN.md`.** This file is the authoritative progress record for this fixes effort. The previous v8 plan and tracker are preserved under `fixes/archive/`. `allowance/TRACKER.md` belongs to a separate workstream: it may be read as a reference for tracker format and discipline, but its statuses, evidence, decisions, and progress do not apply here and must not be updated for this work.
 
-The v8 plan supersedes `allowance/PLAN.md` (v7). The plan is the implementation contract; it is not authorization by itself. See `fixes/AGENT_PRE_PROMPT.md` before starting work.
+The v9 plan supersedes `allowance/PLAN.md` (v7) for this work. The plan is the implementation contract; it is not authorization by itself. See `fixes/AGENT_PRE_PROMPT.md` before starting work.
 
-**Initial state at tracker creation:** All batches were `NOT STARTED`; no progress or evidence was copied from the allowance tracker. Batch A5 has since completed. Product decisions below are transcribed from section 3 of the v8 plan, not independently re-confirmed in this tracker.
+**Progress preservation:** Existing A5, A1, A2, A3 and A4 evidence and failure history are retained below. Product decisions are transcribed from section 3 of the plan and are not independently re-confirmed here.
 
 ---
 
@@ -45,11 +45,11 @@ Every work item records its own status, `Blocked by`, evidence, and whether it i
 
 ## Order and dependencies
 
-1. **A5 first.** Reconcile this tracker with v8 and the current code before app-code changes.
-2. **A1–A4 next.** Do not start them until A5 is done.
-3. **B and C after A.** Batches B and C may run in parallel where their plan dependencies allow.
-4. **D after B and C.**
-5. **E after D.** Owner device checks happen once, at the end.
+1. **Foundation gate:** A5, A1, A2a, A3 and A4 are complete. Their recorded automated evidence is preserved; owner scenarios remain pending.
+2. **C5 is the sole A2b dependency exception:** once the foundation gate holds, C5 may implement and test rollup pruning and its A2 worker integration. C5 completion closes A2b and completes Batch A. C5 must not wait for A2b.
+3. **B and remaining C after C5.** They may run in parallel only where the plan and each task's prerequisites allow. No pre-gate B1a/B1b exception is recorded in the active documents.
+4. **D after all required B/C automated work**, including C6a's synthetic-fixture harness. Owner-run S1/S2/S4 and C6b real-log replay do not block D.
+5. **E after D.** One initial owner device session is at the end; only failed scenarios may be retested, up to two rounds.
 
 ---
 
@@ -57,68 +57,73 @@ Every work item records its own status, `Blocked by`, evidence, and whether it i
 
 Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. The plan is the recorded source; do not represent these as independently re-confirmed during implementation.
 
-| PD | Decision recorded in v8 | Tracker status / application |
+| PD | Decision recorded in the plan | Tracker status / application |
 |---|---|---|
 | PD-1 | Same seven-day gate for fresh and upgraded installs; no upgrade-day cutover. | RECORDED FROM PLAN; implement and verify in A1. |
-| PD-2 | Allowance limits require Accessibility; when it is off, allowance apps are blocked during any active block and the UI explains why. No fallback meter. | RECORDED FROM PLAN; implement and verify in B1. |
+| PD-2 | Allowance limits require Accessibility; when it is off, allowance apps are blocked during any active block and the UI explains why. No fallback meter. | RECORDED FROM PLAN; lifecycle/messaging in B1a; fallback resolver behavior in B1b/B6. |
 | PD-3 | An empty Focus allow-list means no app is allowed; an allowance never widens Focus. | RECORDED FROM PLAN. The detail has a safe default of “No” and remains awaiting owner confirmation as specified in section 3.2. |
 | PD-4 | Loosening allowance edits are locked during any active block; tightening remains allowed. | RECORDED FROM PLAN; implement and verify in B6/D2. |
 | PD-5 | Usage Access is required; enabling an allowance prompts for it. | RECORDED FROM PLAN; implement and verify in D2. |
 | PD-6 | Usage history is not exported; `.focusflow` format remains unchanged and backup/restore explains history is rebuilt. | RECORDED FROM PLAN; implement and verify in D2. |
 | PD-7 | Remove the Today Stats fallback after the Stats fix; a failed read is unavailable, never zero. | RECORDED FROM PLAN; implement in A3/D3. |
-| PD-8 | Do not fix the legacy tracker; retain its known limitations and stop its writes 14 days after cutover. Never use legacy numbers as validation reference. | RECORDED FROM PLAN; preserve in C6. |
-| PD-9 | Keep refusing usage windows that cross cutover; the data-health notice explains the blackout. No relaxation without device evidence. | RECORDED FROM PLAN; preserve and verify in C6. |
+| PD-8 | Do not fix the legacy tracker; retain its known limitations and stop its writes 14 days after cutover. Never use legacy numbers as validation reference. | RECORDED FROM PLAN; preserve in C6a. |
+| PD-9 | Keep refusing usage windows that cross cutover; the data-health notice explains the blackout. No relaxation without device evidence. | RECORDED FROM PLAN; preserve and verify in C6a. |
 | PD-10 | Merge same-package sessions across a 3-second gap when no other package intervenes. | RECORDED FROM PLAN; implement and verify in C1. |
 | PD-11 | Compare Stats with device screen-time totals within about 20% or 15 minutes, whichever is larger; if unavailable, validate internal totals and top apps. | RECORDED FROM PLAN; owner validation in E1. |
 | PD-12 | Google Play target API requirement remains an open product question; treat it as a release gate, with no Phase 5 implementation. | OPEN; keep release gate in E2 and do not change target API in this scope. |
 | PD-13 | When usage data is unavailable, enforce using last known value plus projection, mark values approximate, and show revoked permission in permission health. | RECORDED FROM PLAN; implement and verify in B4/D1. |
 | PD-14 | Usage is counted all day; allowances restrict only while a block is active and never open an app a block keeps closed. | RECORDED FROM PLAN; implement and verify in B6/D2. |
 | Modes | Keep count, time-budget, and interval modes; time budget and interval are the main focus, count follows. | RECORDED FROM PLAN; test in B5. |
-| Devices | Owner tests once, at the end, on Realme C3 (Android 10) and Samsung M31 (Android 12). | RECORDED FROM PLAN; owner-run in E1. |
+| Devices | One initial full owner session on Realme C3 (Android 10) and Samsung M31 (Android 12); only failed scenarios are retested, for at most two rounds. | RECORDED FROM PLAN; owner-run in E1. |
+| Dependency repair | C5 may start after the A1/A2a/A3/A4 foundation gate and owns the A2b worker-prune integration; B1a/B1b have no recorded early-start exception. | Current plan/tracker rule; do not infer B1 progress or authorization from an attached draft. |
+| Manifest evidence | Current manifest/build files are in the repository; C2 verifies package-query needs from source and records any limitation. | Repository-verified; no owner-manifest task unless C2 identifies a decision only the owner can make. |
 
 ---
 
 ## Batch A — Release blockers
 
-### A5 — Tracker truth
+### A5 — Tracker truth (v9 reconciliation)
 
 **Status:** `DONE — evidence recorded`<br>
 **Blocked by:** None — do this first<br>
 **Started:** 2026-10-11<br>
-**Completed:** 2026-10-11<br>
+**Completed:** 2026-10-12<br>
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [x] | Verify current Room database version and `MIGRATION_7_8`; record the v8 A1 change accurately. | DONE — evidence recorded | — | `FocusFlowDatabase.kt:133,548-555`; `AppModule.kt:218-227`; verified no `MIGRATION_8_9` exists. | No |
+| [x] | Verify current Room database version, registered migration path, and A1 status against the current checkout. | DONE — evidence recorded | — | Current source reports Room version 9; `MIGRATION_8_9` is registered. The v8 audit note below is retained only as dated history. | No |
 | [x] | Audit old plan-version references; keep explicit historical supersession/archive references and remove stale active references. | DONE — evidence recorded | — | `rg -ni` audit: remaining v7 mentions are explicitly historical; no stale active reference remains. | No |
-| [x] | Audit all checkboxes and statuses; leave unsupported or unverified work incomplete. Confirm no allowance-tracker progress was imported. | DONE — evidence recorded | — | Initial tracker had no completed items; only this A5 work is now checked, with evidence recorded; no allowance progress copied. | No |
+| [x] | Audit all checkboxes and statuses; leave unsupported or unverified work incomplete. Confirm no allowance-tracker progress was imported. | DONE — evidence recorded | — | Historical initial tracker state (2026-10-11): no completed items; no allowance progress copied. The current v9 statuses are reconciled in the summary below. | No |
 | [x] | Verify the Batch 0 usage-table writer/reader map against code; identify `AppUsageAndSessionTracker` as legacy-table writer if confirmed. | DONE — evidence recorded | — | DAO call-site search and source inspection: tracker is producer; readers and worker pruning are detailed in Notes. | No |
 | [x] | Verify the `SettingsRepository.getAllowanceSnapshot` purpose and whether `resetDailyAllowanceUsage` has callers. | DONE — evidence recorded | — | `SettingsRepository.kt:1193-1210`; `SettingsViewModel.kt:108`; workspace search found only reset declaration. | No |
-| [x] | Confirm every batch/item has status, blocker, evidence, and owner-run fields; reconcile this decision log with PD-1–PD-14. | DONE — evidence recorded | — | Structural audit: 110 work-item rows include all four fields; decision entries checked against plan sections 3.1–3.2. | No |
-| [x] | Final audit: every tracker statement matches current code or is explicitly marked pending/unverified. | DONE — evidence recorded | — | Current-code claims and v8-derived acceptance criteria reconciled; all future work remains NOT STARTED or OWNER-RUN PENDING. Structural checks passed. | No |
+| [x] | Confirm every batch/item has status, blocker, evidence, and owner-run fields; reconcile this decision log with PD-1–PD-14. | DONE — evidence recorded | — | v9 structural audit: 114 work-item rows; all have six cells for the six declared columns. Decision log cross-checked against the active plan. | No |
+| [x] | Reconcile active tracker statements with current source, v9 plan, and evidence; keep unverified work open. | DONE — evidence recorded | — | v9 updates current database/manifest facts, separates A2a/A2b, B1a/B1b and C6a/C6b, and removes unsupported owner gates. Dated v8 evidence remains labeled historical. | No |
 
-**Done when:** every statement in `fixes/TRACKER.md` matches the current code and v8 plan.<br>
+**Done when:** active statements match current source and the v9 plan; older observations remain explicitly historical.<br>
 **Notes:**
-- `NOT STARTED` in later batches means v8-tracked work has not begun; it does not claim similar code is absent. Existing behavior must be re-verified against the batch acceptance criteria.
-- Current Room version is 8 (`FocusFlowDatabase.kt:133`). `MIGRATION_7_8` (`:548-555`) sets a null `cutover_date` to `date('now', 'localtime')`; `AppModule.kt:218-227` registers it. Search found no `MIGRATION_8_9`. Under v8 A1, version 7→8 should become data-free and a new 8→9 migration should clear stale cutover state and repair/seed the pipeline row. This records a required future change; no database code was changed in A5.
+- `NOT STARTED` in later batches means the corresponding v9 acceptance work has not begun; it does not claim similar code is absent. Existing behavior must be re-verified against the acceptance criteria.
+- **Historical A5 audit (2026-10-11):** the checkout was then Room v8 with no 8→9 migration; this was the baseline used to verify A1's implementation. It is not the current database state.
+- **Current v9 source check (2026-10-12):** Room is version 9, the 8→9 migration exists and is registered, and the maintenance worker is scheduled. Rollup retention is still absent from the current prune adapter; C5 owns that remaining integration. The manifest and Gradle files are present; C2 must validate actual package-query requirements, not merely manifest presence.
+- **v9 documentation reconciliation (2026-10-12):** Updated the active plan, tracker and agent pre-prompt; preserved the prior v8 plan/tracker under `fixes/archive/`. The attached drafts remain unmodified and are evidence inputs, not authority. No app source, Gradle, allowance-workstream or GitHub files were changed.
 - `AppUsageAndSessionTracker.kt:22-29,56-80,115-159` produces legacy daily usage (launch count and foreground time) and closed session rows. `AppBlockerAccessibilityService.kt:569` creates it, and `:1018-1024` feeds foreground window changes. `BackgroundFetchWorker.kt:116-117` only prunes old legacy rows; it does not produce usage rows. Search found no usage-write calls in `AnalyticsProcessor` or the worker.
 - Readers found by DAO call-site search: `UsageHistoryRepository.kt:343,359` reads legacy app-days and sessions; `FindingDetectionRunner.kt:240-241` reads both in its direct fallback; `DayRatingRepository.kt:54` reads daily usage dates; and `StatsViewModel.kt:389-394` reads daily rows for suggested chips. Other consumers use the history repository rather than writing legacy rows.
 - `SettingsRepository.getAllowanceSnapshot()` builds an `AllowanceSnapshot` from the allowance ledger and preferences (`:1193-1210`); `SettingsViewModel.kt:108` consumes it. It is a UI snapshot, not a backup path. `resetDailyAllowanceUsage()` only delegates to the ledger (`:1367-1369`); repository-wide Kotlin search found only its declaration.
-- The only remaining v7 mentions in this tracker describe the superseded allowance plan and its later archival as history. They are not active plan references. No progress was imported from `allowance/TRACKER.md`.
+- **Historical audit (2026-10-11):** the v7-reference search was performed against the v8 tracker then in effect. No progress was imported from `allowance/TRACKER.md`.
 **Evidence:**<br>
-- Changed file: `fixes/TRACKER.md`; no app source or allowance tracker changed.
-- `rg -n "version =|MIGRATION_7_8|MIGRATION_8_9" app/src/main/java/com/tbtechs/focusflow/data/local/FocusFlowDatabase.kt app/src/main/java/com/tbtechs/focusflow/di/AppModule.kt` and source inspection: Room is version 8; 7→8 sets null cutover to local today and is registered; no 8→9 migration exists. This is recorded as A1 work, not represented as fixed.
+- **Historical A5 evidence (2026-10-11):** changed file was `fixes/TRACKER.md`; no app source or allowance tracker changed.
+- **Historical source evidence (2026-10-11):** the A5-time inspection found Room v8 and no 8→9 migration. The current v9 source fact is recorded in Notes above; the original evidence is retained, not treated as current.
 - `rg -n "(dailyAppUsageDao\\(\\)|appSessionDao\\(\\)|dailyUsageDao\\.|sessionDao\\.|dailyAppUsageDao\\.|appSessionDao\\.)" app/src/main/java --glob '*.kt'` plus DAO/tracker inspection: only `AppUsageAndSessionTracker` produces legacy usage/session rows, called by Accessibility; other listed DAO calls are readers or the worker's retention deletes.
 - `rg -n 'getAllowanceSnapshot\\(|resetDailyAllowanceUsage\\(' app/src/main/java --glob '*.kt'`: snapshot is consumed by `SettingsViewModel`; reset has only its declaration.
-- `rg -ni 'v6|v7|version 6|version 7|plan_v7|plan v7|phase 5.*v7' fixes/TRACKER.md`: only explicit historical supersession/archive references remain.
-- `awk` item-row check: 110 work-item rows; every row has status, blocker, evidence, and owner-run columns. Decision log compared with plan sections 3.1–3.2.
-- `git diff --check`: passed after the whitespace correction below. App tests were not run because A5 changed tracker documentation only.
+- The original A5 structural/search results above describe the v8 audit and are retained as dated history.
+- The earlier 110-row `awk` check is historical and predates the v9 task splits. The v9 structural audit found 114 work-item rows; every row has all six declared columns.
+- **Final v9 documentation check (2026-10-12):** `git diff --check` passed; all 114 work-item rows have six cells. No application code, Gradle, tests, device runs, workflow runs, or GitHub actions were changed or started. The accidental toolchain module addition in `.replit` was restored; only the ordering of a workflow metadata table differs from the original, with no workflow or port value changed.
+- `git diff --check`: passed after the whitespace correction below at the A5 checkpoint. App tests were not run because A5 was documentation-only.
 **Failures and blockers:**<br>
 - First `git diff --check` failed with exit 2 on trailing Markdown hard-break spaces in the A5 status metadata. Replaced those spaces with explicit `<br>` tags; the rerun passed.
 - A later `git diff --check` failed with exit 2 on trailing hard-break spaces in the A1–A4 blocker metadata after updating the satisfied A5 dependency. Replaced those spaces with explicit `<br>` tags; the final rerun passed.
 **Decisions and deferred work:**<br>
-- No product decision changed. PD-3's detail remains the plan's default “No,” awaiting owner confirmation; PD-12 remains open. A1–A4 are now eligible but still NOT STARTED.
+- No product decision changed. PD-3's detail remains the plan's default “No,” awaiting owner confirmation; PD-12 remains open. This dated A5 note's batch-start status is superseded by the current summary below.
 
 ### A1 — Database and cutover
 
@@ -146,7 +151,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 - No application source changed during this verification pass; the A1 implementation and tests were already present in the checkout. `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest :app:compileProductionDebugAndroidTestKotlin` completed with `BUILD SUCCESSFUL`; 261 Production JVM tests passed with 0 failures, errors, or skips, and the Production AndroidTest Kotlin compile task passed.
 - `UsageHistoryRepositoryCutoverTest` XML report lists all five required cases and records 5 tests, 0 failures, 0 errors, 0 skipped. `FocusFlowDatabaseMigrationTest` compiled; its migration cases were not run on a device.
 - Implementation/test files verified at HEAD: `app/src/main/java/com/tbtechs/focusflow/data/local/FocusFlowDatabase.kt`, `app/src/main/java/com/tbtechs/focusflow/data/local/dao/UsageRollupDao.kt`, `app/src/main/java/com/tbtechs/focusflow/analytics/UsageHistoryRepository.kt`, `app/src/main/java/com/tbtechs/focusflow/di/AppModule.kt`, `app/src/test/java/com/tbtechs/focusflow/analytics/UsageHistoryRepositoryCutoverTest.kt`, `app/src/androidTest/java/com/tbtechs/focusflow/data/local/FocusFlowDatabaseMigrationTest.kt`, and tracked schema `app/schemas/com.tbtechs.focusflow.data.local.FocusFlowDatabase/9.json`.
-- The worktree was clean immediately before this tracker update; `fixes/TRACKER.md` is the only changed file. No APK build, GitHub Actions run, or GitHub push occurred.
+- **Historical A1 verification checkpoint (2026-10-11):** the worktree was clean immediately before that tracker update; `fixes/TRACKER.md` was the only changed file then. No APK build, GitHub Actions run, or GitHub push occurred.
 **Failures and blockers:**<br>
 - The initial `bash scripts/test-unit.sh` run was stopped during SDK setup before Gradle tests ran: it also schedules the development flavor, contrary to the production-only test rule. The production-only unit-test task is being run separately.
 - The first production-only unit-test run failed during test compilation on an unresolved helper reference inside `FakeStore`; the fake now constructs the seeded state directly, and the production-only task is being rerun.
@@ -154,12 +159,12 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 **Decisions and deferred work:**<br>
 - Marked the automated A1 implementation and verification items complete using the plan's compile-only instrumentation fallback. Do not mark S2 complete until the owner reports both device results.
 
-### A2 — Maintenance job
+### A2a — Maintenance job core
 
-**Status:** `IN PROGRESS`<br>
+**Status:** `DONE — evidence recorded`<br>
 **Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** 2026-10-11<br>
-**Completed:** —  
+**Completed:** 2026-10-11<br>
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
@@ -170,15 +175,13 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 | [x] | Detection marker advances only when required days are COMPLETE or permission is denied; unknown results retry. | DONE | A5 complete | Complete/incomplete/permission/unknown cases covered by worker tests | No |
 | [x] | Run detection after successful rollup completion; inject clock/zone for pruning and detection while task dates retain UTC behavior. | DONE | A5 complete | Injected clock/zone; UTC task-date query unchanged; Production tests passed | No |
 | [x] | Worker tests: order; unknown-result retry; one success per local day; prune horizon uses injected clock. | DONE | A5 complete | `UsageMaintenanceJobTest` 7/7; full suite 268/268 | No |
-| [ ] | Prune delegates to the rollup retention work in C5. | BLOCKED | A5 complete; C5 | Pending C5 rollup-retention implementation | No |
-
-**Done when:** scheduling is evidenced at app start and required worker tests pass.  
+**Done when:** scheduling is evidenced at app start and A2a worker tests pass; rollup-table retention is tracked separately as A2b under C5.<br>
 **Notes:**<br>
-- **A2 start (2026-10-11):** User authorized A2 after A1 completed. The initial worktree was clean. Source review confirmed that startup does not schedule the maintenance job, `BackgroundFetchWorker` mixes legacy task duties with detection and legacy-table pruning, and the rollup writer and detection runner already exist. Keep unrelated task/reminder behavior out of scope. C5 has not added rollup-table retention yet; leave the A2→C5 pruning item blocked and do not implement C5 here.
+- **A2 start checkpoint (2026-10-11):** User authorized A2 after A1 completed. The initial worktree was clean. Source review confirmed that startup did not schedule the maintenance job, `BackgroundFetchWorker` mixed legacy task duties with detection and legacy-table pruning, and the rollup writer and detection runner already existed. Keep unrelated task/reminder behavior out of scope. At that checkpoint, C5 had not added rollup-table retention; v9 now allows C5 to start after the Foundation Gate and assigns it A2b.
 - **Initial implementation checkpoint (2026-10-11):** Added a platform-free maintenance coordinator, a WorkManager adapter, a unique 15-minute `KEEP` schedule request from `FocusFlowApp`, startup logging after WorkManager accepts the operation, local-clock rollup/detection/prune seams, and behavior tests. The job checks all three recent rollup dates before detection, retries incomplete/unknown reads, and treats missing/revoked usage permission as a terminal no-read state for that local day. At this checkpoint, the old BackgroundFetch detection/prune code remained pending replacement verification.
 - **Replacement verification (2026-10-11):** Ran `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest --tests 'com.tbtechs.focusflow.background.UsageMaintenanceJobTest'`; Gradle succeeded and the XML report confirms 7/7 tests, zero failures/errors/skips. After that pass, removed only the old detection and prune calls from `BackgroundFetchWorker`; late-start warnings, task reminders, and morning digest remain. Final full Production verification is still pending.
-- **Final verification (2026-10-11):** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest` passed; Production XML contains 268 tests, zero failures/errors/skips, including all seven `UsageMaintenanceJobTest` cases. The new startup helper records the exact unique-work name, 15-minute interval, and `KEEP` policy in its test; production logs only after WorkManager's enqueue operation completes. `git diff --check` passed. No APK, GitHub workflow, push, or device run was started.
-- **Resume verification (2026-10-11):** Rechecked the current A2 worker, startup wiring, retained `BackgroundFetchWorker` duties, and `UsageMaintenanceJobTest`. No A2 source changes were needed. After the first verification attempt timed out during initial toolchain provisioning, the cached rerun of `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest` passed: 58 Production XML reports, 268 tests, zero failures/errors/skips; `UsageMaintenanceJobTest` is 7/7. A2 remains IN PROGRESS because its rollup-retention call is explicitly blocked on C5; no C5 code was added.
+- **Final verification (2026-10-11):** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest` passed; Production XML contains 268 tests, zero failures/errors/skips, including all seven `UsageMaintenanceJobTest` cases. The new startup helper records the exact unique-work name, 15-minute interval, and `KEEP` policy in its test; production logs only after WorkManager's enqueue operation completes. `git diff --check` passed. No APK, GitHub workflow, push, or device run was started. At that time A2 was one parent item; v9 now separates A2a from A2b.
+- **Resume verification (2026-10-11):** Rechecked the current A2 worker, startup wiring, retained `BackgroundFetchWorker` duties, and `UsageMaintenanceJobTest`. No A2 source changes were needed. After the first verification attempt timed out during initial toolchain provisioning, the cached rerun of `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest` passed: 58 Production XML reports, 268 tests, zero failures/errors/skips; `UsageMaintenanceJobTest` is 7/7. At that checkpoint A2 remained in progress because rollup-retention integration was blocked on C5. No C5 code was added.
 **Evidence:**  
  - **Rollup → readiness → detection → prune:** `UsageMaintenanceJob.kt`, `UsageMaintenanceWorker.kt`, and `UsageMaintenanceJobTest.kt`; the order case passed and the full Production suite passed (268 tests, zero failures/errors/skips).
  - **App-start scheduling:** `FocusFlowApp.kt`, `UsageMaintenanceWorker.kt`, `UsageMaintenanceJob.kt`, and `UsageMaintenanceJobTest.kt`; startup invokes the scheduler, the test captured `FOCUSDAY_USAGE_MAINTENANCE` / 15 minutes / `KEEP`, and the WorkManager operation logs only after completion; Production suite passed.
@@ -190,13 +193,32 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
   - **Resume verification against current checkout:** the same Production-only command passed after toolchain bootstrap; XML confirms 268 tests, zero failures/errors/skips, with all seven `UsageMaintenanceJobTest` cases present. No APK was built.
  - **Diff hygiene:** `git diff --check` passed.
 **Failures and blockers:**  
- - **C5 dependency:** Rollup-table retention does not exist yet; the worker's legacy-table pruning remains separate. Leave “Prune delegates to the rollup retention work in C5” unchecked and blocked until C5.
+  - **Historical C5 dependency (2026-10-11):** Rollup-table retention did not exist; the worker's legacy-table pruning remained separate. In v9, this work is tracked as A2b and remains blocked until C5.
   - **Resume verification attempt 1 (2026-10-11):** The command exceeded the five-minute shell limit while provisioning JDK 17, Android SDK packages, and Gradle; no Gradle test task result was produced. The cached rerun passed as recorded above.
 **Decisions and deferred work:**  
  - Require all three recent past-day rollup rows to be `COMPLETE` at the current pipeline version before detection; this matches the writer's existing three-day rollup window.
  - Treat `PERMISSION_MISSING` and `ACCESS_REVOKED` as the documented no-read condition for a local day; retry all other unknown and incomplete results.
  - Preserve the existing `last_detection_run_date` and `last_prune_date` preference keys; keep BackgroundFetch task-date lookup on UTC.
- - Defer rollup-table retention delegation to C5; do not add a no-op retention hook in A2.
+  - Keep rollup-table retention in C5; do not add a no-op retention hook to A2a.
+
+### A2b — Rollup-prune integration (owned by C5)
+
+**Status:** `BLOCKED — C5 rollup retention not implemented`<br>
+**Blocked by:** C5 completion; C5 itself may start after the Foundation Gate<br>
+**Started:** —<br>
+**Completed:** —<br>
+**Owner-run:** No
+
+| Done | Work item | Status | Blocked by | Evidence | Owner-run |
+|---|---|---|---|---|---|
+| [ ] | Add rollup-table prune calls through the existing maintenance worker prune operation; do not add a second schedule or no-op hook. | BLOCKED — C5 | C5 retention implementation | Pending | No |
+| [ ] | Test the retention boundary for every rollup table and prove the scheduled maintenance worker invokes rollup pruning. | BLOCKED — C5 | C5 tests | Pending | No |
+
+**Done when:** C5's worker-invocation test proves the maintenance worker calls rollup pruning; this closes A2b and completes the A2 dependency for Batch A.<br>
+**Notes:** C5 can begin after A1, A2a, A3 and A4 are complete. A2b is a dependent completion condition, not a prerequisite for C5.<br>
+**Evidence:** Pending C5 implementation and tests.<br>
+**Failures and blockers:** C5 code/tests have not started.<br>
+**Decisions and deferred work:** C5 owns this integration; do not mark it complete based on the existing legacy-table prune.
 
 ### A3 — Stats zero reading
 
@@ -219,7 +241,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 **Done when:** required source tests pass; owner check remains open until reported.  
 **Notes:**  
-- **A3 start (2026-10-11):** User authorized A3 after A5; its dependency is satisfied. A2 remains a separate in-progress batch with the C5 rollup-retention integration deferred. Initial worktree: `main` ahead of `origin/main` by one commit; only the supplied attachments were untracked. Preserve those attachments and keep S1 owner-run for E1.
+- **A3 start (2026-10-11):** User authorized A3 after A5; its dependency was satisfied. At that checkpoint A2 was tracked as one in-progress batch with C5 integration deferred. Initial worktree: `main` ahead of `origin/main` by one commit; only the supplied attachments were untracked. Preserve those attachments and keep S1 owner-run for E1.
 - **A3 continuation (2026-10-11):** User explicitly authorized resuming A3. The worktree was `main` aligned with `origin/main`; the supplied instruction attachment was preserved. Automated implementation and tests are now complete; S1 remains owner-run pending for E1.
 **Evidence:**  
 - `AnalyticsProcessor.kt` removes the Today fallback, preserves source failure type/reason, logs unavailable vs failed reads, and keeps device-usage health unavailable rather than substituting zero.
@@ -234,7 +256,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ### A4 — Test baseline
 
-**Status:** `COMPLETE`
+**Status:** `DONE — evidence recorded`
 **Blocked by:** A5 (complete 2026-10-11; dependency satisfied)<br>
 **Started:** 2026-10-11<br>
 **Completed:** 2026-10-11
@@ -244,13 +266,14 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 |---|---|---|---|---|---|
 | [x] | Find and remove tests that read `.kt` source text; replace with behavior tests for ledger, pipeline, and meter using fake clocks/sources. | DONE | A5 complete | Removed both source-text tests; ledger/pipeline behavior suites retained; injected-clock/source reader test passes in 267-test Production suite; alarm behavior test compiles in AndroidTest | No |
 | [x] | Add fresh-database test and ensure migration tests compile and run where the project supports them. | DONE | A5 complete; A1 | Existing fresh-database and migration cases in `FocusFlowDatabaseMigrationTest.kt` compiled with Production AndroidTest; no connected device for instrumentation runtime, per plan compile-only path applies | No |
-| [x] | Search test sources and verify no Kotlin-source `readText` checks remain; verify section 6 requirements are assigned to batch tests. | DONE | A5 complete | Final test-source search found only the JSON backup fixture read; Section 6 ownership is mapped to A1–A4, B1–B6, C1–C6, and D1 test rows | No |
+| [x] | Search test sources and verify no Kotlin-source `readText` checks remain; verify section 6 requirements are assigned to batch tests. | DONE | A5 complete | Final test-source search found only the JSON backup fixture read; the v9 ownership crosswalk below separates C6a automation from C6b owner logs and assigns tests to their feature batch. | No |
 
 **Done when:** source-text tests are absent and section 6 test coverage is present.  
 **Notes:**  
 - **A4 start (2026-10-11):** User explicitly authorized A4. Initial `git status --short` was clean. The source-text readers are `AlarmPendingIntentLookupContractTest` and `AllowanceBehaviorCharacterizationTest`; `BackupSerializerTest` reads a committed JSON fixture, not Kotlin source, so leave it unchanged. The fresh database and migration cases already exist in `FocusFlowDatabaseMigrationTest`; build/compile evidence is still required. No app/test files changed yet.
 - Replaced source inspection with behavior coverage: removed the two source-reading tests; added a real `AllowanceUsageReader` reconciliation case backed by fixed usage events and an injected completion clock, and an Android instrumentation test that cancels absent/present task alarms without creating pending intents. The reader now accepts a clock provider so this test does not use wall time. Existing ledger/pipeline tests retain the characterized boundary and legacy-JSON behavior.
-- **Section 6 ownership check:** ledger/tail/time-accounting cases → B4/B5; meter lifecycle/recovery/read policy → B1/B3; signal filtering → B2; per-mode behavior → B5; config/resolvers → B6; Stats → A3; pipeline/session/inclusion → C1/C2; fresh DB, migrations and cutover → A1; maintenance worker → A2; detector windows → C3; rollup retention → C5; rollback/golden logs → C6; shared freshness → D1. Later-batch cases remain assigned and open rather than being implemented ahead of their batches.
+- **Historical Section 6 ownership check (2026-10-11):** the then-current crosswalk used the unsplit A2, B1 and C6 labels. It is superseded by the v9 mapping below; later-batch cases remain assigned and open rather than being implemented ahead of their batches.
+- **Current v9 Section 6 ownership crosswalk:** ledger/tail/time accounting → B4/B5; meter lifecycle/recovery/messaging → B1a; fallback resolver → B1b/B6; read policy → B3; signal filtering → B2; per-mode behavior → B5; config/resolvers → B6; Stats → A3; pipeline/session/inclusion → C1/C2; fresh DB, migrations and cutover → A1; maintenance worker core → A2a; rollup retention and worker invocation → C5/A2b; detector windows → C3; rollback and synthetic harness → C6a; real owner-log replay → C6b; shared freshness → D1. These groups are required at their owning batch's gate.
 - **Final verification (2026-10-11):** `FOCUSFLOW_SKIP_APK_BUILD=1 bash scripts/build-apk-with-java.sh :app:testProductionDebugUnitTest :app:compileProductionDebugAndroidTestKotlin` succeeded. Production JVM reports show 57 suites, 267 tests, 0 failures, 0 errors, and 0 skipped; the new reader behavior test is present in XML. AndroidTest compilation succeeded, including the fresh DB/migration tests and alarm behavior test. The test-source audit found only `BackupSerializerTest` reading `backup/v1-export-golden.json`; no test reads `.kt` source text. `git diff --check` passed.
 **Evidence:**
 - `AllowanceUsageReader.kt`, `AllowanceUsageReaderTest.kt`, `TaskEndAlarmIdentityInstrumentedTest.kt`; deleted `AlarmPendingIntentLookupContractTest.kt` and `AllowanceBehaviorCharacterizationTest.kt`. Production JVM suite passed 267/267; Production AndroidTest Kotlin compilation passed.
@@ -263,35 +286,53 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ## Batch B — One meter everywhere
 
-**Batch gate:** A1–A4 must be DONE before starting B. B batches may proceed in parallel only where current code ownership and plan dependencies permit.
+**Batch gate:** A1, A2a, A3, A4 and A2b must be complete. B/C work may then proceed in parallel where the plan dependencies permit. No pre-gate B1a/B1b exception is recorded.
 
-### B1 — Accessibility lifecycle and fallback behavior
+### B1a — Accessibility lifecycle, recovery, and messaging
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A1–A4  
+**Blocked by:** Foundation Gate and A2b<br>
 **Started:** —  
 **Completed:** —  
-**Owner-run:** S4 is owner-run
+**Owner-run:** S4 is owner-run and does not block automated gates
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Interrupt does not tear down meter; unbind/destroy do; rebind recreates and starts it. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Remove foreground-service allowance mirror/ledger reads; while Accessibility is off, allowance apps are blocked during active blocks with the required reason. | NOT STARTED | A1–A4; B6 resolver | Pending | No |
-| [ ] | Add the required Accessibility-off explanation to allowance screens and permission health card. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Recover checkpoint once at meter start, clear marker after recovery, prevent double credit; remove recovery from foreground service. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | JVM tests cover lifecycle, capped one-time recovery, fallback reason, and no ledger access in fallback. | NOT STARTED | A1–A4 | Pending | No |
+| [ ] | Interrupt does not tear down meter; unbind/destroy do; rebind recreates and starts it. | NOT STARTED | Foundation Gate and A2b | Pending | No |
+| [ ] | Recover checkpoint once at meter start, clear marker after recovery, prevent double credit; remove recovery from foreground service. | NOT STARTED | Foundation Gate and A2b | Pending | No |
+| [ ] | Add the required Accessibility-off explanation to allowance screens and permission health card. | NOT STARTED | Foundation Gate and A2b | Pending | No |
+| [ ] | JVM tests cover lifecycle and capped one-time recovery, including marker clearing and no double credit. | NOT STARTED | Foundation Gate and A2b | Pending | No |
 | [ ] | Owner scenario S4: Accessibility off during a block; explanation and restoration behavior reported. | OWNER-RUN PENDING | E1 device session | Pending owner report | Yes |
 
-**Done when:** lifecycle/recovery/fallback tests pass and S4 is recorded by the owner.  
+**Done when:** lifecycle/recovery/messaging automated tests pass. S4 remains owner-run for E1 and is not a prerequisite for B/C automation, D, or E1.<br>
 **Notes:**  
 **Evidence:**  
 **Failures and blockers:**  
 **Decisions and deferred work:**  
 
+### B1b — Fallback resolver integration
+
+**Status:** `BLOCKED — B6 resolver not implemented`<br>
+**Blocked by:** B6 resolver; Foundation Gate and A2b<br>
+**Started:** —<br>
+**Completed:** —<br>
+**Owner-run:** No
+
+| Done | Work item | Status | Blocked by | Evidence | Owner-run |
+|---|---|---|---|---|---|
+| [ ] | Remove foreground-service allowance mirror/ledger reads; while Accessibility is off, allowance apps are blocked during active blocks with the required reason. | BLOCKED — B6 | B6 shared resolver | Pending | No |
+| [ ] | Test fallback block reason and prove fallback never reads the allowance ledger. | BLOCKED — B6 | B6 resolver and test | Pending | No |
+
+**Done when:** B6 resolver integration and both listed tests pass.<br>
+**Notes:** No implementation progress or pre-gate authorization is evidenced in the current checkout.<br>
+**Evidence:** Pending B6 implementation.<br>
+**Failures and blockers:** Wait for B6; do not duplicate its block-decision logic in the foreground service.<br>
+**Decisions and deferred work:** Keep this separate from B1a lifecycle/recovery work.
+
 ### B2 — Foreground signal filter
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A1–A4  
+**Blocked by:** Batch B gate (A1, A2a, A3, A4 and A2b)
 **Started:** —  
 **Completed:** —  
 **Owner-run:** No
@@ -320,7 +361,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Implement the v8 cadence; no read for non-allowance windows except one read when an allowance app leaves front; enforce 10-second minimum between non-lifecycle reads. | NOT STARTED | A1–A4 | Pending | No |
+| [ ] | Implement the plan section 4.4 cadence; no read for non-allowance windows except one read when an allowance app leaves front; enforce 10-second minimum between non-lifecycle reads. | NOT STARTED | A1–A4 | Pending | No |
 | [ ] | Keep scan cost independent of prior event count or demonstrate compliance with the plan's read budgets; reduce off main thread. | NOT STARTED | A1–A4 | Pending | No |
 | [ ] | Replace timeout around blocking platform read with cancellation-aware behavior; slow reads cannot pile up. | NOT STARTED | A1–A4 | Pending | No |
 | [ ] | Persist ledger only for meaningful changes; make bridge-return lookup linear; add hourly read/write and last-reason/outcome counters. | NOT STARTED | A1–A4 | Pending | No |
@@ -421,7 +462,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ## Batch C — One definition of usage
 
-**Batch gate:** A1–A4 must be DONE. B and C may proceed in parallel where dependencies permit.
+**Batch C gate:** The Foundation Gate is A1, A2a, A3 and A4 complete. C5 may start then and owns completion of A2b; it must not wait for A2b. All other C work waits for C5 to close A2b and for Batch A to be complete. Then B and C may proceed in parallel where dependencies permit.
 
 ### C1 — Session definition
 
@@ -448,18 +489,17 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 **Blocked by:** A1–A4  
 **Started:** —  
 **Completed:** —  
-**Owner-run:** Manifest visibility confirmation requires owner
+**Owner-run:** No — manifest and package-query verification are repository work
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
 | [ ] | Apply one session-level inclusion policy to Stats, rollups, and detectors; dynamically resolve/cache home apps and keep static list only as fallback. | NOT STARTED | A1–A4 | Pending | No |
 | [ ] | Put own package, system UI, home, launchable, and minimum-duration rules in this shared policy; do not apply it to allowance measurement. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Verify package-visibility manifest requirements against available project files and record the result/limitation. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Owner confirms manifest package visibility where manifest is unavailable; do not tick without owner evidence. | OWNER-RUN PENDING | E1 or owner confirmation | Pending owner report | Yes |
+| [ ] | Verify package-visibility needs against the checked-in manifest and actual package-manager queries; record the evidence and any real limitation. | NOT STARTED | Foundation Gate and A2b | Manifest exists and declares `QUERY_ALL_PACKAGES`; C2 implementation/query evidence still pending | No |
 | [ ] | Tests: hourly sum = daily sum = summary; dynamically identified unknown launcher excluded. | NOT STARTED | A1–A4 | Pending | No |
 
-**Done when:** shared inclusion policy and tests pass; manifest limitation/confirmation is recorded.  
-**Notes:**  
+**Done when:** shared inclusion policy and tests pass; source-based package-query verification and any real limitation are recorded.<br>
+**Notes:** The manifest and Gradle file exist in this checkout. Their presence alone does not establish whether the broad package-visibility permission is needed or whether queries behave as intended.<br>
 **Evidence:**  
 **Failures and blockers:**  
 **Decisions and deferred work:**  
@@ -506,50 +546,67 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 ### C5 — Retention
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A1–A4  
+**Blocked by:** Foundation Gate (A1, A2a, A3, A4); gate is satisfied and C5 may start
 **Started:** —  
 **Completed:** —  
 **Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Add pruning for all three rollup tables (day, app-day, session) with the legacy 90-day retention horizon. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Add tests proving every usage table is pruned at the boundary. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Verify A2 maintenance worker invokes rollup pruning. | NOT STARTED | A2 | Pending | No |
+| [ ] | Add pruning for all three rollup tables (day, app-day, session) with the legacy 90-day retention horizon. | NOT STARTED | Foundation Gate satisfied; C5 start permitted | Pending | No |
+| [ ] | Add tests proving every usage table is pruned at the boundary. | NOT STARTED | C5 implementation | Pending | No |
+| [ ] | Wire rollup pruning through A2a's existing maintenance worker prune operation; close A2b with a worker-invocation test. | NOT STARTED | C5 implementation | Pending | No |
 
-**Done when:** pruning covers every usage table and tests prove the retention horizon.  
-**Notes:**  
+**Done when:** pruning covers every usage table, boundary tests pass, and the worker-invocation test closes A2b.<br>
+**Notes:** C5 may start after the Foundation Gate. It owns A2b; A2b is not a prerequisite for starting C5.<br>
 **Evidence:**  
 **Failures and blockers:**  
 **Decisions and deferred work:**  
 
-### C6 — What the cutover gate proves
+### C6a — Cutover contract, rollback, and synthetic harness
 
 **Status:** `NOT STARTED`  
-**Blocked by:** A1–A4; golden logs depend on E1 owner session  
+**Blocked by:** Foundation Gate and A2b<br>
 **Started:** —  
 **Completed:** —  
-**Owner-run:** Golden event logs are owner-provided
+**Owner-run:** No
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Document and test that the gate proves completeness only; legacy values are not a correctness reference. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Add golden-log tests through tracker, aggregator, and `measure` using logs from two devices, including one non-Pixel. | NOT STARTED | A1–A4; E1 logs | Pending | No |
-| [ ] | Owner supplies exported event logs from both phones; agent records provenance without exposing private information. | OWNER-RUN PENDING | E1/S11 | Pending owner report | Yes |
-| [ ] | Test rollback: null cutover serves legacy history and resumes legacy writer; keep legacy tracker unchanged. | NOT STARTED | A1–A4 | Pending | No |
-| [ ] | Preserve the refused cross-cutover detector seam and document the data-health explanation. | NOT STARTED | A1–A4 | Pending | No |
+| [ ] | Document and test that the gate proves completeness only; legacy values are not a correctness reference. | NOT STARTED | Foundation Gate and A2b | Pending | No |
+| [ ] | Build and run the golden-log harness on synthetic fixtures through tracker, aggregator and `measure`; define fixture format for owner logs. | NOT STARTED | Foundation Gate and A2b | Pending | No |
+| [ ] | Test rollback: null cutover serves legacy history and resumes legacy writer; keep legacy tracker unchanged. | NOT STARTED | Foundation Gate and A2b | Pending | No |
+| [ ] | Preserve the refused cross-cutover detector seam and document the data-health explanation. | NOT STARTED | Foundation Gate and A2b | Pending | No |
 
-**Done when:** completeness-only contract, golden-log behavior, and rollback are evidenced; owner logs remain pending until supplied.  
+**Done when:** completeness-only contract, synthetic-fixture harness, and rollback are evidenced before D.<br>
 **Notes:**  
 **Evidence:**  
 **Failures and blockers:**  
 **Decisions and deferred work:**  
+
+### C6b — Owner golden-log replay
+
+**Status:** `OWNER-RUN PENDING`<br>
+**Blocked by:** E1 logs from both phones; C6a harness<br>
+**Started:** —<br>
+**Completed:** —<br>
+**Owner-run:** Yes — owner supplies the logs; agent records replay results
+
+| Done | Work item | Status | Blocked by | Evidence | Owner-run |
+|---|---|---|---|---|---|
+| [ ] | Owner exports event logs from both phones, including one non-Pixel, and the agent replays them through C6a's harness. | OWNER-RUN PENDING | E1/S11 logs and C6a | Pending owner report and replay | Yes |
+
+**Done when:** replay results and provenance are recorded at E3, or the owner explicitly approves a documented deferral.<br>
+**Notes:** This owner-dependent item does not block D or E1. Retain only the event data needed for replay and avoid including unrelated personal information.<br>
+**Evidence:** Pending owner logs and harness replay.<br>
+**Failures and blockers:** Await C6a and the E1 exports.<br>
+**Decisions and deferred work:** Any deferral needs explicit owner approval at E3.
 
 ---
 
 ## Batch D — Screens and wording
 
-**Batch gate:** Required B and C work is DONE.
+**Batch D gate:** B1a, B1b, B2–B7 and C1–C6a meet their automated done-when criteria. Owner S1/S2/S4 and C6b owner-log replay do not block D; all remain pending until evidence or owner-approved deferral.
 
 ### D1 — Freshness everywhere
 
@@ -616,7 +673,7 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 ## Batch E — Verification and release
 
-**Batch gate:** D is DONE. Owner device session is performed once at the end by the owner.
+**Batch E gate:** D is complete by its automated done-when criteria. E1 is one initial full owner session; only failed scenarios may be retested, for at most two rounds.
 
 ### E1 — Owner device session
 
@@ -628,14 +685,14 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 
 | Done | Work item | Status | Blocked by | Evidence | Owner-run |
 |---|---|---|---|---|---|
-| [ ] | Create `OWNER_DEVICE_TEST_GUIDE.md` with setup, exact steps, pass criteria, expected numbers, and report instructions for S1–S12. | NOT STARTED | D | Pending | No |
+| [ ] | Create `OWNER_DEVICE_TEST_GUIDE.md` with setup, exact steps, pass criteria, expected numbers, and report instructions for S1–S12; protect S2 by requiring it before S1 or any uninstall/data clear on the upgrade phone. | NOT STARTED | D | Pending | No |
 | [ ] | Add copyable result template for scenario, phone, pass/partial/fail, observed behavior, and requested numbers. | NOT STARTED | D | Pending | No |
 | [ ] | Add debug-only usage diagnostics and one-tap Copy report with only package names and the fields in plan section 7. | NOT STARTED | D | Pending | No |
 | [ ] | Use one log tag and include the exact logcat commands from plan section 7 in the guide. | NOT STARTED | D | Pending | No |
-| [ ] | Include default-battery then unrestricted-battery procedure; record triage rule and at most two retest rounds. | NOT STARTED | D | Pending | No |
-| [ ] | Confirm exported Room schema for the new DB version is committed. | NOT STARTED | A1 | Pending | No |
-| [ ] | Owner runs S1–S12 once on Realme C3 (Android 10) and Samsung M31 (Android 12); attach reports and mark each `OWNER-RUN PENDING` until received. | OWNER-RUN PENDING | Guide/tooling complete; owner session | Pending owner reports | Yes |
-| [ ] | Owner records PD-11 Stats comparison and provides golden event logs for C6 where available. | OWNER-RUN PENDING | Owner session | Pending owner reports | Yes |
+| [ ] | Include default-battery then unrestricted-battery procedure; record one initial full session and at most two failed-scenario-only retest rounds. | NOT STARTED | D | Pending | No |
+| [ ] | Confirm the exported Room schema for database version 9 is committed. | NOT STARTED | A1 | Pending | No |
+| [ ] | Owner runs the initial S1–S12 session on Realme C3 (Android 10) and Samsung M31 (Android 12); attach reports; only failed scenarios may be retested, for up to two rounds. | OWNER-RUN PENDING | Guide/tooling complete; owner session | Pending owner reports | Yes |
+| [ ] | Owner records the PD-11 Stats comparison. | OWNER-RUN PENDING | Owner session | Pending owner report | Yes |
 
 **Done when:** agent guide/tooling/schema work is complete and owner reports are attached. Do not mark device outcomes complete before the owner reports them.  
 **Notes:**  
@@ -676,9 +733,12 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 | [ ] | Reconcile every batch/item status with current source, exact test output, and owner reports; leave incomplete items open with reasons. | NOT STARTED | A5–E2 | Pending | No |
 | [ ] | Verify all P0/P1 findings have evidence and all P2 findings are done or explicitly deferred with reasons. | NOT STARTED | A5–E2 | Pending | No |
 | [ ] | Verify review gates G1–G9 and required release gates; record each pass/failure/unverified result. | NOT STARTED | A5–E2 | Pending | No |
-| [ ] | Archive the v7 plan as historical reference without deleting it; make this v8 plan and tracker the active fixes documents. | NOT STARTED | A5–E2 | Pending | No |
+| [ ] | Replay C6a's harness on owner logs from both phones, including one non-Pixel; otherwise record explicit owner-approved deferral. | NOT STARTED | C6a; E1 logs; owner decision | Pending | No |
+| [ ] | Record C2's repository-based manifest/package-query result and resolve or obtain owner-approved deferral for any actual limitation. | NOT STARTED | C2 | Pending | No |
+| [ ] | After any post-E1 code change, rerun affected automated tests and owner scenarios; do not reuse stale pass evidence. | NOT STARTED | Any post-E1 change | Pending | No |
+| [ ] | Reconcile every owner-run item as passed or explicitly deferred with owner approval; preserve the v8 plan/tracker and make v9 active. | NOT STARTED | A5–E2; owner decisions | Pending | No |
 
-**Done when:** plan section 10 is met or remaining items are explicitly documented as blockers/deferred work; no unsupported completion claims remain.  
+**Done when:** plan section 10 is met; any permitted owner-approved deferral is fully documented; no unsupported completion claims remain.
 **Notes:**  
 **Evidence:**  
 **Failures and blockers:**  
@@ -692,13 +752,19 @@ Decision entries below are transcribed from `fixes/PLAN.md`, section 3.1–3.2. 
 |---|---|---|---|
 | A5 — Tracker truth | DONE — evidence recorded | — | Not owner-run |
 | A1 — Database and cutover | DONE — evidence recorded | A5 complete | S2 pending later |
-| A2 — Maintenance job | IN PROGRESS | A5 complete; eligible; C5 pruning row blocked | Not owner-run |
+| A2a — Maintenance job core | DONE — evidence recorded | A5 complete | Not owner-run |
+| A2b — Rollup-prune integration | BLOCKED — C5 | C5 completion; C5 may start after Foundation Gate | Not owner-run |
 | A3 — Stats zero reading | DONE — evidence recorded | A5 complete; eligible | S1 pending later |
-| A4 — Test baseline | COMPLETE | A5 complete; eligible | Not owner-run |
-| B1–B7 — One meter everywhere | NOT STARTED | A1–A4 | S4 pending later |
-| C1–C6 — One definition of usage | NOT STARTED | A1–A4; E1 logs for C6 | Manifest confirmation/logs may be owner-provided |
+| A4 — Test baseline | DONE — evidence recorded | A5 complete | Not owner-run |
+| B1a — Lifecycle, recovery, messaging | NOT STARTED | Foundation Gate and A2b | S4 pending; nonblocking for automation/D/E1 |
+| B1b — Fallback resolver | BLOCKED — B6 | B6 resolver and Batch B gate | Not owner-run |
+| B2–B7 — One meter everywhere | NOT STARTED | Batch B gate and each listed dependency | Not owner-run |
+| C1–C4 — One definition of usage | NOT STARTED | Batch C gate and each listed dependency | Not owner-run |
+| C5 — Retention | NOT STARTED | Foundation Gate; eligible to start and close A2b | Not owner-run |
+| C6a — Contract/rollback/synthetic harness | NOT STARTED | Batch C gate | Not owner-run; required before D |
+| C6b — Owner golden-log replay | OWNER-RUN PENDING | C6a; E1 logs; resolved or approved deferral at E3 | Owner logs pending; nonblocking D/E1 |
 | D1–D3 — Screens and wording | NOT STARTED | B and C; A3 for D3 | Not owner-run |
-| E1 — Owner device session | NOT STARTED | D; owner/device availability | OWNER-RUN PENDING |
+| E1 — Owner device session | NOT STARTED | D; owner/device availability; protect S2 before fresh install | OWNER-RUN PENDING; one full session + up to two failed-only retest rounds |
 | E2 — Release gates | NOT STARTED | E1; owner release decision | Release monitoring OWNER-RUN PENDING |
 | E3 — Close-out | NOT STARTED | A5–E2 | Not owner-run |
 
