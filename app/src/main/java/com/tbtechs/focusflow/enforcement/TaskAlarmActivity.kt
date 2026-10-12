@@ -130,17 +130,20 @@ class TaskAlarmActivity : Activity() {
         setIntent(intent)
         intent.getStringExtra(EXTRA_TASK_ID)?.let { if (it.isNotEmpty()) taskId = it }
         taskName = intent.getStringExtra(EXTRA_TASK_NAME).orEmpty()
-        ringAlarmOnOpen = intent.getBooleanExtra(EXTRA_RING_ALARM, true)
-        if (ringAlarmOnOpen) {
-            applyAlarmWindowFlags()
-            startRingtone()
-            startVibration()
-            acquireWakeLock()
+        val shouldRing = intent.getBooleanExtra(EXTRA_RING_ALARM, true)
+        if (shouldRing) {
+            if (!ringAlarmOnOpen) {
+                applyAlarmWindowFlags()
+                startRingtone()
+                startVibration()
+                acquireWakeLock()
+            }
         } else {
             stopRingtone()
             stopVibration()
             releaseWakeLock()
         }
+        ringAlarmOnOpen = shouldRing
         buildUI()
     }
 

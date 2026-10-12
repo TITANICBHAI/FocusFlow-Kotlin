@@ -90,4 +90,8 @@ Default to **Ringing alarm**. Existing installs and backups without the new pref
 
 ## Working interpretation
 
-“Halfway,” “wrapping up,” and “starting” refer to the existing mid-task, almost-done, and pre-start/at-start reminder families. This plan groups the existing 15- and 30-minute check-ins into one Mid-task switch and the 10/5/1-minute warnings into one Before-start switch, with separate At-start and Wrapping-up switches. No code changes are included in this plan file.
+“Halfway,” “wrapping up,” and “starting” refer to the existing mid-task, almost-done, and pre-start/at-start reminder families. This plan groups the existing 15- and 30-minute check-ins into one Mid-task switch and the 10/5/1-minute warnings into one Before-start switch, with separate At-start and Wrapping-up switches.
+
+## Implementation status
+
+The code changes are in place. The JVM unit-test workflow passed for both app variants, and Android test sources compile for both variants. Device acceptance remains necessary to confirm notification-channel sound/vibration and full-screen behavior on a real Android device.

@@ -228,6 +228,11 @@ class BackupRestoreEngineTest {
                 "last_shown_debrief_session_id" to BackupPreferenceValue.Remove,
                 "bed_time" to BackupPreferenceValue.StringValue("23:15"),
                 "task_reminders_enabled" to BackupPreferenceValue.BooleanValue(false),
+                "task_pre_start_reminders_enabled" to BackupPreferenceValue.BooleanValue(true),
+                "task_at_start_reminder_enabled" to BackupPreferenceValue.BooleanValue(true),
+                "task_mid_session_reminders_enabled" to BackupPreferenceValue.BooleanValue(true),
+                "task_wrap_up_reminder_enabled" to BackupPreferenceValue.BooleanValue(true),
+                "task_end_alarm_rings" to BackupPreferenceValue.BooleanValue(true),
             ),
             access.portablePreferenceWrites,
         )

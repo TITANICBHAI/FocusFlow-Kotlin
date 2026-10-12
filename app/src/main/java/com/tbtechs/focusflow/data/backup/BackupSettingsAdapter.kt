@@ -35,8 +35,10 @@ internal object BackupSettingsAdapter {
         )
         val writes = linkedMapOf<String, BackupPreferenceValue>()
 
-        fun boolean(key: String, preferenceKey: String) {
-            val value = (portable[key] as? JsonPrimitive)?.booleanOrNull ?: return
+        fun boolean(key: String, preferenceKey: String, missingValue: Boolean? = null) {
+            val value = (portable[key] as? JsonPrimitive)?.booleanOrNull
+                ?: missingValue
+                ?: return
             writes[preferenceKey] = BackupPreferenceValue.BooleanValue(value)
         }
 
@@ -151,11 +153,40 @@ internal object BackupSettingsAdapter {
         }
 
         boolean("taskRemindersEnabled", "task_reminders_enabled")
-        boolean("taskPreStartRemindersEnabled", SettingsRepository.KEY_TASK_PRE_START_REMINDERS_ENABLED)
-        boolean("taskAtStartReminderEnabled", SettingsRepository.KEY_TASK_AT_START_REMINDER_ENABLED)
-        boolean("taskMidSessionRemindersEnabled", SettingsRepository.KEY_TASK_MID_SESSION_REMINDERS_ENABLED)
-        boolean("taskWrapUpReminderEnabled", SettingsRepository.KEY_TASK_WRAP_UP_REMINDER_ENABLED)
-        boolean("taskEndAlarmRings", SettingsRepository.KEY_TASK_END_ALARM_RINGS)
+        val taskAlertSettingNames = setOf(
+            "taskPreStartRemindersEnabled",
+            "taskAtStartReminderEnabled",
+            "taskMidSessionRemindersEnabled",
+            "taskWrapUpReminderEnabled",
+            "taskEndAlarmRings",
+        )
+        val hasLegacyPortableSettings = portable.keys.any { it !in taskAlertSettingNames }
+        val legacyTaskAlertDefault = if (hasLegacyPortableSettings) true else null
+        boolean(
+            "taskPreStartRemindersEnabled",
+            SettingsRepository.KEY_TASK_PRE_START_REMINDERS_ENABLED,
+            missingValue = legacyTaskAlertDefault,
+        )
+        boolean(
+            "taskAtStartReminderEnabled",
+            SettingsRepository.KEY_TASK_AT_START_REMINDER_ENABLED,
+            missingValue = legacyTaskAlertDefault,
+        )
+        boolean(
+            "taskMidSessionRemindersEnabled",
+            SettingsRepository.KEY_TASK_MID_SESSION_REMINDERS_ENABLED,
+            missingValue = legacyTaskAlertDefault,
+        )
+        boolean(
+            "taskWrapUpReminderEnabled",
+            SettingsRepository.KEY_TASK_WRAP_UP_REMINDER_ENABLED,
+            missingValue = legacyTaskAlertDefault,
+        )
+        boolean(
+            "taskEndAlarmRings",
+            SettingsRepository.KEY_TASK_END_ALARM_RINGS,
+            missingValue = legacyTaskAlertDefault,
+        )
         boolean("reflectionPromptsEnabled", "reflection_prompts_enabled")
         boolean("autoFocusEnabled", "auto_focus_enabled")
         boolean("focusDefenseHintDismissed", "focus_defense_hint_dismissed")

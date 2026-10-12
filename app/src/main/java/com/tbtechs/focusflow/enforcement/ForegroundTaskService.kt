@@ -239,7 +239,7 @@ class ForegroundTaskService : Service() {
                         nm.notify(
                             TaskEndAlarmIdentity.notificationTag(endedTaskId),
                             TaskEndAlarmIdentity.NOTIFICATION_ID,
-                            notif,
+                            notification,
                         )
                         AlarmRuntimeDiagnostics.record("notification.nm_notify.returned")
                     } catch (error: Exception) {
