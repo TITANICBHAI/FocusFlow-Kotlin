@@ -5,6 +5,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,11 +35,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Policy
@@ -46,11 +54,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -74,6 +82,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -356,8 +365,8 @@ fun SettingsScreen(
                 SettingsSectionHeader("NOTIFICATIONS")
                 SettingsCard {
                     SettingsToggleRow(
-                        title = "Enable Reminders",
-                        description = "Alerts for tasks",
+                        title = "Scheduled task reminders",
+                        description = "Before, at, and during tasks",
                     ) {
                         FocusFlowSwitch(
                             checked = settings.taskRemindersEnabled,
@@ -367,104 +376,44 @@ fun SettingsScreen(
                         )
                     }
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    Text(
-                        text = "TASK REMINDERS",
-                        fontSize = 11.scaledSp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkTextMuted,
-                        letterSpacing = 0.8.sp,
-                        modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp),
-                    )
-                    SettingsToggleRow(
-                        title = "Before task starts",
-                        description = "10, 5, and 1 minute before",
-                        enabled = settings.taskRemindersEnabled,
-                    ) {
-                        FocusFlowSwitch(
-                            checked = settings.taskPreStartRemindersEnabled,
-                            enabled = settings.taskRemindersEnabled,
-                            onCheckedChange = { enabled ->
-                                settingsViewModel.updateSettings(
-                                    settings.copy(taskPreStartRemindersEnabled = enabled),
-                                )
-                            },
-                        )
-                    }
-                    SettingsToggleRow(
-                        title = "At task start",
-                        enabled = settings.taskRemindersEnabled,
-                    ) {
-                        FocusFlowSwitch(
-                            checked = settings.taskAtStartReminderEnabled,
-                            enabled = settings.taskRemindersEnabled,
-                            onCheckedChange = { enabled ->
-                                settingsViewModel.updateSettings(
-                                    settings.copy(taskAtStartReminderEnabled = enabled),
-                                )
-                            },
-                        )
-                    }
-                    SettingsToggleRow(
-                        title = "Mid-task check-ins",
-                        description = "15- and 30-minute reminders",
-                        enabled = settings.taskRemindersEnabled,
-                    ) {
-                        FocusFlowSwitch(
-                            checked = settings.taskMidSessionRemindersEnabled,
-                            enabled = settings.taskRemindersEnabled,
-                            onCheckedChange = { enabled ->
-                                settingsViewModel.updateSettings(
-                                    settings.copy(taskMidSessionRemindersEnabled = enabled),
-                                )
-                            },
-                        )
-                    }
-                    SettingsToggleRow(
-                        title = "Wrapping up",
-                        description = "One minute before a task ends",
-                        enabled = settings.taskRemindersEnabled,
-                    ) {
-                        FocusFlowSwitch(
-                            checked = settings.taskWrapUpReminderEnabled,
-                            enabled = settings.taskRemindersEnabled,
-                            onCheckedChange = { enabled ->
-                                settingsViewModel.updateSettings(
-                                    settings.copy(taskWrapUpReminderEnabled = enabled),
-                                )
-                            },
-                        )
-                    }
-                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
-                    Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Text(
-                            text = "Task end alert",
-                            fontSize = 15.scaledSp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkTextPrimary,
-                        )
-                        Text(
-                            text = "Choose how FocusFlow alerts you when a task ends.",
-                            fontSize = 13.scaledSp,
-                            color = DarkTextSecondary,
-                        )
-                    }
-                    TaskEndAlertOption(
-                        title = "Ringing alarm",
-                        description = "Play the alarm and show the full-screen controls",
-                        selected = settings.taskEndAlarmRings,
-                        onClick = {
-                            settingsViewModel.updateSettings(settings.copy(taskEndAlarmRings = true))
+                    TaskReminderOptions(
+                        remindersEnabled = settings.taskRemindersEnabled,
+                        enabledCount = listOf(
+                            settings.taskPreStartRemindersEnabled,
+                            settings.taskAtStartReminderEnabled,
+                            settings.taskMidSessionRemindersEnabled,
+                            settings.taskWrapUpReminderEnabled,
+                        ).count { it },
+                        onPreStartChange = { enabled ->
+                            settingsViewModel.updateSettings(
+                                settings.copy(taskPreStartRemindersEnabled = enabled),
+                            )
                         },
+                        onAtStartChange = { enabled ->
+                            settingsViewModel.updateSettings(
+                                settings.copy(taskAtStartReminderEnabled = enabled),
+                            )
+                        },
+                        onMidSessionChange = { enabled ->
+                            settingsViewModel.updateSettings(
+                                settings.copy(taskMidSessionRemindersEnabled = enabled),
+                            )
+                        },
+                        onWrapUpChange = { enabled ->
+                            settingsViewModel.updateSettings(
+                                settings.copy(taskWrapUpReminderEnabled = enabled),
+                            )
+                        },
+                        preStartChecked = settings.taskPreStartRemindersEnabled,
+                        atStartChecked = settings.taskAtStartReminderEnabled,
+                        midSessionChecked = settings.taskMidSessionRemindersEnabled,
+                        wrapUpChecked = settings.taskWrapUpReminderEnabled,
                     )
-                    TaskEndAlertOption(
-                        title = "Notification only",
-                        description = "Show a quiet alert; tap it to open task actions",
-                        selected = !settings.taskEndAlarmRings,
-                        onClick = {
-                            settingsViewModel.updateSettings(settings.copy(taskEndAlarmRings = false))
+                    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+                    TaskEndAlertSelector(
+                        ringingAlarm = settings.taskEndAlarmRings,
+                        onSelect = { ringing ->
+                            settingsViewModel.updateSettings(settings.copy(taskEndAlarmRings = ringing))
                         },
                     )
                     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
@@ -1154,41 +1103,207 @@ private fun SettingsToggleRow(
 }
 
 @Composable
-private fun TaskEndAlertOption(
-    title: String,
-    description: String,
-    selected: Boolean,
-    onClick: () -> Unit,
+private fun TaskReminderOptions(
+    remindersEnabled: Boolean,
+    enabledCount: Int,
+    preStartChecked: Boolean,
+    atStartChecked: Boolean,
+    midSessionChecked: Boolean,
+    wrapUpChecked: Boolean,
+    onPreStartChange: (Boolean) -> Unit,
+    onAtStartChange: (Boolean) -> Unit,
+    onMidSessionChange: (Boolean) -> Unit,
+    onWrapUpChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                title,
-                fontSize = 14.scaledSp,
-                fontWeight = FontWeight.Medium,
-                color = DarkTextPrimary,
-            )
-            Text(
-                description,
-                fontSize = 12.scaledSp,
-                color = DarkTextSecondary,
+    var expanded by remember { mutableStateOf(false) }
+    val summary = when {
+        !remindersEnabled -> "Reminders are off"
+        enabledCount == 0 -> "No reminder types selected"
+        enabledCount == 4 -> "All 4 reminder types on"
+        else -> "$enabledCount of 4 reminder types on"
+    }
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(role = Role.Button) { expanded = !expanded }
+                .semantics {
+                    stateDescription = if (expanded) "Expanded" else "Collapsed"
+                }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Reminder timing",
+                    fontSize = 15.scaledSp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DarkTextPrimary,
+                )
+                Text(
+                    text = summary,
+                    fontSize = 13.scaledSp,
+                    color = DarkTextSecondary,
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = null,
+                tint = DarkTextMuted,
             )
         }
-        RadioButton(
-            selected = selected,
-            onClick = null,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = BrandPrimary,
-                unselectedColor = DarkTextMuted,
-            ),
-        )
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(modifier = Modifier.padding(start = 8.dp)) {
+                SettingsToggleRow(
+                    title = "Before task starts",
+                    description = "10, 5, and 1 minute before",
+                    enabled = remindersEnabled,
+                ) {
+                    FocusFlowSwitch(
+                        checked = preStartChecked,
+                        enabled = remindersEnabled,
+                        onCheckedChange = onPreStartChange,
+                    )
+                }
+                SettingsToggleRow(
+                    title = "At task start",
+                    enabled = remindersEnabled,
+                ) {
+                    FocusFlowSwitch(
+                        checked = atStartChecked,
+                        enabled = remindersEnabled,
+                        onCheckedChange = onAtStartChange,
+                    )
+                }
+                SettingsToggleRow(
+                    title = "Mid-task check-ins",
+                    description = "15- and 30-minute reminders",
+                    enabled = remindersEnabled,
+                ) {
+                    FocusFlowSwitch(
+                        checked = midSessionChecked,
+                        enabled = remindersEnabled,
+                        onCheckedChange = onMidSessionChange,
+                    )
+                }
+                SettingsToggleRow(
+                    title = "Wrapping up",
+                    description = "One minute before a task ends",
+                    enabled = remindersEnabled,
+                ) {
+                    FocusFlowSwitch(
+                        checked = wrapUpChecked,
+                        enabled = remindersEnabled,
+                        onCheckedChange = onWrapUpChange,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskEndAlertSelector(
+    ringingAlarm: Boolean,
+    onSelect: (Boolean) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedTitle = if (ringingAlarm) "Ringing alarm" else "Notification only"
+    val selectedDescription = if (ringingAlarm) {
+        "Sound + full-screen task controls"
+    } else {
+        "Quiet alert with task actions"
+    }
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(role = Role.Button) { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Task end alert",
+                    fontSize = 15.scaledSp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DarkTextPrimary,
+                )
+                Text(
+                    text = selectedTitle,
+                    fontSize = 14.scaledSp,
+                    fontWeight = FontWeight.Medium,
+                    color = BrandPrimary,
+                )
+                Text(
+                    text = selectedDescription,
+                    fontSize = 12.scaledSp,
+                    color = DarkTextSecondary,
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.ExpandMore,
+                contentDescription = "Choose task end alert",
+                tint = DarkTextMuted,
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Ringing alarm", color = DarkTextPrimary)
+                        Text(
+                            "Play sound and show full-screen controls",
+                            fontSize = 12.scaledSp,
+                            color = DarkTextSecondary,
+                        )
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onSelect(true)
+                },
+                trailingIcon = {
+                    if (ringingAlarm) {
+                        Icon(Icons.Outlined.Check, contentDescription = "Selected", tint = BrandPrimary)
+                    }
+                },
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Notification only", color = DarkTextPrimary)
+                        Text(
+                            "Quiet alert; tap to open task actions",
+                            fontSize = 12.scaledSp,
+                            color = DarkTextSecondary,
+                        )
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onSelect(false)
+                },
+                trailingIcon = {
+                    if (!ringingAlarm) {
+                        Icon(Icons.Outlined.Check, contentDescription = "Selected", tint = BrandPrimary)
+                    }
+                },
+            )
+        }
     }
 }
 
